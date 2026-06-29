@@ -36,7 +36,9 @@ function Assignment() {
             return (
               <div key={c.key} className="rounded-lg border border-[#EEF2F7] p-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-md flex items-center justify-center text-white text-[11px] font-bold" style={{ background: c.color }}>{c.icon}</span>
+                  <span className="w-7 h-7 rounded-md flex items-center justify-center text-white" style={{ background: c.color }}>
+                    <CriterionIcon criterion={c.key} size={14} className="text-white" color="#fff" />
+                  </span>
                   <div className="min-w-0">
                     <div className="text-[12.5px] font-semibold text-brand-deep truncate">{c.label}</div>
                     <div className="text-[10.5px] text-muted-foreground">{count} task • {officers.length} cán bộ</div>
