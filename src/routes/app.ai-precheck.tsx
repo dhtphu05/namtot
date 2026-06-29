@@ -135,7 +135,10 @@ function Precheck() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-3">
-                  <Chip tone="brand">{cr?.icon} {cr?.label}</Chip>
+                  <Chip tone="brand">
+                    {cr && <CriterionIcon criterion={cr.key} size={12} className="mr-1" />}
+                    {cr?.label}
+                  </Chip>
                   {lv && <Chip>{lv.label}</Chip>}
                   {e.days && <Chip tone="success">{e.days} ngày</Chip>}
                 </div>
@@ -144,7 +147,10 @@ function Precheck() {
                   <span className={`text-sm font-bold ${e.confidence > 0.85 ? "text-emerald-600" : "text-amber-600"}`}>{Math.round(e.confidence * 100)}%</span>
                 </div>
                 {e.warning && (
-                  <div className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 mt-2">⚠️ {e.warning}</div>
+                  <div className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 mt-2 flex items-start gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    {e.warning}
+                  </div>
                 )}
               </motion.div>
             );
