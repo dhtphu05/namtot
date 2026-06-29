@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress } from "@/components/ui-kit";
 import { AppIcon, IconTile } from "@/components/AppIcon";
+import { CriterionIcon } from "@/components/AppIcon";
 import {
   CRITERIA, LEVELS, EVENT_REGISTRY, EVENT_PARTICIPANTS, KB_ITEMS, REQUIREMENT_BY_LEVEL,
   CURRENT_STUDENT, type CriterionKey,
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/app/evidence")({
   component: EvidenceWorkspace,
 });
 
-const CRITERIA_PLUS = [...CRITERIA, { key: "priority", label: "Thành tích / ưu tiên", short: "Ưu tiên", color: "#a855f7", icon: "ƯT" }] as const;
+const CRITERIA_PLUS = [...CRITERIA, { key: "priority" as const, label: "Thành tích / ưu tiên", short: "Ưu tiên", color: "#a855f7", iconKey: "Sparkles" as const, icon: "Sparkles" }];
 
 function EvidenceWorkspace() {
   const evidence = useApp((s) => s.evidence);
@@ -51,7 +52,9 @@ function EvidenceWorkspace() {
                       onClick={() => setActive(c.key)}
                       className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2.5 transition-colors ${isActive ? "bg-[#0057C2] text-white" : "hover:bg-[#F1F7FD]"}`}
                     >
-                      <span className={`w-7 h-7 rounded-md flex items-center justify-center text-[11px] font-bold ${isActive ? "bg-white/15 text-white" : "text-white"}`} style={isActive ? undefined : { background: c.color }}>{c.icon}</span>
+                      <span className={`w-7 h-7 rounded-md flex items-center justify-center ${isActive ? "bg-white/15" : ""}`} style={isActive ? undefined : { background: c.color }}>
+                        <CriterionIcon criterion={c.key} size={14} color="#fff" />
+                      </span>
                       <div className="min-w-0 flex-1">
                         <div className={`text-[13px] font-semibold truncate ${isActive ? "text-white" : "text-brand-deep"}`}>{c.label}</div>
                         <div className={`text-[10.5px] ${isActive ? "text-white/85" : "text-muted-foreground"}`}>{items.length} minh chứng</div>
