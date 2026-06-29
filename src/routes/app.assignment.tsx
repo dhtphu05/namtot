@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress } from "@/components/ui-kit";
-import { AppIcon } from "@/components/AppIcon";
+import { AppIcon, CriterionIcon } from "@/components/AppIcon";
 import { CRITERIA, OFFICERS } from "@/lib/mock-data";
 import { useApp } from "@/lib/store";
 import { toast } from "sonner";
