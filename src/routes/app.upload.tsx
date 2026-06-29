@@ -2,10 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress } from "@/components/ui-kit";
 import { CRITERIA, EVIDENCE_SAMPLES } from "@/lib/mock-data";
+import { CriterionIcon } from "@/components/AppIcon";
 import { useApp } from "@/lib/store";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, FileText, Sparkles, Check, X, Eye } from "lucide-react";
+import { UploadCloud, FileText, Sparkles, Check, X, Eye, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/upload")({
@@ -62,9 +63,9 @@ function Upload() {
             <button
               key={c.key}
               onClick={() => setActiveCat(c.key)}
-              className={`px-4 py-2.5 rounded-2xl font-semibold text-sm flex items-center gap-2 transition-all ${active ? "gradient-brand text-white shadow-[var(--shadow-glow)]" : "bg-white text-brand-deep hover:bg-[#EEF9FF]"}`}
+              className={`px-4 py-2.5 rounded-2xl font-semibold text-sm flex items-center gap-2 transition-all ${active ? "bg-[#0057C2] text-white" : "bg-white text-brand-deep hover:bg-[#EEF9FF]"}`}
             >
-              <span className="text-lg">{c.icon}</span>
+              <CriterionIcon criterion={c.key} size={16} color={active ? "#fff" : c.color} />
               {c.label}
               <span className={`text-xs px-2 py-0.5 rounded-full ${active ? "bg-white/25" : "bg-[#EEF9FF]"}`}>{count}</span>
             </button>
