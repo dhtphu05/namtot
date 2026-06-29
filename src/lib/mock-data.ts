@@ -41,11 +41,11 @@ export const MEDIA = {
 };
 
 export const CRITERIA = [
-  { key: "dao-duc", label: "Đạo đức tốt", short: "Đạo đức", color: "#ef4444", icon: "ĐĐ" },
-  { key: "hoc-tap", label: "Học tập tốt", short: "Học tập", color: "#00AEEF", icon: "HT" },
-  { key: "the-luc", label: "Thể lực tốt", short: "Thể lực", color: "#22c55e", icon: "TL" },
-  { key: "tinh-nguyen", label: "Tình nguyện tốt", short: "Tình nguyện", color: "#f59e0b", icon: "TN" },
-  { key: "hoi-nhap", label: "Hội nhập tốt", short: "Hội nhập", color: "#0057C2", icon: "HN" },
+  { key: "dao-duc", label: "Đạo đức tốt", short: "Đạo đức", color: "#ef4444", iconKey: "ShieldCheck" as const, icon: "ShieldCheck" },
+  { key: "hoc-tap", label: "Học tập tốt", short: "Học tập", color: "#00AEEF", iconKey: "GraduationCap" as const, icon: "GraduationCap" },
+  { key: "the-luc", label: "Thể lực tốt", short: "Thể lực", color: "#22c55e", iconKey: "Dumbbell" as const, icon: "Dumbbell" },
+  { key: "tinh-nguyen", label: "Tình nguyện tốt", short: "Tình nguyện", color: "#f59e0b", iconKey: "HeartHandshake" as const, icon: "HeartHandshake" },
+  { key: "hoi-nhap", label: "Hội nhập tốt", short: "Hội nhập", color: "#0057C2", iconKey: "Globe2" as const, icon: "Globe2" },
 ] as const;
 
 export type CriterionKey = typeof CRITERIA[number]["key"];
