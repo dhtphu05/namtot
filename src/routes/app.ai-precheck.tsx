@@ -4,7 +4,8 @@ import { Card, Button, Chip, Progress } from "@/components/ui-kit";
 import { CRITERIA, EVIDENCE_SAMPLES, LEVELS } from "@/lib/mock-data";
 import { useApp } from "@/lib/store";
 import { motion } from "framer-motion";
-import { Sparkles, Check, AlertTriangle, ArrowRight, FileText } from "lucide-react";
+import { Sparkles, AlertTriangle, ArrowRight } from "lucide-react";
+import { CriterionIcon } from "@/components/AppIcon";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/ai-precheck")({
