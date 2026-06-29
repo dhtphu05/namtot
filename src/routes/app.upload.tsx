@@ -101,7 +101,7 @@ function Upload() {
                   <div className="text-xs text-muted-foreground">{f.org} • {f.date}</div>
                 </div>
                 <Chip tone={f.confidence > 0.85 ? "success" : "warning"}>AI {Math.round(f.confidence * 100)}%</Chip>
-                {f.warning && <Chip tone="warning">⚠️ Cần xác minh</Chip>}
+                {f.warning && <Chip tone="warning"><AlertTriangle className="w-3 h-3" /> Cần xác minh</Chip>}
                 <button onClick={() => setFiles((x) => x.filter((y) => y.id !== f.id))} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100">
                   <X className="w-4 h-4" />
                 </button>
@@ -127,7 +127,7 @@ function Upload() {
           </ul>
 
           <div className="mt-5 p-4 rounded-xl bg-amber-50">
-            <div className="font-semibold text-sm text-amber-900 mb-1">⚠️ Lưu ý phổ biến</div>
+            <div className="font-semibold text-sm text-amber-900 mb-1 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Lưu ý phổ biến</div>
             <div className="text-xs text-amber-800">Ảnh mờ, thiếu dấu xác nhận, hoặc chứng chỉ hết hạn sẽ bị AI cảnh báo và yêu cầu cán bộ xác minh.</div>
           </div>
         </Card>
