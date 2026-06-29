@@ -46,7 +46,7 @@ function StudentDash() {
       />
 
       {/* SINGLE PROFILE CARD */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="gradient-hero rounded-3xl p-8 mb-7 relative overflow-hidden">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-[#0057C2] text-white rounded-2xl p-8 mb-7 relative overflow-hidden">
         <div className="absolute inset-0 wave-bg opacity-30" />
         <img src={MEDIA.hero[0]} className="absolute inset-0 w-full h-full object-cover opacity-10" alt="" />
         <div className="relative grid md:grid-cols-3 gap-6 items-center">
@@ -110,9 +110,9 @@ function StudentDash() {
             {LEVELS.map((l) => {
               const isCurrent = l.key === profile.targetLevel;
               return (
-                <div key={l.key} className={`p-4 rounded-2xl ${isCurrent ? "gradient-brand text-white shadow-[var(--shadow-glow)]" : "bg-[#F4FBFF]"}`}>
+                <div key={l.key} className={`p-4 rounded-2xl ${isCurrent ? "bg-[#0057C2] text-white" : "bg-[#F4FBFF]"}`}>
                   <div className="flex items-center justify-between">
-                    <div className={`text-xs uppercase font-bold ${isCurrent ? "text-white/85" : "text-muted-foreground"}`}>{"★".repeat(l.difficulty)}</div>
+                    <div className={`text-xs uppercase font-bold tracking-wider ${isCurrent ? "text-white/85" : "text-muted-foreground"}`}>Cấp {l.difficulty}/4</div>
                     {isCurrent && <Chip tone="brand">Đang aim</Chip>}
                   </div>
                   <div className={`font-bold mt-1 ${isCurrent ? "text-white" : "text-brand-deep"}`}>{l.label}</div>

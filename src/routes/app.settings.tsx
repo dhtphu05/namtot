@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Chip, Button } from "@/components/ui-kit";
 import { CRITERIA } from "@/lib/mock-data";
+import { CriterionIcon } from "@/components/AppIcon";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/settings")({
@@ -42,7 +43,9 @@ function Settings() {
         <div className="space-y-2">
           {CRITERIA.map((c) => (
             <div key={c.key} className="p-4 rounded-2xl bg-[#F4FBFF] flex items-center gap-4">
-              <div className="text-2xl">{c.icon}</div>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${c.color}1A`, color: c.color }}>
+                <CriterionIcon criterion={c.key} size={20} />
+              </div>
               <div className="flex-1">
                 <div className="font-semibold text-brand-deep">{c.label}</div>
                 <div className="text-xs text-muted-foreground">Trọng số: 20% • Yêu cầu minh chứng: có</div>

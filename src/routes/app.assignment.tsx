@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress } from "@/components/ui-kit";
-import { AppIcon } from "@/components/AppIcon";
+import { AppIcon, CriterionIcon } from "@/components/AppIcon";
 import { CRITERIA, OFFICERS } from "@/lib/mock-data";
 import { useApp } from "@/lib/store";
 import { toast } from "sonner";
@@ -36,7 +36,9 @@ function Assignment() {
             return (
               <div key={c.key} className="rounded-lg border border-[#EEF2F7] p-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-md flex items-center justify-center text-white text-[11px] font-bold" style={{ background: c.color }}>{c.icon}</span>
+                  <span className="w-7 h-7 rounded-md flex items-center justify-center text-white" style={{ background: c.color }}>
+                    <CriterionIcon criterion={c.key} size={14} className="text-white" color="#fff" />
+                  </span>
                   <div className="min-w-0">
                     <div className="text-[12.5px] font-semibold text-brand-deep truncate">{c.label}</div>
                     <div className="text-[10.5px] text-muted-foreground">{count} task • {officers.length} cán bộ</div>
@@ -44,7 +46,7 @@ function Assignment() {
                 </div>
                 <div className="mt-2 space-y-1">
                   {officers.map(o => (
-                    <div key={o.id} className="text-[11.5px] text-muted-foreground truncate">• {o.name}{o.experienced ? " ★" : ""}</div>
+                    <div key={o.id} className="text-[11.5px] text-muted-foreground truncate">• {o.name}{o.experienced ? " (kinh nghiệm)" : ""}</div>
                   ))}
                 </div>
               </div>
@@ -61,7 +63,7 @@ function Assignment() {
             <div key={o.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#F6F9FC]">
               <img src={o.avatar} className="w-10 h-10 rounded-lg object-cover" alt="" />
               <div className="min-w-0 flex-1">
-                <div className="font-semibold text-brand-deep text-[13px]">{o.name} {o.experienced && <span className="text-[10px] text-amber-600 font-bold">★ Cán bộ kinh nghiệm</span>}</div>
+                <div className="font-semibold text-brand-deep text-[13px]">{o.name} {o.experienced && <span className="text-[10px] text-amber-600 font-bold">Cán bộ kinh nghiệm</span>}</div>
                 <div className="text-[11px] text-muted-foreground">{o.role} • Chuyên: {o.specializedCriteria.map(k => CRITERIA.find(c => c.key === k)?.short ?? "Ưu tiên").join(", ")}</div>
               </div>
               <div className="w-48"><Progress value={(o.workload / 25) * 100} /></div>
@@ -97,7 +99,7 @@ function Assignment() {
                     <td className="px-3 py-2"><Chip tone={t.confidence < 0.7 ? "warning" : "brand"}>{Math.round(t.confidence * 100)}%</Chip></td>
                     <td className="px-3 py-2">
                       <select value={t.assignedOfficerId} onChange={(e) => reassign(t.id, e.target.value)} className="bg-[#F6F9FC] rounded-lg px-2 py-1.5 text-[12px] font-semibold text-brand-deep">
-                        {eligible.map(o => <option key={o.id} value={o.id}>{o.name}{o.experienced ? " ★" : ""}</option>)}
+                        {eligible.map(o => <option key={o.id} value={o.id}>{o.name}{o.experienced ? " (kinh nghiệm)" : ""}</option>)}
                       </select>
                     </td>
                   </tr>

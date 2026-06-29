@@ -4,6 +4,7 @@ import { Card, Button, Chip, Progress } from "@/components/ui-kit";
 import { CRITERIA, LEVELS, EVIDENCE_CARDS, CURRENT_PROFILE, CURRENT_STUDENT, PROFILE_STATUS, MEDIA } from "@/lib/mock-data";
 import { useApp } from "@/lib/store";
 import { Save, Send, Sparkles, History, Target, FolderUp, ScanText, CheckCircle2, CircleAlert, TriangleAlert, FileText, PencilLine, ArrowRight } from "lucide-react";
+import { CriterionIcon } from "@/components/AppIcon";
 import { toast } from "sonner";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -104,9 +105,9 @@ function DraftWorkspace() {
           const active = l.key === profile.targetLevel;
           const rec = REC[l.key];
           return (
-            <button key={l.key} onClick={() => onChangeLevel(l.key)} className={`text-left p-4 rounded-2xl transition-all hover:-translate-y-0.5 ${active ? "gradient-brand text-white shadow-[var(--shadow-glow)]" : "card-soft"}`}>
+            <button key={l.key} onClick={() => onChangeLevel(l.key)} className={`text-left p-4 rounded-2xl transition-all hover:-translate-y-0.5 ${active ? "bg-[#0057C2] text-white" : "card-soft"}`}>
               <div className="flex items-center justify-between">
-                <span className={`text-[11px] uppercase font-bold ${active ? "text-white/85" : "text-muted-foreground"}`}>{"★".repeat(l.difficulty)}</span>
+                <span className={`text-[11px] uppercase font-bold tracking-wider ${active ? "text-white/85" : "text-muted-foreground"}`}>Cấp {l.difficulty}/4</span>
                 {active && <Chip tone="brand">Đang aim</Chip>}
               </div>
               <div className={`font-bold mt-1 ${active ? "text-white" : "text-brand-deep"}`}>{l.label}</div>
@@ -124,8 +125,10 @@ function DraftWorkspace() {
           const cp = CURRENT_PROFILE.criteriaProgress[c.key];
           const active = c.key === activeCriteria;
           return (
-            <button key={c.key} onClick={() => setActiveCriteria(c.key)} className={`px-4 py-2 rounded-2xl text-sm font-semibold transition-all flex items-center gap-2 ${active ? "gradient-brand text-white shadow-[var(--shadow-glow)]" : "card-soft hover:-translate-y-0.5"}`}>
-              <span className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold text-white" style={{ background: c.color }}>{c.short.slice(0, 2)}</span>
+            <button key={c.key} onClick={() => setActiveCriteria(c.key)} className={`px-4 py-2 rounded-2xl text-sm font-semibold transition-all flex items-center gap-2 ${active ? "bg-[#0057C2] text-white" : "card-soft hover:-translate-y-0.5"}`}>
+              <span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: c.color }}>
+                <CriterionIcon criterion={c.key} size={12} color="#fff" />
+              </span>
               <span>{c.label}</span>
               <span className={`text-[11px] ${active ? "text-white/85" : "text-muted-foreground"}`}>{cp.progress}%</span>
             </button>

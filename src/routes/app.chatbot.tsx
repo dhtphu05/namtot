@@ -165,7 +165,7 @@ function Chatbot() {
               <div className="text-xs text-muted-foreground mt-1">Voice input + TTS đọc hướng dẫn</div>
             </div>
             <div className="p-3 rounded-xl bg-amber-50">
-              <div className="font-semibold text-amber-800">⚠️ Khi confidence thấp</div>
+              <div className="font-semibold text-amber-800">Khi confidence thấp</div>
               <div className="text-xs text-amber-700 mt-1">Tự động đề xuất chuyển cán bộ phụ trách</div>
             </div>
           </div>

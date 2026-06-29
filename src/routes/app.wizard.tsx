@@ -119,7 +119,7 @@ function Wizard() {
                         <Sparkles className="w-3 h-3" /> AI gợi ý
                       </span>
                     )}
-                    <div className={`text-xs uppercase font-bold ${active ? "text-white/80" : "text-muted-foreground"}`}>Độ khó {"★".repeat(l.difficulty)}</div>
+                    <div className={`text-xs uppercase font-bold tracking-wider ${active ? "text-white/80" : "text-muted-foreground"}`}>Cấp {l.difficulty}/4</div>
                     <div className={`font-bold text-lg mt-1 ${active ? "text-white" : "text-brand-deep"}`}>{l.label}</div>
                     <div className={`text-sm mt-1 ${active ? "text-white/85" : "text-muted-foreground"}`}>{l.desc}</div>
                   </button>
