@@ -73,7 +73,12 @@ function Cascade() {
 
       <Card glow className="mt-6">
         <h3 className="font-bold text-brand-deep mb-2">Khuyến nghị của hệ thống</h3>
-        <p className="text-sm">Hệ thống đề xuất sinh viên <b>bổ sung tình nguyện</b> trong 30 ngày để giữ aim Cấp Thành phố. Nếu không, hồ sơ tự động được xét xuống <b>Cấp Đại học Đà Nẵng</b> theo cơ chế cascade.</p>
+        <p className="text-sm">
+          Nếu sinh viên không bổ sung đủ minh chứng cho cấp aim trong 30 ngày,
+          5TOT sẽ <b>gợi ý cán bộ xem xét hồ sơ ở cấp phù hợp hơn</b>
+          (ví dụ Cấp Đại học Đà Nẵng). Quyết định cuối cùng do
+          <b> cán bộ / Hội đồng xét duyệt xác nhận</b> — AI chỉ đưa ra gợi ý.
+        </p>
       </Card>
     </>
   );
