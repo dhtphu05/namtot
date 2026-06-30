@@ -1,49 +1,113 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { ROLES, type Role } from "@/lib/mock-data";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { useAuth } from "@/features/auth/store/auth-store";
 import { useApp } from "@/lib/store";
-import { ArrowRight } from "lucide-react";
+import { authApi } from "@/features/auth/api/auth";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Đăng nhập — 5TOT Platform" }] }),
+  beforeLoad: () => {
+    const { accessToken } = useAuth.getState();
+    if (accessToken) {
+      throw redirect({ to: "/app" });
+    }
+  },
   component: Login,
 });
 
 function Login() {
-  const setRole = useApp((s) => s.setRole);
   const nav = useNavigate();
+  const setAuthData = useAuth((s) => s.setAuthData);
+  const setRole = useApp((s) => s.setRole);
+  const [email, setEmail] = useState("student@dut.udn.vn");
+  const [password, setPassword] = useState("Password@123");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+
+    setIsLoading(true);
+    try {
+      const res = await authApi.login(email, password);
+      setAuthData(res.data.user, res.data.accessToken, res.data.refreshToken);
+      setRole(res.data.user.role);
+      toast.success("Đăng nhập thành công!");
+      nav({ to: "/app" });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(`Đăng nhập thất bại: ${err.message}`);
+      } else {
+        toast.error("Đăng nhập thất bại. Vui lòng thử lại.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
-      <div className="w-full max-w-5xl">
+      <div className="w-full max-w-md">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <div className="w-16 h-16 rounded-3xl gradient-brand flex items-center justify-center text-white font-bold text-xl mx-auto mb-5 shadow-[var(--shadow-glow)]">5T</div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-brand-deep">Chọn vai trò để bắt đầu</h1>
-          <p className="text-muted-foreground mt-3">Demo phục vụ Vietnamese Student HackAIthon 2026 — có thể đổi vai trò bất kỳ lúc nào.</p>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-brand-deep">Đăng nhập</h1>
+          <p className="text-muted-foreground mt-3">Chào mừng bạn quay lại hệ thống 5TOT Platform.</p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {Object.entries(ROLES).map(([k, v], i) => (
-            <motion.button
-              key={k}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              whileHover={{ y: -6 }}
-              onClick={() => {
-                setRole(k as Role);
-                nav({ to: "/app" });
-              }}
-              className="card-glow p-7 text-left group"
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <form onSubmit={handleLogin} className="card-glow p-7 space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground">Email</label>
+              <input
+                type="email"
+                required
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground">Mật khẩu</label>
+              <input
+                type="password"
+                required
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 mt-4"
             >
-              <div className="w-14 h-14 rounded-2xl gradient-brand text-white flex items-center justify-center font-extrabold text-lg mb-4 shadow-[var(--shadow-glow)]">{v.initial}</div>
-              <div className="font-bold text-brand-deep text-lg">{v.label}</div>
-              <div className="text-sm text-muted-foreground mt-2">{v.desc}</div>
-              <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#00AEEF] group-hover:gap-3 transition-all">
-                Vào hệ thống <ArrowRight className="w-4 h-4" />
-              </div>
-            </motion.button>
-          ))}
-        </div>
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Đăng nhập <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </button>
+            
+            <div className="text-center mt-6 text-sm text-muted-foreground">
+              Chưa có tài khoản?{" "}
+              <Link to="/signup" className="text-primary hover:underline font-medium">
+                Đăng ký ngay
+              </Link>
+            </div>
+          </form>
+        </motion.div>
       </div>
     </div>
   );
