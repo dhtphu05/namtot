@@ -32,6 +32,9 @@ interface AppState {
   role: Role;
   setRole: (r: Role) => void;
 
+  currentOfficerId: string;
+  setCurrentOfficerId: (id: string) => void;
+
   notifications: Notification[];
   pushNotification: (n: Omit<Notification, "id" | "time">) => void;
   markAllRead: () => void;
@@ -65,6 +68,9 @@ interface AppState {
   submittedIds: string[];
   submitProfile: (id: string) => void;
 
+  demoStep: number;
+  setDemoStep: (n: number) => void;
+
   // legacy (kept for back-compat with /app/wizard)
   wizardType: "ca-nhan" | "tap-the" | null;
   wizardLevel: string | null;
@@ -96,6 +102,9 @@ export const useApp = create<AppState>()(
     (set, get) => ({
       role: "student",
       setRole: (role) => set({ role }),
+
+      currentOfficerId: "cb-001",
+      setCurrentOfficerId: (currentOfficerId) => set({ currentOfficerId }),
 
       notifications: NOTIFICATIONS_SEED,
       pushNotification: (n) =>
@@ -147,6 +156,9 @@ export const useApp = create<AppState>()(
 
       submittedIds: [],
       submitProfile: (id) => set((s) => ({ submittedIds: Array.from(new Set([...s.submittedIds, id])) })),
+
+      demoStep: 0,
+      setDemoStep: (demoStep) => set({ demoStep }),
 
       wizardType: null,
       wizardLevel: null,
