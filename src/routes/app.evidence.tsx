@@ -192,33 +192,37 @@ function Section({ title, items, tone }: { title: string; items: string[]; tone:
 }
 
 function EvidenceCard({ ev }: { ev: ReturnType<typeof useApp.getState>["evidence"][number] }) {
-  const sourceLabel = {
+  const sourceLabel = ({
     metric_input: "Nhập chỉ số",
     event_import: "Import sự kiện",
     manual_upload: "Upload file",
     collective_import: "Tập thể import",
-  }[ev.sourceType];
+  } as Record<string, string>)[ev?.sourceType] ?? "Khác";
+  const extracted = ev?.extractedFields ?? {};
+  const warnings = ev?.warnings ?? [];
+  const confidence = typeof ev?.confidence === "number" ? ev.confidence : 0;
+  const evidenceName = ev?.evidenceName ?? "(Minh chứng chưa đặt tên)";
 
   return (
     <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-[#EEF2F7] p-3 flex gap-3">
-      <img src={ev.fileUrl} alt="" className="w-16 h-20 rounded-md object-cover bg-[#F6F9FC] shrink-0" />
+      <img src={ev?.fileUrl ?? ""} alt="" className="w-16 h-20 rounded-md object-cover bg-[#F6F9FC] shrink-0" onError={(e) => ((e.currentTarget as HTMLImageElement).style.opacity = "0.3")} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="text-[11px] uppercase font-bold text-muted-foreground tracking-wide">{sourceLabel}</div>
           <div className="flex items-center gap-1.5">
-            <Chip tone={ev.confidence >= 0.9 ? "success" : ev.confidence >= 0.7 ? "brand" : "warning"}>AI {Math.round(ev.confidence * 100)}%</Chip>
-            <Chip tone={ev.indexingStatus === "indexed" ? "success" : "warning"}>{ev.indexingStatus === "indexed" ? "Đã index" : "Cần xác minh"}</Chip>
+            <Chip tone={confidence >= 0.9 ? "success" : confidence >= 0.7 ? "brand" : "warning"}>AI {Math.round(confidence * 100)}%</Chip>
+            <Chip tone={ev?.indexingStatus === "indexed" ? "success" : "warning"}>{ev?.indexingStatus === "indexed" ? "Đã index" : "Cần xác minh"}</Chip>
           </div>
         </div>
-        <div className="font-semibold text-brand-deep text-[14px] mt-0.5">{ev.evidenceName}</div>
+        <div className="font-semibold text-brand-deep text-[14px] mt-0.5">{evidenceName}</div>
         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11.5px]">
-          {Object.entries(ev.extractedFields).slice(0, 6).map(([k, v]) => (
-            <div key={k} className="truncate"><span className="text-muted-foreground">{k}: </span><b className="text-brand-deep">{v}</b></div>
+          {Object.entries(extracted).slice(0, 6).map(([k, v]) => (
+            <div key={k} className="truncate"><span className="text-muted-foreground">{k}: </span><b className="text-brand-deep">{String(v)}</b></div>
           ))}
         </div>
-        {ev.warnings.length > 0 && (
+        {warnings.length > 0 && (
           <div className="mt-2 text-[11.5px] text-amber-800 bg-amber-50 rounded-md p-2 flex items-start gap-1.5">
-            <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" /> {ev.warnings[0]}
+            <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" /> {warnings[0]}
           </div>
         )}
       </div>
