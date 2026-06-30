@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import * as React from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress } from "@/components/ui-kit";
 import { AppIcon, IconTile } from "@/components/AppIcon";
@@ -14,19 +15,47 @@ import { toast } from "sonner";
 import { X, Plus, Search, CheckCircle2, AlertTriangle, FileText, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/app/evidence")({
-  component: EvidenceWorkspace,
+  component: EvidenceWorkspaceSafe,
 });
 
 const CRITERIA_PLUS = [...CRITERIA, { key: "priority" as const, label: "Thành tích / ưu tiên", short: "Ưu tiên", color: "#a855f7", iconKey: "Sparkles" as const, icon: "Sparkles" }];
 
+class EvidenceErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-8 text-center">
+          <div className="card-soft p-8 max-w-md mx-auto">
+            <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+            <div className="font-bold text-brand-deep">Không tải được Workspace minh chứng</div>
+            <div className="text-[12.5px] text-muted-foreground mt-2">{String(this.state.error?.message ?? "Lỗi không xác định")}</div>
+            <Button className="mt-4" onClick={() => { try { localStorage.removeItem("5tot-app-v3"); } catch {} location.reload(); }}>Khởi tạo lại dữ liệu demo</Button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function EvidenceWorkspaceSafe() {
+  return (
+    <EvidenceErrorBoundary>
+      <EvidenceWorkspace />
+    </EvidenceErrorBoundary>
+  );
+}
+
 function EvidenceWorkspace() {
-  const evidence = useApp((s) => s.evidence);
-  const targetLevel = useApp((s) => s.application.targetLevel);
+  const evidence = useApp((s) => s.evidence) ?? [];
+  const targetLevel = useApp((s) => s.application?.targetLevel) ?? "truong";
   const [active, setActive] = useState<string>("tinh-nguyen");
   const [modal, setModal] = useState(false);
 
-  const cards = evidence.filter((e) => e.criterion === active);
-  const criterion = CRITERIA_PLUS.find((c) => c.key === active)!;
+  const cards = (evidence ?? []).filter((e) => e && e.criterion === active);
+  const criterion = CRITERIA_PLUS.find((c) => c.key === active) ?? CRITERIA_PLUS[0];
   const req = (REQUIREMENT_BY_LEVEL[targetLevel] as any)?.[active];
 
   return (
