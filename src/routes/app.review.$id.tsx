@@ -1,7 +1,7 @@
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip } from "@/components/ui-kit";
-import { STUDENTS, EVIDENCE_SAMPLES, CRITERIA, LEVELS } from "@/lib/mock-data";
+import { STUDENTS, EVIDENCE_SAMPLES, CRITERIA, LEVELS, OFFICERS } from "@/lib/mock-data";
 import { useApp } from "@/lib/store";
 import { Check, X, MessageSquare, AlertTriangle, ArrowDownToLine, FileText, Sparkles } from "lucide-react";
 import { useState } from "react";
@@ -15,7 +15,12 @@ export const Route = createFileRoute("/app/review/$id")({
 function ReviewDetail() {
   const { id } = useParams({ from: "/app/review/$id" });
   const student = STUDENTS.find((s) => s.id === id) ?? STUDENTS[0];
-  const [activeEv, setActiveEv] = useState(EVIDENCE_SAMPLES[0]);
+  const officerId = useApp((s) => s.currentOfficerId);
+  const me = OFFICERS.find((o) => o.id === officerId) ?? OFFICERS[0];
+  const allowed = new Set(me.specializedCriteria as string[]);
+  const scoped = EVIDENCE_SAMPLES.filter((e) => allowed.has(e.criteria as any));
+  const list = scoped.length ? scoped : EVIDENCE_SAMPLES;
+  const [activeEv, setActiveEv] = useState(list[0]);
   const [supplementOpen, setSupplementOpen] = useState(false);
   const pushAudit = useApp((s) => s.pushAudit);
   const pushNotification = useApp((s) => s.pushNotification);
@@ -36,8 +41,8 @@ function ReviewDetail() {
   return (
     <>
       <TopBar
-        title={`Xét duyệt: ${student.name}`}
-        subtitle={`${student.mssv} • ${student.khoa} • Cấp aim: ${LEVELS.find((l) => l.key === student.aim)?.label}`}
+        title={`Xét duyệt — ${CRITERIA.find(c => allowed.has(c.key))?.label ?? me.role}`}
+        subtitle={`${me.name} • ${student.name} (${student.mssv}) • Cấp aim: ${LEVELS.find((l) => l.key === student.aim)?.label}`}
         action={<Link to="/app/queue"><Button variant="ghost">← Hàng chờ</Button></Link>}
       />
 
@@ -45,7 +50,7 @@ function ReviewDetail() {
         {/* Left: file list + preview */}
         <Card className="lg:col-span-7 !p-4">
           <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
-            {EVIDENCE_SAMPLES.slice(0, 6).map((e) => (
+            {list.slice(0, 6).map((e) => (
               <button key={e.id} onClick={() => setActiveEv(e)} className={`shrink-0 px-3 py-2 rounded-xl text-xs font-semibold ${activeEv.id === e.id ? "gradient-brand text-white" : "bg-[#F4FBFF] text-brand-deep"}`}>
                 {e.name.slice(0, 22)}...
               </button>

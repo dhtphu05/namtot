@@ -27,28 +27,43 @@ const SOURCE_LABEL: Record<string, string> = {
 
 function Queue() {
   const tasks = useApp((s) => s.tasks);
+  const officerId = useApp((s) => s.currentOfficerId);
+  const me = OFFICERS.find((o) => o.id === officerId) ?? OFFICERS[0];
   const [criterion, setCriterion] = useState<string>("all");
   const [statusF, setStatusF] = useState<string>("all");
-  const [officerF, setOfficerF] = useState<string>("all");
+  const [scope, setScope] = useState<"mine" | "all">("mine");
+  const [search, setSearch] = useState("");
 
-  // simulate "current officer" = cb-001
-  const filtered = tasks.filter((t) =>
-    (criterion === "all" || t.criterion === criterion) &&
-    (statusF === "all" || t.status === statusF) &&
-    (officerF === "all" || t.assignedOfficerId === officerF)
-  );
+  const allowedCrit = new Set(me.specializedCriteria as string[]);
+  const filtered = tasks.filter((t) => {
+    if (scope === "mine") {
+      if (t.assignedOfficerId !== me.id && !allowedCrit.has(t.criterion)) return false;
+    }
+    if (criterion !== "all" && t.criterion !== criterion) return false;
+    if (statusF !== "all" && t.status !== statusF) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      if (!(t.studentName.toLowerCase().includes(s) || t.studentMssv.toLowerCase().includes(s) || t.evidenceName.toLowerCase().includes(s))) return false;
+    }
+    return true;
+  });
 
   return (
     <>
-      <TopBar title="Hàng chờ xét duyệt" subtitle={`${filtered.length} task minh chứng — phân theo cán bộ và tiêu chí chuyên môn`} />
+      <TopBar
+        title="Không gian xét duyệt chuyên trách"
+        subtitle={`${me.name} • ${me.role} — AI gợi ý, cán bộ xác nhận quyết định cuối cùng`}
+      />
 
       {/* Criterion tabs */}
       <div className="flex flex-wrap gap-1.5 mb-3">
-        <Tab active={criterion === "all"} onClick={() => setCriterion("all")} count={tasks.length}>Tất cả task của tôi</Tab>
-        {CRITERIA.map((c) => (
-          <Tab key={c.key} active={criterion === c.key} onClick={() => setCriterion(c.key)} count={tasks.filter(t => t.criterion === c.key).length}>{c.label}</Tab>
+        <Tab active={criterion === "all"} onClick={() => setCriterion("all")} count={tasks.filter(t => scope === "all" || t.assignedOfficerId === me.id || allowedCrit.has(t.criterion)).length}>Task của tôi</Tab>
+        {CRITERIA.filter((c) => scope === "all" || allowedCrit.has(c.key)).map((c) => (
+          <Tab key={c.key} active={criterion === c.key} onClick={() => setCriterion(c.key)} count={tasks.filter(t => t.criterion === c.key && (scope === "all" || allowedCrit.has(t.criterion))).length}>{c.label}</Tab>
         ))}
-        <Tab active={criterion === "priority"} onClick={() => setCriterion("priority")} count={tasks.filter(t => t.criterion === "priority").length}>Ưu tiên</Tab>
+        {(scope === "all" || allowedCrit.has("priority")) && (
+          <Tab active={criterion === "priority"} onClick={() => setCriterion("priority")} count={tasks.filter(t => t.criterion === "priority").length}>Ưu tiên</Tab>
+        )}
       </div>
 
       <Card className="!p-3 mb-3">
@@ -59,10 +74,11 @@ function Queue() {
             <option value="all">Mọi trạng thái</option>
             {Object.entries(TASK_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
-          <select value={officerF} onChange={(e) => setOfficerF(e.target.value)} className="bg-[#F6F9FC] rounded-lg px-3 py-1.5 text-[12px] font-semibold text-brand-deep">
-            <option value="all">Mọi cán bộ phụ trách</option>
-            {OFFICERS.map((o) => <option key={o.id} value={o.id}>{o.name} — {o.role}</option>)}
+          <select value={scope} onChange={(e) => setScope(e.target.value as any)} className="bg-[#F6F9FC] rounded-lg px-3 py-1.5 text-[12px] font-semibold text-brand-deep">
+            <option value="mine">Chỉ task của tôi</option>
+            <option value="all">Xem mọi cán bộ (chỉ đọc)</option>
           </select>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm SV, MSSV, minh chứng..." className="bg-[#F6F9FC] rounded-lg px-3 py-1.5 text-[12px] font-semibold text-brand-deep flex-1 min-w-[160px]" />
         </div>
       </Card>
 

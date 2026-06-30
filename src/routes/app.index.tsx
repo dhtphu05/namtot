@@ -2,10 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, StatCard, Chip, Button, Progress } from "@/components/ui-kit";
 import { useApp } from "@/lib/store";
-import { CRITERIA, STUDENTS, RESOLUTION_CASES, OFFICERS, CURRENT_PROFILE, CURRENT_STUDENT, CURRENT_COLLECTIVE, LEVELS, PROFILE_STATUS, STATUS, MEDIA } from "@/lib/mock-data";
-import { FileText, Sparkles, Inbox, TriangleAlert, Clock, UsersRound, FileCheck2, CircleAlert, Bot, Target, GitBranch, Upload, History, ScanText, PencilLine, Send, ChartNoAxesCombined, ShieldQuestion, ArrowRight } from "lucide-react";
+import { CRITERIA, STUDENTS, RESOLUTION_CASES, OFFICERS, CURRENT_PROFILE, CURRENT_STUDENT, CURRENT_COLLECTIVE, LEVELS, PROFILE_STATUS, STATUS, MEDIA, REVIEW_TASKS } from "@/lib/mock-data";
+import { FileText, Sparkles, Inbox, TriangleAlert, Clock, UsersRound, FileCheck2, CircleAlert, Bot, Target, GitBranch, Upload, History, ScanText, PencilLine, Send, ChartNoAxesCombined, ShieldQuestion, ArrowRight, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
+import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/app/")({
   component: Dashboard,
@@ -34,9 +36,38 @@ const CTA_TARGET: Record<string, string> = {
 
 function StudentDash() {
   const profile = useApp((s) => s.profile);
+  const setProfileStatus = useApp((s) => s.setProfileStatus);
+  const pushAudit = useApp((s) => s.pushAudit);
+  const pushNotification = useApp((s) => s.pushNotification);
+  const nav = useNavigate();
   const status = PROFILE_STATUS[profile.status];
   const targetLevel = LEVELS.find((l) => l.key === profile.targetLevel)!;
   const missingCount = Object.values(CURRENT_PROFILE.criteriaProgress).filter((c) => c.progress < 70).length;
+
+  const runDemo = async () => {
+    const steps: Array<[string, string]> = [
+      ["Mở hồ sơ SV5T 2025–2026", "Trạng thái: Đang hoàn thiện bản nháp"],
+      ["Nhập chỉ số GPA 3.35 và ĐRL 87", "Không có điểm F"],
+      ["Import Mùa hè xanh 2025", "Tình nguyện — quy đổi 3 ngày, MSSV khớp dòng #128"],
+      ["Upload Giấy CN Sinh viên khỏe", "Thể lực — SmartReader đang OCR & index"],
+      ["Tạo 5 Evidence Card", "GPA, ĐRL, Mùa hè xanh, Sinh viên khỏe, IELTS"],
+      ["AI tiền kiểm hồ sơ", "Sẵn sàng ~80% — Tình nguyện thiếu 2 ngày cho Cấp Thành phố"],
+      ["Nộp hồ sơ chính thức", "Trạng thái: Đang xét duyệt"],
+      ["Hệ thống tạo 5 review task", "Đạo đức, Học tập, Thể lực, Tình nguyện, Hội nhập"],
+      ["Phân công cán bộ chuyên trách", "Mỗi tiêu chí 1 cán bộ — AI gợi ý, cán bộ xác nhận"],
+    ];
+    toast.info("Bắt đầu demo end-to-end…");
+    for (let i = 0; i < steps.length; i++) {
+      const [t, d] = steps[i];
+      await new Promise((r) => setTimeout(r, 700));
+      toast.message(`Bước ${i + 1}/${steps.length}: ${t}`, { description: d });
+    }
+    setProfileStatus("submitted");
+    pushAudit({ actor: CURRENT_STUDENT.name, role: "Sinh viên", action: "Nộp hồ sơ chính thức (demo)", before: "Bản nháp", after: "Đã nộp", reason: "Chạy demo end-to-end" });
+    pushNotification({ title: "Hồ sơ đã nộp chính thức", desc: "5 review task đã được tạo theo từng tiêu chí", type: "success" });
+    toast.success("Demo hoàn tất — chuyển sang Cascade Review");
+    setTimeout(() => nav({ to: "/app/cascade" }), 500);
+  };
 
   return (
     <>
@@ -65,6 +96,7 @@ function StudentDash() {
               </Link>
               <Link to="/app/ai-precheck"><Button variant="secondary"><Sparkles className="w-4 h-4" /> Xem kết quả tiền kiểm</Button></Link>
               <Link to="/app/cascade"><Button variant="ghost" className="!text-white hover:!bg-white/10"><GitBranch className="w-4 h-4" /> Cascade Review</Button></Link>
+              <Button variant="ghost" className="!text-white hover:!bg-white/10" onClick={runDemo}><Play className="w-4 h-4" /> Chạy demo end-to-end</Button>
             </div>
           </div>
           <div className="bg-white/15 backdrop-blur-md rounded-2xl p-5 text-white">
@@ -144,33 +176,46 @@ function StudentDash() {
 
 // ============== OFFICER ==============
 function OfficerDash() {
-  const queue = STUDENTS.filter(s => ["submitted", "reviewing", "supplement", "resolution"].includes(s.status));
+  const officerId = useApp((s) => s.currentOfficerId);
+  const tasks = useApp((s) => s.tasks);
+  const me = OFFICERS.find((o) => o.id === officerId) ?? OFFICERS[0];
+  const allowed = new Set(me.specializedCriteria as string[]);
+  const myTasks = tasks.filter((t) => t.assignedOfficerId === me.id || allowed.has(t.criterion));
+  const waiting = myTasks.filter((t) => t.status === "waiting" || t.status === "reviewing");
+  const lowConf = myTasks.filter((t) => t.confidence < 0.7);
+  const supp = myTasks.filter((t) => t.status === "supplement_required");
+  const reso = myTasks.filter((t) => t.status === "resolution_needed");
+  const critLabel = CRITERIA.find((c) => c.key === me.specializedCriteria[0])?.label ?? "Tiêu chí phụ trách";
   return (
     <>
-      <TopBar title="Bảng điều khiển cán bộ" subtitle="Xét duyệt hồ sơ Sinh viên 5 tốt — mỗi sinh viên một hồ sơ duy nhất" />
+      <TopBar
+        title="Không gian xét duyệt chuyên trách"
+        subtitle={`${me.name} • ${me.role} — chỉ xử lý task ${critLabel}. AI gợi ý, cán bộ xác nhận quyết định cuối cùng.`}
+      />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
-        <StatCard label="Hồ sơ phụ trách" value={42} icon={<Inbox className="w-5 h-5" />} delta="+8 hôm nay" />
-        <StatCard label="Cần xét duyệt" value={18} icon={<CircleAlert className="w-5 h-5" />} tint="#F59E0B" />
-        <StatCard label="AI confidence thấp" value={7} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
-        <StatCard label="Thời gian xử lý TB" value="2.3 ngày" icon={<Clock className="w-5 h-5" />} tint="#22C55E" delta="-12% tuần này" />
+        <StatCard label={`Task ${critLabel} chờ xét`} value={waiting.length} icon={<Inbox className="w-5 h-5" />} />
+        <StatCard label="Cần bổ sung" value={supp.length} icon={<CircleAlert className="w-5 h-5" />} tint="#F59E0B" />
+        <StatCard label="AI confidence thấp" value={lowConf.length} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
+        <StatCard label="Cần Resolution Hub" value={reso.length} icon={<ShieldQuestion className="w-5 h-5" />} tint="#a855f7" />
       </div>
 
       <Card className="mb-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-brand-deep">Hàng chờ ưu tiên</h3>
+          <h3 className="font-bold text-brand-deep">Task được giao theo tiêu chí {critLabel}</h3>
           <Link to="/app/queue"><Button size="sm" variant="ghost">Xem tất cả →</Button></Link>
         </div>
         <div className="space-y-2">
-          {queue.map((s) => (
-            <Link to="/app/review/$id" params={{ id: s.id }} key={s.id} className="block">
+          {myTasks.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Chưa có task được giao cho tiêu chí {critLabel}.</div>}
+          {myTasks.map((t) => (
+            <Link to="/app/review/$id" params={{ id: t.studentId }} key={t.id} className="block">
               <div className="p-4 rounded-2xl hover:bg-[#F4FBFF] transition-all flex items-center gap-4">
-                <img src={s.avatar} className="w-10 h-10 rounded-full object-cover" alt="" />
+                <div className="w-10 h-10 rounded-xl bg-[#0057C2] text-white flex items-center justify-center text-xs font-bold shrink-0">{t.studentName.split(" ").slice(-1)[0]?.[0] ?? "?"}</div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-brand-deep">{s.name} <span className="text-xs text-muted-foreground font-normal">• {s.mssv}</span></div>
-                  <div className="text-xs text-muted-foreground">{s.khoa} • {s.lop} • Aim {LEVELS.find(l => l.key === s.aim)?.label}</div>
+                  <div className="font-semibold text-brand-deep truncate">{t.studentName} <span className="text-xs text-muted-foreground font-normal">• {t.studentMssv}</span></div>
+                  <div className="text-xs text-muted-foreground truncate">{t.evidenceName} • Aim {LEVELS.find(l => l.key === t.targetLevel)?.label}</div>
                 </div>
-                <Chip tone={s.aiConfidence < 0.7 ? "warning" : "brand"}>AI {Math.round(s.aiConfidence * 100)}%</Chip>
-                <span className={`text-xs px-3 py-1 rounded-full font-semibold ${STATUS[s.status].color}`}>{STATUS[s.status].label}</span>
+                <Chip tone={t.confidence < 0.7 ? "warning" : "brand"}>AI {Math.round(t.confidence * 100)}%</Chip>
+                <Chip tone={t.status === "supplement_required" ? "warning" : t.status === "accepted" ? "success" : t.status === "rejected" ? "error" : t.status === "resolution_needed" ? "warning" : "brand"}>{t.status}</Chip>
               </div>
             </Link>
           ))}
@@ -216,6 +261,13 @@ function ManagerDash() {
     { name: "Thành phố", value: 38, color: "#f59e0b" },
     { name: "Trung ương", value: 12, color: "#0057C2" },
   ];
+  // Aggregate review tasks by application × criterion
+  const tasks = useApp((s) => s.tasks);
+  const apps = Array.from(new Set(tasks.map((t) => t.applicationId))).map((appId) => {
+    const list = tasks.filter((t) => t.applicationId === appId);
+    const first = list[0];
+    return { appId, student: first.studentName, mssv: first.studentMssv, target: first.targetLevel, byCrit: Object.fromEntries(CRITERIA.map((c) => [c.key, list.find((t) => t.criterion === c.key)])) };
+  });
   return (
     <>
       <TopBar title="Bảng điều khiển quản lý" subtitle="Tổng quan kỳ xét SV5T 2025–2026" />
@@ -271,6 +323,51 @@ function ManagerDash() {
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card className="mt-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-brand-deep flex items-center gap-2"><FileCheck2 className="w-4 h-4" /> Bảng tổng hợp xét duyệt hồ sơ (theo từng tiêu chí)</h3>
+          <Link to="/app/assignment"><Button size="sm" variant="ghost">Phân công cán bộ →</Button></Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12.5px]">
+            <thead className="bg-[#F6F9FC] text-left text-muted-foreground text-[11px] uppercase tracking-wide">
+              <tr>
+                <th className="px-3 py-2">Sinh viên</th>
+                <th className="px-3 py-2">Cấp aim</th>
+                {CRITERIA.map((c) => <th key={c.key} className="px-3 py-2">{c.short}</th>)}
+                <th className="px-3 py-2">Tổng quan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apps.map((a) => {
+                const taskStates = Object.values(a.byCrit) as any[];
+                const accepted = taskStates.filter((t) => t?.status === "accepted").length;
+                return (
+                  <tr key={a.appId} className="border-t border-[#EEF2F7]">
+                    <td className="px-3 py-2"><div className="font-semibold text-brand-deep">{a.student}</div><div className="text-[11px] text-muted-foreground">{a.mssv}</div></td>
+                    <td className="px-3 py-2 text-[11.5px]">{LEVELS.find((l) => l.key === a.target)?.label}</td>
+                    {CRITERIA.map((c) => {
+                      const t = (a.byCrit as any)[c.key];
+                      if (!t) return <td key={c.key} className="px-3 py-2"><Chip tone="muted">—</Chip></td>;
+                      const officer = OFFICERS.find((o) => o.id === t.assignedOfficerId);
+                      const tone = t.status === "accepted" ? "success" : t.status === "rejected" ? "error" : t.status === "supplement_required" ? "warning" : t.status === "resolution_needed" ? "warning" : "brand";
+                      return (
+                        <td key={c.key} className="px-3 py-2">
+                          <Chip tone={tone as any}>{t.status === "accepted" ? "Đạt" : t.status === "rejected" ? "Không đạt" : t.status === "supplement_required" ? "Bổ sung" : t.status === "resolution_needed" ? "Resolution" : "Đang xét"}</Chip>
+                          <div className="text-[10.5px] text-muted-foreground mt-1 truncate" title={officer?.name}>{officer?.name?.split(" ").slice(-2).join(" ") ?? "—"}</div>
+                        </td>
+                      );
+                    })}
+                    <td className="px-3 py-2"><Chip tone={accepted === CRITERIA.length ? "success" : "brand"}>{accepted}/{CRITERIA.length} tiêu chí đạt</Chip></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 text-[11.5px] text-muted-foreground">Mỗi tiêu chí được xét bởi một cán bộ chuyên trách. AI gợi ý — cán bộ xác nhận — Hội đồng chốt quyết định cuối cùng.</div>
       </Card>
     </>
   );

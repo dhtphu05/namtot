@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import * as React from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress } from "@/components/ui-kit";
 import { AppIcon, IconTile } from "@/components/AppIcon";
@@ -14,19 +15,47 @@ import { toast } from "sonner";
 import { X, Plus, Search, CheckCircle2, AlertTriangle, FileText, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/app/evidence")({
-  component: EvidenceWorkspace,
+  component: EvidenceWorkspaceSafe,
 });
 
 const CRITERIA_PLUS = [...CRITERIA, { key: "priority" as const, label: "Thành tích / ưu tiên", short: "Ưu tiên", color: "#a855f7", iconKey: "Sparkles" as const, icon: "Sparkles" }];
 
+class EvidenceErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-8 text-center">
+          <div className="card-soft p-8 max-w-md mx-auto">
+            <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+            <div className="font-bold text-brand-deep">Không tải được Workspace minh chứng</div>
+            <div className="text-[12.5px] text-muted-foreground mt-2">{String(this.state.error?.message ?? "Lỗi không xác định")}</div>
+            <Button className="mt-4" onClick={() => { try { localStorage.removeItem("5tot-app-v3"); } catch {} location.reload(); }}>Khởi tạo lại dữ liệu demo</Button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function EvidenceWorkspaceSafe() {
+  return (
+    <EvidenceErrorBoundary>
+      <EvidenceWorkspace />
+    </EvidenceErrorBoundary>
+  );
+}
+
 function EvidenceWorkspace() {
-  const evidence = useApp((s) => s.evidence);
-  const targetLevel = useApp((s) => s.application.targetLevel);
+  const evidence = useApp((s) => s.evidence) ?? [];
+  const targetLevel = useApp((s) => s.application?.targetLevel) ?? "truong";
   const [active, setActive] = useState<string>("tinh-nguyen");
   const [modal, setModal] = useState(false);
 
-  const cards = evidence.filter((e) => e.criterion === active);
-  const criterion = CRITERIA_PLUS.find((c) => c.key === active)!;
+  const cards = (evidence ?? []).filter((e) => e && e.criterion === active);
+  const criterion = CRITERIA_PLUS.find((c) => c.key === active) ?? CRITERIA_PLUS[0];
   const req = (REQUIREMENT_BY_LEVEL[targetLevel] as any)?.[active];
 
   return (
@@ -163,33 +192,37 @@ function Section({ title, items, tone }: { title: string; items: string[]; tone:
 }
 
 function EvidenceCard({ ev }: { ev: ReturnType<typeof useApp.getState>["evidence"][number] }) {
-  const sourceLabel = {
+  const sourceLabel = ({
     metric_input: "Nhập chỉ số",
     event_import: "Import sự kiện",
     manual_upload: "Upload file",
     collective_import: "Tập thể import",
-  }[ev.sourceType];
+  } as Record<string, string>)[ev?.sourceType] ?? "Khác";
+  const extracted = ev?.extractedFields ?? {};
+  const warnings = ev?.warnings ?? [];
+  const confidence = typeof ev?.confidence === "number" ? ev.confidence : 0;
+  const evidenceName = ev?.evidenceName ?? "(Minh chứng chưa đặt tên)";
 
   return (
     <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-[#EEF2F7] p-3 flex gap-3">
-      <img src={ev.fileUrl} alt="" className="w-16 h-20 rounded-md object-cover bg-[#F6F9FC] shrink-0" />
+      <img src={ev?.fileUrl ?? ""} alt="" className="w-16 h-20 rounded-md object-cover bg-[#F6F9FC] shrink-0" onError={(e) => ((e.currentTarget as HTMLImageElement).style.opacity = "0.3")} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="text-[11px] uppercase font-bold text-muted-foreground tracking-wide">{sourceLabel}</div>
           <div className="flex items-center gap-1.5">
-            <Chip tone={ev.confidence >= 0.9 ? "success" : ev.confidence >= 0.7 ? "brand" : "warning"}>AI {Math.round(ev.confidence * 100)}%</Chip>
-            <Chip tone={ev.indexingStatus === "indexed" ? "success" : "warning"}>{ev.indexingStatus === "indexed" ? "Đã index" : "Cần xác minh"}</Chip>
+            <Chip tone={confidence >= 0.9 ? "success" : confidence >= 0.7 ? "brand" : "warning"}>AI {Math.round(confidence * 100)}%</Chip>
+            <Chip tone={ev?.indexingStatus === "indexed" ? "success" : "warning"}>{ev?.indexingStatus === "indexed" ? "Đã index" : "Cần xác minh"}</Chip>
           </div>
         </div>
-        <div className="font-semibold text-brand-deep text-[14px] mt-0.5">{ev.evidenceName}</div>
+        <div className="font-semibold text-brand-deep text-[14px] mt-0.5">{evidenceName}</div>
         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11.5px]">
-          {Object.entries(ev.extractedFields).slice(0, 6).map(([k, v]) => (
-            <div key={k} className="truncate"><span className="text-muted-foreground">{k}: </span><b className="text-brand-deep">{v}</b></div>
+          {Object.entries(extracted).slice(0, 6).map(([k, v]) => (
+            <div key={k} className="truncate"><span className="text-muted-foreground">{k}: </span><b className="text-brand-deep">{String(v)}</b></div>
           ))}
         </div>
-        {ev.warnings.length > 0 && (
+        {warnings.length > 0 && (
           <div className="mt-2 text-[11.5px] text-amber-800 bg-amber-50 rounded-md p-2 flex items-start gap-1.5">
-            <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" /> {ev.warnings[0]}
+            <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" /> {warnings[0]}
           </div>
         )}
       </div>

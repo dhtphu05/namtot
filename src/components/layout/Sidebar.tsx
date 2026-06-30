@@ -6,7 +6,7 @@ import {
   ListChecks,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { ROLES, type Role } from "@/lib/mock-data";
+import { ROLES, OFFICERS, CRITERIA, type Role } from "@/lib/mock-data";
 
 const NAV: Record<Role, { group: string; items: { label: string; to: string; icon: any }[] }[]> = {
   student: [
@@ -140,7 +140,11 @@ export function Sidebar() {
 function RoleSwitcher() {
   const role = useApp((s) => s.role);
   const setRole = useApp((s) => s.setRole);
+  const officerId = useApp((s) => s.currentOfficerId);
+  const setOfficerId = useApp((s) => s.setCurrentOfficerId);
   const r = ROLES[role];
+  const officer = OFFICERS.find((o) => o.id === officerId);
+  const officerCrit = officer ? CRITERIA.find((c) => c.key === officer.specializedCriteria[0]) : undefined;
   return (
     <div className="rounded-xl border border-[#EEF2F7] p-3 mx-1">
       <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-2 px-1 font-semibold">
@@ -149,8 +153,8 @@ function RoleSwitcher() {
       <div className="flex items-center gap-3 px-1 mb-3">
         <div className="w-9 h-9 rounded-lg bg-[#0057C2] text-white flex items-center justify-center font-bold text-xs shrink-0">{r.initial}</div>
         <div className="min-w-0">
-          <div className="font-semibold text-brand-deep text-[13px] truncate">{r.label}</div>
-          <div className="text-[11px] text-muted-foreground truncate">{r.desc}</div>
+          <div className="font-semibold text-brand-deep text-[13px] truncate">{role === "officer" && officer ? officer.name : r.label}</div>
+          <div className="text-[11px] text-muted-foreground truncate">{role === "officer" && officerCrit ? `Phụ trách ${officerCrit.label}` : r.desc}</div>
         </div>
       </div>
       <select
@@ -162,6 +166,17 @@ function RoleSwitcher() {
           <option key={k} value={k}>{v.label}</option>
         ))}
       </select>
+      {role === "officer" && (
+        <select
+          value={officerId}
+          onChange={(e) => setOfficerId(e.target.value)}
+          className="mt-2 w-full text-[12px] rounded-lg bg-[#F1F7FD] px-3 py-2 font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#0057C2]/40"
+        >
+          {OFFICERS.map((o) => (
+            <option key={o.id} value={o.id}>{o.name} — {o.role}</option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
