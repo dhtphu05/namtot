@@ -1,8 +1,4 @@
 import { apiClient } from "@/lib/api/client";
-import { useApp } from "@/lib/store";
-
-// Temporary delay function for mock
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 export interface ReviewTaskResponse {
   id: string;
@@ -22,58 +18,77 @@ export interface ReviewTaskResponse {
 }
 
 export const reviewApi = {
-  // TODO: Replace with real API call when backend is ready
   getReviewTasks: async (filters?: {
     criterion?: string;
     status?: string;
-    officerId?: string;
+    assignedToMe?: boolean;
+    applicationId?: string;
+    q?: string;
+    page?: number;
+    limit?: number;
   }) => {
-    // Simulate network delay
-    await delay(500);
-
-    let tasks = useApp.getState().tasks;
-    
+    const query = new URLSearchParams();
     if (filters) {
-      if (filters.officerId) {
-        // Mock filtering logic for the current officer
-        tasks = tasks.filter((t) => t.assignedOfficerId === filters.officerId || ["priority"].includes(t.criterion)); 
-      }
-      if (filters.criterion && filters.criterion !== "all") {
-        tasks = tasks.filter((t) => t.criterion === filters.criterion);
-      }
-      if (filters.status && filters.status !== "all") {
-        tasks = tasks.filter((t) => t.status === filters.status);
-      }
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v !== undefined && v !== "all") query.append(k, String(v));
+      });
     }
-
-    return { success: true, data: tasks as ReviewTaskResponse[] };
+    const qString = query.toString();
+    return apiClient<ReviewTaskResponse[]>(
+      `/api/review/tasks${qString ? `?${qString}` : ""}`,
+      { method: "GET" }
+    );
   },
 
-  getReviewTaskDetail: async (studentId: string) => {
-    await delay(500);
-    const tasks = useApp.getState().tasks;
-    const task = tasks.find((t) => t.studentId === studentId);
-    if (!task) {
-      throw new Error("Task not found");
-    }
-    return { success: true, data: task as ReviewTaskResponse };
-  },
-
-  submitDecision: async (studentId: string, payload: { decision: "accepted" | "rejected" | "supplement_required" | "resolution_needed"; reason?: string }) => {
-    await delay(800);
-    // Mutate the mock store
-    useApp.getState().decideTask(studentId, payload.decision as any);
-    
-    // Also push audit (in a real app, backend handles this)
-    useApp.getState().pushAudit({
-      actor: "Cán bộ xét duyệt",
-      role: "Cán bộ",
-      action: `Ra quyết định: ${payload.decision}`,
-      before: "Đang xét",
-      after: payload.decision,
-      reason: payload.reason || "Cập nhật qua API"
+  getReviewTaskDetail: async (id: string) => {
+    return apiClient<ReviewTaskResponse>(`/api/review/tasks/${id}`, {
+      method: "GET",
     });
+  },
 
-    return { success: true, data: null };
-  }
+  submitDecision: async (
+    id: string,
+    payload: {
+      decision: "accepted" | "rejected";
+      officerNote?: string;
+      evidenceDecisions?: Array<{
+        evidenceId: string;
+        status: "draft" | "pending_indexing" | "indexed" | "needs_supplement" | "under_review" | "accepted" | "rejected" | "resolution_needed";
+        note?: string;
+      }>;
+    }
+  ) => {
+    return apiClient(`/api/review/tasks/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  requestSupplement: async (
+    id: string,
+    payload: {
+      reason: string;
+      requestedEvidenceName?: string;
+      allowedCriteria?: string[];
+      deadline?: string;
+    }
+  ) => {
+    return apiClient(`/api/review/tasks/${id}/request-supplement`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  escalateResolution: async (
+    id: string,
+    payload: {
+      reason: string;
+      evidenceId?: string;
+    }
+  ) => {
+    return apiClient(`/api/review/tasks/${id}/escalate-resolution`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
 };

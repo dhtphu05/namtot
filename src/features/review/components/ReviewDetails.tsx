@@ -4,19 +4,21 @@ import { Card, Button, Chip } from "@/components/ui-kit";
 import { CRITERIA, LEVELS, OFFICERS, MEDIA } from "@/lib/mock-data";
 import { useApp } from "@/lib/store";
 import { Check, X, MessageSquare, AlertTriangle, ArrowDownToLine, FileText, Sparkles, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
-import { useReviewTaskDetail, useSubmitDecision } from "../hooks/useReview";
+import { useReviewTaskDetail, useSubmitDecision, useRequestSupplement, useEscalateResolution } from "../hooks/useReview";
 
 export function ReviewDetails() {
   const { id } = useParams({ from: "/app/review/$id" });
   const officerId = useApp((s) => s.currentOfficerId);
   const me = OFFICERS.find((o) => o.id === officerId) ?? OFFICERS[0];
-  const allowed = new Set(me.specializedCriteria as string[]);
   
   const { data: task, isLoading, isError } = useReviewTaskDetail(id);
-  const { mutate: submitDecision, isPending } = useSubmitDecision();
+  const { mutate: submitDecision, isPending: submitPending } = useSubmitDecision();
+  const { mutate: reqSupplement, isPending: reqPending } = useRequestSupplement();
+  const { mutate: escalate, isPending: escPending } = useEscalateResolution();
+
+  const isPending = submitPending || reqPending || escPending;
 
   const [supplementOpen, setSupplementOpen] = useState(false);
 
@@ -43,13 +45,13 @@ export function ReviewDetails() {
   }
 
   const approve = () => {
-    submitDecision({ studentId: id, payload: { decision: "accepted" } });
+    submitDecision({ id, payload: { decision: "accepted", officerNote: "Phê duyệt" } });
   };
   const reject = () => {
-    submitDecision({ studentId: id, payload: { decision: "rejected" } });
+    submitDecision({ id, payload: { decision: "rejected", officerNote: "Từ chối" } });
   };
   const toResolution = () => {
-    submitDecision({ studentId: id, payload: { decision: "resolution_needed" } });
+    escalate({ id, payload: { reason: "Cần hội đồng phân xử do mâu thuẫn minh chứng." } });
   };
 
   return (
@@ -118,7 +120,7 @@ export function ReviewDetails() {
           onClose={() => setSupplementOpen(false)} 
           task={task} 
           onSubmit={(reason) => {
-            submitDecision({ studentId: id, payload: { decision: "supplement_required", reason } });
+            reqSupplement({ id, payload: { reason, requestedEvidenceName: task.evidenceName } });
             setSupplementOpen(false);
           }}
           isPending={isPending}

@@ -36,7 +36,7 @@ export function ReviewQueue() {
   const { data: rawTasks, isLoading, isError } = useReviewTasks({
     criterion: criterion !== "all" ? criterion : undefined,
     status: statusF !== "all" ? statusF : undefined,
-    officerId: scope === "mine" ? me.id : undefined
+    assignedToMe: scope === "mine" ? true : undefined
   });
 
   const allTasksCount = useApp(s => s.tasks).length; // For the tabs counts (mock shortcut)
@@ -123,7 +123,7 @@ export function ReviewQueue() {
                     <td className="px-3 py-2.5"><Chip tone={st.tone}>{st.label}</Chip></td>
                     <td className="px-3 py-2.5 text-[11.5px]">{t.dueDate}</td>
                     <td className="px-3 py-2.5 text-right">
-                      <Link to="/app/review/$id" params={{ id: t.studentId }} className="text-[#0057C2] hover:underline inline-flex items-center gap-1 text-[12px] font-semibold">Mở<ChevronRight className="w-3.5 h-3.5" /></Link>
+                      <Link to="/app/review/$id" params={{ id: t.id }} className="text-[#0057C2] hover:underline inline-flex items-center gap-1 text-[12px] font-semibold">Mở<ChevronRight className="w-3.5 h-3.5" /></Link>
                     </td>
                   </tr>
                 );
