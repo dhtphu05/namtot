@@ -1,65 +1,188 @@
-import { useParams, Link } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
-import { Card, Chip, Button } from "@/components/ui-kit";
-import { RESOLUTION_CASES } from "@/lib/mock-data";
-import { useApp } from "@/lib/store";
-import { Check, X, ArrowDownToLine, MessageSquare } from "lucide-react";
-import { toast } from "sonner";
+import { Button, Card, Chip } from "@/components/ui-kit";
+import { ArrowDownToLine, Check, Loader2, MessageSquare, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useDecideResolutionCase, useResolutionCase } from "../hooks/useResolution";
+import type { KnowledgeDecision } from "../api/resolution";
 
+const CRITERION_LABEL: Record<string, string> = {
+  ethics: "Đạo đức",
+  academic: "Học tập",
+  physical: "Thể lực",
+  volunteer: "Tình nguyện",
+  integration: "Hội nhập",
+  priority: "Ưu tiên",
+  collective: "Tập thể",
+};
 
+const STATUS_LABEL: Record<string, string> = {
+  open: "Đang mở",
+  in_review: "Hội đồng đang xét",
+  resolved: "Đã xử lý",
+  rejected: "Từ chối",
+};
 
 export function ResolutionDetails() {
   const { id } = useParams({ from: "/app/resolution/$id" });
-  const c = RESOLUTION_CASES.find((x) => x.id === id) ?? RESOLUTION_CASES[0];
-  const pushAudit = useApp((s) => s.pushAudit);
-  const pushNotification = useApp((s) => s.pushNotification);
+  const { data, isLoading, isError, error } = useResolutionCase(id);
+  const decision = useDecideResolutionCase();
+  const [committeeNote, setCommitteeNote] = useState("");
+  const [saveToKnowledgeBase, setSaveToKnowledgeBase] = useState(true);
 
-  const decide = (label: string, tone: string) => {
-    pushAudit({ actor: "Hội đồng cấp Trường", role: "Quản lý", action: `Resolution: ${label}`, before: "Mập mờ", after: label, reason: `Case ${c.id}` });
-    pushNotification({ title: `Resolution: ${label}`, desc: `Hồ sơ ${c.student} — ${c.type}`, type: tone as any });
-    toast.success(`✓ Đã lưu tiền lệ xét duyệt: ${label}`);
+  const defaultNote = useMemo(() => {
+    if (!data) return "";
+    return `Hội đồng đã xem xét case ${data.resolutionCase.id}. Lý do ban đầu: ${data.resolutionCase.reason}`;
+  }, [data]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Đang tải resolution case...
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="p-8 text-center font-semibold text-rose-600">
+        {(error as Error)?.message || "Không tìm thấy resolution case."}
+        <br />
+        <Link to="/app/resolution">
+          <Button variant="outline" className="mt-4">
+            Quay lại danh sách
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const submit = (value: KnowledgeDecision) => {
+    const note = committeeNote.trim() || defaultNote;
+    decision.mutate({
+      id,
+      payload: {
+        decision: value,
+        committeeNote: note,
+        updateRelatedTask: true,
+        saveToKnowledgeBase,
+        knowledgeBase: saveToKnowledgeBase
+          ? {
+              decision: value,
+              reason: note,
+              requiredFields: [],
+              commonErrors: [],
+            }
+          : undefined,
+      },
+    });
   };
 
   return (
     <>
-      <TopBar title={`Resolution — ${c.student}`} subtitle={c.type} action={<Link to="/app/resolution"><Button variant="ghost">← Danh sách</Button></Link>} />
-      <div className="grid lg:grid-cols-3 gap-5">
+      <TopBar
+        title={`Resolution - ${data.student.fullName}`}
+        subtitle={`${data.student.studentCode ?? "Chưa có MSSV"} - ${data.evidence?.evidenceName ?? data.resolutionCase.reason}`}
+        action={
+          <Link to="/app/resolution">
+            <Button variant="ghost">Quay lại danh sách</Button>
+          </Link>
+        }
+      />
+      <div className="grid gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <h3 className="font-bold text-brand-deep mb-3">AI Analysis</h3>
-          <div className="p-4 rounded-2xl bg-[#F4FBFF] text-sm">
-            VNPT SmartReader đã phân tích minh chứng nhưng <b>confidence chỉ {Math.round(c.confidence * 100)}%</b> do hoạt động chưa có tiền lệ trong Knowledge Base. Đã tìm thấy <b>{c.similar} case tương tự</b> với decision không đồng nhất, cần hội đồng quyết định.
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Chip tone="warning">{STATUS_LABEL[data.resolutionCase.status] ?? data.resolutionCase.status}</Chip>
+            {data.evidence && <Chip>{CRITERION_LABEL[data.evidence.criterion] ?? data.evidence.criterion}</Chip>}
+            <Chip tone="muted">{data.knowledgeBaseMatches.length} case tương tự</Chip>
           </div>
 
-          <h3 className="font-bold text-brand-deep mt-6 mb-3">Case tương tự</h3>
+          <h3 className="mb-3 font-bold text-brand-deep">Thông tin case</h3>
+          <div className="rounded-xl bg-[#F4FBFF] p-4 text-sm">
+            <Info label="Sinh viên" value={`${data.student.fullName} (${data.student.studentCode ?? "Chưa có MSSV"})`} />
+            <Info label="Lớp/Khoa" value={`${data.student.className ?? "-"} / ${data.student.faculty ?? "-"}`} />
+            <Info label="Minh chứng" value={data.evidence?.evidenceName ?? "Không có evidence"} />
+            <Info label="Lý do chuyển hội đồng" value={data.resolutionCase.reason} />
+          </div>
+
+          <h3 className="mb-3 mt-6 font-bold text-brand-deep">Case tương tự trong Knowledge Base</h3>
           <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="p-3 rounded-xl bg-white shadow-sm flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-sm">Case #2025-{120 + i} — Sinh viên Nguyễn Văn {String.fromCharCode(65 + i)}</div>
-                  <div className="text-xs text-muted-foreground">Tiêu chí: {c.criteria} • Decision: {i === 1 ? "Không công nhận" : "Công nhận"}</div>
-                </div>
-                <Chip tone={i === 1 ? "error" : "success"}>{i === 1 ? "Không công nhận" : "Công nhận"}</Chip>
+            {data.knowledgeBaseMatches.map((item, index) => (
+              <div key={String(item.id ?? index)} className="rounded-xl bg-white p-3 shadow-sm">
+                <div className="font-semibold text-sm text-brand-deep">{String(item.evidenceName ?? item.eventName ?? `Case #${index + 1}`)}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{String(item.reason ?? item.decision ?? "Không có mô tả")}</div>
               </div>
             ))}
+            {data.knowledgeBaseMatches.length === 0 && (
+              <div className="rounded-xl bg-[#F6F9FC] p-4 text-sm text-muted-foreground">Chưa có case tương tự.</div>
+            )}
           </div>
 
-          <h3 className="font-bold text-brand-deep mt-6 mb-3">Officer notes</h3>
-          <textarea placeholder="Ghi chú của cán bộ phụ trách..." className="w-full p-4 rounded-xl bg-[#F4FBFF] text-sm focus:outline-none focus:ring-2 focus:ring-[#00AEEF]" rows={3} defaultValue="Trường hợp này cần đối chiếu thêm với quy định mới của Trung ương Hội về hoạt động NCKH." />
+          <h3 className="mb-3 mt-6 font-bold text-brand-deep">Audit gần nhất</h3>
+          <div className="space-y-2">
+            {data.auditTimeline.slice(0, 5).map((item, index) => (
+              <div key={String(item.id ?? index)} className="rounded-xl bg-[#F6F9FC] p-3 text-xs text-muted-foreground">
+                <span className="font-semibold text-brand-deep">{String(item.action ?? "Audit")}</span>
+                {item.note ? ` - ${String(item.note)}` : ""}
+              </div>
+            ))}
+            {data.auditTimeline.length === 0 && <div className="text-sm text-muted-foreground">Chưa có audit liên quan.</div>}
+          </div>
         </Card>
 
         <Card glow>
-          <h3 className="font-bold text-brand-deep mb-3">Quyết định hội đồng</h3>
+          <h3 className="mb-3 font-bold text-brand-deep">Quyết định hội đồng</h3>
+          <textarea
+            value={committeeNote}
+            onChange={(event) => setCommitteeNote(event.target.value)}
+            placeholder={defaultNote}
+            rows={6}
+            className="mb-3 w-full rounded-xl bg-[#F4FBFF] p-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
+          />
+          <label className="mb-4 flex items-center gap-2 text-xs font-semibold text-brand-deep">
+            <input
+              type="checkbox"
+              checked={saveToKnowledgeBase}
+              onChange={(event) => setSaveToKnowledgeBase(event.target.checked)}
+            />
+            Lưu làm tiền lệ cho Knowledge Base
+          </label>
           <div className="space-y-2">
-            <Button variant="success" className="w-full" onClick={() => decide("Công nhận", "success")}><Check className="w-4 h-4" /> Công nhận</Button>
-            <Button variant="danger" className="w-full" onClick={() => decide("Không công nhận", "error")}><X className="w-4 h-4" /> Không công nhận</Button>
-            <Button variant="secondary" className="w-full" onClick={() => decide("Yêu cầu bổ sung", "warning")}><MessageSquare className="w-4 h-4" /> Yêu cầu bổ sung</Button>
-            <Button variant="outline" className="w-full" onClick={() => decide("Chuyển cấp xét phù hợp", "info")}><ArrowDownToLine className="w-4 h-4" /> Xét xuống cấp thấp hơn</Button>
+            <Button variant="success" className="w-full" onClick={() => submit("accepted")} disabled={decision.isPending}>
+              <Check className="h-4 w-4" />
+              Công nhận
+            </Button>
+            <Button variant="danger" className="w-full" onClick={() => submit("rejected")} disabled={decision.isPending}>
+              <X className="h-4 w-4" />
+              Không công nhận
+            </Button>
+            <Button variant="secondary" className="w-full" onClick={() => submit("needs_supplement")} disabled={decision.isPending}>
+              <MessageSquare className="h-4 w-4" />
+              Yêu cầu bổ sung
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => submit("reference_only")} disabled={decision.isPending}>
+              <ArrowDownToLine className="h-4 w-4" />
+              Chỉ lưu tiền lệ
+            </Button>
           </div>
-          <div className="mt-5 p-3 rounded-xl bg-emerald-50 text-xs text-emerald-800">
-            ℹ️ Quyết định sẽ được lưu vào Knowledge Base làm <b>tiền lệ</b> cho các case tương tự.
-          </div>
+          {decision.isPending && (
+            <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Đang lưu quyết định...
+            </div>
+          )}
         </Card>
       </div>
     </>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3 border-b border-white/70 py-2 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="max-w-[60%] text-right font-semibold text-brand-deep">{value}</span>
+    </div>
   );
 }

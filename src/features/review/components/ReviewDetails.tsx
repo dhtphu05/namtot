@@ -1,160 +1,259 @@
-import { useParams, Link } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
-import { Card, Button, Chip } from "@/components/ui-kit";
-import { CRITERIA, LEVELS, OFFICERS, MEDIA } from "@/lib/mock-data";
-import { useApp } from "@/lib/store";
-import { Check, X, MessageSquare, AlertTriangle, ArrowDownToLine, FileText, Sparkles, Loader2 } from "lucide-react";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useReviewTaskDetail, useSubmitDecision, useRequestSupplement, useEscalateResolution } from "../hooks/useReview";
+import { Button, Card, Chip } from "@/components/ui-kit";
+import { AlertTriangle, Check, FileText, Loader2, MessageSquare, Sparkles, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useEscalateResolution, useRequestSupplement, useReviewTaskDetail, useSubmitDecision } from "../hooks/useReview";
+import type { ReviewTaskDetail as ReviewTaskDetailData } from "../api/review";
+
+const CRITERION_LABEL: Record<string, string> = {
+  ethics: "Đạo đức",
+  academic: "Học tập",
+  physical: "Thể lực",
+  volunteer: "Tình nguyện",
+  integration: "Hội nhập",
+  priority: "Ưu tiên",
+  collective: "Tập thể",
+};
+
+const LEVEL_LABEL: Record<string, string> = {
+  school: "Cấp trường",
+  university: "Cấp ĐH Đà Nẵng",
+  city: "Cấp thành phố",
+  central: "Cấp Trung ương",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  waiting: "Chờ xét",
+  reviewing: "Đang xét",
+  supplement_required: "Cần bổ sung",
+  resolution_needed: "Cần hội đồng",
+  accepted: "Đạt tiêu chí",
+  rejected: "Không đạt",
+};
 
 export function ReviewDetails() {
   const { id } = useParams({ from: "/app/review/$id" });
-  const officerId = useApp((s) => s.currentOfficerId);
-  const me = OFFICERS.find((o) => o.id === officerId) ?? OFFICERS[0];
-  
-  const { data: task, isLoading, isError } = useReviewTaskDetail(id);
-  const { mutate: submitDecision, isPending: submitPending } = useSubmitDecision();
-  const { mutate: reqSupplement, isPending: reqPending } = useRequestSupplement();
-  const { mutate: escalate, isPending: escPending } = useEscalateResolution();
+  const { data, isLoading, isError, error } = useReviewTaskDetail(id);
+  const submitDecision = useSubmitDecision();
+  const requestSupplement = useRequestSupplement();
+  const escalateResolution = useEscalateResolution();
+  const [note, setNote] = useState("");
 
-  const isPending = submitPending || reqPending || escPending;
+  const isPending = submitDecision.isPending || requestSupplement.isPending || escalateResolution.isPending;
 
-  const [supplementOpen, setSupplementOpen] = useState(false);
-
-  // Temporary mock image (since API doesn't return an image URL)
-  const imgUrl = MEDIA.evidence.sample;
+  const context = useMemo(() => (data ? getContext(data) : null), [data]);
+  const primaryEvidence = data?.evidences[0];
+  const previewUrl = primaryEvidence?.files?.find((file) => file.publicUrl)?.publicUrl ?? null;
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-deep mb-4" />
-        <p className="text-muted-foreground font-semibold">Đang tải dữ liệu hồ sơ...</p>
+      <div className="flex min-h-[50vh] flex-col items-center justify-center">
+        <Loader2 className="mb-4 h-8 w-8 animate-spin text-brand-deep" />
+        <p className="font-semibold text-muted-foreground">Đang tải dữ liệu xét duyệt...</p>
       </div>
     );
   }
 
-  if (isError || !task) {
+  if (isError || !data || !context) {
     return (
-      <div className="p-8 text-center text-red-500 font-semibold">
-        Không tìm thấy thông tin task xét duyệt.
+      <div className="p-8 text-center font-semibold text-rose-600">
+        {(error as Error)?.message || "Không tìm thấy thông tin task xét duyệt."}
         <br />
-        <Link to="/app/queue"><Button variant="outline" className="mt-4">Quay lại hàng chờ</Button></Link>
+        <Link to="/app/queue">
+          <Button variant="outline" className="mt-4">
+            Quay lại hàng chờ
+          </Button>
+        </Link>
       </div>
     );
   }
 
-  const approve = () => {
-    submitDecision({ id, payload: { decision: "accepted", officerNote: "Phê duyệt" } });
+  const decide = (decision: "accepted" | "rejected") => {
+    const officerNote = note.trim() || (decision === "accepted" ? "Đạt tiêu chí." : "Không đạt tiêu chí.");
+    submitDecision.mutate({
+      id,
+      payload: {
+        decision,
+        officerNote,
+        evidenceDecisions: data.evidences.map((evidence) => ({
+          evidenceId: evidence.id,
+          status: decision,
+          note: officerNote,
+        })),
+      },
+    });
   };
-  const reject = () => {
-    submitDecision({ id, payload: { decision: "rejected", officerNote: "Từ chối" } });
+
+  const supplement = () => {
+    const reason = note.trim();
+    if (!reason) return;
+    requestSupplement.mutate({
+      id,
+      payload: {
+        reason,
+        requestedEvidenceName: primaryEvidence?.evidenceName,
+        allowedCriteria: [data.task.criterion],
+      },
+    });
   };
-  const toResolution = () => {
-    escalate({ id, payload: { reason: "Cần hội đồng phân xử do mâu thuẫn minh chứng." } });
+
+  const escalate = () => {
+    const reason = note.trim() || "Cần hội đồng xem xét do minh chứng chưa đủ rõ để quyết định.";
+    escalateResolution.mutate({
+      id,
+      payload: { reason, evidenceId: primaryEvidence?.id },
+    });
   };
 
   return (
     <>
       <TopBar
-        title={`Xét duyệt — ${CRITERIA.find(c => c.key === task.criterion)?.label ?? "Minh chứng"}`}
-        subtitle={`${me.name} • ${task.studentName} (${task.studentMssv}) • Cấp aim: ${LEVELS.find((l) => l.key === task.targetLevel)?.label}`}
-        action={<Link to="/app/queue"><Button variant="ghost">← Hàng chờ</Button></Link>}
+        title={`Xét duyệt - ${CRITERION_LABEL[data.task.criterion] ?? data.task.criterion}`}
+        subtitle={`${context.title} - ${context.subtitle} - ${context.level}`}
+        action={
+          <Link to="/app/queue">
+            <Button variant="ghost">Quay lại hàng chờ</Button>
+          </Link>
+        }
       />
 
-      <div className="grid lg:grid-cols-12 gap-5">
-        {/* Left: preview */}
-        <Card className="lg:col-span-7 !p-4">
-          <div className="rounded-2xl bg-[#F4FBFF] p-3 flex items-center justify-center">
-            <img src={imgUrl} alt={task.evidenceName} className="max-h-[70vh] rounded-xl shadow-lg" />
+      <div className="grid gap-5 lg:grid-cols-12">
+        <Card className="lg:col-span-7">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 font-bold text-brand-deep">
+              <FileText className="h-4 w-4" />
+              Minh chứng cần xét
+            </h3>
+            <Chip tone="muted">{data.evidences.length} file/minh chứng</Chip>
           </div>
+          {previewUrl ? (
+            <div className="flex min-h-[360px] items-center justify-center rounded-xl bg-[#F4FBFF] p-3">
+              <img src={previewUrl} alt={primaryEvidence?.evidenceName ?? "Minh chứng"} className="max-h-[70vh] rounded-lg shadow-lg" />
+            </div>
+          ) : (
+            <div className="flex min-h-[360px] flex-col items-center justify-center rounded-xl bg-[#F4FBFF] p-6 text-center">
+              <FileText className="mb-3 h-10 w-10 text-[#0057C2]" />
+              <div className="font-semibold text-brand-deep">Không có preview trực tiếp</div>
+              <div className="mt-1 max-w-md text-sm text-muted-foreground">
+                Backend đã trả dữ liệu task, nhưng file hiện chưa có `publicUrl` để hiển thị trong trình duyệt.
+              </div>
+            </div>
+          )}
         </Card>
 
-        {/* Middle: Evidence Card */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="space-y-4 lg:col-span-5">
           <Card>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-bold text-brand-deep flex items-center gap-2"><FileText className="w-4 h-4" /> Evidence Card</h3>
-              <Chip tone={task.confidence > 0.85 ? "success" : "warning"}>AI {Math.round(task.confidence * 100)}%</Chip>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-2 font-bold text-brand-deep">
+                <FileText className="h-4 w-4" />
+                Thông tin task
+              </h3>
+              <Chip tone={data.task.status === "accepted" ? "success" : data.task.status === "rejected" ? "error" : "brand"}>
+                {STATUS_LABEL[data.task.status] ?? data.task.status}
+              </Chip>
             </div>
+            <Info label="Đối tượng" value={context.title} />
+            <Info label="Loại hồ sơ" value={context.type} />
+            <Info label="Tiêu chí" value={CRITERION_LABEL[data.task.criterion] ?? data.task.criterion} />
+            <Info label="Cấp aim" value={context.level} />
+            <Info label="Cán bộ phụ trách" value={data.task.assignedOfficer?.fullName ?? "Chưa phân công"} />
+            <Info label="Hạn xử lý" value={formatDate(data.task.dueDate)} />
+          </Card>
+
+          <Card>
+            <h3 className="mb-3 flex items-center gap-2 font-bold text-brand-deep">
+              <Sparkles className="h-4 w-4" />
+              Dữ liệu hỗ trợ quyết định
+            </h3>
             <div className="space-y-2 text-sm">
-              {[
-                ["Loại minh chứng", task.evidenceName],
-                ["Tiêu chí", CRITERIA.find((c) => c.key === task.criterion)?.label],
-                ["Trạng thái hiện tại", task.status === "waiting" ? "Chờ xét" : task.status],
-                ["Cấp xét gợi ý", LEVELS.find((l) => l.key === task.targetLevel)?.label],
-              ].map(([k, v]) => (
-                <div key={k as string} className="flex justify-between gap-3 py-2 border-b border-[#EEF9FF] last:border-0">
-                  <span className="text-muted-foreground">{k}</span>
-                  <span className="font-semibold text-brand-deep text-right">{v}</span>
+              {data.evidences.map((evidence) => (
+                <div key={evidence.id} className="rounded-lg bg-[#F6F9FC] p-3">
+                  <div className="font-semibold text-brand-deep">{evidence.evidenceName}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {CRITERION_LABEL[evidence.criterion] ?? evidence.criterion} - {evidence.status} - AI{" "}
+                    {typeof evidence.confidence === "number" ? `${Math.round(evidence.confidence * 100)}%` : "chưa có"}
+                  </div>
                 </div>
               ))}
+              {data.knowledgeBaseMatches.length > 0 && (
+                <div className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800">
+                  Có {data.knowledgeBaseMatches.reduce((sum, item) => sum + item.matches.length, 0)} case tương tự trong Knowledge Base.
+                </div>
+              )}
             </div>
           </Card>
 
           <Card glow>
-            <h3 className="font-bold text-brand-deep flex items-center gap-2 mb-1"><Sparkles className="w-4 h-4" /> AI gợi ý quyết định</h3>
-            <div className="text-[11px] text-muted-foreground mb-3">AI gợi ý — Cán bộ xác nhận quyết định cuối cùng.</div>
-            <div className="text-sm p-3 rounded-xl bg-[#F1F7FD]">
-              Minh chứng <b>khớp tiêu chí {CRITERIA.find((c) => c.key === task.criterion)?.label}</b>. Đã tìm thấy <b>12 case tương tự</b> trong Kho tri thức.
+            <h3 className="mb-2 font-bold text-brand-deep">Ghi chú quyết định</h3>
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Nhập ghi chú cho sinh viên/tập thể hoặc lý do chuyển hội đồng..."
+              rows={5}
+              className="w-full rounded-xl bg-[#F4FBFF] p-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
+            />
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button variant="success" onClick={() => decide("accepted")} disabled={isPending}>
+                <Check className="h-4 w-4" />
+                Đạt tiêu chí
+              </Button>
+              <Button variant="danger" onClick={() => decide("rejected")} disabled={isPending}>
+                <X className="h-4 w-4" />
+                Không đạt
+              </Button>
+              <Button variant="secondary" onClick={supplement} disabled={isPending || !note.trim()}>
+                <MessageSquare className="h-4 w-4" />
+                Yêu cầu bổ sung
+              </Button>
+              <Button variant="outline" onClick={escalate} disabled={isPending}>
+                <AlertTriangle className="h-4 w-4" />
+                Chuyển hội đồng
+              </Button>
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-4 relative">
-              {isPending && (
-                <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
-                  <Loader2 className="w-6 h-6 animate-spin text-brand-deep" />
-                </div>
-              )}
-              <Button variant="success" onClick={approve} disabled={isPending}><Check className="w-4 h-4" /> Đạt tiêu chí</Button>
-              <Button variant="danger" onClick={reject} disabled={isPending}><X className="w-4 h-4" /> Không đạt</Button>
-              <Button variant="secondary" onClick={() => setSupplementOpen(true)} disabled={isPending}><MessageSquare className="w-4 h-4" /> Yêu cầu bổ sung</Button>
-              <Button variant="outline" onClick={toResolution} disabled={isPending}><AlertTriangle className="w-4 h-4" /> Chuyển Resolution Hub</Button>
-            </div>
+            {isPending && (
+              <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Đang gửi quyết định...
+              </div>
+            )}
           </Card>
-
-          <Link to="/app/evidence-search"><Button variant="ghost" className="w-full">🔍 Xem minh chứng tương tự đã duyệt</Button></Link>
         </div>
       </div>
-
-      <AnimatePresence>
-        {supplementOpen && <SupplementModal 
-          onClose={() => setSupplementOpen(false)} 
-          task={task} 
-          onSubmit={(reason) => {
-            reqSupplement({ id, payload: { reason, requestedEvidenceName: task.evidenceName } });
-            setSupplementOpen(false);
-          }}
-          isPending={isPending}
-        />}
-      </AnimatePresence>
     </>
   );
 }
 
-function SupplementModal({ onClose, task, onSubmit, isPending }: { onClose: () => void; task: any, onSubmit: (reason: string) => void, isPending: boolean }) {
-  const officerId = useApp((s) => s.currentOfficerId);
-  const me = OFFICERS.find((o) => o.id === officerId) ?? OFFICERS[0];
-  const [text, setText] = useState(`Chào ${task.studentName},\n\nQua quá trình xét duyệt, cán bộ phụ trách nhận thấy hồ sơ của em còn thiếu minh chứng cho tiêu chí ${CRITERIA.find(c => c.key === task.criterion)?.label}.\n\nVui lòng bổ sung trước ngày 15/07/2026.\n\nTrân trọng,\nCán bộ ${me.name}`);
-
+function Info({ label, value }: { label: string; value: string }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-[#0057C2]/40 backdrop-blur-md flex items-center justify-center p-6">
-      <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }} className="card-glow max-w-2xl w-full p-7">
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="w-5 h-5 text-[#00AEEF]" />
-          <h3 className="font-bold text-brand-deep text-lg">AI Draft Response</h3>
-        </div>
-        <p className="text-xs text-muted-foreground mb-4">VNPT Smartbot đã soạn nháp — cán bộ có thể chỉnh sửa trước khi gửi.</p>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={10} className="w-full p-4 rounded-xl bg-[#F4FBFF] text-sm focus:outline-none focus:ring-2 focus:ring-[#00AEEF]" />
-        <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
-          <div className="p-2 rounded-lg bg-[#EEF9FF]"><b>Tiêu chí thiếu:</b> {CRITERIA.find(c => c.key === task.criterion)?.label}</div>
-          <div className="p-2 rounded-lg bg-[#EEF9FF]"><b>Hạn bổ sung:</b> 15/07/2026</div>
-        </div>
-        <div className="flex justify-end gap-2 mt-5">
-          <Button variant="ghost" onClick={onClose} disabled={isPending}>Hủy</Button>
-          <Button onClick={() => onSubmit(text)} disabled={isPending}>
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Gửi thông báo"}
-          </Button>
-        </div>
-      </motion.div>
-    </motion.div>
+    <div className="flex justify-between gap-3 border-b border-[#EEF9FF] py-2 text-sm last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-semibold text-brand-deep">{value}</span>
+    </div>
   );
+}
+
+function getContext(data: ReviewTaskDetailData) {
+  if (data.application && data.student) {
+    return {
+      type: "Hồ sơ cá nhân",
+      title: data.student.fullName,
+      subtitle: `${data.student.studentCode ?? "Chưa có MSSV"} - ${data.student.className ?? data.student.faculty ?? "Chưa có lớp"}`,
+      level: LEVEL_LABEL[data.application.targetLevel] ?? data.application.targetLevel,
+    };
+  }
+  if (data.collectiveProfile) {
+    return {
+      type: "Hồ sơ tập thể",
+      title: data.collectiveProfile.className,
+      subtitle: `Đại diện ${data.collectiveProfile.representative.fullName}`,
+      level: LEVEL_LABEL[data.collectiveProfile.targetLevel] ?? data.collectiveProfile.targetLevel,
+    };
+  }
+  return null;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("vi-VN").format(new Date(value));
 }
