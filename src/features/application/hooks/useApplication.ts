@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { applicationApi } from "@/features/application/api/application";
-import type { Level } from "@/lib/api/types";
+import type { Level, MetricType, VerificationStatus } from "@/lib/api/types";
 import { toast } from "sonner";
 
 export const applicationKeys = {
   all: ["applications"] as const,
   current: () => [...applicationKeys.all, "current"] as const,
   timeline: (id: string) => [...applicationKeys.all, "timeline", id] as const,
+  latestPrecheck: (id: string) => [...applicationKeys.all, "precheck", "latest", id] as const,
 };
 
 export function useCurrentApplication(schoolYear?: string) {
@@ -84,12 +85,73 @@ export function useSubmitApplication() {
   });
 }
 
+export function useLatestPrecheck(applicationId: string | undefined) {
+  return useQuery({
+    queryKey: applicationKeys.latestPrecheck(applicationId ?? ""),
+    queryFn: async () => {
+      if (!applicationId) return null;
+      const res = await applicationApi.getLatestPrecheck(applicationId);
+      return res.data;
+    },
+    enabled: !!applicationId,
+  });
+}
+
 export function usePrecheck() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, level }: { id: string; level?: Level }) => {
       const res = await applicationApi.precheck(id, { level, runMode: "sync" });
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) });
+    },
+  });
+}
+
+export function useUpsertMetric() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      metricType,
+      value,
+      scale,
+    }: {
+      id: string;
+      metricType: MetricType;
+      value: number;
+      scale?: number | string;
+    }) => {
+      const res = await applicationApi.upsertMetric(id, { metricType, value, scale });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+    },
+  });
+}
+
+export function useUpdateMetric() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      metricId,
+      value,
+      scale,
+      verificationStatus,
+    }: {
+      metricId: string;
+      value?: number;
+      scale?: number | string;
+      verificationStatus?: VerificationStatus;
+    }) => {
+      const res = await applicationApi.updateMetric(metricId, { value, scale, verificationStatus });
       return res.data;
     },
     onSuccess: () => {

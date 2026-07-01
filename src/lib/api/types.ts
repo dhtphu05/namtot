@@ -101,6 +101,93 @@ export type EvidenceStatus =
   | 'resolution_needed';
 
 export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+export type EventStatus = 'draft' | 'active' | 'archived';
+export type MetricType =
+  | 'gpa'
+  | 'conduct_score'
+  | 'physical_score'
+  | 'volunteer_days'
+  | 'foreign_language_score';
+export type VerificationStatus = 'pending' | 'verified' | 'rejected';
+
+export interface ApplicationMetric {
+  id: string;
+  applicationId: string;
+  metricType: MetricType;
+  value: number;
+  scale: number | null;
+  verificationStatus: VerificationStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PrecheckCriterionResult {
+  criterion: Criterion;
+  status: FinalStatus | string;
+  score?: number;
+  passed?: boolean;
+  reasons?: string[];
+  warnings?: string[];
+  evidenceIds?: string[];
+  [key: string]: unknown;
+}
+
+export interface PrecheckMissingItem {
+  criterion?: Criterion;
+  code?: string;
+  message?: string;
+  severity?: 'info' | 'warning' | 'error' | string;
+  [key: string]: unknown;
+}
+
+export interface PrecheckResult {
+  applicationId: string;
+  level: Level;
+  readinessScore: number;
+  readyToSubmit: boolean;
+  criteriaResults: PrecheckCriterionResult[];
+  missingItems: PrecheckMissingItem[];
+  warnings: string[];
+  nextBestAction: string;
+  humanConfirmationRequired: boolean;
+  createdAt: string;
+}
+
+export interface EventRegistryItem {
+  id: string;
+  eventName: string;
+  criterion: Criterion;
+  organizer: string;
+  organizerLevel: Level;
+  startDate: string | null;
+  endDate: string | null;
+  convertedValue: number | null;
+  convertedUnit: string | null;
+  eligibleLevels: Level[];
+  participantCount: number;
+  rosterIndexed: boolean;
+  status: EventStatus;
+  sampleCertificateFile?: {
+    publicUrl?: string | null;
+    [key: string]: unknown;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventParticipantCheck {
+  found: boolean;
+  participant: {
+    studentCode: string;
+    studentName: string | null;
+    className: string | null;
+    faculty: string | null;
+    convertedValue: number | null;
+    [key: string]: unknown;
+  } | null;
+  canImport: boolean;
+  reason: string | null;
+}
 
 export interface ApplicationState {
   id: string;

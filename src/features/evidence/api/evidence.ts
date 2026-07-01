@@ -47,7 +47,7 @@ export const evidenceApi = {
   ) => {
     return apiClient<EvidenceResponse>(`/api/applications/${applicationId}/evidences`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     });
   },
 
@@ -57,7 +57,7 @@ export const evidenceApi = {
   ) => {
     return apiClient<EvidenceResponse>(`/api/evidences/${id}`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: data,
     });
   },
 
@@ -85,7 +85,7 @@ export const evidenceApi = {
       `/api/evidences/${id}/start-indexing`,
       {
         method: "POST",
-        body: JSON.stringify(options || {}),
+        body: options || {},
       }
     );
   },

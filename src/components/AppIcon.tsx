@@ -47,7 +47,7 @@ const CRIT_ICON: Record<string, IconKey> = {
   "the-luc": "Dumbbell",
   "tinh-nguyen": "HeartHandshake",
   "hoi-nhap": "Globe2",
-  "priority": "Sparkles" as IconKey,
+  "priority": "ai",
 };
 
 export function CriterionIcon({

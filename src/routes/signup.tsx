@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { useAuth } from "@/features/auth/store/auth-store";
 
 export const Route = createFileRoute("/signup")({
-  head: () => ({ meta: [{ title: "Dang ky - 5TOT Platform" }] }),
+  head: () => ({ meta: [{ title: "Đăng ký - 5TOT Platform" }] }),
   beforeLoad: () => {
     const { accessToken } = useAuth.getState();
     if (accessToken) {
@@ -27,10 +27,10 @@ function Signup() {
             5T
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-brand-deep">
-            Tao tai khoan
+            Tạo tài khoản
           </h1>
           <p className="text-muted-foreground mt-3">
-            Phase 1 chi ho tro dang nhap bang tai khoan seed.
+            Phase 1 chỉ hỗ trợ đăng nhập bằng tài khoản seed.
           </p>
         </motion.div>
 
@@ -41,15 +41,15 @@ function Signup() {
         >
           <div className="card-glow p-7 space-y-5 text-center">
             <p className="text-sm text-muted-foreground">
-              Backend contract hien tai khong co endpoint dang ky. Hay dung tai
-              khoan mau trong tai lieu Phase 1 de dang nhap.
+              Backend contract hiện tại không có endpoint đăng ký. Hãy dùng tài
+              khoản mẫu trong tài liệu Phase 1 để đăng nhập.
             </p>
 
             <Link
               to="/login"
               className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
             >
-              Den trang dang nhap <ArrowRight className="ml-2 h-4 w-4" />
+              Đến trang đăng nhập <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </div>
         </motion.div>

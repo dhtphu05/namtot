@@ -1,5 +1,13 @@
 import { apiClient } from "@/lib/api/client";
-import type { CurrentApplicationEmpty, CurrentApplicationResponse, Level } from "@/lib/api/types";
+import type {
+  ApplicationMetric,
+  CurrentApplicationEmpty,
+  CurrentApplicationResponse,
+  Level,
+  MetricType,
+  PrecheckResult,
+  VerificationStatus,
+} from "@/lib/api/types";
 
 export const applicationApi = {
   getCurrentApplication: async (schoolYear?: string) => {
@@ -13,21 +21,21 @@ export const applicationApi = {
   startApplication: async (data: { schoolYear?: string; targetLevel?: Level }) => {
     return apiClient<CurrentApplicationResponse>("/api/applications/current/start", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     });
   },
 
   updateTargetLevel: async (id: string, targetLevel: Level) => {
     return apiClient(`/api/applications/${id}/target-level`, {
       method: "PATCH",
-      body: JSON.stringify({ targetLevel }),
+      body: { targetLevel },
     });
   },
 
   saveDraft: async (id: string, draftPayload: Record<string, unknown>) => {
     return apiClient(`/api/applications/${id}/draft`, {
       method: "PATCH",
-      body: JSON.stringify(draftPayload),
+      body: draftPayload,
     });
   },
 
@@ -38,14 +46,14 @@ export const applicationApi = {
   },
 
   precheck: async (id: string, options?: { level?: Level; runMode?: "sync" | "async" }) => {
-    return apiClient(`/api/applications/${id}/precheck`, {
+    return apiClient<PrecheckResult>(`/api/applications/${id}/precheck`, {
       method: "POST",
-      body: JSON.stringify(options || {}),
+      body: options || {},
     });
   },
 
   getLatestPrecheck: async (id: string) => {
-    return apiClient(`/api/applications/${id}/precheck/latest`, {
+    return apiClient<PrecheckResult | null>(`/api/applications/${id}/precheck/latest`, {
       method: "GET",
     });
   },
@@ -53,7 +61,7 @@ export const applicationApi = {
   cascadeReview: async (id: string, includeUpgradeHints = true) => {
     return apiClient(`/api/applications/${id}/cascade-review`, {
       method: "POST",
-      body: JSON.stringify({ includeUpgradeHints }),
+      body: { includeUpgradeHints },
     });
   },
 
@@ -66,7 +74,27 @@ export const applicationApi = {
   submit: async (id: string, options: { allowSubmitWithWarnings?: boolean; studentNote?: string }) => {
     return apiClient(`/api/applications/${id}/submit`, {
       method: "POST",
-      body: JSON.stringify(options),
+      body: options,
+    });
+  },
+
+  upsertMetric: async (
+    id: string,
+    data: { metricType: MetricType; value: number; scale?: number | string }
+  ) => {
+    return apiClient<ApplicationMetric>(`/api/applications/${id}/metrics`, {
+      method: "POST",
+      body: data,
+    });
+  },
+
+  updateMetric: async (
+    metricId: string,
+    data: { value?: number; scale?: number | string; verificationStatus?: VerificationStatus }
+  ) => {
+    return apiClient<ApplicationMetric>(`/api/metrics/${metricId}`, {
+      method: "PATCH",
+      body: data,
     });
   },
 };

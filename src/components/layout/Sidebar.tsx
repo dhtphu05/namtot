@@ -36,62 +36,62 @@ import { ROLES, type Role } from "@/lib/mock-data";
 const NAV: Record<Role, { group: string; items: { label: string; to: string; icon: any }[] }[]> = {
   student: [
     {
-      group: "Ho so SV5T cua toi",
+      group: "Hồ sơ SV5T của tôi",
       items: [
-        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
-        { label: "Ban nhap ho so", to: "/app/drafts", icon: PencilLine },
-        { label: "Minh chung", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho su kien", to: "/app/event-library", icon: ListChecks },
-        { label: "AI tien kiem", to: "/app/ai-precheck", icon: Sparkles },
+        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
+        { label: "Bản nháp hồ sơ", to: "/app/drafts", icon: PencilLine },
+        { label: "Minh chứng", to: "/app/evidence", icon: FolderUp },
+        { label: "Kho sự kiện", to: "/app/event-library", icon: ListChecks },
+        { label: "AI tiền kiểm", to: "/app/ai-precheck", icon: Sparkles },
         { label: "Cascade Review", to: "/app/cascade", icon: GitBranch },
-        { label: "Xac thuc eKYC", to: "/app/ekyc", icon: ScanFace },
+        { label: "Xác thực eKYC", to: "/app/ekyc", icon: ScanFace },
       ],
     },
     {
-      group: "Ho tro",
+      group: "Hỗ trợ",
       items: [
         { label: "Chatbot SV5T", to: "/app/chatbot", icon: Bot },
-        { label: "Thong bao", to: "/app/notifications", icon: Bell },
+        { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
   officer: [
     {
-      group: "Xet duyet",
+      group: "Xét duyệt",
       items: [
-        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
-        { label: "Hang cho xet duyet", to: "/app/queue", icon: Inbox },
-        { label: "Nhap su kien", to: "/app/event-registry", icon: CalendarCheck },
-        { label: "Kho tri thuc", to: "/app/evidence-search", icon: BookOpenCheck },
-        { label: "Thong bao", to: "/app/notifications", icon: Bell },
+        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
+        { label: "Hàng chờ xét duyệt", to: "/app/queue", icon: Inbox },
+        { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck },
+        { label: "Kho tri thức", to: "/app/evidence-search", icon: BookOpenCheck },
+        { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
   manager: [
     {
-      group: "Quan ly",
+      group: "Quản lý",
       items: [
-        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
-        { label: "Phan cong can bo", to: "/app/assignment", icon: UserCog },
-        { label: "Nhap su kien", to: "/app/event-registry", icon: CalendarCheck },
+        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
+        { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog },
+        { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck },
         { label: "SmartUX Analytics", to: "/app/analytics", icon: ChartNoAxesCombined },
         { label: "VNPT AI Center", to: "/app/vnpt", icon: Cpu },
         { label: "Audit Log", to: "/app/audit", icon: History },
         { label: "Export Center", to: "/app/export", icon: Download },
         { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion },
-        { label: "Cau hinh tieu chi", to: "/app/settings", icon: SlidersHorizontal },
+        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal },
       ],
     },
   ],
   collective: [
     {
-      group: "Tap the",
+      group: "Tập thể",
       items: [
-        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
-        { label: "Ho so tap the", to: "/app/collective", icon: UsersRound },
-        { label: "Minh chung", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho su kien", to: "/app/event-library", icon: ListChecks },
-        { label: "Thong bao", to: "/app/notifications", icon: Bell },
+        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
+        { label: "Hồ sơ tập thể", to: "/app/collective", icon: UsersRound },
+        { label: "Minh chứng", to: "/app/evidence", icon: FolderUp },
+        { label: "Kho sự kiện", to: "/app/event-library", icon: ListChecks },
+        { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
@@ -129,7 +129,7 @@ export function Sidebar() {
         </div>
         <div>
           <div className="font-bold text-brand-deep leading-tight text-[15px]">5TOT Platform</div>
-          <div className="text-[11px] text-muted-foreground">Sinh vien 5 tot - 2025-2026</div>
+          <div className="text-[11px] text-muted-foreground">Sinh viên 5 tốt - 2025-2026</div>
         </div>
       </Link>
 
@@ -174,7 +174,7 @@ export function Sidebar() {
           onClick={handleLogout}
           className="flex items-center gap-2 px-3 py-2 text-[13px] text-muted-foreground hover:text-brand-deep"
         >
-          <LogOut className="w-4 h-4" /> Dang xuat
+          <LogOut className="w-4 h-4" /> Đăng xuất
         </button>
       </div>
     </aside>
@@ -192,7 +192,7 @@ function RolePanel() {
   return (
     <div className="rounded-xl border border-[#EEF2F7] p-3 mx-1">
       <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-2 px-1 font-semibold">
-        Dang dang nhap
+        Đang đăng nhập
       </div>
       <div className="flex items-center gap-3 px-1 mb-3">
         <div className="w-9 h-9 rounded-lg bg-[#0057C2] text-white flex items-center justify-center font-bold text-xs shrink-0">
