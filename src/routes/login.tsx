@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, redirect, Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -22,8 +23,10 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const nav = useNavigate();
+  const queryClient = useQueryClient();
   const setAuthData = useAuth((s) => s.setAuthData);
   const setRole = useApp((s) => s.setRole);
+  const resetSessionState = useApp((s) => s.resetSessionState);
   const [email, setEmail] = useState("student@dut.udn.vn");
   const [password, setPassword] = useState("Password@123");
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +38,8 @@ function Login() {
     setIsLoading(true);
     try {
       const res = await authApi.login(email, password);
+      queryClient.clear();
+      resetSessionState();
       setAuthData(res.data.user, res.data.accessToken, res.data.refreshToken);
       setRole(toUiRole(res.data.user.role));
       toast.success("Đăng nhập thành công!");

@@ -189,6 +189,23 @@ export interface EventParticipantCheck {
   reason: string | null;
 }
 
+export interface EvidenceResponse {
+  id: string;
+  applicationId?: string | null;
+  collectiveProfileId?: string | null;
+  evidenceName: string;
+  criterion: Criterion;
+  sourceType: EvidenceSourceType;
+  status: EvidenceStatus;
+  indexingStatus: IndexingStatus;
+  collectiveCriterion?: string;
+  fileId?: string;
+  jobId?: string;
+  createdAt: string;
+  updatedAt: string;
+  [key: string]: unknown;
+}
+
 export interface ApplicationState {
   id: string;
   schoolYear: string;
@@ -263,6 +280,25 @@ export interface CollectivePrecheckView {
   missingItems: unknown[];
   warnings: string[];
   nextBestAction: string;
+  memberSummary?: CollectiveMemberSummary;
+  evidenceSummary?: {
+    total?: number;
+    indexed?: number;
+    accepted?: number;
+    [key: string]: unknown;
+  };
+}
+
+export interface CollectiveMemberSummary {
+  total: number;
+  participated: number;
+  notParticipated?: number;
+  unknownParticipation?: number;
+  sv5tSchool?: number;
+  sv5tHigher?: number;
+  noViolation?: number;
+  violated?: number;
+  [key: string]: unknown;
 }
 
 export interface CollectiveState {
@@ -279,6 +315,25 @@ export interface CollectiveState {
   registered?: number;
   sv5tTruong?: number;
   sv5tHigher?: number;
+  memberSummary?: CollectiveMemberSummary;
+  evidenceCount?: number;
+  evidences?: Array<{
+    collectiveCriterion?: string;
+    evidence?: {
+      id: string;
+      evidenceName: string;
+      criterion: Criterion;
+      sourceType: EvidenceSourceType;
+      status: EvidenceStatus;
+      indexingStatus: IndexingStatus;
+      createdAt: string;
+      updatedAt: string;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  }>;
+  precheckResults?: unknown[];
+  reviewTasks?: unknown[];
 }
 
 export interface CurrentCollectiveEmpty {

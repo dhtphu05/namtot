@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { StudentOverview } from "./StudentOverview";
 
 
 
@@ -21,7 +22,7 @@ export function Dashboard() {
     : user
       ? toUiRole(user.role)
       : "student";
-  if (role === "student") return <StudentDash />;
+  if (role === "student") return <StudentOverview />;
   if (role === "officer") return <OfficerDash />;
   if (role === "manager") return <ManagerDash />;
   return <CollectiveDash />;

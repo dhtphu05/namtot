@@ -2,23 +2,20 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
   BookOpenCheck,
-  Bot,
   CalendarCheck,
   ChartNoAxesCombined,
   Cpu,
   Download,
+  FileText,
   FolderUp,
-  GitBranch,
   History,
   Inbox,
   LayoutDashboard,
+  LifeBuoy,
   ListChecks,
   LogOut,
-  PencilLine,
-  ScanFace,
   ShieldQuestion,
   SlidersHorizontal,
-  Sparkles,
   UserCog,
   UsersRound,
 } from "lucide-react";
@@ -36,22 +33,12 @@ import { ROLES, type Role } from "@/lib/mock-data";
 const NAV: Record<Role, { group: string; items: { label: string; to: string; icon: any }[] }[]> = {
   student: [
     {
-      group: "Hồ sơ SV5T của tôi",
+      group: "Sinh viên",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
-        { label: "Bản nháp hồ sơ", to: "/app/drafts", icon: PencilLine },
-        { label: "Minh chứng", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho sự kiện", to: "/app/event-library", icon: ListChecks },
-        { label: "AI tiền kiểm", to: "/app/ai-precheck", icon: Sparkles },
-        { label: "Cascade Review", to: "/app/cascade", icon: GitBranch },
-        { label: "Xác thực eKYC", to: "/app/ekyc", icon: ScanFace },
-      ],
-    },
-    {
-      group: "Hỗ trợ",
-      items: [
-        { label: "Chatbot SV5T", to: "/app/chatbot", icon: Bot },
-        { label: "Thông báo", to: "/app/notifications", icon: Bell },
+        { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
+        { label: "Hồ sơ của tôi", to: "/app/drafts", icon: FileText },
+        { label: "Kho minh chứng", to: "/app/event-library", icon: FolderUp },
+        { label: "Hỗ trợ", to: "/app/chatbot", icon: LifeBuoy },
       ],
     },
   ],
@@ -121,6 +108,16 @@ export function Sidebar() {
     }
   };
 
+  const isActive = (to: string) =>
+    pathname === to ||
+    (to !== "/app" && pathname.startsWith(to)) ||
+    (role === "student" &&
+      to === "/app/drafts" &&
+      ["/app/evidence", "/app/ai-precheck", "/app/cascade", "/app/upload"].some((path) => pathname.startsWith(path))) ||
+    (role === "student" &&
+      to === "/app/chatbot" &&
+      ["/app/notifications"].some((path) => pathname.startsWith(path)));
+
   return (
     <aside className="w-72 shrink-0 bg-white border-r border-[#EEF2F7] min-h-screen px-4 py-6 flex flex-col gap-5 sticky top-0">
       <Link to="/app" className="flex items-center gap-3 px-2">
@@ -143,7 +140,7 @@ export function Sidebar() {
             </div>
             <ul className="flex flex-col gap-0.5">
               {group.items.map((item) => {
-                const active = pathname === item.to || (item.to !== "/app" && pathname.startsWith(item.to));
+                const active = isActive(item.to);
                 const Icon = item.icon;
                 return (
                   <li key={item.to}>

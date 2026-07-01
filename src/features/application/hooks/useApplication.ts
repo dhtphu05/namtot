@@ -26,6 +26,7 @@ export function useCurrentApplication(schoolYear?: string) {
 
 export function useStartApplication() {
   const queryClient = useQueryClient();
+  const userId = useAuth((s) => s.user?.id);
 
   return useMutation({
     mutationFn: async (data: { schoolYear?: string; targetLevel?: Level }) => {
@@ -33,8 +34,8 @@ export function useStartApplication() {
       return res.data;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData([...applicationKeys.current(), { schoolYear: data.application.schoolYear }], data);
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.setQueryData([...applicationKeys.current(userId), { schoolYear: data.application.schoolYear }], data);
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current(userId) });
     },
     onError: (err: Error) => {
       toast.error(`Không thể tạo hồ sơ: ${err.message}`);
@@ -44,6 +45,7 @@ export function useStartApplication() {
 
 export function useUpdateTargetLevel() {
   const queryClient = useQueryClient();
+  const userId = useAuth((s) => s.user?.id);
 
   return useMutation({
     mutationFn: async ({ id, targetLevel }: { id: string; targetLevel: Level }) => {
@@ -51,13 +53,14 @@ export function useUpdateTargetLevel() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current(userId) });
     },
   });
 }
 
 export function useSaveDraft() {
   const queryClient = useQueryClient();
+  const userId = useAuth((s) => s.user?.id);
 
   return useMutation({
     mutationFn: async ({ id, draftPayload }: { id: string; draftPayload: Record<string, unknown> }) => {
@@ -66,13 +69,14 @@ export function useSaveDraft() {
     },
     onSuccess: () => {
       // Invalidate silently in the background, keeping old data while fetching new
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current(userId) });
     },
   });
 }
 
 export function useSubmitApplication() {
   const queryClient = useQueryClient();
+  const userId = useAuth((s) => s.user?.id);
 
   return useMutation({
     mutationFn: async ({ id, allowSubmitWithWarnings, studentNote }: { id: string; allowSubmitWithWarnings?: boolean; studentNote?: string }) => {
@@ -80,7 +84,7 @@ export function useSubmitApplication() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current(userId) });
       toast.success("Đã nộp hồ sơ thành công!");
     },
     onError: (err: Error) => {
@@ -103,6 +107,7 @@ export function useLatestPrecheck(applicationId: string | undefined) {
 
 export function usePrecheck() {
   const queryClient = useQueryClient();
+  const userId = useAuth((s) => s.user?.id);
 
   return useMutation({
     mutationFn: async ({ id, level }: { id: string; level?: Level }) => {
@@ -110,7 +115,7 @@ export function usePrecheck() {
       return res.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current(userId) });
       queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) });
     },
   });
@@ -118,6 +123,7 @@ export function usePrecheck() {
 
 export function useUpsertMetric() {
   const queryClient = useQueryClient();
+  const userId = useAuth((s) => s.user?.id);
 
   return useMutation({
     mutationFn: async ({
@@ -135,13 +141,14 @@ export function useUpsertMetric() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current(userId) });
     },
   });
 }
 
 export function useUpdateMetric() {
   const queryClient = useQueryClient();
+  const userId = useAuth((s) => s.user?.id);
 
   return useMutation({
     mutationFn: async ({
@@ -159,7 +166,7 @@ export function useUpdateMetric() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current(userId) });
     },
   });
 }

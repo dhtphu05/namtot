@@ -14,7 +14,8 @@ import {
   useCollectivePrecheck 
 } from "@/features/collective/hooks/useCollective";
 import { useCollectiveMembers, useImportMembers } from "@/features/collective/hooks/useCollectiveMembers";
-import { useCollectiveEvidences } from "@/features/collective/hooks/useCollectiveEvidence";
+import { useCollectiveEvidences, useCreateCollectiveEvidence } from "@/features/collective/hooks/useCollectiveEvidence";
+import { useAuth } from "@/features/auth/store/auth-store";
 import type { CollectiveMember, CollectiveState, RosterImportResult } from "@/lib/api/types";
 
 const CRITERIA_TC = [
