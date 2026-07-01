@@ -1,22 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { applicationApi } from "@/features/application/api/application";
+import { useAuth } from "@/features/auth/store/auth-store";
 import type { Level, MetricType, VerificationStatus } from "@/lib/api/types";
 import { toast } from "sonner";
 
 export const applicationKeys = {
   all: ["applications"] as const,
-  current: () => [...applicationKeys.all, "current"] as const,
+  current: (userId?: string | null) => [...applicationKeys.all, "current", userId ?? "anonymous"] as const,
   timeline: (id: string) => [...applicationKeys.all, "timeline", id] as const,
   latestPrecheck: (id: string) => [...applicationKeys.all, "precheck", "latest", id] as const,
 };
 
 export function useCurrentApplication(schoolYear?: string) {
+  const userId = useAuth((s) => s.user?.id);
+
   return useQuery({
-    queryKey: [...applicationKeys.current(), { schoolYear }],
+    queryKey: [...applicationKeys.current(userId), { schoolYear }],
     queryFn: async () => {
       const res = await applicationApi.getCurrentApplication(schoolYear);
       return res.data;
     },
+    enabled: !!userId,
   });
 }
 

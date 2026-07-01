@@ -35,6 +35,8 @@ interface AppState {
   currentOfficerId: string;
   setCurrentOfficerId: (id: string) => void;
 
+  resetSessionState: () => void;
+
   notifications: Notification[];
   pushNotification: (n: Omit<Notification, "id" | "time">) => void;
   markAllRead: () => void;
@@ -97,6 +99,22 @@ const baseApp: ApplicationState = {
   currentDraftVersion: CURRENT_APPLICATION.currentDraftVersion,
 };
 
+const initialSessionState = {
+  notifications: NOTIFICATIONS_SEED,
+  audit: AUDIT_SEED,
+  application: baseApp,
+  evidence: EVIDENCE_SEED,
+  metrics: METRIC_SEED,
+  events: EVENT_REGISTRY,
+  participants: EVENT_PARTICIPANTS,
+  tasks: REVIEW_TASKS,
+  submittedIds: [] as string[],
+  demoStep: 0,
+  wizardType: null as "ca-nhan" | "tap-the" | null,
+  wizardLevel: null as string | null,
+  currentDraftId: null as string | null,
+};
+
 export const useApp = create<AppState>()(
   persist(
     (set, get) => ({
@@ -105,16 +123,17 @@ export const useApp = create<AppState>()(
 
       currentOfficerId: "cb-001",
       setCurrentOfficerId: (currentOfficerId) => set({ currentOfficerId }),
+      resetSessionState: () => set(initialSessionState),
 
-      notifications: NOTIFICATIONS_SEED,
+      notifications: initialSessionState.notifications,
       pushNotification: (n) =>
         set((s) => ({ notifications: [{ id: `n-${Date.now()}`, time: "vừa xong", ...n }, ...s.notifications] })),
       markAllRead: () => set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
 
-      audit: AUDIT_SEED,
+      audit: initialSessionState.audit,
       pushAudit: (e) => set((s) => ({ audit: [{ id: `a-${Date.now()}`, time: nowStr(), ...e }, ...s.audit] })),
 
-      application: baseApp,
+      application: initialSessionState.application,
       get profile() {
         const a = get().application;
         return { ...a, progress: a.readinessScore, lastSavedAt: a.lastUpdatedAt };
@@ -126,12 +145,12 @@ export const useApp = create<AppState>()(
       updateApplication: (p) =>
         set((s) => ({ application: { ...s.application, ...p, lastUpdatedAt: nowStr() } })),
 
-      evidence: EVIDENCE_SEED,
+      evidence: initialSessionState.evidence,
       addEvidence: (ev) => set((s) => ({ evidence: [ev, ...s.evidence] })),
       advanceIndexing: (id, to) =>
         set((s) => ({ evidence: s.evidence.map((e) => (e.id === id ? { ...e, indexingStatus: to } : e)) })),
 
-      metrics: METRIC_SEED,
+      metrics: initialSessionState.metrics,
       upsertMetric: (m) =>
         set((s) => {
           const idx = s.metrics.findIndex((x) => x.id === m.id);
@@ -139,8 +158,8 @@ export const useApp = create<AppState>()(
           return { metrics: next };
         }),
 
-      events: EVENT_REGISTRY,
-      participants: EVENT_PARTICIPANTS,
+      events: initialSessionState.events,
+      participants: initialSessionState.participants,
       indexEventRoster: (eventId) =>
         set((s) => ({
           events: s.events.map((e) =>
@@ -148,22 +167,22 @@ export const useApp = create<AppState>()(
           ),
         })),
 
-      tasks: REVIEW_TASKS,
+      tasks: initialSessionState.tasks,
       decideTask: (id, status) =>
         set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, status } : t)) })),
       assignTask: (id, officerId) =>
         set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, assignedOfficerId: officerId } : t)) })),
 
-      submittedIds: [],
+      submittedIds: initialSessionState.submittedIds,
       submitProfile: (id) => set((s) => ({ submittedIds: Array.from(new Set([...s.submittedIds, id])) })),
 
-      demoStep: 0,
+      demoStep: initialSessionState.demoStep,
       setDemoStep: (demoStep) => set({ demoStep }),
 
-      wizardType: null,
-      wizardLevel: null,
+      wizardType: initialSessionState.wizardType,
+      wizardLevel: initialSessionState.wizardLevel,
       setWizard: (p) => set((s) => ({ wizardType: p.type ?? s.wizardType, wizardLevel: p.level ?? s.wizardLevel })),
-      currentDraftId: null,
+      currentDraftId: initialSessionState.currentDraftId,
       setCurrentDraftId: (id) => set({ currentDraftId: id }),
     }),
     { name: "5tot-app-v3" },
