@@ -125,6 +125,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const [drawerEvidence, setDrawerEvidence] = useState<Evidence | null>(null);
   const [addCriterion, setAddCriterion] = useState<CriterionKey | "priority" | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [overrideWarning, setOverrideWarning] = useState(false);
 
   const targetLevel = LEVELS.find((level) => level.key === application.targetLevel) ?? LEVELS[2];
   const status = PROFILE_STATUS[application.status];
@@ -187,6 +188,10 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   };
 
   const confirmSubmit = () => {
+    if (missingImportant && !overrideWarning) {
+      toast.error("Vui lòng xác nhận bạn hiểu các cảnh báo trước khi nộp.");
+      return;
+    }
     updateApplication({
       status: "reviewing",
       submittedAt: new Date().toISOString(),
@@ -199,8 +204,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
       type: "success",
     });
     setConfirmOpen(false);
+    setOverrideWarning(false);
     setTab("tracking");
     toast.success("Hồ sơ đã được nộp để cán bộ xét duyệt.");
+  };
+
+  const openSubmitConfirmation = () => {
+    setOverrideWarning(false);
+    setConfirmOpen(true);
   };
 
   const handleStickyAction = () => {
@@ -213,7 +224,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
       setOpenCriterion("tinh-nguyen");
       return;
     }
-    setConfirmOpen(true);
+    openSubmitConfirmation();
   };
 
   return (
@@ -510,6 +521,12 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
             {stickyCta === "Nộp hồ sơ" ? <Send className="h-4 w-4" /> : <ClipboardCheck className="h-4 w-4" />}
             {stickyCta}
           </Button>
+          {missingImportant && application.status !== "reviewing" && application.status !== "submitted" && (
+            <Button variant="outline" className="sm:min-w-[150px]" onClick={() => setConfirmOpen(true)}>
+              <Send className="h-4 w-4" />
+              Nộp hồ sơ
+            </Button>
+          )}
         </div>
       </div>
 

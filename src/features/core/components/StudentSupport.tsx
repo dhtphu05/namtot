@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, Bell, BookOpenCheck, FileQuestion, Send, User } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Bot, Bell, BookOpenCheck, ClipboardCheck, FileQuestion, Send, User } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip } from "@/components/ui-kit";
 import { useApp } from "@/lib/store";
@@ -26,6 +27,7 @@ const answers: Record<string, string> = {
 };
 
 export function StudentSupport() {
+  const nav = useNavigate();
   const notifications = useApp((s) => s.notifications);
   const [messages, setMessages] = useState<Message[]>([
     { id: "m-0", from: "bot", text: "Mình có thể giúp em kiểm tra hồ sơ, minh chứng, hạn bổ sung và cách chuẩn bị trước khi nộp." },
@@ -136,6 +138,23 @@ export function StudentSupport() {
                   <div className="mt-1 text-xs text-muted-foreground">{item.desc}</div>
                 </div>
               ))}
+            </div>
+          </Card>
+
+          <Card>
+            <div className="flex items-center gap-2 font-bold text-brand-deep">
+              <ClipboardCheck className="h-4 w-4" /> Nộp hồ sơ
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Mở hồ sơ để kiểm tra các tiêu chí, chạy tiền kiểm và nộp chính thức.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <Button className="w-full" onClick={() => nav({ to: "/app/drafts" })}>
+                Hồ sơ của tôi
+              </Button>
+              <Button variant="secondary" className="w-full" onClick={() => nav({ to: "/app/ai-precheck" })}>
+                Tiền kiểm
+              </Button>
             </div>
           </Card>
 
