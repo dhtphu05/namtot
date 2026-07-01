@@ -5,6 +5,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useApp } from "@/lib/store";
 import { authApi } from "@/features/auth/api/auth";
+import { toUiRole } from "@/features/auth/role-map";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api/client";
 
@@ -35,7 +36,7 @@ function Login() {
     try {
       const res = await authApi.login(email, password);
       setAuthData(res.data.user, res.data.accessToken, res.data.refreshToken);
-      setRole(res.data.user.role);
+      setRole(toUiRole(res.data.user.role));
       toast.success("Đăng nhập thành công!");
       nav({ to: "/app" });
     } catch (err) {

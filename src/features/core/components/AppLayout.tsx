@@ -1,9 +1,6 @@
 import { Outlet } from "@tanstack/react-router";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { motion } from "framer-motion";
-import { useAuth } from "@/features/auth/store/auth-store";
-
-
 
 export function AppLayout() {
   return (

@@ -1,82 +1,125 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, FileText, PencilLine, FolderUp, Sparkles, GitBranch, Bot, Bell,
-  Inbox, BookOpenCheck, ShieldQuestion, ChartNoAxesCombined, Cpu, UserCog,
-  History, Download, UsersRound, SlidersHorizontal, ScanFace, LogOut, CalendarCheck,
+  Bell,
+  BookOpenCheck,
+  Bot,
+  CalendarCheck,
+  ChartNoAxesCombined,
+  Cpu,
+  Download,
+  FolderUp,
+  GitBranch,
+  History,
+  Inbox,
+  LayoutDashboard,
   ListChecks,
+  LogOut,
+  PencilLine,
+  ScanFace,
+  ShieldQuestion,
+  SlidersHorizontal,
+  Sparkles,
+  UserCog,
+  UsersRound,
 } from "lucide-react";
+import { useAuth } from "@/features/auth/store/auth-store";
+import { authApi } from "@/features/auth/api/auth";
+import {
+  ENABLE_DEMO_ROLE_SWITCH,
+  getRoleLabel,
+  isUiRole,
+  toUiRole,
+} from "@/features/auth/role-map";
 import { useApp } from "@/lib/store";
-import { ROLES, OFFICERS, CRITERIA, type Role } from "@/lib/mock-data";
+import { ROLES, type Role } from "@/lib/mock-data";
 
 const NAV: Record<Role, { group: string; items: { label: string; to: string; icon: any }[] }[]> = {
   student: [
     {
-      group: "Hồ sơ SV5T của tôi",
+      group: "Ho so SV5T cua toi",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
-        { label: "Bản nháp hồ sơ", to: "/app/drafts", icon: PencilLine },
-        { label: "Minh chứng theo tiêu chí", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho minh chứng & sự kiện", to: "/app/event-library", icon: ListChecks },
-        { label: "AI tiền kiểm", to: "/app/ai-precheck", icon: Sparkles },
+        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
+        { label: "Ban nhap ho so", to: "/app/drafts", icon: PencilLine },
+        { label: "Minh chung", to: "/app/evidence", icon: FolderUp },
+        { label: "Kho su kien", to: "/app/event-library", icon: ListChecks },
+        { label: "AI tien kiem", to: "/app/ai-precheck", icon: Sparkles },
         { label: "Cascade Review", to: "/app/cascade", icon: GitBranch },
-        { label: "Xác thực eKYC", to: "/app/ekyc", icon: ScanFace },
+        { label: "Xac thuc eKYC", to: "/app/ekyc", icon: ScanFace },
       ],
     },
     {
-      group: "Hỗ trợ",
+      group: "Ho tro",
       items: [
         { label: "Chatbot SV5T", to: "/app/chatbot", icon: Bot },
-        { label: "Thông báo", to: "/app/notifications", icon: Bell },
+        { label: "Thong bao", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
   officer: [
     {
-      group: "Xét duyệt theo tiêu chí",
+      group: "Xet duyet",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
-        { label: "Hàng chờ xét duyệt", to: "/app/queue", icon: Inbox },
-        { label: "Trung tâm nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck },
-        { label: "Kho tri thức minh chứng", to: "/app/evidence-search", icon: BookOpenCheck },
-        { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion },
-        { label: "Thông báo", to: "/app/notifications", icon: Bell },
+        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
+        { label: "Hang cho xet duyet", to: "/app/queue", icon: Inbox },
+        { label: "Nhap su kien", to: "/app/event-registry", icon: CalendarCheck },
+        { label: "Kho tri thuc", to: "/app/evidence-search", icon: BookOpenCheck },
+        { label: "Thong bao", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
   manager: [
     {
-      group: "Quản lý",
+      group: "Quan ly",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
-        { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog },
-        { label: "Trung tâm nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck },
+        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
+        { label: "Phan cong can bo", to: "/app/assignment", icon: UserCog },
+        { label: "Nhap su kien", to: "/app/event-registry", icon: CalendarCheck },
         { label: "SmartUX Analytics", to: "/app/analytics", icon: ChartNoAxesCombined },
         { label: "VNPT AI Center", to: "/app/vnpt", icon: Cpu },
         { label: "Audit Log", to: "/app/audit", icon: History },
         { label: "Export Center", to: "/app/export", icon: Download },
         { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion },
-        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal },
+        { label: "Cau hinh tieu chi", to: "/app/settings", icon: SlidersHorizontal },
       ],
     },
   ],
   collective: [
     {
-      group: "Tập thể",
+      group: "Tap the",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
-        { label: "Hồ sơ tập thể", to: "/app/collective", icon: UsersRound },
-        { label: "Minh chứng theo tiêu chí", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho sự kiện hợp lệ", to: "/app/event-library", icon: ListChecks },
-        { label: "Thông báo", to: "/app/notifications", icon: Bell },
+        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
+        { label: "Ho so tap the", to: "/app/collective", icon: UsersRound },
+        { label: "Minh chung", to: "/app/evidence", icon: FolderUp },
+        { label: "Kho su kien", to: "/app/event-library", icon: ListChecks },
+        { label: "Thong bao", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
 };
 
 export function Sidebar() {
-  const role = useApp((s) => s.role);
+  const user = useAuth((s) => s.user);
+  const refreshToken = useAuth((s) => s.refreshToken);
+  const clearAuth = useAuth((s) => s.clearAuth);
+  const storedRole = useApp((s) => s.role);
+  const setRole = useApp((s) => s.setRole);
+  const authenticatedRole = user ? toUiRole(user.role) : "student";
+  const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const groups = NAV[role];
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const nav = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout(refreshToken ?? undefined);
+    } catch {
+      // Local logout must still happen if the server token is already invalid.
+    } finally {
+      clearAuth();
+      setRole("student");
+      nav({ to: "/login" });
+    }
+  };
 
   return (
     <aside className="w-72 shrink-0 bg-white border-r border-[#EEF2F7] min-h-screen px-4 py-6 flex flex-col gap-5 sticky top-0">
@@ -86,20 +129,20 @@ export function Sidebar() {
         </div>
         <div>
           <div className="font-bold text-brand-deep leading-tight text-[15px]">5TOT Platform</div>
-          <div className="text-[11px] text-muted-foreground">Sinh viên 5 tốt • 2025–2026</div>
+          <div className="text-[11px] text-muted-foreground">Sinh vien 5 tot - 2025-2026</div>
         </div>
       </Link>
 
-      <RoleSwitcher />
+      <RolePanel />
 
       <nav className="flex flex-col gap-5 overflow-y-auto pr-1">
-        {groups.map((g) => (
-          <div key={g.group}>
+        {groups.map((group) => (
+          <div key={group.group}>
             <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground/80 px-3 mb-2 font-semibold">
-              {g.group}
+              {group.group}
             </div>
             <ul className="flex flex-col gap-0.5">
-              {g.items.map((item) => {
+              {group.items.map((item) => {
                 const active = pathname === item.to || (item.to !== "/app" && pathname.startsWith(item.to));
                 const Icon = item.icon;
                 return (
@@ -126,56 +169,66 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto">
-        <Link
-          to="/login"
+        <button
+          type="button"
+          onClick={handleLogout}
           className="flex items-center gap-2 px-3 py-2 text-[13px] text-muted-foreground hover:text-brand-deep"
         >
-          <LogOut className="w-4 h-4" /> Đăng xuất / Đổi vai trò
-        </Link>
+          <LogOut className="w-4 h-4" /> Dang xuat
+        </button>
       </div>
     </aside>
   );
 }
 
-function RoleSwitcher() {
-  const role = useApp((s) => s.role);
+function RolePanel() {
+  const user = useAuth((s) => s.user);
+  const storedRole = useApp((s) => s.role);
   const setRole = useApp((s) => s.setRole);
-  const officerId = useApp((s) => s.currentOfficerId);
-  const setOfficerId = useApp((s) => s.setCurrentOfficerId);
-  const r = ROLES[role];
-  const officer = OFFICERS.find((o) => o.id === officerId);
-  const officerCrit = officer ? CRITERIA.find((c) => c.key === officer.specializedCriteria[0]) : undefined;
+  const authenticatedRole = user ? toUiRole(user.role) : "student";
+  const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
+  const roleMeta = ROLES[role];
+
   return (
     <div className="rounded-xl border border-[#EEF2F7] p-3 mx-1">
       <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-2 px-1 font-semibold">
-        Đang đăng nhập
+        Dang dang nhap
       </div>
       <div className="flex items-center gap-3 px-1 mb-3">
-        <div className="w-9 h-9 rounded-lg bg-[#0057C2] text-white flex items-center justify-center font-bold text-xs shrink-0">{r.initial}</div>
+        <div className="w-9 h-9 rounded-lg bg-[#0057C2] text-white flex items-center justify-center font-bold text-xs shrink-0">
+          {roleMeta.initial}
+        </div>
         <div className="min-w-0">
-          <div className="font-semibold text-brand-deep text-[13px] truncate">{role === "officer" && officer ? officer.name : r.label}</div>
-          <div className="text-[11px] text-muted-foreground truncate">{role === "officer" && officerCrit ? `Phụ trách ${officerCrit.label}` : r.desc}</div>
+          <div className="font-semibold text-brand-deep text-[13px] truncate">
+            {user?.fullName ?? roleMeta.label}
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate">
+            {user ? getRoleLabel(user.role) : roleMeta.desc}
+          </div>
         </div>
       </div>
-      <select
-        value={role}
-        onChange={(e) => setRole(e.target.value as Role)}
-        className="w-full text-[12px] rounded-lg bg-[#F1F7FD] px-3 py-2 font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#0057C2]/40"
-      >
-        {Object.entries(ROLES).map(([k, v]) => (
-          <option key={k} value={k}>{v.label}</option>
-        ))}
-      </select>
-      {role === "officer" && (
-        <select
-          value={officerId}
-          onChange={(e) => setOfficerId(e.target.value)}
-          className="mt-2 w-full text-[12px] rounded-lg bg-[#F1F7FD] px-3 py-2 font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#0057C2]/40"
-        >
-          {OFFICERS.map((o) => (
-            <option key={o.id} value={o.id}>{o.name} — {o.role}</option>
-          ))}
-        </select>
+
+      {ENABLE_DEMO_ROLE_SWITCH ? (
+        <>
+          <div className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800">
+            Demo-only mock role switch. Backend permissions still use the authenticated account.
+          </div>
+          <select
+            value={role}
+            onChange={(event) => setRole(event.target.value as Role)}
+            className="w-full text-[12px] rounded-lg bg-[#F1F7FD] px-3 py-2 font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#0057C2]/40"
+          >
+            {Object.entries(ROLES).map(([key, value]) => (
+              <option key={key} value={key}>
+                {value.label}
+              </option>
+            ))}
+          </select>
+        </>
+      ) : (
+        <div className="rounded-lg bg-[#F1F7FD] px-3 py-2 text-[12px] font-medium text-brand-deep">
+          {user ? getRoleLabel(user.role) : roleMeta.label}
+        </div>
       )}
     </div>
   );
