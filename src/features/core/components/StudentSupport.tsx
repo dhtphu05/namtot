@@ -143,10 +143,10 @@ export function StudentSupport() {
 
           <Card>
             <div className="flex items-center gap-2 font-bold text-brand-deep">
-              <ClipboardCheck className="h-4 w-4" /> Nộp hồ sơ
+              <ClipboardCheck className="h-4 w-4" /> Chuẩn bị nộp
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Mở hồ sơ để kiểm tra các tiêu chí, chạy tiền kiểm và nộp chính thức.
+              Mở hồ sơ để kiểm tra các tiêu chí, chạy tiền kiểm và xem điều kiện nộp.
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               <Button className="w-full" onClick={() => nav({ to: "/app/drafts" })}>

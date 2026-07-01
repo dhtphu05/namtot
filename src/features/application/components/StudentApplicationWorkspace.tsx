@@ -522,9 +522,9 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
             {stickyCta}
           </Button>
           {missingImportant && application.status !== "reviewing" && application.status !== "submitted" && (
-            <Button variant="outline" className="sm:min-w-[150px]" onClick={() => setConfirmOpen(true)}>
+            <Button variant="outline" className="sm:min-w-[170px]" onClick={openSubmitConfirmation}>
               <Send className="h-4 w-4" />
-              Nộp hồ sơ
+              Nộp với cảnh báo
             </Button>
           )}
         </div>
@@ -588,6 +588,23 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
             <p className="mt-2 text-sm text-muted-foreground">
               Sau khi nộp, hồ sơ sẽ được khóa để cán bộ xét duyệt. Bạn chỉ có thể bổ sung khi có yêu cầu từ cán bộ.
             </p>
+            {missingImportant && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div className="font-semibold text-amber-900">Hồ sơ vẫn còn cảnh báo cần bổ sung.</div>
+                <p className="mt-1 text-sm text-amber-800">
+                  Khuyến nghị là quay lại bổ sung minh chứng trước. Nếu vẫn nộp, cán bộ có thể yêu cầu bổ sung sau khi xét duyệt.
+                </p>
+                <label className="mt-3 flex items-start gap-2 text-sm font-medium text-amber-900">
+                  <input
+                    type="checkbox"
+                    checked={overrideWarning}
+                    onChange={(event) => setOverrideWarning(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-amber-300"
+                  />
+                  Tôi hiểu các cảnh báo và vẫn muốn nộp hồ sơ để cán bộ xét.
+                </label>
+              </div>
+            )}
             <div className="mt-4 space-y-2">
               {["Đã chọn cấp aim", "Đã nhập thông tin cơ bản", "Đã thêm minh chứng cho các tiêu chí chính", "Đã xem kết quả tiền kiểm"].map((item) => (
                 <div key={item} className="flex items-center gap-2 text-sm text-brand-deep">
@@ -596,8 +613,8 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               ))}
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setConfirmOpen(false)}>Quay lại kiểm tra</Button>
-              <Button onClick={confirmSubmit}>Xác nhận nộp</Button>
+              <Button variant="secondary" onClick={() => { setConfirmOpen(false); setOverrideWarning(false); }}>Quay lại kiểm tra</Button>
+              <Button onClick={confirmSubmit} disabled={missingImportant && !overrideWarning}>Xác nhận nộp</Button>
             </div>
           </div>
         </div>
