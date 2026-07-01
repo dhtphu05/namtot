@@ -2,11 +2,11 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress } from "@/components/ui-kit";
 import { CRITERIA, LEVELS, CURRENT_STUDENT } from "@/lib/mock-data";
-import { Save, Send, Sparkles, History, Target, FolderUp, FileText, Loader2 } from "lucide-react";
+import { Save, Send, Sparkles, History, Target, FolderUp, FileText, Loader2, SlidersHorizontal } from "lucide-react";
 import { CriterionIcon } from "@/components/AppIcon";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { useCurrentApplication, useStartApplication, useUpdateTargetLevel, useSaveDraft, useSubmitApplication, usePrecheck } from "@/features/application/hooks/useApplication";
+import { useCurrentApplication, useStartApplication, useUpdateTargetLevel, useSaveApplicationDraft, useSubmitApplication } from "@/features/application/hooks/useApplication";
 import type { Level } from "@/lib/api/types";
 
 const REC: Record<string, { label: string; tone: "success" | "warning" | "brand" | "muted" }> = {
@@ -39,17 +39,28 @@ export function DraftWorkspace() {
   const { data: appRes, isLoading } = useCurrentApplication();
   const startMutation = useStartApplication();
   const updateLevelMutation = useUpdateTargetLevel();
-  const saveDraftMutation = useSaveDraft();
+  const saveDraftMutation = useSaveApplicationDraft();
   const submitMutation = useSubmitApplication();
-  const precheckMutation = usePrecheck();
 
   const [notes, setNotes] = useState("");
+
+  // Prepopulate notes if draft data has it
+  useEffect(() => {
+    if (appRes?.application) {
+      const draft = (appRes.application as any).draftData || {};
+      setNotes(draft.personalStatement || draft.note || "");
+    }
+  }, [appRes]);
 
   // Debounced Autosave
   useEffect(() => {
     if (appRes?.application && notes) {
       const timeoutId = setTimeout(() => {
-        saveDraftMutation.mutate({ id: appRes.application!.id, draftPayload: { notes } });
+        saveDraftMutation.mutate({
+          id: appRes.application!.id,
+          draftData: { ...((appRes.application as any).draftData || {}), personalStatement: notes },
+          step: "student_profile"
+        });
         toast.info("Đã tự động lưu bản nháp.");
       }, 1500);
       return () => clearTimeout(timeoutId);
@@ -59,7 +70,7 @@ export function DraftWorkspace() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#0057C2]" />
       </div>
     );
   }
@@ -73,7 +84,7 @@ export function DraftWorkspace() {
         <h2 className="text-2xl font-bold text-brand-deep">Bạn chưa có hồ sơ năm học này</h2>
         <p className="text-muted-foreground mt-2 mb-6 max-w-md">Bắt đầu tạo hồ sơ Sinh viên 5 tốt ngay bây giờ để được hướng dẫn chi tiết từng bước.</p>
         <Button 
-          onClick={() => startMutation.mutate({ schoolYear: "2025-2026", targetLevel: "school" })}
+          onClick={() => startMutation.mutate({ schoolYear: "2025-2026", targetLevel: "school", applicationType: "individual" })}
           disabled={startMutation.isPending}
         >
           {startMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
@@ -86,20 +97,18 @@ export function DraftWorkspace() {
   const profile = appRes.application;
 
   const onSave = () => {
-    saveDraftMutation.mutate({ id: profile.id, draftPayload: { notes } }, {
+    saveDraftMutation.mutate({
+      id: profile.id,
+      draftData: { ...((profile as any).draftData || {}), personalStatement: notes },
+      step: "student_profile"
+    }, {
       onSuccess: () => toast.success("Đã lưu bản nháp thủ công")
     });
   };
 
-  const onPreCheck = () => {
-    precheckMutation.mutate({ id: profile.id, level: profile.targetLevel }, {
-      onSuccess: () => nav({ to: "/app/ai-precheck" }) 
-    });
-  };
-
   const onSubmit = () => {
-    submitMutation.mutate({ id: profile.id, allowSubmitWithWarnings: false }, {
-      onSuccess: () => nav({ to: "/app/cascade" }) 
+    submitMutation.mutate({ id: profile.id, allowSubmitWithWarnings: true }, {
+      onSuccess: () => nav({ to: "/app/evidence" }) 
     });
   };
 
@@ -195,10 +204,6 @@ export function DraftWorkspace() {
         <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="ghost" onClick={() => nav({ to: "/app/audit" })}><History className="w-4 h-4" /> Xem lịch sử cập nhật</Button>
           <Button variant="secondary" onClick={() => nav({ to: "/app/evidence" })}><FolderUp className="w-4 h-4" /> Mở minh chứng theo tiêu chí</Button>
-          <Button variant="outline" onClick={onPreCheck} disabled={precheckMutation.isPending}>
-            {precheckMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            Tiền kiểm hồ sơ
-          </Button>
           <Button onClick={onSubmit} disabled={submitMutation.isPending}><Send className="w-4 h-4" /> Nộp chính thức</Button>
         </div>
       </div>

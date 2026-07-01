@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { authApi } from "@/features/auth/api/auth";
+import { useNotifications } from "@/features/notifications/hooks/useNotifications";
 import {
   ENABLE_DEMO_ROLE_SWITCH,
   getRoleLabel,
@@ -36,22 +37,20 @@ import { ROLES, type Role } from "@/lib/mock-data";
 const NAV: Record<Role, { group: string; items: { label: string; to: string; icon: any }[] }[]> = {
   student: [
     {
-      group: "Ho so SV5T cua toi",
+      group: "Hồ sơ SV5T của tôi",
       items: [
-        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
-        { label: "Ban nhap ho so", to: "/app/drafts", icon: PencilLine },
-        { label: "Minh chung", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho su kien", to: "/app/event-library", icon: ListChecks },
-        { label: "AI tien kiem", to: "/app/ai-precheck", icon: Sparkles },
-        { label: "Cascade Review", to: "/app/cascade", icon: GitBranch },
-        { label: "Xac thuc eKYC", to: "/app/ekyc", icon: ScanFace },
+        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
+        { label: "Hồ sơ của tôi", to: "/app/wizard", icon: PencilLine },
+        { label: "Bản nháp hồ sơ", to: "/app/drafts", icon: SlidersHorizontal },
+        { label: "Minh chứng", to: "/app/evidence", icon: FolderUp },
+        { label: "Kho sự kiện", to: "/app/event-library", icon: ListChecks },
       ],
     },
     {
-      group: "Ho tro",
+      group: "Hỗ trợ & Lịch trình",
       items: [
-        { label: "Chatbot SV5T", to: "/app/chatbot", icon: Bot },
-        { label: "Thong bao", to: "/app/notifications", icon: Bell },
+        { label: "Thông báo", to: "/app/notifications", icon: Bell },
+        { label: "Timeline hồ sơ", to: "/app/audit", icon: History },
       ],
     },
   ],
@@ -98,6 +97,9 @@ const NAV: Record<Role, { group: string; items: { label: string; to: string; ico
 };
 
 export function Sidebar() {
+  const { data: notifications = [] } = useNotifications();
+  const unreadCount = notifications.filter((n) => !n.readAt).length;
+
   const user = useAuth((s) => s.user);
   const refreshToken = useAuth((s) => s.refreshToken);
   const clearAuth = useAuth((s) => s.clearAuth);
@@ -158,7 +160,12 @@ export function Sidebar() {
                       <span className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${active ? "bg-white/15" : "bg-[#F1F7FD] text-[#0057C2] group-hover:bg-white"}`}>
                         <Icon className="w-3.5 h-3.5" strokeWidth={1.8} />
                       </span>
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate flex-1">{item.label}</span>
+                      {item.to === "/app/notifications" && unreadCount > 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none shrink-0 ${active ? "bg-white text-[#0057C2]" : "bg-rose-500 text-white"}`}>
+                          {unreadCount}
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );

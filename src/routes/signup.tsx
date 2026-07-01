@@ -27,10 +27,10 @@ function Signup() {
             5T
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-brand-deep">
-            Tao tai khoan
+            Đăng ký tài khoản
           </h1>
           <p className="text-muted-foreground mt-3">
-            Phase 1 chi ho tro dang nhap bang tai khoan seed.
+            Tài khoản được cấp bởi Ban tổ chức/Quản trị viên.
           </p>
         </motion.div>
 
@@ -41,15 +41,14 @@ function Signup() {
         >
           <div className="card-glow p-7 space-y-5 text-center">
             <p className="text-sm text-muted-foreground">
-              Backend contract hien tai khong co endpoint dang ky. Hay dung tai
-              khoan mau trong tai lieu Phase 1 de dang nhap.
+              Vui lòng đăng nhập bằng tài khoản được cấp.
             </p>
 
             <Link
               to="/login"
               className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
             >
-              Den trang dang nhap <ArrowRight className="ml-2 h-4 w-4" />
+              Quay lại đăng nhập <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </div>
         </motion.div>
