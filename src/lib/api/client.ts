@@ -6,6 +6,14 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 let isRefreshing = false;
 let refreshSubscribers: ((token: string | null) => void)[] = [];
 
+type JsonBody =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonBody[]
+  | { [key: string]: JsonBody | undefined };
+
 function subscribeTokenRefresh(cb: (token: string | null) => void) {
   refreshSubscribers.push(cb);
 }
@@ -15,7 +23,8 @@ function onRefreshed(token: string | null) {
   refreshSubscribers = [];
 }
 
-interface ApiOptions extends RequestInit {
+interface ApiOptions extends Omit<RequestInit, "body"> {
+  body?: BodyInit | JsonBody;
   _retry?: boolean;
 }
 
@@ -38,8 +47,8 @@ export async function apiClient<T>(
   options: ApiOptions = {}
 ): Promise<ApiResponse<T>> {
   const url = `${BASE_URL}${endpoint}`;
+  const { body, _retry, ...requestOptions } = options;
   
-  // Setup headers
   const headers = new Headers(options.headers);
   
   const token = useAuth.getState().accessToken;
@@ -47,21 +56,18 @@ export async function apiClient<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  // Handle JSON body automatically if it's not FormData
-  if (
-    options.body &&
-    typeof options.body === "object" &&
-    !(options.body instanceof FormData)
-  ) {
-    options.body = JSON.stringify(options.body);
+  let requestBody = body as BodyInit | undefined;
+  if (isJsonBody(body)) {
+    requestBody = JSON.stringify(body);
     if (!headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
   }
 
   const config: RequestInit = {
-    ...options,
+    ...requestOptions,
     headers,
+    body: requestBody,
   };
 
   try {
@@ -75,7 +81,7 @@ export async function apiClient<T>(
     }
 
     if (!response.ok) {
-      if (response.status === 401 && !options._retry && !endpoint.includes("/api/auth/login") && !endpoint.includes("/api/auth/refresh")) {
+      if (response.status === 401 && !_retry && !isAuthEndpoint(endpoint)) {
         return handle401Error<T>(endpoint, options);
       }
       
@@ -102,6 +108,22 @@ export async function apiClient<T>(
       "NETWORK_ERROR"
     );
   }
+}
+
+function isJsonBody(body: ApiOptions["body"]): body is JsonBody {
+  if (body === undefined) return false;
+  if (body === null) return true;
+  if (typeof body !== "object") return false;
+  if (body instanceof FormData) return false;
+  if (body instanceof Blob) return false;
+  if (body instanceof URLSearchParams) return false;
+  if (body instanceof ArrayBuffer) return false;
+  if (ArrayBuffer.isView(body)) return false;
+  return true;
+}
+
+function isAuthEndpoint(endpoint: string) {
+  return endpoint === "/api/auth/login" || endpoint === "/api/auth/refresh";
 }
 
 async function handle401Error<T>(

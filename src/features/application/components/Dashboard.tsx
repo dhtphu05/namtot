@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, StatCard, Chip, Button, Progress } from "@/components/ui-kit";
 import { useApp } from "@/lib/store";
+import { useAuth } from "@/features/auth/store/auth-store";
+import { ENABLE_DEMO_ROLE_SWITCH, isUiRole, toUiRole } from "@/features/auth/role-map";
 import { CRITERIA, STUDENTS, RESOLUTION_CASES, OFFICERS, CURRENT_PROFILE, CURRENT_STUDENT, CURRENT_COLLECTIVE, LEVELS, PROFILE_STATUS, STATUS, MEDIA, REVIEW_TASKS } from "@/lib/mock-data";
 import { FileText, Sparkles, Inbox, TriangleAlert, Clock, UsersRound, FileCheck2, CircleAlert, Bot, Target, GitBranch, Upload, History, ScanText, PencilLine, Send, ChartNoAxesCombined, ShieldQuestion, ArrowRight, Play } from "lucide-react";
 import { motion } from "framer-motion";
@@ -12,7 +14,13 @@ import { useNavigate } from "@tanstack/react-router";
 
 
 export function Dashboard() {
-  const role = useApp((s) => s.role);
+  const user = useAuth((s) => s.user);
+  const storedRole = useApp((s) => s.role);
+  const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole)
+    ? storedRole
+    : user
+      ? toUiRole(user.role)
+      : "student";
   if (role === "student") return <StudentDash />;
   if (role === "officer") return <OfficerDash />;
   if (role === "manager") return <ManagerDash />;
