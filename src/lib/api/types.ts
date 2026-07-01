@@ -290,14 +290,19 @@ export interface CollectivePrecheckView {
 }
 
 export interface CollectiveMemberSummary {
-  total: number;
-  participated: number;
-  notParticipated?: number;
-  unknownParticipation?: number;
-  sv5tSchool?: number;
-  sv5tHigher?: number;
-  noViolation?: number;
-  violated?: number;
+  totalMembers: number;
+  participatedMembers: number;
+  notParticipatedMembers: number;
+  unknownParticipationCount: number;
+  participationRate: number;
+  schoolSv5tMembers: number;
+  schoolSv5tRate: number;
+  universitySv5tMembers: number;
+  citySv5tMembers: number;
+  centralSv5tMembers: number;
+  higherLevelAchieverCount: number;
+  violationCount: number;
+  unknownViolationCount: number;
   [key: string]: unknown;
 }
 

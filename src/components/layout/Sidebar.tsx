@@ -12,7 +12,6 @@ import {
   Inbox,
   LayoutDashboard,
   LifeBuoy,
-  ListChecks,
   LogOut,
   ShieldQuestion,
   SlidersHorizontal,
@@ -76,8 +75,6 @@ const NAV: Record<Role, { group: string; items: { label: string; to: string; ico
       items: [
         { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
         { label: "Hồ sơ tập thể", to: "/app/collective", icon: UsersRound },
-        { label: "Minh chứng", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho sự kiện", to: "/app/event-library", icon: ListChecks },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
