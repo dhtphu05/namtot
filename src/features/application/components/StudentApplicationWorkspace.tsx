@@ -24,7 +24,7 @@ import {
   useUpdateTargetLevel,
   useUpsertMetric,
 } from "@/features/application/hooks/useApplication";
-import { useCreateEvidence, useEvidences } from "@/features/evidence/hooks/useEvidence";
+import { useCreateEvidence, useEvidences, useUploadAndIndex } from "@/features/evidence/hooks/useEvidence";
 import type {
   ApplicationMetric,
   ApplicationState,
@@ -48,6 +48,12 @@ type ApplicationWithDetails = ApplicationState & {
     evidenceByCriterion?: Partial<Record<Criterion, number>>;
     metricsCompletion?: { completed?: number; required?: number };
   };
+};
+
+type EvidenceUploadForm = {
+  criterion: Criterion;
+  evidenceName: string;
+  file: File | null;
 };
 
 const SCHOOL_YEAR = "2025-2026";
@@ -150,12 +156,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     volunteer_days: "",
     foreign_language_score: "",
   });
+  const [evidenceForm, setEvidenceForm] = useState<EvidenceUploadForm | null>(null);
 
   const current = useCurrentApplication(SCHOOL_YEAR);
   const startApplication = useStartApplication();
   const updateTargetLevel = useUpdateTargetLevel();
   const upsertMetric = useUpsertMetric();
   const createEvidence = useCreateEvidence();
+  const uploadAndIndex = useUploadAndIndex();
   const runPrecheck = usePrecheck();
   const submitApplication = useSubmitApplication();
 
@@ -266,6 +274,39 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const precheckNow = () => {
     runPrecheck.mutate({ id: application.id, level: application.targetLevel });
     setTab("precheck");
+  };
+
+  const submitEvidenceForm = async () => {
+    if (!evidenceForm) return;
+    const evidenceName = evidenceForm.evidenceName.trim();
+    if (evidenceName.length < 3) {
+      toast.error("Vui lòng nhập tên minh chứng ít nhất 3 ký tự.");
+      return;
+    }
+
+    try {
+      const created = await createEvidence.mutateAsync({
+        applicationId: application.id,
+        data: {
+          criterion: evidenceForm.criterion,
+          evidenceName,
+          sourceType: "manual_upload",
+        },
+      });
+
+      if (evidenceForm.file) {
+        await uploadAndIndex.mutateAsync({
+          evidenceId: created.id,
+          applicationId: application.id,
+          file: evidenceForm.file,
+        });
+      }
+
+      toast.success(evidenceForm.file ? "Đã tải lên minh chứng và bắt đầu AI indexing." : "Đã tạo minh chứng.");
+      setEvidenceForm(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể thêm minh chứng.");
+    }
   };
 
   const submitNow = () => {
@@ -419,8 +460,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                     </div>
                     <Button
                       variant="secondary"
-                      disabled={createEvidence.isPending}
-                      onClick={() => addEvidenceForCriterion(criterion.key)}
+                      disabled={createEvidence.isPending || uploadAndIndex.isPending}
+                      onClick={() =>
+                        setEvidenceForm({
+                          criterion: criterion.key,
+                          evidenceName: `Minh chứng ${criterion.label}`,
+                          file: null,
+                        })
+                      }
                     >
                       <Upload className="h-4 w-4" /> Thêm minh chứng
                     </Button>
@@ -526,6 +573,77 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
           </Card>
         )}
       </div>
+
+      {evidenceForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+          <div className="w-full max-w-xl rounded-xl bg-white shadow-2xl">
+            <div className="border-b border-[#E3ECF6] px-5 py-4">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Thêm minh chứng
+              </div>
+              <h3 className="mt-1 text-xl font-bold text-brand-deep">
+                {criteria.find((item) => item.key === evidenceForm.criterion)?.label ?? evidenceForm.criterion}
+              </h3>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Tên minh chứng</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-[#DCE7F2] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0057C2]/20"
+                  value={evidenceForm.evidenceName}
+                  onChange={(event) =>
+                    setEvidenceForm((current) =>
+                      current ? { ...current, evidenceName: event.target.value } : current,
+                    )
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">File minh chứng</label>
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  className="mt-1 block w-full rounded-lg border border-dashed border-[#B8CEE8] bg-[#F6F9FC] px-3 py-3 text-sm"
+                  onChange={(event) =>
+                    setEvidenceForm((current) =>
+                      current ? { ...current, file: event.target.files?.[0] ?? null } : current,
+                    )
+                  }
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Hỗ trợ PDF, PNG, JPG, JPEG, WEBP. Nếu chưa có file, bạn vẫn có thể tạo minh chứng trước.
+                </p>
+              </div>
+
+              {evidenceForm.file && (
+                <div className="rounded-lg bg-[#F1F7FD] px-3 py-2 text-sm text-brand-deep">
+                  Đã chọn: <b>{evidenceForm.file.name}</b>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-[#E3ECF6] px-5 py-4">
+              <Button
+                variant="ghost"
+                onClick={() => setEvidenceForm(null)}
+                disabled={createEvidence.isPending || uploadAndIndex.isPending}
+              >
+                Hủy
+              </Button>
+              <Button onClick={submitEvidenceForm} disabled={createEvidence.isPending || uploadAndIndex.isPending}>
+                {createEvidence.isPending || uploadAndIndex.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                Lưu minh chứng
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
