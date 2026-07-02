@@ -176,21 +176,25 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
           </div>
         </Card>
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.45fr)]">
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
           <div className="space-y-5">
             <ApplicationSummary task={task} />
             <MetricsSection metrics={metrics} />
             <EvidenceSection evidences={evidences} />
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
             <ReviewDecisionPanel task={task} onSuccess={() => void refetch()} />
             <RequestSupplementPanel task={task} onSuccess={() => void refetch()} />
-            <ChecklistSection checklist={checklist} />
-            <DecisionHistorySection history={decisionHistory} />
-            <AuditTimeline applicationId={task.application.id} limit={10} taskId={task.id} />
           </div>
         </section>
+
+        <section className="grid gap-5 xl:grid-cols-2">
+          <ChecklistSection checklist={checklist} />
+          <DecisionHistorySection history={decisionHistory} />
+        </section>
+
+        <AuditTimeline applicationId={task.application.id} limit={10} taskId={task.id} />
       </div>
     </>
   );

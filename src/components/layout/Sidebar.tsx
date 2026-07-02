@@ -158,20 +158,25 @@ export function Sidebar() {
       ["/app/ai-precheck", "/app/cascade"].some((path) => pathname.startsWith(path)));
 
   return (
-    <aside className="sticky top-0 flex min-h-screen w-72 shrink-0 flex-col gap-5 border-r border-[#EEF2F7] bg-white px-4 py-6">
-      <Link to="/app" className="flex items-center gap-3 px-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0057C2] text-sm font-bold text-white">
-          5T
-        </div>
-        <div>
-          <div className="text-[15px] font-bold leading-tight text-brand-deep">5TOT Platform</div>
-          <div className="text-[11px] text-muted-foreground">SV5T 2025-2026</div>
-        </div>
-      </Link>
+    <aside className="flex h-screen w-72 shrink-0 flex-col border-r border-[#EEF2F7] bg-white">
+      <div className="shrink-0 px-4 pb-4 pt-6">
+        <Link to="/app" className="flex items-center gap-3 px-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0057C2] text-sm font-bold text-white">
+            5T
+          </div>
+          <div>
+            <div className="text-[15px] font-bold leading-tight text-brand-deep">5TOT Platform</div>
+            <div className="text-[11px] text-muted-foreground">SV5T 2025-2026</div>
+          </div>
+        </Link>
+      </div>
 
-      <RolePanel />
+      <div className="shrink-0 px-4 pb-4">
+        <RolePanel />
+      </div>
 
-      <nav className="flex flex-col gap-5 overflow-y-auto pr-1">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-4 pr-3">
+        <div className="flex flex-col gap-5 pb-4">
         {groups.map((group) => (
           <div key={group.group}>
             <div className="mb-2 px-3 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground/80">
@@ -215,13 +220,14 @@ export function Sidebar() {
             </ul>
           </div>
         ))}
+        </div>
       </nav>
 
-      <div className="mt-auto">
+      <div className="shrink-0 border-t border-[#EEF2F7] bg-white px-4 py-4">
         <button
           type="button"
           onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-2 text-[13px] text-muted-foreground hover:text-brand-deep"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[#F1F7FD] hover:text-brand-deep"
         >
           <LogOut className="h-4 w-4" /> Đăng xuất
         </button>
