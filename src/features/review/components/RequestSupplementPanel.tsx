@@ -70,8 +70,10 @@ export function RequestSupplementPanel({ task, onSuccess }: RequestSupplementPan
     requestSupplement.mutate(
       { payload },
       {
-        onSuccess: () => {
-          const message = "Đã gửi yêu cầu bổ sung cho sinh viên.";
+        onSuccess: (data) => {
+          const message = data?.notificationCreated
+            ? "Đã gửi yêu cầu bổ sung và thông báo cho sinh viên."
+            : "Đã gửi yêu cầu bổ sung cho sinh viên.";
           setSubmittedMessage(message);
           toast.success(message);
           onSuccess?.();
