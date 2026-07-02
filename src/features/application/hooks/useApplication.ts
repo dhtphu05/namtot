@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { applicationApi } from "@/features/application/api/application";
-import type { Level } from "@/lib/api/types";
+import type { Level, MetricInput } from "@/lib/api/types";
 import { toast } from "sonner";
 
 export const applicationKeys = {
   all: ["applications"] as const,
-  current: () => [...applicationKeys.all, "current"] as const,
-  timeline: (id: string) => [...applicationKeys.all, "timeline", id] as const,
+  current: () => ["application", "current"] as const,
+  timeline: (id: string) => ["application", id, "timeline"] as const,
 };
 
 export function useCurrentApplication(schoolYear?: string) {
@@ -23,12 +23,11 @@ export function useStartApplication() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { schoolYear?: string; targetLevel?: Level }) => {
-      const res = await applicationApi.startApplication(data);
+    mutationFn: async (data: { schoolYear?: string; applicationType?: "individual" | "collective"; targetLevel?: Level }) => {
+      const res = await applicationApi.startCurrentApplication(data);
       return res.data;
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData([...applicationKeys.current(), { schoolYear: data.application.schoolYear }], data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
     },
     onError: (err: Error) => {
@@ -51,16 +50,29 @@ export function useUpdateTargetLevel() {
   });
 }
 
+export function useSaveApplicationDraft() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, draftData, step }: { id: string; draftData: Record<string, unknown>; step?: string }) => {
+      const res = await applicationApi.saveDraft(id, { draftData, step });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+    },
+  });
+}
+
 export function useSaveDraft() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, draftPayload }: { id: string; draftPayload: Record<string, unknown> }) => {
-      const res = await applicationApi.saveDraft(id, draftPayload);
+      const res = await applicationApi.saveDraft(id, { draftData: draftPayload });
       return res.data;
     },
     onSuccess: () => {
-      // Invalidate silently in the background, keeping old data while fetching new
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
     },
   });
@@ -70,8 +82,8 @@ export function useSubmitApplication() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, allowSubmitWithWarnings, studentNote }: { id: string; allowSubmitWithWarnings?: boolean; studentNote?: string }) => {
-      const res = await applicationApi.submit(id, { allowSubmitWithWarnings, studentNote });
+    mutationFn: async ({ id, allowSubmitWithWarnings }: { id: string; allowSubmitWithWarnings: boolean }) => {
+      const res = await applicationApi.submitApplication(id, { allowSubmitWithWarnings });
       return res.data;
     },
     onSuccess: () => {
@@ -94,6 +106,82 @@ export function usePrecheck() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+    },
+  });
+}
+
+export function useApplicationTimeline(id: string | undefined) {
+  return useQuery({
+    queryKey: applicationKeys.timeline(id ?? ""),
+    queryFn: async () => {
+      if (!id) return null;
+      const res = await applicationApi.getApplicationTimeline(id);
+      return res.data;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useApplicationMetrics(id: string | undefined) {
+  return useQuery({
+    queryKey: [...applicationKeys.all, "metrics", id ?? ""],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await applicationApi.getMetrics(id);
+      return res.data || [];
+    },
+    enabled: !!id,
+  });
+}
+
+export function useCreateMetric() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      applicationId,
+      data,
+    }: {
+      applicationId: string;
+      data: MetricInput;
+    }) => {
+      const res = await applicationApi.createApplicationMetric(applicationId, data);
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...applicationKeys.all, "metrics", variables.applicationId] });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      toast.success("Đã lưu chỉ số thành công!");
+    },
+    onError: (err: Error) => {
+      toast.error(`Lỗi lưu chỉ số: ${err.message}`);
+    },
+  });
+}
+
+export function useUpdateMetric() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      metricId,
+      applicationId,
+      data,
+    }: {
+      metricId: string;
+      applicationId: string;
+      data: Partial<MetricInput>;
+    }) => {
+      const res = await applicationApi.updateMetric(metricId, data);
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...applicationKeys.all, "metrics", variables.applicationId] });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      toast.success("Đã cập nhật chỉ số thành công!");
+    },
+    onError: (err: Error) => {
+      toast.error(`Lỗi cập nhật chỉ số: ${err.message}`);
     },
   });
 }

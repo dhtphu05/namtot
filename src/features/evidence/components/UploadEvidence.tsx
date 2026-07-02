@@ -55,15 +55,12 @@ export function UploadEvidence() {
         }
       });
 
-      // 2. Upload file & start indexing
-      const res = await uploadAndIndex.mutateAsync({
+      // 2. Upload file
+      await uploadAndIndex.mutateAsync({
         evidenceId: ev.id,
         applicationId: appId,
         file: file
       });
-
-      // 3. Set Active Job ID to trigger the overlay & polling
-      setActiveJobId(res.jobId);
     } catch (err: any) {
       // toast is already handled by mutations, but catch here to stop flow
     }
@@ -82,7 +79,7 @@ export function UploadEvidence() {
     precheck.mutate({ id: appId, level: appRes?.application?.targetLevel }, {
       onSuccess: () => {
         toast.success("Tiền kiểm hoàn tất!");
-        nav({ to: "/app/ai-precheck" });
+        nav({ to: "/app" });
       }
     });
   };
@@ -91,11 +88,10 @@ export function UploadEvidence() {
     <>
       <TopBar
         title="Upload minh chứng"
-        subtitle="Tải lên minh chứng theo 5 tiêu chí — AI sẽ tự động bóc tách và tạo Evidence Card"
+        subtitle="Tải lên minh chứng theo 5 tiêu chí để hoàn thiện hồ sơ"
         action={
-          <Button onClick={runPrecheck} disabled={precheck.isPending || isScanning}>
-            {precheck.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-            Tiền kiểm tổng thể
+          <Button onClick={() => nav({ to: "/app" })}>
+            Quay lại bảng điều khiển
           </Button>
         }
       />
@@ -168,10 +164,11 @@ export function UploadEvidence() {
                     <div className="text-xs text-muted-foreground">Tải lên: {new Date(f.createdAt).toLocaleDateString("vi-VN")}</div>
                   </div>
                   
-                  {isIndexing && <Chip tone="muted">Đang phân tích OCR</Chip>}
-                  {f.indexingStatus === "indexed" && <Chip tone="success">Đã bóc tách</Chip>}
-                  {f.indexingStatus === "failed" && <Chip tone="error">Trích xuất lỗi</Chip>}
-                  {f.indexingStatus === "needs_manual_review" && <Chip tone="warning"><AlertTriangle className="w-3 h-3" /> Cần xác minh</Chip>}
+                  {f.status === "accepted" && <Chip tone="success">Đã duyệt</Chip>}
+                  {f.status === "rejected" && <Chip tone="error">Từ chối</Chip>}
+                  {f.status === "needs_supplement" && <Chip tone="warning"><AlertTriangle className="w-3 h-3" /> Cần bổ sung</Chip>}
+                  {f.status === "under_review" && <Chip tone="brand">Đang xét duyệt</Chip>}
+                  {f.status === "draft" && <Chip tone="muted">Bản nháp</Chip>}
                   
                   <button onClick={() => handleDelete(f.id)} disabled={deleteEvidence.isPending} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 disabled:opacity-50">
                     <X className="w-4 h-4" />

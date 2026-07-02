@@ -5,8 +5,8 @@ import { toast } from "sonner";
 
 export const evidenceKeys = {
   all: ["evidences"] as const,
-  list: (appId: string) => [...evidenceKeys.all, "list", appId] as const,
-  detail: (id: string) => [...evidenceKeys.all, "detail", id] as const,
+  list: (appId: string) => ["evidences", appId] as const,
+  detail: (id: string) => ["evidence", id, "card"] as const,
 };
 
 export function useEvidences(
@@ -30,22 +30,34 @@ export function useEvidences(
   });
 }
 
-export function useCreateEvidence() {
+export function useCreateEvidence(applicationId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
-      applicationId,
+      applicationId: mutationAppId,
       data,
     }: {
-      applicationId: string;
-      data: { evidenceName: string; criterion: Criterion; sourceType?: EvidenceSourceType };
+      applicationId?: string;
+      data: {
+        evidenceName: string;
+        criterion: Criterion;
+        sourceType: EvidenceSourceType;
+        description?: string;
+        note?: string;
+        metadata?: Record<string, unknown>;
+      };
     }) => {
-      const res = await evidenceApi.createEvidence(applicationId, data);
+      const activeAppId = mutationAppId || applicationId;
+      if (!activeAppId) throw new Error("Missing applicationId");
+      const res = await evidenceApi.createEvidence(activeAppId, data);
       return res.data;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: evidenceKeys.list(variables.applicationId) });
+    onSuccess: (data, variables) => {
+      const activeAppId = variables.applicationId || applicationId;
+      if (activeAppId) {
+        queryClient.invalidateQueries({ queryKey: ["evidences", activeAppId] });
+      }
     },
     onError: (err: Error) => {
       toast.error(`Không thể tạo minh chứng: ${err.message}`);
@@ -53,48 +65,89 @@ export function useCreateEvidence() {
   });
 }
 
-export function useDeleteEvidence() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, applicationId }: { id: string; applicationId: string }) => {
-      await evidenceApi.deleteEvidence(id);
-      return { id, applicationId };
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: evidenceKeys.list(data.applicationId) });
-      toast.success("Đã xoá minh chứng");
-    },
-  });
-}
-
-export function useUploadAndIndex() {
+export function useUpdateEvidence() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
       evidenceId,
       applicationId,
-      file,
+      data,
     }: {
       evidenceId: string;
       applicationId: string;
-      file: File;
+      data: {
+        evidenceName?: string;
+        criterion?: Criterion;
+        description?: string;
+        note?: string;
+        metadata?: Record<string, unknown>;
+      };
     }) => {
-      // 1. Upload file
-      await evidenceApi.uploadFile(evidenceId, file);
-      
-      // 2. Start indexing async
-      const indexRes = await evidenceApi.startIndexing(evidenceId, { runMode: "async" });
-      
-      return { evidenceId, applicationId, jobId: indexRes.data.jobId };
+      const res = await evidenceApi.updateEvidence(evidenceId, data);
+      return res.data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: evidenceKeys.list(data.applicationId) });
-      toast.success("Đã tải lên và bắt đầu trích xuất dữ liệu AI");
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["evidences", variables.applicationId] });
+      toast.success("Đã cập nhật minh chứng");
     },
     onError: (err: Error) => {
-      toast.error(`Lỗi tải file: ${err.message}`);
+      toast.error(`Lỗi khi cập nhật minh chứng: ${err.message}`);
     },
   });
+}
+
+export function useDeleteEvidence(applicationId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, applicationId: mutationAppId }: { id: string; applicationId?: string }) => {
+      await evidenceApi.deleteEvidence(id);
+      return { id, applicationId: mutationAppId || applicationId };
+    },
+    onSuccess: (data) => {
+      if (data.applicationId) {
+        queryClient.invalidateQueries({ queryKey: ["evidences", data.applicationId] });
+      }
+      toast.success("Đã xoá minh chứng");
+    },
+    onError: (err: Error) => {
+      toast.error(`Không thể xoá minh chứng: ${err.message}`);
+    },
+  });
+}
+
+export function useUploadEvidenceFile(applicationId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      evidenceId,
+      applicationId: mutationAppId,
+      file,
+    }: {
+      evidenceId: string;
+      applicationId?: string;
+      file: File;
+    }) => {
+      const activeAppId = mutationAppId || applicationId;
+      const res = await evidenceApi.uploadEvidenceFile(evidenceId, file);
+      return { evidenceId, applicationId: activeAppId, res: res.data };
+    },
+    onSuccess: (data) => {
+      if (data.applicationId) {
+        queryClient.invalidateQueries({ queryKey: ["evidences", data.applicationId] });
+        queryClient.invalidateQueries({ queryKey: ["application", "current"] });
+      }
+      toast.success("Đã tải lên tệp tin minh chứng thành công");
+    },
+    onError: (err: Error) => {
+      toast.error(`Lỗi tải tệp tin: ${err.message}`);
+    },
+  });
+}
+
+// Compatibility wrapper for upload without polling or jobId expectation
+export function useUploadAndIndex() {
+  return useUploadEvidenceFile();
 }

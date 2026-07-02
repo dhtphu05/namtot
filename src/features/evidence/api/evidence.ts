@@ -1,18 +1,9 @@
 import { apiClient } from "@/lib/api/client";
-import type { Criterion, EvidenceSourceType, EvidenceStatus, IndexingStatus } from "@/lib/api/types";
+import type { Criterion, EvidenceSourceType, EvidenceStatus, IndexingStatus, Evidence } from "@/lib/api/types";
 
-export interface EvidenceResponse {
-  id: string;
-  applicationId: string;
-  evidenceName: string;
-  criterion: Criterion;
-  sourceType: EvidenceSourceType;
-  status: EvidenceStatus;
-  indexingStatus: IndexingStatus;
+export interface EvidenceResponse extends Evidence {
   fileId?: string;
   jobId?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export const evidenceApi = {
@@ -43,56 +34,78 @@ export const evidenceApi = {
 
   createEvidence: async (
     applicationId: string,
-    data: { evidenceName: string; criterion: Criterion; sourceType?: EvidenceSourceType }
+    input: {
+      evidenceName: string;
+      criterion: Criterion;
+      sourceType: EvidenceSourceType;
+      description?: string;
+      note?: string;
+      metadata?: Record<string, unknown>;
+    }
   ) => {
     return apiClient<EvidenceResponse>(`/api/applications/${applicationId}/evidences`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: input,
     });
   },
 
   updateEvidence: async (
-    id: string,
-    data: { evidenceName?: string; criterion?: Criterion }
+    evidenceId: string,
+    input: {
+      evidenceName?: string;
+      criterion?: Criterion;
+      description?: string;
+      note?: string;
+      metadata?: Record<string, unknown>;
+    }
   ) => {
-    return apiClient<EvidenceResponse>(`/api/evidences/${id}`, {
+    return apiClient<EvidenceResponse>(`/api/evidences/${evidenceId}`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: input,
     });
   },
 
-  deleteEvidence: async (id: string) => {
-    return apiClient<null>(`/api/evidences/${id}`, {
+  deleteEvidence: async (evidenceId: string) => {
+    return apiClient<null>(`/api/evidences/${evidenceId}`, {
       method: "DELETE",
     });
   },
 
-  uploadFile: async (id: string, file: File) => {
+  uploadEvidenceFile: async (evidenceId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
     return apiClient<{ fileId: string; fileName: string; size: number }>(
-      `/api/evidences/${id}/files`,
+      `/api/evidences/${evidenceId}/files`,
       {
         method: "POST",
         body: formData,
-        // Browser will set Content-Type with correct boundary automatically for FormData
       }
     );
   },
 
-  startIndexing: async (id: string, options?: { force?: boolean; runMode?: "sync" | "async" }) => {
+  // Alias for compatibility
+  uploadFile: async (evidenceId: string, file: File) => {
+    return evidenceApi.uploadEvidenceFile(evidenceId, file);
+  },
+
+  startIndexing: async (evidenceId: string, options?: { force?: boolean; runMode?: "sync" | "async" }) => {
     return apiClient<{ jobId: string; status: IndexingStatus }>(
-      `/api/evidences/${id}/start-indexing`,
+      `/api/evidences/${evidenceId}/start-indexing`,
       {
         method: "POST",
-        body: JSON.stringify(options || {}),
+        body: options || {},
       }
     );
   },
 
-  getCard: async (id: string) => {
-    return apiClient<unknown>(`/api/evidences/${id}/card`, {
+  getEvidenceCard: async (evidenceId: string) => {
+    return apiClient<unknown>(`/api/evidences/${evidenceId}/card`, {
       method: "GET",
     });
+  },
+
+  // Alias for compatibility
+  getCard: async (evidenceId: string) => {
+    return evidenceApi.getEvidenceCard(evidenceId);
   },
 };
