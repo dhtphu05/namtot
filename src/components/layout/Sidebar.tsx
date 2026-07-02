@@ -33,6 +33,7 @@ import {
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useApp } from "@/lib/store";
 import { ROLES, type Role } from "@/lib/mock-data";
+import { criterionLabel } from "@/lib/api/types";
 
 type BadgeTone = "core" | "ai" | "demo" | "ops" | "beta";
 type NavItem = {
@@ -74,7 +75,7 @@ const NAV: Record<Role, NavGroup[]> = {
         { label: "Hàng chờ xét duyệt", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
         { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Ops", tone: "ops" },
         { label: "Kho tri thức", to: "/app/evidence-search", icon: BookOpenCheck, badge: "Ops", tone: "ops" },
-        { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Hội đồng", tone: "beta" },
+        { label: "Hồ sơ đã chuyển hội ý", to: "/app/resolution", icon: ShieldQuestion, badge: "Theo dõi", tone: "beta" },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
@@ -236,6 +237,10 @@ function RolePanel() {
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const roleMeta = ROLES[role];
+  const officerSpecializationText =
+    user?.role === "officer" && user.officerSpecializations?.length
+      ? user.officerSpecializations.map((item) => criterionLabel[item.criterion]).join(", ")
+      : null;
 
   return (
     <div className="mx-1 rounded-xl border border-[#EEF2F7] p-3">
@@ -275,7 +280,7 @@ function RolePanel() {
         </>
       ) : (
         <div className="rounded-lg bg-[#F1F7FD] px-3 py-2 text-[12px] font-medium text-brand-deep">
-          {user ? getRoleLabel(user.role) : roleMeta.label}
+          {officerSpecializationText ? `Phụ trách: ${officerSpecializationText}` : user ? getRoleLabel(user.role) : roleMeta.label}
         </div>
       )}
     </div>

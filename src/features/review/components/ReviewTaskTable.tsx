@@ -1,4 +1,5 @@
-import { Eye } from "lucide-react";
+import { AlertTriangle, Eye } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -57,8 +58,12 @@ export function ReviewTaskTable({
             <TableHead>Khoa / lớp</TableHead>
             <TableHead>Cấp xét</TableHead>
             <TableHead>Tiêu chí</TableHead>
+            <TableHead>Ưu tiên</TableHead>
+            <TableHead>AI</TableHead>
+            <TableHead>Deadline</TableHead>
             <TableHead>Trạng thái</TableHead>
             <TableHead className="text-right">Minh chứng</TableHead>
+            <TableHead className="text-right">Bổ sung</TableHead>
             <TableHead>Cập nhật</TableHead>
             <TableHead className="text-right">Thao tác</TableHead>
           </TableRow>
@@ -87,9 +92,21 @@ export function ReviewTaskTable({
                 <CriterionBadge criterion={item.criterion} />
               </TableCell>
               <TableCell>
+                <RiskBadge risk={item.riskLevel ?? "low"} />
+              </TableCell>
+              <TableCell>{formatConfidence(item.aiConfidence)}</TableCell>
+              <TableCell>
+                <div className="flex flex-col gap-1">
+                  <span>{formatDateTime(item.dueDate)}</span>
+                  {isOverdue(item.dueDate) ? <Badge variant="destructive">Quá hạn</Badge> : null}
+                  {isDueSoon(item.dueDate) ? <Badge variant="outline">Sắp quá hạn</Badge> : null}
+                </div>
+              </TableCell>
+              <TableCell>
                 <ReviewStatusBadge status={item.status} />
               </TableCell>
               <TableCell className="text-right tabular-nums">{item.evidenceCount ?? 0}</TableCell>
+              <TableCell className="text-right tabular-nums">{item.supplementCount ?? 0}</TableCell>
               <TableCell>{formatDateTime(item.updatedAt)}</TableCell>
               <TableCell className="text-right">
                 <Button
@@ -120,4 +137,29 @@ export function ReviewTaskTable({
       ) : null}
     </div>
   );
+}
+
+function RiskBadge({ risk }: { risk: "low" | "medium" | "high" }) {
+  if (risk === "high") {
+    return <Badge variant="destructive"><AlertTriangle className="mr-1 h-3 w-3" />Cao</Badge>;
+  }
+  if (risk === "medium") {
+    return <Badge variant="outline">Cần chú ý</Badge>;
+  }
+  return <Badge variant="secondary">Thấp</Badge>;
+}
+
+function formatConfidence(value?: number | null) {
+  if (value === null || value === undefined) return "--";
+  return `${Math.round(value * 100)}%`;
+}
+
+function isOverdue(value?: string | null) {
+  if (!value) return false;
+  return new Date(value).getTime() < Date.now();
+}
+
+function isDueSoon(value?: string | null) {
+  if (!value || isOverdue(value)) return false;
+  return new Date(value).getTime() <= Date.now() + 3 * 24 * 60 * 60 * 1000;
 }

@@ -14,6 +14,8 @@ import { useCurrentApplication, useStartApplication } from "@/features/applicati
 import { useManagerDashboardSummary } from "@/features/manager/hooks/useManager";
 import { levelLabel, applicationStatusLabel, type ApplicationStatus } from "@/lib/api/types";
 import { StudentOverview } from "./StudentOverview";
+import { useOfficerDashboard } from "@/features/review/hooks/useReview";
+import { formatDateTime, getCriterionLabel, getLevelLabel, getTaskStatusLabel } from "@/features/review/utils/formatters";
 
 
 
@@ -26,7 +28,7 @@ export function Dashboard() {
       ? toUiRole(user.role)
       : "student";
   if (role === "student") return <StudentOverview />;
-  if (role === "officer") return <OfficerDash />;
+  if (role === "officer") return <OfficerDashReal />;
   if (role === "manager") return <ManagerDashReal />;
   return <CollectiveDash />;
 }
@@ -247,6 +249,111 @@ function StudentDash() {
 }
 
 // ============== OFFICER ==============
+function OfficerDashReal() {
+  const user = useAuth((s) => s.user);
+  const { data, isLoading, isError, refetch } = useOfficerDashboard();
+  const specializations = data?.officer.specializations ?? user?.officerSpecializations?.map((item) => item.criterion) ?? [];
+  const specializationText = specializations.length
+    ? specializations.map((criterion) => getCriterionLabel(criterion)).join(", ")
+    : "Chưa khai báo tiêu chí";
+  const summary = data?.summary;
+  const priorityTasks = data?.priorityTasks ?? [];
+
+  if (isLoading) {
+    return (
+      <>
+        <TopBar title="Không gian xét duyệt chuyên trách" subtitle="Đang tải dữ liệu phân công từ backend..." />
+        <Card>
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Đang tải dashboard cán bộ...
+          </div>
+        </Card>
+      </>
+    );
+  }
+
+  if (isError) {
+    return (
+      <>
+        <TopBar title="Không gian xét duyệt chuyên trách" subtitle="Không thể tải dashboard cán bộ." />
+        <Card>
+          <div className="py-10 text-center">
+            <div className="font-semibold text-rose-600">Không thể tải dữ liệu xét duyệt.</div>
+            <Button className="mt-4" variant="outline" onClick={() => refetch()}>
+              Thử lại
+            </Button>
+          </div>
+        </Card>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <TopBar
+        title="Không gian xét duyệt chuyên trách"
+        subtitle={`${user?.fullName ?? data?.officer.fullName ?? "Cán bộ"} • Phụ trách: ${specializationText}. AI gợi ý, cán bộ quyết định theo từng tiêu chí.`}
+      />
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
+        <StatCard label="Task được giao" value={summary?.totalAssigned ?? 0} icon={<Inbox className="w-5 h-5" />} />
+        <StatCard label="Chờ xét / đang xét" value={(summary?.waiting ?? 0) + (summary?.reviewing ?? 0)} icon={<Clock className="w-5 h-5" />} tint="#0057C2" />
+        <StatCard label="Cần bổ sung" value={summary?.supplementRequired ?? 0} icon={<CircleAlert className="w-5 h-5" />} tint="#F59E0B" />
+        <StatCard label="AI thấp / quá hạn" value={`${summary?.aiLowConfidence ?? 0}/${summary?.overdue ?? 0}`} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
+      </div>
+
+      <Card className="mb-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-brand-deep">Task ưu tiên hôm nay</h3>
+          <Link to="/app/queue"><Button size="sm" variant="ghost">Xem tất cả →</Button></Link>
+        </div>
+        <div className="space-y-2">
+          {priorityTasks.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Chưa có task thuộc tiêu chí phụ trách.</div>}
+          {priorityTasks.map((t) => (
+            <Link to="/app/review/$id" params={{ id: t.taskId }} key={t.taskId} className="block">
+              <div className="p-4 rounded-xl hover:bg-[#F4FBFF] transition-all flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-[#0057C2] text-white flex items-center justify-center text-xs font-bold shrink-0">{t.studentName.split(" ").slice(-1)[0]?.[0] ?? "?"}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-brand-deep truncate">{t.studentName} <span className="text-xs text-muted-foreground font-normal">• {t.studentCode}</span></div>
+                  <div className="text-xs text-muted-foreground truncate">{getCriterionLabel(t.criterion)} • {getLevelLabel(t.targetLevel)} • {formatDateTime(t.dueDate)}</div>
+                </div>
+                <Chip tone={t.riskLevel === "high" ? "error" : t.riskLevel === "medium" ? "warning" : "success"}>{t.riskLevel}</Chip>
+                <Chip tone={(t.aiConfidence ?? 1) < 0.7 ? "warning" : "brand"}>AI {t.aiConfidence === null || t.aiConfidence === undefined ? "--" : `${Math.round(t.aiConfidence * 100)}%`}</Chip>
+                <Chip tone={t.status === "supplement_required" ? "warning" : t.status === "accepted" ? "success" : t.status === "rejected" ? "error" : t.status === "resolution_needed" ? "warning" : "brand"}>{getTaskStatusLabel(t.status)}</Chip>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </Card>
+
+      <div className="grid lg:grid-cols-2 gap-5">
+        <Card>
+          <h3 className="font-bold text-brand-deep mb-3 flex items-center gap-2"><ShieldQuestion className="w-4 h-4" /> Cần hội ý</h3>
+          {(summary?.resolutionNeeded ?? 0) === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Chưa có task cần hội ý.</div>
+          ) : (
+            <Link to="/app/resolution" className="block p-3 rounded-xl bg-purple-50 hover:bg-purple-100">
+              <div className="text-sm font-semibold text-purple-900">{summary?.resolutionNeeded ?? 0} task đã chuyển hội ý</div>
+              <div className="text-xs text-purple-700 mt-1">Theo dõi trạng thái xử lý của hội đồng</div>
+            </Link>
+          )}
+        </Card>
+        <Card>
+          <h3 className="font-bold text-brand-deep mb-3 flex items-center gap-2"><ChartNoAxesCombined className="w-4 h-4" /> Bottleneck theo tiêu chí</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={(data?.bottleneckByCriterion ?? []).map((item) => ({ name: getCriterionLabel(item.criterion), value: item.total }))}>
+              <XAxis dataKey="name" fontSize={11} stroke="#0057C2" />
+              <YAxis fontSize={11} stroke="#0057C2" />
+              <Tooltip />
+              <Bar dataKey="value" fill="#00AEEF" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+    </>
+  );
+}
+
 function OfficerDash() {
   const officerId = useApp((s) => s.currentOfficerId);
   const tasks = useApp((s) => s.tasks);

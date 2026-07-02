@@ -54,6 +54,14 @@ export type ReviewTaskListParams = {
   criterion?: Criterion;
   status?: ReviewTaskStatus;
   targetLevel?: Level;
+  faculty?: string;
+  className?: string;
+  riskLevel?: "low" | "medium" | "high";
+  aiConfidenceMax?: number;
+  dueSoon?: boolean;
+  overdue?: boolean;
+  supplementRequired?: boolean;
+  resolutionNeeded?: boolean;
   assignedToMe?: boolean;
   page?: number;
   limit?: number;
@@ -88,6 +96,7 @@ export const taskStatusLabels: Record<ReviewTaskStatus, string> = {
 
 export type ReviewTaskListItem = {
   id: string;
+  taskId?: string;
   applicationId: string;
   studentId: string;
   studentName: string;
@@ -103,6 +112,10 @@ export type ReviewTaskListItem = {
   assignedOfficerName?: string | null;
   evidenceCount: number;
   supplementCount?: number;
+  aiConfidence?: number | null;
+  riskLevel?: "low" | "medium" | "high";
+  dueDate?: string | null;
+  officerSuggestedLevel?: Level | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -119,6 +132,20 @@ export type ReviewTaskEvidenceFile = {
   url?: string | null;
   storageKey?: string | null;
   createdAt: string;
+  uploadedAt?: string;
+};
+
+export type ReviewTaskEvidenceCard = {
+  id: string;
+  ocrText?: string | null;
+  extractedFieldsJson?: unknown;
+  warningsJson?: unknown;
+  matchedEventId?: string | null;
+  matchedKnowledgeItemIds?: unknown;
+  confidence?: number | null;
+  aiSummary?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type ReviewTaskEvidence = {
@@ -127,12 +154,20 @@ export type ReviewTaskEvidence = {
   criterion: Criterion;
   sourceType: "metric_input" | "manual_upload" | "event_import" | "collective_import";
   status: EvidenceStatus;
+  indexingStatus?: string | null;
   confidence?: number | null;
   note?: string | null;
   reviewerNote?: string | null;
   createdAt: string;
   updatedAt?: string;
   files?: ReviewTaskEvidenceFile[];
+  card?: ReviewTaskEvidenceCard | null;
+  event?: {
+    id: string;
+    eventName: string;
+    organizer?: string | null;
+    organizerLevel?: Level | null;
+  } | null;
 };
 
 export type ReviewTaskMetric = {
@@ -150,6 +185,31 @@ export type ReviewTaskChecklistItem = {
   passed?: boolean | null;
   required: boolean;
   note?: string | null;
+};
+
+export type CriterionLevelRequirement = {
+  key: string;
+  label: string;
+  status: "passed" | "failed" | "missing" | "needs_review" | "ai_processing";
+  actualValue?: string | null;
+  requiredValue?: string | null;
+  source?: string | null;
+  reason?: string | null;
+};
+
+export type CriterionLevelAssessment = {
+  taskId: string;
+  criterion: Criterion;
+  targetLevel?: Level | null;
+  levels: Array<{
+    level: Level;
+    status: "passed" | "failed" | "missing" | "needs_review" | "ai_processing";
+    score?: number | null;
+    requirements: CriterionLevelRequirement[];
+    summary: string;
+  }>;
+  suggestedCriterionLevel?: Level | null;
+  humanConfirmationRequired: boolean;
 };
 
 export type ReviewDecisionHistoryItem = {
@@ -191,19 +251,68 @@ export type ReviewTaskDetail = {
   evidences: ReviewTaskEvidence[];
   metrics: ReviewTaskMetric[];
   checklist?: ReviewTaskChecklistItem[];
+  criterionLevelAssessment?: CriterionLevelAssessment | null;
+  officerSuggestedLevel?: Level | null;
+  levelAssessmentJson?: unknown;
+  decisionReason?: string | null;
+  supplementRequestJson?: unknown;
   decisionHistory?: ReviewDecisionHistoryItem[];
   createdAt?: string;
   updatedAt?: string;
 };
 
 export type SubmitReviewDecisionRequest = {
-  decision: "accepted" | "rejected" | "resolution_needed";
+  decision: "accepted" | "rejected" | "supplement_required" | "resolution_needed";
+  officerSuggestedLevel?: Level | null;
+  levelAssessmentJson?: Record<string, unknown>;
+  supplementRequestJson?: Record<string, unknown>;
   note: string;
   evidenceDecisions?: Array<{
     evidenceId: string;
-    status: "accepted" | "rejected" | "resolution_needed";
+    status: "accepted" | "rejected" | "needs_supplement" | "resolution_needed";
     note?: string;
   }>;
+  evidenceAssessments?: Array<{
+    evidenceId: string;
+    assessment: "valid" | "invalid" | "needs_supplement" | "ambiguous";
+    note?: string;
+    tags?: string[];
+  }>;
+};
+
+export type OfficerDashboardResponse = {
+  officer: {
+    id: string;
+    fullName: string;
+    specializations: Criterion[];
+  };
+  summary: {
+    totalAssigned: number;
+    waiting: number;
+    reviewing: number;
+    supplementRequired: number;
+    accepted: number;
+    rejected: number;
+    resolutionNeeded: number;
+    aiLowConfidence: number;
+    overdue: number;
+    dueSoon: number;
+  };
+  priorityTasks: Array<{
+    taskId: string;
+    applicationId: string;
+    studentName: string;
+    studentCode: string;
+    criterion: Criterion;
+    targetLevel: Level;
+    status: ReviewTaskStatus;
+    aiConfidence?: number | null;
+    riskLevel: "low" | "medium" | "high";
+    dueDate?: string | null;
+    updatedAt: string;
+  }>;
+  bottleneckByCriterion: Array<{ criterion: Criterion; total: number; waiting: number }>;
+  recentActivity: unknown[];
 };
 
 export type SubmitReviewDecisionResponse = {

@@ -17,6 +17,36 @@ type RequestSupplementPanelProps = {
 };
 
 const disabledStatuses = ["accepted", "rejected"] as const;
+const supplementTemplates: Record<string, string[]> = {
+  academic: [
+    "Bổ sung bảng điểm rõ hơn.",
+    "Bổ sung giấy xác nhận không có học phần điểm F.",
+    "Bổ sung minh chứng thành tích học thuật/NCKH.",
+    "Bổ sung giấy xác nhận từ Phòng Đào tạo.",
+  ],
+  ethics: [
+    "Bổ sung điểm rèn luyện có xác nhận.",
+    "Bổ sung xác nhận không vi phạm kỷ luật.",
+    "Bổ sung minh chứng hoạt động đạo đức/lối sống.",
+  ],
+  physical: [
+    "Bổ sung giấy chứng nhận Sinh viên khỏe.",
+    "Bổ sung minh chứng tham gia giải thể thao.",
+    "Bổ sung thông tin thời gian/đơn vị tổ chức.",
+  ],
+  volunteer: [
+    "Bổ sung số ngày tham gia.",
+    "Bổ sung đơn vị xác nhận.",
+    "Bổ sung thời gian hoạt động.",
+    "Bổ sung danh sách tham gia có tên sinh viên.",
+  ],
+  integration: [
+    "Bổ sung chứng chỉ ngoại ngữ còn hiệu lực.",
+    "Bổ sung giấy chứng nhận hoạt động hội nhập.",
+    "Bổ sung thông tin cấp tổ chức/chương trình.",
+    "Bổ sung thời hạn/chứng nhận điểm số.",
+  ],
+};
 
 export function RequestSupplementPanel({ task, onSuccess }: RequestSupplementPanelProps) {
   const role = useAuth((state) => state.user?.role);
@@ -131,6 +161,27 @@ export function RequestSupplementPanel({ task, onSuccess }: RequestSupplementPan
               này.
             </div>
           )}
+        </div>
+
+        <div>
+          <div className="text-sm font-semibold text-brand-deep">Mẫu nhanh theo tiêu chí</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(supplementTemplates[task.criterion] ?? []).map((template) => (
+              <Button
+                key={template}
+                disabled={!canSubmit || requestSupplement.isPending}
+                size="sm"
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setNote((current) => current ? `${current.trim()}\n${template}` : template);
+                  setFormError(null);
+                }}
+              >
+                {template}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <div>
