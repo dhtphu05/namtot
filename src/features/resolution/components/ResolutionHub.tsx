@@ -1,34 +1,29 @@
 import { Link } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
-import { Card, Chip, Button } from "@/components/ui-kit";
-import { RESOLUTION_CASES } from "@/lib/mock-data";
-import { AlertTriangle, ChevronRight } from "lucide-react";
-
-
+import { Card } from "@/components/ui-kit";
+import { Button } from "@/components/ui/button";
+import { EmptyReviewState } from "@/features/review/components/EmptyReviewState";
 
 export function ResolutionHub() {
   return (
     <>
-      <TopBar title="Resolution Hub" subtitle="Hồ sơ mập mờ — chờ hội đồng quyết định" />
+      <TopBar
+        title="Hồ sơ hội ý"
+        subtitle="Danh sách hồ sơ cần hội ý được tải trực tiếp từ backend."
+      />
       <Card>
-        <div className="space-y-2">
-          {RESOLUTION_CASES.map((r) => (
-            <Link to="/app/resolution/$id" params={{ id: r.id }} key={r.id} className="block">
-              <div className="p-4 rounded-2xl hover:bg-purple-50 transition-all flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-purple-500 text-white flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-brand-deep">{r.student}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{r.type} • Tiêu chí: {r.criteria}</div>
-                </div>
-                <Chip tone="warning">Confidence {Math.round(r.confidence * 100)}%</Chip>
-                <Chip>{r.similar} case tương tự</Chip>
-                <Chip tone="muted">{r.status}</Chip>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </div>
+        <EmptyReviewState
+          title="Resolution Hub legacy không còn dùng dữ liệu mẫu"
+          description="Vui lòng mở trang hồ sơ hội ý chính để xem các trường hợp cần xử lý."
+        />
+        <div className="mt-4 flex justify-center">
+          <Button asChild>
+            <Link to="/app/resolution">
+              Mở hồ sơ hội ý
+              <ArrowRight className="h-4 w-4" />
             </Link>
-          ))}
+          </Button>
         </div>
       </Card>
     </>
