@@ -18,6 +18,7 @@ import {
   ShieldQuestion,
   SlidersHorizontal,
   Sparkles,
+  Trophy,
   Upload,
   UserCog,
   UsersRound,
@@ -84,6 +85,7 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Dashboard thống kê", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "Core", tone: "core" },
+        { label: "Kết quả theo cấp", to: "/app/manager/results", icon: Trophy, badge: "Core", tone: "core" },
         { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog, badge: "Ops", tone: "ops" },
         { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Ops", tone: "ops" },
       ],
@@ -92,7 +94,7 @@ const NAV: Record<Role, NavGroup[]> = {
       group: "Module nâng cao",
       items: [
         { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Data", tone: "ops" },
-        { label: "SmartUX Analytics", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "AI", tone: "ai" },
+        { label: "SmartUX Analytics", to: "/app/smartux", icon: ChartNoAxesCombined, badge: "AI", tone: "ai" },
         { label: "VNPT AI Center", to: "/app/vnpt", icon: Cpu, badge: "Demo", tone: "demo" },
         { label: "eKYC", to: "/app/ekyc", icon: ScanFace, badge: "Demo", tone: "demo" },
         { label: "Audit Log", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },

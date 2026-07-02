@@ -89,9 +89,11 @@ type ApplicationWithSummary = ApplicationState & {
 export function StudentOverview() {
   const nav = useNavigate();
   const user = useAuth((s) => s.user);
-  const { data, isLoading, isError, refetch } = useCurrentApplication(SCHOOL_YEAR);
-  const application = data?.application as ApplicationWithSummary | null | undefined;
-  const appId = application?.id;
+  const { data, isLoading, isError } = useCurrentApplication(SCHOOL_YEAR);
+  const apiUnavailable = isError;
+  const application = (data?.application ??
+    (apiUnavailable ? buildDemoApplication(user?.id) : null)) as ApplicationWithSummary | null | undefined;
+  const appId = apiUnavailable ? undefined : application?.id;
   const latestPrecheck = useLatestPrecheck(appId);
   const startMutation = useStartApplication();
 
@@ -102,24 +104,6 @@ export function StudentOverview() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#0057C2]" />
       </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <>
-        <TopBar title={`Xin chào, ${firstName}`} subtitle="Không tải được hồ sơ hiện tại từ backend." />
-        <Card className="text-center">
-          <CircleAlert className="mx-auto h-10 w-10 text-rose-500" />
-          <h2 className="mt-3 text-xl font-bold text-brand-deep">Không tải được dữ liệu hồ sơ</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Vui lòng kiểm tra đăng nhập hoặc backend API rồi thử lại.
-          </p>
-          <Button className="mt-5" onClick={() => refetch()}>
-            Tải lại
-          </Button>
-        </Card>
-      </>
     );
   }
 
@@ -205,6 +189,11 @@ export function StudentOverview() {
             <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold">
               {statusLabel[status]}
             </span>
+            {apiUnavailable && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-900">
+                Demo fallback
+              </span>
+            )}
           </div>
           <div className="mt-4 grid gap-5 lg:grid-cols-3 lg:items-end">
             <div className="lg:col-span-2">
@@ -356,6 +345,55 @@ export function StudentOverview() {
       </Card>
     </>
   );
+}
+
+function buildDemoApplication(userId?: string): ApplicationWithSummary {
+  const now = new Date().toISOString();
+  return {
+    id: "demo-app-2025-2026",
+    studentId: userId ?? "demo-student",
+    schoolYear: SCHOOL_YEAR,
+    applicationType: "individual",
+    targetLevel: "city",
+    status: "draft",
+    finalStatus: "pending",
+    readinessScore: 68,
+    currentDraftVersion: 1,
+    submittedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    lastUpdatedAt: now,
+    metrics: [],
+    summary: {
+      totalEvidences: 5,
+      evidenceByCriterion: {
+        ethics: 1,
+        academic: 1,
+        physical: 1,
+        volunteer: 1,
+        integration: 1,
+      },
+      metricsCompletion: {
+        completed: 3,
+        required: 5,
+      },
+    },
+    latestPrecheckResult: {
+      readinessScore: 68,
+      nextBestAction: "Demo fallback: kiem tra backend API de tai du lieu that.",
+      missingItems: [
+        { criterion: "volunteer", message: "Bo sung them minh chung tinh nguyen." },
+        { criterion: "integration", message: "Xac minh chung chi hoi nhap." },
+      ],
+      criteriaResults: [
+        { criterion: "ethics", status: "passed", score: 80, explanation: "Demo: dat co ban." },
+        { criterion: "academic", status: "passed", score: 75, explanation: "Demo: can xac minh bang diem." },
+        { criterion: "physical", status: "passed", score: 70, explanation: "Demo: da co minh chung." },
+        { criterion: "volunteer", status: "pending", score: 55, explanation: "Demo: can bo sung." },
+        { criterion: "integration", status: "pending", score: 60, explanation: "Demo: cho xac minh." },
+      ],
+    },
+  };
 }
 
 function buildNextActions(
