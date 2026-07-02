@@ -70,11 +70,16 @@ export function AiPrecheck() {
 
   const confirmSubmit = () => {
     if (!application) return;
+    const status = String(application.status);
+    const isSupplement = status === "supplement_required" || status === "draft_supplement";
     submitMutation.mutate(
       {
         id: application.id,
         allowSubmitWithWarnings: profileState !== "ready",
         studentNote: result?.nextBestAction,
+        successMessage: isSupplement
+          ? "Đã gửi lại hồ sơ bổ sung. Cán bộ sẽ tiếp tục xét duyệt."
+          : "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.",
       },
       {
         onSuccess: () => {

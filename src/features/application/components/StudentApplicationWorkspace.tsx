@@ -320,11 +320,16 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   };
 
   const confirmSubmit = () => {
+    const status = String(application.status);
+    const isSupplement = status === "supplement_required" || status === "draft_supplement";
     submitApplication.mutate(
       {
         id: application.id,
         allowSubmitWithWarnings: true,
         studentNote: precheck?.nextBestAction,
+        successMessage: isSupplement
+          ? "Đã gửi lại hồ sơ bổ sung. Cán bộ sẽ tiếp tục xét duyệt."
+          : "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.",
       },
       {
         onSuccess: () => {

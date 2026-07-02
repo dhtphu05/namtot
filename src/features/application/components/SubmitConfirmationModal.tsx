@@ -1,16 +1,28 @@
-import { Loader2, Send, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Loader2, Send, X, XCircle } from "lucide-react";
 import { Button, Chip, Progress } from "@/components/ui-kit";
-import type { ApplicationState, Criterion, Level, PrecheckResult } from "@/lib/api/types";
+import type { ApplicationState, Criterion, Level, PrecheckMissingItem, PrecheckResult } from "@/lib/api/types";
+import { getApplicationStatusLabel, getCriterionResultStatusLabel } from "@/lib/status-labels";
 import { studentCriterionLabel } from "@/features/evidence/components/student-evidence-utils";
 
 const levelLabel: Record<Level, string> = {
   school: "Cấp Trường",
-  university: "Cấp ĐHĐN",
+  university: "Cấp Đại học Đà Nẵng",
   city: "Cấp Thành phố",
   central: "Cấp Trung ương",
 };
 
 const criteria: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
+
+type CriterionSummary = {
+  criterion: Criterion;
+  label: string;
+  explanation: string;
+  tone: "brand" | "success" | "warning" | "error" | "muted";
+  icon: typeof CheckCircle2;
+  requiredAttention: boolean;
+};
+
+type SubmitMode = "first_submit" | "supplement" | "locked" | "completed";
 
 export function SubmitConfirmationModal({
   application,
@@ -28,15 +40,29 @@ export function SubmitConfirmationModal({
   pending?: boolean;
 }) {
   const readinessScore = precheck?.readinessScore ?? application.readinessScore ?? 0;
+  const mode = getSubmitMode(application.status);
+  const isSupplement = mode === "supplement";
+  const isLocked = mode === "locked" || mode === "completed";
+  const criterionSummaries = criteria.map((criterion) =>
+    buildCriterionSummary(criterion, evidenceCounts[criterion] ?? 0, precheck),
+  );
+  const hasRequiredAttention = criterionSummaries.some((item) => item.requiredAttention);
+  const copy = getModalCopy(mode, readinessScore);
+  const primaryLabel = getPrimaryLabel(mode, readinessScore);
+  const secondaryLabel = isSupplement
+    ? "Quay lại chỉnh sửa"
+    : readinessScore < 80
+      ? "Tiếp tục bổ sung"
+      : "Quay lại bổ sung";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4">
-      <div className="w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-[#E3ECF6] px-5 py-4">
-          <div>
-            <Chip tone="warning">Kiểm tra trước khi nộp</Chip>
-            <h3 className="mt-2 text-xl font-bold text-brand-deep">Xác nhận nộp hồ sơ</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Sau khi nộp, hồ sơ sẽ được khóa để cán bộ xét duyệt.</p>
+          <div className="min-w-0">
+            <Chip tone={isSupplement ? "brand" : "warning"}>{copy.badge}</Chip>
+            <h3 className="mt-2 text-xl font-bold text-brand-deep">{copy.title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
           </div>
           <button
             onClick={onCancel}
@@ -48,31 +74,49 @@ export function SubmitConfirmationModal({
           </button>
         </div>
 
-        <div className="space-y-5 px-5 py-5">
-          <div className="grid gap-3 sm:grid-cols-2">
+        <div className="max-h-[calc(92vh-150px)] space-y-5 overflow-y-auto px-5 py-5">
+          {isLocked && (
+            <div className="rounded-lg border border-[#E3ECF6] bg-[#F6F9FC] px-4 py-3 text-sm text-brand-deep">
+              {mode === "completed"
+                ? "Hồ sơ đã hoàn tất."
+                : "Hồ sơ đã được nộp và đang chờ xét duyệt."}
+            </div>
+          )}
+
+          <div className="grid gap-3 md:grid-cols-3">
             <InfoBlock label="Cấp đăng ký" value={levelLabel[application.targetLevel]} />
-            <InfoBlock label="Trạng thái hiện tại" value={application.status} />
+            <InfoBlock label="Trạng thái" value={getApplicationStatusLabel(application.status)} />
+            <div className="rounded-lg bg-[#F6F9FC] px-3 py-3">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
+                <span>Mức sẵn sàng</span>
+                <span className="text-brand-deep">{readinessScore}%</span>
+              </div>
+              <div className="mt-2">
+                <Progress value={readinessScore} />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="font-semibold text-brand-deep">Mức sẵn sàng hiện tại</span>
-              <b>{readinessScore}%</b>
-            </div>
-            <Progress value={readinessScore} />
-          </div>
+          <ReadinessWarning
+            readinessScore={readinessScore}
+            hasRequiredAttention={hasRequiredAttention}
+          />
 
           <div>
             <h4 className="font-bold text-brand-deep">Tóm tắt 5 tiêu chí</h4>
             <div className="mt-3 grid gap-2">
-              {criteria.map((criterion) => {
-                const result = precheck?.criteriaResults?.find((item) => item.criterion === criterion);
-                const count = evidenceCounts[criterion] ?? 0;
-                const label = getCriterionSubmitLabel(count, result?.status, result?.warnings?.length);
+              {criterionSummaries.map((item) => {
+                const Icon = item.icon;
                 return (
-                  <div key={criterion} className="flex items-center justify-between gap-3 rounded-lg bg-[#F6F9FC] px-3 py-2">
-                    <span className="text-sm font-semibold text-brand-deep">{studentCriterionLabel[criterion]}</span>
-                    <Chip tone={label.tone}>{label.text}</Chip>
+                  <div key={item.criterion} className="grid gap-3 rounded-lg bg-[#F6F9FC] px-3 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${getIconClass(item.tone)}`} />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-brand-deep">{studentCriterionLabel[item.criterion]}</div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">{item.explanation}</div>
+                      </div>
+                    </div>
+                    <Chip tone={item.tone}>{item.label}</Chip>
                   </div>
                 );
               })}
@@ -80,18 +124,22 @@ export function SubmitConfirmationModal({
           </div>
 
           <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Sau khi nộp, hồ sơ sẽ được khóa. Bạn chỉ có thể chỉnh sửa khi cán bộ yêu cầu bổ sung.
+            {isSupplement
+              ? "Sau khi gửi lại, hồ sơ sẽ được khóa. Bạn chỉ có thể chỉnh sửa khi cán bộ yêu cầu bổ sung lần nữa."
+              : "Sau khi nộp, hồ sơ sẽ được khóa. Bạn chỉ có thể chỉnh sửa khi cán bộ yêu cầu bổ sung."}
           </div>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-[#E3ECF6] px-5 py-4">
           <Button variant="ghost" onClick={onCancel} disabled={pending}>
-            Quay lại bổ sung
+            {secondaryLabel}
           </Button>
-          <Button onClick={onConfirm} disabled={pending}>
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Xác nhận nộp hồ sơ
-          </Button>
+          {!isLocked && (
+            <Button onClick={onConfirm} disabled={pending}>
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {primaryLabel}
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -107,13 +155,201 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
-function getCriterionSubmitLabel(count: number, status?: string, warningCount?: number) {
-  if (!count) return { text: "Chưa có minh chứng", tone: "warning" as const };
-  if (warningCount) return { text: "Cần cán bộ xác nhận", tone: "warning" as const };
-  if (status === "passed" || status === "pending" || status === "passed_with_warning") {
-    return { text: "Đủ dữ liệu", tone: "success" as const };
+function ReadinessWarning({
+  readinessScore,
+  hasRequiredAttention,
+}: {
+  readinessScore: number;
+  hasRequiredAttention: boolean;
+}) {
+  if (readinessScore >= 100 && !hasRequiredAttention) return null;
+
+  const message =
+    readinessScore < 70
+      ? "Hồ sơ còn thiếu nhiều thông tin. Bạn nên bổ sung trước khi nộp."
+      : "Hồ sơ của bạn chưa đạt 100%. Bạn vẫn có thể nộp để cán bộ xét, nhưng một số tiêu chí có thể bị yêu cầu bổ sung.";
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div>
+          <div>{message}</div>
+          {hasRequiredAttention && (
+            <div className="mt-1 font-semibold">
+              Bạn còn thiếu thông tin bắt buộc. Hãy kiểm tra lại trước khi nộp.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getSubmitMode(status: string): SubmitMode {
+  if (status === "completed") return "completed";
+  if (status === "submitted" || status === "under_review" || status === "resolution_needed") return "locked";
+  if (status === "supplement_required" || status === "draft_supplement") return "supplement";
+  return "first_submit";
+}
+
+function getModalCopy(mode: SubmitMode, readinessScore: number) {
+  if (mode === "supplement") {
+    return {
+      badge: "Gửi lại bổ sung",
+      title: "Xác nhận gửi lại hồ sơ bổ sung",
+      description: "Sau khi gửi lại, hồ sơ sẽ được khóa để cán bộ tiếp tục xét duyệt.",
+    };
   }
-  if (status === "failed") return { text: "Cần bổ sung", tone: "warning" as const };
-  return { text: "Cần cán bộ xác nhận", tone: "brand" as const };
+
+  if (mode === "locked") {
+    return {
+      badge: "Đang chờ xét duyệt",
+      title: "Hồ sơ đã được nộp",
+      description: "Hồ sơ đã được nộp và đang chờ cán bộ xét duyệt.",
+    };
+  }
+
+  if (mode === "completed") {
+    return {
+      badge: "Hoàn tất",
+      title: "Hồ sơ đã hoàn tất",
+      description: "Hồ sơ đã hoàn tất, không cần nộp lại.",
+    };
+  }
+
+  return {
+    badge: "Kiểm tra trước khi nộp",
+    title: "Xác nhận nộp hồ sơ",
+    description:
+      readinessScore < 80
+        ? "Hồ sơ chưa thật sự sẵn sàng. Hãy kiểm tra các cảnh báo trước khi quyết định nộp."
+        : "Sau khi nộp, hồ sơ sẽ được khóa để cán bộ xét duyệt.",
+  };
+}
+
+function getPrimaryLabel(mode: SubmitMode, readinessScore: number) {
+  if (mode === "supplement") return "Gửi lại hồ sơ bổ sung";
+  if (readinessScore < 80) return "Vẫn nộp hồ sơ";
+  return "Xác nhận nộp hồ sơ";
+}
+
+function buildCriterionSummary(
+  criterion: Criterion,
+  evidenceCount: number,
+  precheck?: PrecheckResult | null,
+): CriterionSummary {
+  const result = precheck?.criteriaResults?.find((item) => item.criterion === criterion);
+  const missingItem = precheck?.missingItems?.find((item) => item.criterion === criterion);
+  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+  const reasons = Array.isArray(result?.reasons) ? result.reasons : [];
+
+  if (missingItem) {
+    return {
+      criterion,
+      label: "Cần bổ sung",
+      explanation: getMissingExplanation(missingItem),
+      tone: "warning",
+      icon: AlertTriangle,
+      requiredAttention: true,
+    };
+  }
+
+  if (!evidenceCount && !result) {
+    return {
+      criterion,
+      label: "Chưa có minh chứng",
+      explanation: "Chưa có minh chứng hoặc dữ liệu tiền kiểm cho tiêu chí này.",
+      tone: "error",
+      icon: XCircle,
+      requiredAttention: true,
+    };
+  }
+
+  if (result?.status === "ai_processing") {
+    return {
+      criterion,
+      label: "AI đang xử lý",
+      explanation: "Minh chứng đã tải lên, AI đang xử lý hoặc chờ kết quả mới nhất.",
+      tone: "brand",
+      icon: Clock3,
+      requiredAttention: false,
+    };
+  }
+
+  if (result?.status === "ai_failed") {
+    return {
+      criterion,
+      label: "AI không đọc được",
+      explanation: "AI không đọc được minh chứng. Cán bộ có thể cần kiểm tra thủ công.",
+      tone: "warning",
+      icon: AlertTriangle,
+      requiredAttention: true,
+    };
+  }
+
+  if (warnings.length > 0 || result?.status === "needs_officer_confirmation" || result?.status === "risky") {
+    return {
+      criterion,
+      label: "Cần cán bộ xác nhận",
+      explanation: warnings[0] ?? reasons[0] ?? "Dữ liệu đã có nhưng cần cán bộ xác nhận trước khi chốt kết quả.",
+      tone: "warning",
+      icon: AlertTriangle,
+      requiredAttention: false,
+    };
+  }
+
+  if (result?.passed || result?.status === "passed" || result?.status === "complete") {
+    return {
+      criterion,
+      label: getCriterionResultStatusLabel(result.status),
+      explanation: reasons[0] ?? "Đủ dữ liệu theo kết quả tiền kiểm mới nhất.",
+      tone: "success",
+      icon: CheckCircle2,
+      requiredAttention: false,
+    };
+  }
+
+  if (result?.status === "failed" || result?.status === "needs_supplement" || result?.passed === false) {
+    return {
+      criterion,
+      label: "Cần bổ sung",
+      explanation: reasons[0] ?? "Tiền kiểm cho thấy tiêu chí này cần bổ sung thêm dữ liệu.",
+      tone: "warning",
+      icon: AlertTriangle,
+      requiredAttention: true,
+    };
+  }
+
+  if (evidenceCount > 0) {
+    return {
+      criterion,
+      label: "Đủ dữ liệu cơ bản",
+      explanation: `${evidenceCount} minh chứng đã được ghi nhận, chờ cán bộ xác nhận khi xét duyệt.`,
+      tone: "success",
+      icon: CheckCircle2,
+      requiredAttention: false,
+    };
+  }
+
+  return {
+    criterion,
+    label: "Cần cán bộ xác nhận",
+    explanation: "Chưa đủ dữ liệu chi tiết từ tiền kiểm. Cán bộ sẽ xác nhận khi xét duyệt.",
+    tone: "brand",
+    icon: AlertTriangle,
+    requiredAttention: false,
+  };
+}
+
+function getMissingExplanation(item: PrecheckMissingItem) {
+  return item.message ?? item.code ?? "Tiêu chí này còn thiếu thông tin cần bổ sung.";
+}
+
+function getIconClass(tone: CriterionSummary["tone"]) {
+  if (tone === "success") return "text-emerald-600";
+  if (tone === "error") return "text-rose-600";
+  if (tone === "warning") return "text-amber-600";
+  return "text-[#0057C2]";
 }
 

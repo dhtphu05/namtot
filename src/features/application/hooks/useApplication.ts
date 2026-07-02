@@ -94,20 +94,25 @@ export function useSubmitApplication() {
     mutationFn: async ({
       id,
       allowSubmitWithWarnings,
+      successMessage,
     }: {
       id: string;
       allowSubmitWithWarnings?: boolean;
       studentNote?: string;
+      successMessage?: string;
     }) => {
       const res = await applicationApi.submitApplication(id, {
         allowSubmitWithWarnings: !!allowSubmitWithWarnings,
       });
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.timeline(variables.id) });
+      queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] });
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });
-      toast.success("Đã nộp hồ sơ thành công!");
+      toast.success(variables.successMessage ?? "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.");
     },
     onError: (err: Error) => {
       toast.error(`Không thể nộp hồ sơ: ${err.message}`);
