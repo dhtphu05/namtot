@@ -1,9 +1,11 @@
-import { useApp } from "@/lib/store";
 import { Bell, Search } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useNotifications } from "@/features/core/hooks/useNotifications";
 
 export function TopBar({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
-  const unread = useApp((s) => s.notifications.filter((n) => !n.read).length);
+  const { data } = useNotifications({ page: 1, limit: 20 });
+  const items = data?.items ?? [];
+  const unread = items.filter((item) => !item.readAt).length;
   return (
     <header className="flex items-center justify-between gap-6 mb-6">
       <div className="min-w-0">
