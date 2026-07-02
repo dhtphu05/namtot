@@ -1,4 +1,4 @@
-import { useAuth } from "../auth-store";
+import { useAuth } from "@/features/auth/store/auth-store";
 import type { ApiResponse, ApiFailure } from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
