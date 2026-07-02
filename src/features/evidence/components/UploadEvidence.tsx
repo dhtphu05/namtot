@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+﻿import { useNavigate } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress } from "@/components/ui-kit";
 import { CRITERIA } from "@/lib/mock-data";
@@ -10,10 +10,13 @@ import { toast } from "sonner";
 import { useCurrentApplication, usePrecheck } from "@/features/application/hooks/useApplication";
 import { useEvidences, useCreateEvidence, useUploadAndIndex, useDeleteEvidence } from "@/features/evidence/hooks/useEvidence";
 import { useJobPolling } from "@/features/evidence/hooks/useJobPolling";
-import type { Criterion } from "@/lib/api/types";
+import type { Criterion, EvidenceResponse } from "@/lib/api/types";
+import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDetailModal";
+import { StudentEvidenceCard } from "@/features/evidence/components/StudentEvidenceCard";
 
 export function UploadEvidence() {
   const [activeCat, setActiveCat] = useState<Criterion>("academic");
+  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceResponse | null>(null);
   const nav = useNavigate();
   
   const { data: appRes } = useCurrentApplication("2025-2026");
@@ -152,32 +155,17 @@ export function UploadEvidence() {
           <div className="mt-5 space-y-2">
             {isLoadingList && <div className="text-center p-4 text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" /> Đang tải danh sách minh chứng...</div>}
             
-            {files.filter((f) => f.criterion === activeCat).map((f) => {
-              const isIndexing = ["pending_indexing", "ocr_processing", "extracting", "checking_registry"].includes(f.indexingStatus);
-              return (
-                <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-[#F4FBFF] hover:bg-[#EAF6FF] transition-colors">
-                  <div className="w-10 h-12 rounded-md bg-white flex items-center justify-center text-[#0057C2] shrink-0 shadow-sm relative">
-                    {isIndexing ? <Loader2 className="w-5 h-5 animate-spin text-brand" /> : <FileText className="w-5 h-5" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-brand-deep truncate">{f.evidenceName}</div>
-                    <div className="text-xs text-muted-foreground">Tải lên: {new Date(f.createdAt).toLocaleDateString("vi-VN")}</div>
-                  </div>
-                  
-                  {f.status === "accepted" && <Chip tone="success">Đã duyệt</Chip>}
-                  {f.status === "rejected" && <Chip tone="error">Từ chối</Chip>}
-                  {f.status === "needs_supplement" && <Chip tone="warning"><AlertTriangle className="w-3 h-3" /> Cần bổ sung</Chip>}
-                  {f.status === "under_review" && <Chip tone="brand">Đang xét duyệt</Chip>}
-                  {f.status === "draft" && <Chip tone="muted">Bản nháp</Chip>}
-                  
-                  <button onClick={() => handleDelete(f.id)} disabled={deleteEvidence.isPending} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 disabled:opacity-50">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              );
-            })}
-            
-            {!isLoadingList && files.filter((f) => f.criterion === activeCat).length === 0 && (
+            {files.filter((f) => f.criterion === activeCat).map((f) => (
+              <StudentEvidenceCard
+                key={f.id}
+                evidence={f}
+                applicationId={appId ?? ""}
+                canEdit={!!appId}
+                onViewDetails={setSelectedEvidence}
+                onDelete={() => handleDelete(f.id)}
+              />
+            ))}
+                        {!isLoadingList && files.filter((f) => f.criterion === activeCat).length === 0 && (
               <div className="text-center p-6 text-muted-foreground bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 Chưa có minh chứng nào cho tiêu chí này.
               </div>
@@ -242,6 +230,12 @@ export function UploadEvidence() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <EvidenceDetailModal
+        evidence={selectedEvidence}
+        onClose={() => setSelectedEvidence(null)}
+      />
     </>
   );
 }
+

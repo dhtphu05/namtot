@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { applicationApi } from "@/features/application/api/application";
 import type { Level, MetricInput, MetricType, VerificationStatus } from "@/lib/api/types";
+import { notificationKeys } from "@/features/notifications/hooks/useNotifications";
 
 export const applicationKeys = {
   all: ["applications"] as const,
@@ -35,6 +36,7 @@ export function useStartApplication() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     },
     onError: (err: Error) => {
       toast.error(`Không thể tạo hồ sơ: ${err.message}`);
@@ -104,6 +106,7 @@ export function useSubmitApplication() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
       toast.success("Đã nộp hồ sơ thành công!");
     },
     onError: (err: Error) => {

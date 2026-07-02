@@ -150,6 +150,12 @@ export const evidenceApi = {
     });
   },
 
+  getSignedFileUrl: async (fileId: string) => {
+    return apiClient<{ url: string }>(`/api/files/${fileId}/signed-url`, {
+      method: "GET",
+    });
+  },
+
   // Alias for compatibility
   getCard: async (evidenceId: string) => {
     return evidenceApi.getEvidenceCard(evidenceId);

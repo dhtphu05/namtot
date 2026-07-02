@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -24,7 +24,11 @@ import {
   useUpdateTargetLevel,
   useUpsertMetric,
 } from "@/features/application/hooks/useApplication";
-import { useCreateEvidence, useEvidences, useUploadAndIndex } from "@/features/evidence/hooks/useEvidence";
+import { StudentFlowStepper } from "@/features/application/components/StudentFlowStepper";
+import { SubmitConfirmationModal } from "@/features/application/components/SubmitConfirmationModal";
+import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDetailModal";
+import { StudentEvidenceCard } from "@/features/evidence/components/StudentEvidenceCard";
+import { useCreateEvidence, useDeleteEvidence, useEvidences, useUploadAndIndex } from "@/features/evidence/hooks/useEvidence";
 import type {
   ApplicationMetric,
   ApplicationState,
@@ -138,14 +142,6 @@ const metricInputs: Array<{
   { key: "foreign_language_score", label: "Điểm ngoại ngữ", placeholder: "Ví dụ 650" },
 ];
 
-const criterionForMetric: Partial<Record<MetricType, Criterion>> = {
-  conduct_score: "ethics",
-  gpa: "academic",
-  physical_score: "physical",
-  volunteer_days: "volunteer",
-  foreign_language_score: "integration",
-};
-
 export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTab?: WorkspaceTab }) {
   const user = useAuth((s) => s.user);
   const [tab, setTab] = useState<WorkspaceTab>(initialTab);
@@ -157,6 +153,8 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     foreign_language_score: "",
   });
   const [evidenceForm, setEvidenceForm] = useState<EvidenceUploadForm | null>(null);
+  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceResponse | null>(null);
+  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
 
   const current = useCurrentApplication(SCHOOL_YEAR);
   const startApplication = useStartApplication();
@@ -164,6 +162,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const upsertMetric = useUpsertMetric();
   const createEvidence = useCreateEvidence();
   const uploadAndIndex = useUploadAndIndex();
+  const deleteEvidence = useDeleteEvidence();
   const runPrecheck = usePrecheck();
   const submitApplication = useSubmitApplication();
 
@@ -226,6 +225,18 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
             Bắt đầu tạo hồ sơ
           </Button>
         </Card>
+        <div className="mt-4">
+          <StudentFlowStepper
+            state={{
+              applicationExists: false,
+              applicationStatus: "not_started",
+              evidenceCount: 0,
+              latestPrecheck: null,
+            }}
+            busy={startApplication.isPending}
+            onCreate={() => startApplication.mutate({ schoolYear: SCHOOL_YEAR, targetLevel: "school" })}
+          />
+        </div>
       </>
     );
   }
@@ -233,6 +244,9 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const readinessScore = precheck?.readinessScore ?? application.readinessScore ?? 0;
   const metrics = application.metrics ?? [];
   const canEditApplication = ["draft", "prechecked", "ready_to_submit", "supplement_required"].includes(
+    application.status,
+  );
+  const canSubmitApplication = !["submitted", "under_review", "completed", "rejected", "resolution_needed"].includes(
     application.status,
   );
 
@@ -247,43 +261,16 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
       toast.error("Vui lòng nhập giá trị hợp lệ.");
       return;
     }
+
     upsertMetric.mutate(
       { id: application.id, metricType, value, scale },
       {
         onSuccess: () => {
           toast.success("Đã lưu chỉ số.");
-          const criterion = criterionForMetric[metricType];
-          if (criterion && !evidences.some((item) => item.criterion === criterion)) {
-            createEvidence.mutate({
-              applicationId: application.id,
-              data: {
-                criterion,
-                evidenceName: `Minh chứng ${criteria.find((item) => item.key === criterion)?.label ?? criterion}`,
-                sourceType: "manual_upload",
-              },
-            });
-          }
         },
       },
     );
   };
-
-  const addEvidenceForCriterion = (criterion: Criterion) => {
-    if (!canEditApplication) {
-      toast.error("Hồ sơ đã khóa, không thể thêm minh chứng.");
-      return;
-    }
-
-    createEvidence.mutate({
-      applicationId: application.id,
-      data: {
-        criterion,
-        evidenceName: `Minh chứng ${criteria.find((item) => item.key === criterion)?.label ?? criterion}`,
-        sourceType: "manual_upload",
-      },
-    });
-  };
-
   const precheckNow = () => {
     runPrecheck.mutate({ id: application.id, level: application.targetLevel });
     setTab("precheck");
@@ -329,13 +316,22 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   };
 
   const submitNow = () => {
+    setConfirmSubmitOpen(true);
+  };
+
+  const confirmSubmit = () => {
     submitApplication.mutate(
       {
         id: application.id,
         allowSubmitWithWarnings: true,
         studentNote: precheck?.nextBestAction,
       },
-      { onSuccess: () => setTab("tracking") },
+      {
+        onSuccess: () => {
+          setConfirmSubmitOpen(false);
+          setTab("tracking");
+        },
+      },
     );
   };
 
@@ -378,6 +374,22 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
             </div>
           </div>
         </Card>
+
+        <div className="mb-4">
+          <StudentFlowStepper
+            state={{
+              applicationExists: true,
+              applicationStatus: application.status,
+              evidenceCount: evidences.length,
+              latestPrecheck: precheck,
+            }}
+            busy={startApplication.isPending || runPrecheck.isPending || submitApplication.isPending}
+            onUpload={() => setTab("criteria")}
+            onPrecheck={precheckNow}
+            onSubmit={submitNow}
+            onTrack={() => setTab("tracking")}
+          />
+        </div>
 
         {!canEditApplication && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -501,20 +513,50 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                   </div>
                   <div className="mt-4 grid gap-2 md:grid-cols-2">
                     {items.length === 0 ? (
-                      <div className="rounded-lg bg-[#F6F9FC] px-3 py-3 text-sm text-muted-foreground">
-                        Chưa có minh chứng nào thuộc tiêu chí này.
+                      <div className="rounded-lg border border-dashed border-[#B8CEE8] bg-[#F6F9FC] px-3 py-3 text-sm text-muted-foreground">
+                        Bạn chưa có minh chứng cho tiêu chí này.
+                        <div className="mt-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={!canEditApplication || createEvidence.isPending || uploadAndIndex.isPending}
+                            onClick={() =>
+                              setEvidenceForm({
+                                criterion: criterion.key,
+                                evidenceName: `${criterion.label} - minh chứng mới`,
+                                file: null,
+                              })
+                            }
+                          >
+                            <Upload className="h-4 w-4" /> Upload minh chứng
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       items.map((item) => (
-                        <div key={item.id} className="rounded-lg bg-[#F6F9FC] px-3 py-3">
-                          <div className="text-sm font-semibold text-brand-deep">{item.evidenceName}</div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {item.sourceType} • {item.status} • {item.indexingStatus}
-                          </div>
-                        </div>
+                        <StudentEvidenceCard
+                          key={item.id}
+                          evidence={item}
+                          applicationId={application.id}
+                          canEdit={canEditApplication}
+                          onViewDetails={setSelectedEvidence}
+                          onDelete={(target) => deleteEvidence.mutate({ id: target.id, applicationId: application.id })}
+                        />
                       ))
                     )}
                   </div>
+                  <CriterionChecklist
+                    criterion={criterion.key}
+                    evidenceCount={items.length}
+                    result={result}
+                    onUpload={() =>
+                      setEvidenceForm({
+                        criterion: criterion.key,
+                        evidenceName: `${criterion.label} - minh chứng mới`,
+                        file: null,
+                      })
+                    }
+                  />
                 </Card>
               );
             })}
@@ -558,6 +600,49 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                   );
                 })}
               </div>
+              {!precheck && (
+                <div className="mt-5 rounded-lg border border-dashed border-[#B8CEE8] bg-[#F6F9FC] p-4 text-sm text-muted-foreground">
+                  Bạn chưa chạy tiền kiểm. Hãy upload minh chứng rồi chạy tiền kiểm để biết hồ sơ còn thiếu gì.
+                </div>
+              )}
+              {precheck?.missingItems?.length ? (
+                <div className="mt-5">
+                  <h4 className="font-bold text-brand-deep">Việc cần xử lý</h4>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {precheck.missingItems.map((item, index) => {
+                      const criterion = item.criterion && criteria.some((entry) => entry.key === item.criterion)
+                        ? item.criterion
+                        : "academic";
+                      const criterionLabel = criteria.find((entry) => entry.key === criterion)?.label ?? "Hồ sơ";
+                      return (
+                        <div key={String(item.code ?? index)} className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-sm font-bold text-amber-950">{item.message ?? "Cần bổ sung dữ liệu."}</div>
+                            <Chip tone={item.severity === "error" ? "warning" : "muted"}>
+                              {item.severity === "error" ? "Bắt buộc" : item.severity === "warning" ? "Nên bổ sung" : "Cần xác nhận"}
+                            </Chip>
+                          </div>
+                          <div className="mt-1 text-xs text-amber-800">{criterionLabel}</div>
+                          <Button
+                            className="mt-3"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              setEvidenceForm({
+                                criterion,
+                                evidenceName: `${criterionLabel} - minh chứng bổ sung`,
+                                file: null,
+                              })
+                            }
+                          >
+                            <Upload className="h-4 w-4" /> Upload minh chứng
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </Card>
 
             <Card>
@@ -565,7 +650,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               <p className="mt-2 text-sm text-muted-foreground">
                 Hồ sơ sẽ được khóa và tạo review task cho cán bộ theo từng tiêu chí.
               </p>
-              <Button className="mt-5 w-full" disabled={submitApplication.isPending} onClick={submitNow}>
+              <Button className="mt-5 w-full" disabled={!canSubmitApplication || submitApplication.isPending} onClick={submitNow}>
                 {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Nộp hồ sơ
               </Button>
@@ -674,6 +759,24 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
           </div>
         </div>
       )}
+
+      <EvidenceDetailModal
+        evidence={selectedEvidence}
+        onClose={() => setSelectedEvidence(null)}
+      />
+
+      {confirmSubmitOpen && (
+        <SubmitConfirmationModal
+          application={application}
+          precheck={precheck}
+          evidenceCounts={Object.fromEntries(
+            criteria.map((criterion) => [criterion.key, evidenceByCriterion[criterion.key]?.length ?? 0]),
+          ) as Partial<Record<Criterion, number>>}
+          onCancel={() => setConfirmSubmitOpen(false)}
+          onConfirm={confirmSubmit}
+          pending={submitApplication.isPending}
+        />
+      )}
     </>
   );
 }
@@ -685,6 +788,79 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
       <div className="mt-1 text-sm font-bold text-brand-deep">{value}</div>
     </div>
   );
+}
+
+function CriterionChecklist({
+  criterion,
+  evidenceCount,
+  result,
+  onUpload,
+}: {
+  criterion: Criterion;
+  evidenceCount: number;
+  result?: PrecheckCriterionResult;
+  onUpload: () => void;
+}) {
+  const reasons = Array.isArray(result?.reasons) ? result.reasons : [];
+  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+  const status = getCriterionStatus(evidenceCount, result);
+  const checklist = [
+    {
+      label: "Có minh chứng hoặc dữ liệu liên quan",
+      state: evidenceCount > 0 ? "completed" : "missing",
+      source: evidenceCount > 0 ? `${evidenceCount} minh chứng` : "Chưa có minh chứng",
+    },
+    {
+      label: "AI/cán bộ có đủ dữ liệu để kiểm tra",
+      state: result ? (warnings.length > 0 ? "warning" : "completed") : "missing",
+      source: result ? "Kết quả tiền kiểm mới nhất" : "Chưa chạy tiền kiểm",
+    },
+    ...reasons.slice(0, 3).map((reason) => ({
+      label: reason,
+      state: "missing",
+      source: "Tiền kiểm",
+    })),
+    ...warnings.slice(0, 3).map((warning) => ({
+      label: warning,
+      state: "warning",
+      source: "AI cảnh báo",
+    })),
+  ];
+
+  return (
+    <div className="mt-4 rounded-lg bg-[#F8FBFE] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm font-bold text-brand-deep">Checklist tiêu chí</div>
+        <Chip tone={status.tone}>{status.label}</Chip>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {checklist.map((item, index) => (
+          <div key={`${item.label}-${index}`} className="flex items-start justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm">
+            <div>
+              <div className="font-semibold text-brand-deep">{item.label}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{item.source}</div>
+            </div>
+            <Chip tone={item.state === "completed" ? "success" : item.state === "warning" ? "warning" : "muted"}>
+              {item.state === "completed" ? "Đã có" : item.state === "warning" ? "Cần xác nhận" : "Thiếu"}
+            </Chip>
+          </div>
+        ))}
+      </div>
+      {evidenceCount === 0 && (
+        <Button className="mt-3" size="sm" variant="secondary" onClick={onUpload}>
+          <Upload className="h-4 w-4" /> Upload minh chứng
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function getCriterionStatus(evidenceCount: number, result?: PrecheckCriterionResult) {
+  if (!evidenceCount && !result) return { label: "Chưa có dữ liệu", tone: "muted" as const };
+  if (!evidenceCount) return { label: "Cần bổ sung", tone: "warning" as const };
+  if (result?.warnings?.length) return { label: "Cần cán bộ xác nhận", tone: "warning" as const };
+  if (result?.passed || result?.status === "passed") return { label: "Đủ dữ liệu cơ bản", tone: "success" as const };
+  return { label: "Đã có minh chứng", tone: "brand" as const };
 }
 
 function normalizeEvidences(value: unknown): EvidenceResponse[] {
@@ -707,3 +883,4 @@ function formatDate(value?: string | null) {
     year: "numeric",
   }).format(date);
 }
+

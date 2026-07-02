@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
   Bell,
@@ -18,6 +18,7 @@ import {
   useLatestPrecheck,
   useStartApplication,
 } from "@/features/application/hooks/useApplication";
+import { StudentFlowStepper } from "@/features/application/components/StudentFlowStepper";
 import type {
   ApplicationState,
   ApplicationStatus,
@@ -86,6 +87,7 @@ type ApplicationWithSummary = ApplicationState & {
 };
 
 export function StudentOverview() {
+  const nav = useNavigate();
   const user = useAuth((s) => s.user);
   const { data, isLoading, isError, refetch } = useCurrentApplication(SCHOOL_YEAR);
   const application = data?.application as ApplicationWithSummary | null | undefined;
@@ -161,6 +163,18 @@ export function StudentOverview() {
             </div>
           </div>
         </Card>
+        <div className="mt-5">
+          <StudentFlowStepper
+            state={{
+              applicationExists: false,
+              applicationStatus: "not_started",
+              evidenceCount: 0,
+              latestPrecheck: null,
+            }}
+            busy={startMutation.isPending}
+            onCreate={() => startMutation.mutate({ schoolYear: SCHOOL_YEAR, targetLevel: "school" })}
+          />
+        </div>
       </>
     );
   }
@@ -171,6 +185,7 @@ export function StudentOverview() {
   const metricsCompleted = application.summary?.metricsCompletion?.completed ?? application.metrics?.length ?? 0;
   const metricsRequired = application.summary?.metricsCompletion?.required ?? 5;
   const evidenceByCriterion = application.summary?.evidenceByCriterion ?? {};
+  const evidenceCount = application.summary?.totalEvidences ?? Object.values(evidenceByCriterion).reduce((sum, count) => sum + (count ?? 0), 0);
   const nextActions = buildNextActions(application, precheck?.criteriaResults, precheck?.missingItems);
   const updatedAt = formatDateTime(application.lastUpdatedAt ?? application.updatedAt);
 
@@ -233,6 +248,21 @@ export function StudentOverview() {
           </div>
         </div>
       </Card>
+
+      <div className="mb-5">
+        <StudentFlowStepper
+          state={{
+            applicationExists: true,
+            applicationStatus: status,
+            evidenceCount,
+            latestPrecheck: precheck,
+          }}
+          onUpload={() => nav({ to: "/app/upload" })}
+          onPrecheck={() => nav({ to: "/app/ai-precheck" })}
+          onSubmit={() => nav({ to: "/app/drafts" })}
+          onTrack={() => nav({ to: "/app/cascade" })}
+        />
+      </div>
 
       <div className="mb-5 flex flex-wrap gap-2">
         <Link to="/app/drafts">
