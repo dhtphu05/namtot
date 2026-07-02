@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress, StatCard } from "@/components/ui-kit";
-import { AppIcon, IconTile } from "@/components/AppIcon";
+import { IconTile } from "@/components/AppIcon";
 import { MEDIA, SAMPLE_GCN } from "@/lib/mock-data";
-import { UsersRound, ArrowRight, History, Send, UploadCloud, FileText, CheckCircle2, Loader2, FileUp, AlertTriangle, Sparkles, X } from "lucide-react";
+import { UsersRound, ArrowRight, History, Send, UploadCloud, FileText, CheckCircle2, Loader2, FileUp, AlertTriangle, Sparkles, X, Search, CalendarCheck } from "lucide-react";
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -14,8 +14,10 @@ import {
   useCollectivePrecheck 
 } from "@/features/collective/hooks/useCollective";
 import { useCollectiveMembers, useImportMembers } from "@/features/collective/hooks/useCollectiveMembers";
-import { useCollectiveEvidences } from "@/features/collective/hooks/useCollectiveEvidence";
-import type { CollectiveMember, CollectiveState, RosterImportResult } from "@/lib/api/types";
+import { useCollectiveEvidences, useCreateCollectiveEvidence, useImportEventCollective } from "@/features/collective/hooks/useCollectiveEvidence";
+import { useAuth } from "@/features/auth/store/auth-store";
+import { useEvents } from "@/features/event/hooks/useEvents";
+import type { EventRegistryItem, RosterImportResult } from "@/lib/api/types";
 
 const CRITERIA_TC = [
   { key: "participation", label: "Danh sách 100% SV tham gia phong trào", icon: "roster" as const, evidence: ["Roster lớp HK1", "Roster lớp HK2"], file: SAMPLE_GCN },
@@ -28,19 +30,29 @@ const CRITERIA_TC = [
 ];
 
 export function CollectiveWorkspace() {
+  const className = useAuth((s) => s.user?.className);
   const { data: collectiveRes, isLoading: collectiveLoading } = useCurrentCollective();
   const startMutation = useStartCollective();
   const submitMutation = useSubmitCollective();
   const precheckMutation = useCollectivePrecheck();
+  const createEvidenceMutation = useCreateCollectiveEvidence();
+  const importEventMutation = useImportEventCollective();
 
   const [active, setActive] = useState("participation");
   const [filter, setFilter] = useState<"all" | "registered" | "sv5t" | "noViolation">("all");
   const [importModal, setImportModal] = useState(false);
+  const [eventSearch, setEventSearch] = useState("");
+  const [eventCriterion, setEventCriterion] = useState("activity");
 
   const collectiveId = collectiveRes?.collective?.id;
   
   const { data: members = [], isLoading: membersLoading } = useCollectiveMembers(collectiveId);
   const { data: evidences = [], isLoading: evidencesLoading } = useCollectiveEvidences(collectiveId);
+  const eventsQuery = useEvents({
+    q: eventSearch.trim() || undefined,
+    status: "active",
+    limit: 50,
+  });
 
   if (collectiveLoading) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand" /></div>;
@@ -55,7 +67,7 @@ export function CollectiveWorkspace() {
         <h2 className="text-2xl font-bold text-brand-deep">Chưa có hồ sơ Tập thể</h2>
         <p className="text-muted-foreground mt-2 mb-6 max-w-md">Bắt đầu tạo hồ sơ Tập thể Sinh viên 5 tốt cho chi đoàn/lớp của bạn ngay bây giờ.</p>
         <Button 
-          onClick={() => startMutation.mutate({ schoolYear: "2025-2026", className: "22T1", targetLevel: "school" })}
+          onClick={() => startMutation.mutate({ schoolYear: "2025-2026", className: className || "22T1", targetLevel: "school" })}
           disabled={startMutation.isPending}
         >
           {startMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
@@ -66,8 +78,14 @@ export function CollectiveWorkspace() {
   }
 
   const c = collectiveRes.collective;
-  const ratioRegister = c.total ? Math.round(((c.registered || 0) / c.total) * 100) : 0;
-  const ratioPass = c.total ? Math.round((((c.sv5tTruong || 0) + (c.sv5tHigher || 0)) / c.total) * 100) : 0;
+  const memberSummary = c.memberSummary;
+  const totalMembers = memberSummary?.totalMembers ?? c.total ?? members.length;
+  const participatedMembers = memberSummary?.participatedMembers ?? c.registered ?? members.filter((m) => m.participationStatus === "participated").length;
+  const schoolSv5tMembers = memberSummary?.schoolSv5tMembers ?? c.sv5tTruong ?? members.filter((m) => !["none", "unknown"].includes(m.individualSv5tLevel ?? "unknown")).length;
+  const ratioRegister = memberSummary?.participationRate ?? (totalMembers ? Math.round((participatedMembers / totalMembers) * 100) : 0);
+  const ratioPass = memberSummary?.schoolSv5tRate ?? (totalMembers ? Math.round((schoolSv5tMembers / totalMembers) * 100) : 0);
+  const readinessScore = c.progress ?? c.readinessScore ?? 0;
+  const isReadOnly = !["draft", "prechecked", "ready_to_submit", "supplement_required"].includes(c.status);
 
   const rows = members.filter((r) => {
     if (filter === "all") return true;
@@ -78,13 +96,35 @@ export function CollectiveWorkspace() {
   });
 
   const block = CRITERIA_TC.find(x => x.key === active)!;
-  const blockEvidences = evidences.filter(e => e.evidenceName.includes(block.label) || true); // mock logic since we don't have collectiveCriterion mapping strictly yet
+  const blockEvidences = evidences.filter((e) => {
+    if (e.collectiveCriterion) return e.collectiveCriterion === block.key;
+    return e.evidenceName.includes(block.label);
+  });
 
   const onSubmit = () => {
     submitMutation.mutate({ id: c.id, options: { allowSubmitWithWarnings: false } });
   };
   const onPreCheck = () => {
     precheckMutation.mutate({ id: c.id, level: c.targetLevel });
+  };
+  const onCreateEvidence = () => {
+    createEvidenceMutation.mutate({
+      collectiveId: c.id,
+      data: {
+        evidenceName: block.label,
+        collectiveCriterion: block.key,
+        sourceType: "manual_upload",
+      },
+    });
+  };
+  const onImportEvent = (event: EventRegistryItem) => {
+    importEventMutation.mutate({
+      collectiveId: c.id,
+      data: {
+        eventId: event.id,
+        collectiveCriterion: eventCriterion,
+      },
+    });
   };
 
   return (
@@ -94,8 +134,8 @@ export function CollectiveWorkspace() {
         subtitle={`Một hồ sơ duy nhất cho năm học ${c.schoolYear} • Tự động lưu lúc ${new Date(c.lastUpdatedAt).toLocaleTimeString()}`}
         action={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onPreCheck} disabled={precheckMutation.isPending}><Sparkles className="w-4 h-4" /> Tiền kiểm</Button>
-            <Button onClick={onSubmit} disabled={submitMutation.isPending}><Send className="w-4 h-4" /> Nộp chính thức</Button>
+            <Button variant="outline" onClick={onPreCheck} disabled={precheckMutation.isPending || isReadOnly}><Sparkles className="w-4 h-4" /> Tiền kiểm</Button>
+            <Button onClick={onSubmit} disabled={submitMutation.isPending || isReadOnly}><Send className="w-4 h-4" /> Nộp chính thức</Button>
           </div>
         }
       />
@@ -115,15 +155,30 @@ export function CollectiveWorkspace() {
       </Card>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <StatCard label="Tổng sinh viên" value={c.total || 0} icon={<UsersRound className="w-4 h-4" />} />
+        <StatCard label="Tổng sinh viên" value={totalMembers} icon={<UsersRound className="w-4 h-4" />} />
         <StatCard label="Tỷ lệ tham gia phong trào" value={`${ratioRegister}%`} icon={<CheckCircle2 className="w-4 h-4" />} tint="#22C55E" />
-        <StatCard label="Đạt SV5T cấp Trường" value={c.sv5tTruong || 0} icon={<FileText className="w-4 h-4" />} tint="#0e7bcf" />
+        <StatCard label="Đạt SV5T cấp Trường" value={schoolSv5tMembers} icon={<FileText className="w-4 h-4" />} tint="#0e7bcf" />
         <StatCard label="Tỷ lệ đạt danh hiệu" value={`${ratioPass}%`} icon={<FileText className="w-4 h-4" />} tint="#0057C2" />
       </div>
 
+      <Card className="!p-2 mb-4">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { href: "#collective-roster", label: "Danh sách sinh viên" },
+            { href: "#collective-evidence", label: "Minh chứng tập thể" },
+            { href: "#collective-events", label: "Kho sự kiện tập thể" },
+            { href: "#collective-readiness", label: "Tiền kiểm & nộp" },
+          ].map((item) => (
+            <a key={item.href} href={item.href} className="rounded-lg bg-[#F1F7FD] px-3 py-2 text-[12.5px] font-semibold text-brand-deep hover:bg-[#E5EFFA]">
+              {item.label}
+            </a>
+          ))}
+        </div>
+      </Card>
+
       <div className="grid lg:grid-cols-12 gap-4">
         {/* LEFT: roster */}
-        <aside className="lg:col-span-4">
+        <aside id="collective-roster" className="lg:col-span-4 scroll-mt-4">
           <Card className="!p-3 h-full">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-bold text-brand-deep text-[13px]">Danh sách Chi hội</h4>
@@ -140,7 +195,7 @@ export function CollectiveWorkspace() {
               ))}
             </div>
 
-            <Button size="sm" variant="secondary" className="w-full mb-3" onClick={() => setImportModal(true)}>
+            <Button size="sm" variant="secondary" className="w-full mb-3" onClick={() => setImportModal(true)} disabled={isReadOnly}>
               <FileUp className="w-3.5 h-3.5" /> Upload danh sách (Excel/CSV)
             </Button>
 
@@ -170,7 +225,7 @@ export function CollectiveWorkspace() {
         </aside>
 
         {/* CENTER: collective criteria dashboard */}
-        <section className="lg:col-span-5 space-y-3">
+        <section id="collective-evidence" className="lg:col-span-5 space-y-3 scroll-mt-4">
           <Card>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Minh chứng tập thể theo nhóm</div>
             <ul className="space-y-1">
@@ -192,7 +247,9 @@ export function CollectiveWorkspace() {
           <Card>
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-bold text-brand-deep text-[14px]">{block.label}</h4>
-              <Button size="sm" variant="secondary" onClick={() => toast.info("Tính năng upload sẽ xuất hiện ở modal")}><UploadCloud className="w-3.5 h-3.5" /> Thêm minh chứng</Button>
+              <Button size="sm" variant="secondary" onClick={onCreateEvidence} disabled={createEvidenceMutation.isPending || isReadOnly}>
+                {createEvidenceMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />} Thêm minh chứng
+              </Button>
             </div>
             {evidencesLoading ? (
               <div className="py-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
@@ -218,13 +275,13 @@ export function CollectiveWorkspace() {
         </section>
 
         {/* RIGHT: progress */}
-        <aside className="lg:col-span-3 space-y-3">
+        <aside id="collective-readiness" className="lg:col-span-3 space-y-3 scroll-mt-4">
           <Card>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Readiness tập thể</div>
-            <div className="text-[32px] font-extrabold text-brand-deep leading-none">{c.progress || 0}%</div>
-            <div className="mt-2"><Progress value={c.progress || 0} /></div>
+            <div className="text-[32px] font-extrabold text-brand-deep leading-none">{readinessScore}%</div>
+            <div className="mt-2"><Progress value={readinessScore} /></div>
             <ul className="text-[11.5px] text-amber-800 bg-amber-50 rounded-md p-3 mt-3 space-y-1">
-              {c.progress && c.progress >= 100 ? (
+              {readinessScore >= 70 ? (
                 <li className="text-emerald-800 font-semibold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Hồ sơ đã sẵn sàng nộp.</li>
               ) : (
                 <>
@@ -243,6 +300,79 @@ export function CollectiveWorkspace() {
           </Card>
         </aside>
       </div>
+
+      <Card id="collective-events" className="mt-4 scroll-mt-4">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Kho sự kiện tập thể</div>
+            <h3 className="mt-0.5 text-[16px] font-bold text-brand-deep">Import sự kiện làm minh chứng cho hồ sơ lớp/chi hội</h3>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">
+              Luồng này dùng API tập thể, không ghi vào hồ sơ cá nhân của sinh viên.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 rounded-lg bg-[#F6F9FC] px-3 py-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <input
+                value={eventSearch}
+                onChange={(event) => setEventSearch(event.target.value)}
+                placeholder="Tìm sự kiện..."
+                className="w-48 bg-transparent text-[13px] focus:outline-none"
+              />
+            </div>
+            <select
+              value={eventCriterion}
+              onChange={(event) => setEventCriterion(event.target.value)}
+              className="rounded-lg bg-[#F6F9FC] px-3 py-2 text-[12.5px] font-semibold text-brand-deep"
+            >
+              {CRITERIA_TC.map((item) => (
+                <option key={item.key} value={item.key}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {eventsQuery.isLoading ? (
+          <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang tải sự kiện...
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {(eventsQuery.data ?? []).slice(0, 6).map((event) => (
+              <div key={event.id} className="flex flex-col rounded-lg border border-[#EEF2F7] p-3">
+                <div className="mb-2 flex items-start gap-2">
+                  <CalendarCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#0057C2]" />
+                  <div className="min-w-0">
+                    <div className="line-clamp-2 text-[13px] font-bold text-brand-deep">{event.eventName}</div>
+                    <div className="mt-0.5 text-[11.5px] text-muted-foreground">{event.organizer}</div>
+                  </div>
+                </div>
+                <div className="mb-3 flex flex-wrap gap-1">
+                  <Chip tone="brand">{event.criterion}</Chip>
+                  <Chip tone={event.rosterIndexed ? "success" : "muted"}>{event.rosterIndexed ? "Đã index" : "Chưa index"}</Chip>
+                  <Chip>{event.participantCount} SV</Chip>
+                </div>
+                <Button
+                  size="sm"
+                  className="mt-auto w-full"
+                  onClick={() => onImportEvent(event)}
+                  disabled={isReadOnly || importEventMutation.isPending || !event.rosterIndexed}
+                >
+                  {importEventMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="h-3.5 w-3.5" />}
+                  Import làm minh chứng tập thể
+                </Button>
+              </div>
+            ))}
+            {(eventsQuery.data ?? []).length === 0 && (
+              <div className="rounded-lg bg-[#F6F9FC] p-6 text-center text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
+                Không tìm thấy sự kiện phù hợp.
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
 
       <AnimatePresence>
         {importModal && c && (

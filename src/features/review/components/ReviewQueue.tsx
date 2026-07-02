@@ -5,6 +5,17 @@ import { Card } from "@/components/ui-kit";
 import { Button } from "@/components/ui/button";
 import { EmptyReviewState } from "./EmptyReviewState";
 
+const TASK_STATUS: Record<string, { label: string; tone: "brand" | "success" | "warning" | "error" | "muted" }> = {
+  waiting: { label: "Chờ xét", tone: "muted" },
+  reviewing: { label: "Đang xét", tone: "brand" },
+  supplement_required: { label: "Cần bổ sung", tone: "warning" },
+  resolution_needed: { label: "Cần hội đồng", tone: "warning" },
+  accepted: { label: "Đạt tiêu chí", tone: "success" },
+  rejected: { label: "Không đạt", tone: "error" },
+};
+
+const CRITERIA = ["ethics", "academic", "physical", "volunteer", "integration", "priority", "collective"];
+
 export function ReviewQueue() {
   return (
     <>

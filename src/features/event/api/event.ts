@@ -33,6 +33,19 @@ export interface GetEventsParams {
   limit?: number;
 }
 
+type EventListPayload =
+  | EventRegistryItem[]
+  | {
+      items?: EventRegistryItem[];
+      data?: EventRegistryItem[];
+      events?: EventRegistryItem[];
+    };
+
+function normalizeEvents(payload: EventListPayload | null): EventRegistryItem[] {
+  if (Array.isArray(payload)) return payload;
+  return payload?.items ?? payload?.data ?? payload?.events ?? [];
+}
+
 export const eventApi = {
   getEvents: async (params?: GetEventsParams) => {
     const query = new URLSearchParams();
@@ -44,9 +57,10 @@ export const eventApi = {
       });
     }
     const qString = query.toString();
-    return apiClient<EventRegistryItem[]>(`/api/events${qString ? `?${qString}` : ""}`, {
+    const res = await apiClient<EventListPayload>(`/api/events${qString ? `?${qString}` : ""}`, {
       method: "GET",
     });
+    return { ...res, data: normalizeEvents(res.data) };
   },
 
   getEvent: async (eventId: string) => {

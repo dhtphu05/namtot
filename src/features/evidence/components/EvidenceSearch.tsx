@@ -1,114 +1,228 @@
 import { TopBar } from "@/components/layout/TopBar";
-import { Card, Button, Chip } from "@/components/ui-kit";
-import { CRITERIA, KB_ITEMS, LEVELS } from "@/lib/mock-data";
-import { useState } from "react";
-import { toast } from "sonner";
-import { Search, BookOpenCheck } from "lucide-react";
+import { Button, Card, Chip } from "@/components/ui-kit";
+import { BookOpenCheck, Loader2, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useKnowledgeBaseSearch, useUseKnowledgeBaseItem } from "../hooks/useKnowledgeBase";
+import type { KnowledgeBaseItem } from "../api/knowledge-base";
 
+const CRITERION_LABEL: Record<string, string> = {
+  ethics: "Đạo đức",
+  academic: "Học tập",
+  physical: "Thể lực",
+  volunteer: "Tình nguyện",
+  integration: "Hội nhập",
+  priority: "Ưu tiên",
+  collective: "Tập thể",
+};
 
+const LEVEL_LABEL: Record<string, string> = {
+  school: "Cấp trường",
+  university: "Cấp ĐH Đà Nẵng",
+  city: "Cấp thành phố",
+  central: "Cấp Trung ương",
+};
+
+const DECISION_LABEL: Record<string, { label: string; tone: "brand" | "success" | "warning" | "error" | "muted" }> = {
+  accepted: { label: "Đã duyệt", tone: "success" },
+  rejected: { label: "Từ chối", tone: "error" },
+  needs_supplement: { label: "Cần bổ sung", tone: "warning" },
+  reference_only: { label: "Tham chiếu", tone: "muted" },
+};
 
 export function EvidenceSearch() {
   const [q, setQ] = useState("");
   const [criterion, setCriterion] = useState("all");
   const [decision, setDecision] = useState("all");
-  const [active, setActive] = useState(KB_ITEMS[0].id);
-
-  const list = KB_ITEMS.filter((k) =>
-    (criterion === "all" || k.criterion === criterion) &&
-    (decision === "all" || k.decision === decision) &&
-    (q === "" || k.evidenceName.toLowerCase().includes(q.toLowerCase()) || (k.eventName ?? "").toLowerCase().includes(q.toLowerCase()) || k.organizer.toLowerCase().includes(q.toLowerCase()))
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const useItem = useUseKnowledgeBaseItem();
+  const filters = useMemo(
+    () => ({
+      q: q.trim() || undefined,
+      criterion: criterion === "all" ? undefined : criterion,
+      decision: decision === "all" ? undefined : decision,
+      page: 1,
+      limit: 50,
+    }),
+    [criterion, decision, q],
   );
-  const item = KB_ITEMS.find((k) => k.id === active) ?? list[0];
+  const { data, isLoading, isError, error } = useKnowledgeBaseSearch(filters);
+  const items = data?.items ?? [];
+  const active = items.find((item) => item.id === activeId) ?? items[0] ?? null;
 
   return (
     <>
       <TopBar
         title="Kho tri thức minh chứng"
-        subtitle="Tra cứu case đã duyệt / từ chối — tham chiếu cho quyết định xét duyệt"
-        action={<Button variant="secondary"><BookOpenCheck className="w-4 h-4" /> Đề xuất case mới</Button>}
+        subtitle="Tra cứu case đã duyệt / từ chối từ Knowledge Base backend"
+        action={
+          <Button variant="secondary" disabled>
+            <BookOpenCheck className="h-4 w-4" />
+            Tạo case từ màn xét duyệt
+          </Button>
+        }
       />
 
-      <Card className="!p-3 mb-4">
+      <Card className="mb-4 !p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 bg-[#F6F9FC] rounded-lg px-3 py-2 flex-1 min-w-[260px]">
-            <Search className="w-4 h-4 text-muted-foreground" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm tên minh chứng, tên sự kiện, đơn vị, tiêu chí…" className="bg-transparent flex-1 text-[13px] focus:outline-none" />
+          <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-lg bg-[#F6F9FC] px-3 py-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              placeholder="Tìm tên minh chứng, sự kiện, lý do..."
+              className="flex-1 bg-transparent text-[13px] focus:outline-none"
+            />
           </div>
-          <select value={criterion} onChange={(e) => setCriterion(e.target.value)} className="bg-[#F6F9FC] rounded-lg px-3 py-2 text-[12.5px] font-semibold text-brand-deep">
+          <select
+            value={criterion}
+            onChange={(event) => setCriterion(event.target.value)}
+            className="rounded-lg bg-[#F6F9FC] px-3 py-2 text-[12.5px] font-semibold text-brand-deep"
+          >
             <option value="all">Tất cả tiêu chí</option>
-            {CRITERIA.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-            <option value="priority">Ưu tiên</option>
+            {Object.entries(CRITERION_LABEL).map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
           </select>
-          <select value={decision} onChange={(e) => setDecision(e.target.value)} className="bg-[#F6F9FC] rounded-lg px-3 py-2 text-[12.5px] font-semibold text-brand-deep">
-            <option value="all">Mọi trạng thái</option>
-            <option value="approved">Đã duyệt</option>
-            <option value="rejected">Từ chối</option>
-            <option value="needs_review">Cần xác minh</option>
+          <select
+            value={decision}
+            onChange={(event) => setDecision(event.target.value)}
+            className="rounded-lg bg-[#F6F9FC] px-3 py-2 text-[12.5px] font-semibold text-brand-deep"
+          >
+            <option value="all">Mọi quyết định</option>
+            {Object.entries(DECISION_LABEL).map(([key, item]) => (
+              <option key={key} value={key}>
+                {item.label}
+              </option>
+            ))}
           </select>
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-12 gap-4">
+      <div className="grid gap-4 lg:grid-cols-12">
         <aside className="lg:col-span-4">
           <Card className="!p-2">
-            <ul className="space-y-1">
-              {list.map((k) => (
-                <li key={k.id}>
-                  <button onClick={() => setActive(k.id)} className={`w-full text-left p-2.5 rounded-lg ${active === k.id ? "bg-[#F1F7FD]" : "hover:bg-[#F6F9FC]"}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-[13px] font-semibold text-brand-deep truncate flex-1">{k.evidenceName}</div>
-                      <Chip tone={k.decision === "approved" ? "success" : k.decision === "rejected" ? "error" : "warning"}>{k.decision === "approved" ? "Đã duyệt" : k.decision === "rejected" ? "Từ chối" : "Cần xác minh"}</Chip>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">{k.organizer} • {k.usageCount} lần dùng</div>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {isLoading && <Loading label="Đang tải Knowledge Base..." />}
+            {isError && <Error label={(error as Error)?.message || "Không thể tải Knowledge Base."} />}
+            {!isLoading && !isError && (
+              <ul className="space-y-1">
+                {items.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      onClick={() => setActiveId(item.id)}
+                      className={`w-full rounded-lg p-2.5 text-left ${active?.id === item.id ? "bg-[#F1F7FD]" : "hover:bg-[#F6F9FC]"}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 truncate text-[13px] font-semibold text-brand-deep">
+                          {item.evidenceName ?? item.eventName ?? "Case chưa đặt tên"}
+                        </div>
+                        <DecisionChip decision={item.decision} />
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">
+                        {CRITERION_LABEL[item.criterion] ?? item.criterion} - {item.usageCount} lần dùng
+                      </div>
+                    </button>
+                  </li>
+                ))}
+                {items.length === 0 && <li className="py-10 text-center text-sm text-muted-foreground">Chưa có case phù hợp.</li>}
+              </ul>
+            )}
           </Card>
         </aside>
 
-        <section className="lg:col-span-5 space-y-3">
-          <Card>
-            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Case tham chiếu</div>
-                <h3 className="font-bold text-brand-deep text-[17px]">{item.evidenceName}</h3>
-                <div className="text-[12px] text-muted-foreground">{item.organizer} • {CRITERIA.find(c => c.key === item.criterion)?.label ?? "Ưu tiên"} • {LEVELS.find(l => l.key === item.level)?.label}</div>
-              </div>
-              <Chip tone={item.decision === "approved" ? "success" : item.decision === "rejected" ? "error" : "warning"}>{item.decision === "approved" ? "Đã duyệt" : item.decision === "rejected" ? "Từ chối" : "Cần xác minh"}</Chip>
-            </div>
-            <img src={item.sampleCertificateUrl} alt="" className="w-full rounded-md border border-[#EEF2F7] max-h-[420px] object-contain bg-[#F6F9FC]" />
-          </Card>
-          <Card>
-            <h4 className="font-bold text-brand-deep text-[14px] mb-2">Lý do quyết định</h4>
-            <p className="text-[12.5px]">{item.reason}</p>
-          </Card>
-          {item.similarCases.length > 0 && (
+        <section className="space-y-3 lg:col-span-5">
+          {active ? (
+            <KnowledgeDetail item={active} />
+          ) : (
             <Card>
-              <h4 className="font-bold text-brand-deep text-[14px] mb-2">Case tương tự</h4>
-              <div className="flex flex-wrap gap-1.5">{item.similarCases.map(s => <Chip key={s}>{s}</Chip>)}</div>
+              <div className="py-12 text-center text-sm text-muted-foreground">Chọn một case để xem chi tiết.</div>
             </Card>
           )}
         </section>
 
-        <aside className="lg:col-span-3 space-y-3">
-          <Card>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Trường bắt buộc</div>
-            <ul className="text-[12.5px] space-y-1">{item.requiredFields.map(f => <li key={f} className="flex gap-1.5"><span className="text-emerald-600">•</span>{f}</li>)}</ul>
-          </Card>
-          {item.commonErrors.length > 0 && (
-            <Card>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Lỗi thường gặp</div>
-              <ul className="text-[12.5px] space-y-1 text-amber-800">{item.commonErrors.map(f => <li key={f} className="flex gap-1.5"><span>•</span>{f}</li>)}</ul>
-            </Card>
+        <aside className="space-y-3 lg:col-span-3">
+          {active && (
+            <>
+              <Card>
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Trường bắt buộc</div>
+                <List values={active.requiredFieldsJson} empty="Chưa khai báo trường bắt buộc." />
+              </Card>
+              <Card>
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lỗi thường gặp</div>
+                <List values={active.commonErrorsJson} empty="Chưa khai báo lỗi thường gặp." tone="warning" />
+              </Card>
+              <Card>
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Đã dùng</div>
+                <div className="text-[24px] font-bold text-brand-deep">{active.usageCount} lần</div>
+                <Button className="mt-2 w-full" onClick={() => useItem.mutate(active.id)} disabled={useItem.isPending}>
+                  {useItem.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpenCheck className="h-4 w-4" />}
+                  Dùng làm tham chiếu
+                </Button>
+              </Card>
+            </>
           )}
-          <Card>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Đã dùng</div>
-            <div className="text-[24px] font-bold text-brand-deep">{item.usageCount} lần</div>
-            <Button className="w-full mt-2" onClick={() => toast.success("Đã dùng làm tham chiếu cho quyết định hiện tại")}>Dùng làm tham chiếu</Button>
-          </Card>
         </aside>
       </div>
     </>
   );
+}
+
+function KnowledgeDetail({ item }: { item: KnowledgeBaseItem }) {
+  return (
+    <>
+      <Card>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Case tham chiếu</div>
+            <h3 className="text-[17px] font-bold text-brand-deep">{item.evidenceName ?? item.eventName ?? "Case chưa đặt tên"}</h3>
+            <div className="text-[12px] text-muted-foreground">
+              {CRITERION_LABEL[item.criterion] ?? item.criterion}
+              {item.level ? ` - ${LEVEL_LABEL[item.level] ?? item.level}` : ""}
+            </div>
+          </div>
+          <DecisionChip decision={item.decision} />
+        </div>
+        <div className="rounded-xl bg-[#F6F9FC] p-5 text-sm text-muted-foreground">
+          Không hiển thị ảnh mẫu ở màn này vì Knowledge Base API không expose file preview. Dữ liệu dùng để tham chiếu nằm trong lý do, field bắt buộc và lỗi thường gặp.
+        </div>
+      </Card>
+      <Card>
+        <h4 className="mb-2 text-[14px] font-bold text-brand-deep">Lý do quyết định</h4>
+        <p className="text-[12.5px]">{item.reason}</p>
+      </Card>
+    </>
+  );
+}
+
+function DecisionChip({ decision }: { decision: string }) {
+  const item = DECISION_LABEL[decision] ?? { label: decision, tone: "muted" as const };
+  return <Chip tone={item.tone}>{item.label}</Chip>;
+}
+
+function List({ values, empty, tone = "success" }: { values: string[]; empty: string; tone?: "success" | "warning" }) {
+  if (values.length === 0) return <div className="text-[12.5px] text-muted-foreground">{empty}</div>;
+  return (
+    <ul className={`space-y-1 text-[12.5px] ${tone === "warning" ? "text-amber-800" : ""}`}>
+      {values.map((value) => (
+        <li key={value} className="flex gap-1.5">
+          <span className={tone === "warning" ? "" : "text-emerald-600"}>-</span>
+          {value}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Loading({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+      <Loader2 className="h-4 w-4 animate-spin" />
+      {label}
+    </div>
+  );
+}
+
+function Error({ label }: { label: string }) {
+  return <div className="py-10 text-center text-sm font-semibold text-rose-600">{label}</div>;
 }

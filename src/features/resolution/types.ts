@@ -7,6 +7,8 @@ import type {
 } from "@/features/review/types";
 
 export type ResolutionCaseStatus = "open" | "in_review" | "resolved";
+export type ResolutionFinalDecision =
+  "accepted" | "rejected" | "supplement_required" | "closed_no_action";
 
 export type ResolutionCasesParams = {
   page?: number;
@@ -82,15 +84,22 @@ export type ResolutionCaseDetail = ResolutionCaseListItem & {
 };
 
 export type ResolveResolutionCaseRequest = {
-  decision: ReviewDecision;
+  decision: ResolutionFinalDecision;
   note: string;
+  updateKnowledgeBase?: boolean;
+  knowledgeBaseTitle?: string;
+  evidenceDecisions?: Array<{
+    evidenceId: string;
+    decision: Exclude<ResolutionFinalDecision, "closed_no_action">;
+    note?: string;
+  }>;
 };
 
 export type ResolveResolutionCaseResponse = {
   id: string;
-  status: "resolved";
-  decision: ReviewDecision;
+  status: ResolutionCaseStatus;
+  decision: ResolutionFinalDecision;
   applicationId: string;
   applicationStatus: ApplicationStatus;
-  resolvedAt: string;
+  resolvedAt?: string | null;
 };

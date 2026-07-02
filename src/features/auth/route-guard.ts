@@ -20,7 +20,7 @@ const managerRoutes = ["/app/assignment", "/app/analytics", "/app/vnpt", "/app/a
 const collectiveRoutes = ["/app/collective"];
 
 const sharedAuthenticatedRoutes = ["/app/notifications"];
-const sharedStudentCollectiveRoutes = ["/app/evidence", "/app/event-library"];
+const studentEvidenceRoutes = ["/app/evidence", "/app/event-library"];
 const eventRegistryRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const resolutionRoles: Role[] = ["manager", "committee", "admin"];
 const reviewRoles: Role[] = ["officer", "manager", "committee", "admin"];
@@ -53,9 +53,7 @@ export async function requireAuthenticatedAppRoute(pathname: string) {
 export function canAccessPath(role: Role, pathname: string): boolean {
   if (pathname === "/app" || pathname === "/app/") return true;
   if (matchesAny(pathname, sharedAuthenticatedRoutes)) return true;
-  if (matchesAny(pathname, sharedStudentCollectiveRoutes)) {
-    return role === "student" || role === "class_representative";
-  }
+  if (matchesAny(pathname, studentEvidenceRoutes)) return role === "student";
   if (matchesAny(pathname, studentRoutes)) return role === "student";
   if (matchesAny(pathname, collectiveRoutes)) return role === "class_representative";
   if (matchesAny(pathname, officerRoutes)) return reviewRoles.includes(role);

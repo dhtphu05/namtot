@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Eye, Filter, Search } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui-kit";
@@ -56,6 +56,7 @@ const statusOptions: ResolutionCaseStatus[] = ["open", "in_review", "resolved"];
 
 function ResolutionCasesRoute() {
   const user = useAuth((state) => state.user);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const role = user?.role as Role | undefined;
 
   if (!role || !managerRoles.includes(role)) {
@@ -77,6 +78,10 @@ function ResolutionCasesRoute() {
         </Card>
       </>
     );
+  }
+
+  if (pathname !== "/app/resolution") {
+    return <Outlet />;
   }
 
   return <ResolutionCasesContent />;

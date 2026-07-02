@@ -13,6 +13,13 @@ export function EventLibrary() {
   const user = useAuth((s) => s.user);
   const studentCode = user?.studentCode;
   const nav = useNavigate();
+  const criterionMap: Record<string, string> = {
+    "dao-duc": "ethics",
+    "hoc-tap": "academic",
+    "the-luc": "physical",
+    "tinh-nguyen": "volunteer",
+    "hoi-nhap": "integration",
+  };
   
   const { data: appRes } = useCurrentApplication();
   const applicationId = appRes?.application?.id;
@@ -106,7 +113,7 @@ export function EventLibrary() {
     <>
       <TopBar
         title="Kho minh chứng & sự kiện hợp lệ"
-        subtitle="Tìm các sự kiện đã được Đoàn / Hội xác nhận trước khi nộp minh chứng"
+        subtitle="Tìm các sự kiện đã được xác nhận roster trước khi import vào hồ sơ"
       />
 
       <Card className="!p-3 mb-4">
@@ -126,7 +133,11 @@ export function EventLibrary() {
             className="bg-[#F6F9FC] rounded-lg px-3 py-2 text-[12.5px] font-semibold text-[#0057C2]"
           >
             <option value="all">Tất cả tiêu chí</option>
-            {CRITERIA.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            {CRITERIA.map((c) => (
+              <option key={c.key} value={criterionMap[c.key] ?? c.key}>
+                {c.label}
+              </option>
+            ))}
           </select>
         </div>
       </Card>

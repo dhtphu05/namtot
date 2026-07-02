@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { useCurrentApplication, useStartApplication } from "@/features/application/hooks/useApplication";
 import { levelLabel, applicationStatusLabel, type ApplicationStatus } from "@/lib/api/types";
+import { StudentOverview } from "./StudentOverview";
 
 
 
@@ -23,7 +24,7 @@ export function Dashboard() {
     : user
       ? toUiRole(user.role)
       : "student";
-  if (role === "student") return <StudentDash />;
+  if (role === "student") return <StudentOverview />;
   if (role === "officer") return <OfficerDash />;
   if (role === "manager") return <ManagerDash />;
   return <CollectiveDash />;

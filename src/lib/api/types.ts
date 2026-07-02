@@ -144,6 +144,110 @@ export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
 };
 
 export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+export type EventStatus = 'draft' | 'active' | 'archived';
+export type MetricType =
+  | 'gpa'
+  | 'conduct_score'
+  | 'physical_score'
+  | 'volunteer_days'
+  | 'foreign_language_score';
+export type VerificationStatus = 'pending' | 'verified' | 'rejected';
+
+export interface ApplicationMetric {
+  id: string;
+  applicationId: string;
+  metricType: MetricType;
+  value: number;
+  scale: number | null;
+  verificationStatus: VerificationStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PrecheckCriterionResult {
+  criterion: Criterion;
+  status: FinalStatus | string;
+  score?: number;
+  passed?: boolean;
+  reasons?: string[];
+  warnings?: string[];
+  evidenceIds?: string[];
+  [key: string]: unknown;
+}
+
+export interface PrecheckMissingItem {
+  criterion?: Criterion;
+  code?: string;
+  message?: string;
+  severity?: 'info' | 'warning' | 'error' | string;
+  [key: string]: unknown;
+}
+
+export interface PrecheckResult {
+  applicationId: string;
+  level: Level;
+  readinessScore: number;
+  readyToSubmit: boolean;
+  criteriaResults: PrecheckCriterionResult[];
+  missingItems: PrecheckMissingItem[];
+  warnings: string[];
+  nextBestAction: string;
+  humanConfirmationRequired: boolean;
+  createdAt: string;
+}
+
+export interface EventRegistryItem {
+  id: string;
+  eventName: string;
+  criterion: Criterion;
+  organizer: string;
+  organizerLevel: Level;
+  startDate: string | null;
+  endDate: string | null;
+  convertedValue: number | null;
+  convertedUnit: string | null;
+  eligibleLevels: Level[];
+  participantCount: number;
+  rosterIndexed: boolean;
+  status: EventStatus;
+  sampleCertificateFile?: {
+    publicUrl?: string | null;
+    [key: string]: unknown;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventParticipantCheck {
+  found: boolean;
+  participant: {
+    studentCode: string;
+    studentName: string | null;
+    className: string | null;
+    faculty: string | null;
+    convertedValue: number | null;
+    [key: string]: unknown;
+  } | null;
+  canImport: boolean;
+  reason: string | null;
+}
+
+export interface EvidenceResponse {
+  id: string;
+  applicationId?: string | null;
+  collectiveProfileId?: string | null;
+  evidenceName: string;
+  criterion: Criterion;
+  sourceType: EvidenceSourceType;
+  status: EvidenceStatus;
+  indexingStatus: IndexingStatus;
+  collectiveCriterion?: string;
+  fileId?: string;
+  jobId?: string;
+  createdAt: string;
+  updatedAt: string;
+  [key: string]: unknown;
+}
 
 export interface Application {
   id: string;
@@ -162,6 +266,7 @@ export interface ApplicationState extends Application {
   lastUpdatedAt: string;
   submittedAt: string | null;
   currentDraftVersion: number;
+  metrics?: ApplicationMetric[];
   progress?: number;
   basicInfo?: {
     fullName?: string;
@@ -194,9 +299,18 @@ export interface Metric {
 
 export interface MetricInput {
   criterion: "academic" | "ethics" | "physical" | "volunteer" | "integration";
-  metricType: "gpa" | "conduct_score" | "physical_score" | "volunteer_days" | "language_certificate" | "integration_activity";
+  metricType:
+    | "gpa"
+    | "conduct_score"
+    | "physical_score"
+    | "volunteer_days"
+    | "foreign_language_score"
+    | "language_certificate"
+    | "integration_activity";
+  value?: number;
   valueNumber?: number;
   valueText?: string;
+  scale?: number | string;
   unit?: string;
   source?: "student_input";
 }
@@ -274,6 +388,30 @@ export interface CollectivePrecheckView {
   missingItems: unknown[];
   warnings: string[];
   nextBestAction: string;
+  memberSummary?: CollectiveMemberSummary;
+  evidenceSummary?: {
+    total?: number;
+    indexed?: number;
+    accepted?: number;
+    [key: string]: unknown;
+  };
+}
+
+export interface CollectiveMemberSummary {
+  totalMembers: number;
+  participatedMembers: number;
+  notParticipatedMembers: number;
+  unknownParticipationCount: number;
+  participationRate: number;
+  schoolSv5tMembers: number;
+  schoolSv5tRate: number;
+  universitySv5tMembers: number;
+  citySv5tMembers: number;
+  centralSv5tMembers: number;
+  higherLevelAchieverCount: number;
+  violationCount: number;
+  unknownViolationCount: number;
+  [key: string]: unknown;
 }
 
 export interface CollectiveState {
@@ -290,6 +428,25 @@ export interface CollectiveState {
   registered?: number;
   sv5tTruong?: number;
   sv5tHigher?: number;
+  memberSummary?: CollectiveMemberSummary;
+  evidenceCount?: number;
+  evidences?: Array<{
+    collectiveCriterion?: string;
+    evidence?: {
+      id: string;
+      evidenceName: string;
+      criterion: Criterion;
+      sourceType: EvidenceSourceType;
+      status: EvidenceStatus;
+      indexingStatus: IndexingStatus;
+      createdAt: string;
+      updatedAt: string;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  }>;
+  precheckResults?: unknown[];
+  reviewTasks?: unknown[];
 }
 
 export interface CurrentCollectiveEmpty {

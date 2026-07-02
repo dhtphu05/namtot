@@ -35,6 +35,7 @@ import type {
   ResolutionCaseDetail,
   ResolutionCaseStatus,
   ResolutionComment,
+  ResolutionFinalDecision,
   ResolutionTimelineItem,
 } from "@/features/resolution/types";
 
@@ -45,7 +46,7 @@ export const Route = createFileRoute("/app/resolution/$id")({
 const managerRoles: Role[] = ["manager", "committee", "admin"];
 const fallbackText = "Chưa có dữ liệu";
 const resolveDecisionOptions: Array<{
-  value: Extract<ReviewDecision, "accepted" | "rejected" | "supplement_required">;
+  value: Exclude<ResolutionFinalDecision, "closed_no_action">;
   label: string;
 }> = [
   { value: "accepted", label: "Đồng ý đạt tiêu chí" },

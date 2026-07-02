@@ -23,9 +23,9 @@ export function isUiRole(role: string): role is UiRole {
 }
 
 export function getRoleLabel(role: ApiRole): string {
-  if (role === "student") return "Sinh vien";
-  if (role === "class_representative") return "Tap the / Chi hoi";
-  if (role === "officer") return "Can bo xet duyet";
-  if (role === "admin") return "Quan tri he thong";
-  return "Quan ly / Hoi dong";
+  if (role === "student") return "Sinh viên";
+  if (role === "class_representative") return "Tập thể / Chi hội";
+  if (role === "officer") return "Cán bộ xét duyệt";
+  if (role === "admin") return "Quản trị hệ thống";
+  return "Quản lý / Hội đồng";
 }

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { collectiveApi } from "@/features/collective/api/collective";
+import { collectiveKeys } from "@/features/collective/hooks/useCollective";
 import type { EvidenceSourceType } from "@/lib/api/types";
 import { toast } from "sonner";
 
@@ -7,6 +8,12 @@ export const collectiveEvidenceKeys = {
   all: ["collective-evidences"] as const,
   list: (id: string) => [...collectiveEvidenceKeys.all, "list", id] as const,
 };
+
+function invalidateCollectiveEvidences(queryClient: ReturnType<typeof useQueryClient>, collectiveId: string) {
+  queryClient.invalidateQueries({ queryKey: collectiveEvidenceKeys.list(collectiveId) });
+  queryClient.invalidateQueries({ queryKey: collectiveKeys.detail(collectiveId) });
+  queryClient.invalidateQueries({ queryKey: collectiveKeys.all });
+}
 
 export function useCollectiveEvidences(collectiveId?: string, query?: Record<string, string | number>) {
   return useQuery({
@@ -35,7 +42,8 @@ export function useCreateCollectiveEvidence() {
       return res.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: collectiveEvidenceKeys.list(variables.collectiveId) });
+      invalidateCollectiveEvidences(queryClient, variables.collectiveId);
+      toast.success("Đã tạo minh chứng tập thể.");
     },
     onError: (err: Error) => toast.error(`Lỗi tạo minh chứng tập thể: ${err.message}`),
   });
@@ -59,7 +67,7 @@ export function useUploadAndIndexCollective() {
       return { evidenceId, collectiveId, jobId: indexRes.data.jobId };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: collectiveEvidenceKeys.list(data.collectiveId) });
+      invalidateCollectiveEvidences(queryClient, data.collectiveId);
       toast.success("Đã tải lên minh chứng tập thể và bắt đầu xử lý AI.");
     },
     onError: (err: Error) => toast.error(`Lỗi tải file: ${err.message}`),
@@ -75,7 +83,7 @@ export function useImportEventCollective() {
       return res.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: collectiveEvidenceKeys.list(variables.collectiveId) });
+      invalidateCollectiveEvidences(queryClient, variables.collectiveId);
       toast.success("Đã import sự kiện tập thể.");
     },
     onError: (err: Error) => toast.error(`Lỗi import sự kiện: ${err.message}`),

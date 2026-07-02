@@ -2,104 +2,128 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
   BookOpenCheck,
-  Bot,
   CalendarCheck,
   ChartNoAxesCombined,
   Cpu,
   Download,
+  FileText,
   FolderUp,
   GitBranch,
   History,
   Inbox,
   LayoutDashboard,
-  ListChecks,
+  LifeBuoy,
   LogOut,
-  PencilLine,
   ScanFace,
   ShieldQuestion,
   SlidersHorizontal,
   Sparkles,
+  Upload,
   UserCog,
   UsersRound,
 } from "lucide-react";
-import { useAuth } from "@/features/auth/store/auth-store";
 import { authApi } from "@/features/auth/api/auth";
-import { useNotifications } from "@/features/notifications/hooks/useNotifications";
 import {
   ENABLE_DEMO_ROLE_SWITCH,
   getRoleLabel,
   isUiRole,
   toUiRole,
 } from "@/features/auth/role-map";
+import { useAuth } from "@/features/auth/store/auth-store";
 import { useApp } from "@/lib/store";
 import { ROLES, type Role } from "@/lib/mock-data";
 
-const NAV: Record<Role, { group: string; items: { label: string; to: string; icon: any }[] }[]> = {
+type BadgeTone = "core" | "ai" | "demo" | "ops" | "beta";
+type NavItem = {
+  label: string;
+  to: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  badge?: string;
+  tone?: BadgeTone;
+};
+type NavGroup = { group: string; items: NavItem[] };
+
+const NAV: Record<Role, NavGroup[]> = {
   student: [
     {
-      group: "Hồ sơ SV5T của tôi",
+      group: "Chính",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard },
-        { label: "Hồ sơ của tôi", to: "/app/wizard", icon: PencilLine },
-        { label: "Bản nháp hồ sơ", to: "/app/drafts", icon: SlidersHorizontal },
-        { label: "Minh chứng", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho sự kiện", to: "/app/event-library", icon: ListChecks },
+        { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
+        { label: "Hồ sơ của tôi", to: "/app/drafts", icon: FileText, badge: "Core", tone: "core" },
+        { label: "Upload minh chứng", to: "/app/upload", icon: Upload, badge: "Core", tone: "core" },
+        { label: "Kho minh chứng", to: "/app/evidence", icon: FolderUp, badge: "Core", tone: "core" },
       ],
     },
     {
-      group: "Hỗ trợ & Lịch trình",
+      group: "Hỗ trợ nâng cao",
       items: [
+        { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
+        { label: "Cascade Review", to: "/app/cascade", icon: GitBranch, badge: "AI", tone: "ai" },
+        { label: "Thư viện sự kiện", to: "/app/event-library", icon: CalendarCheck, badge: "Data", tone: "ops" },
+        { label: "Chatbot hỗ trợ", to: "/app/chatbot", icon: LifeBuoy, badge: "Demo", tone: "demo" },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
-        { label: "Timeline hồ sơ", to: "/app/audit", icon: History },
       ],
     },
   ],
   officer: [
     {
-      group: "Xet duyet",
+      group: "Xét duyệt",
       items: [
-        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
-        { label: "Hang cho xet duyet", to: "/app/queue", icon: Inbox },
-        { label: "Nhap su kien", to: "/app/event-registry", icon: CalendarCheck },
-        { label: "Kho tri thuc", to: "/app/evidence-search", icon: BookOpenCheck },
-        { label: "Thong bao", to: "/app/notifications", icon: Bell },
+        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
+        { label: "Hàng chờ xét duyệt", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
+        { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Ops", tone: "ops" },
+        { label: "Kho tri thức", to: "/app/evidence-search", icon: BookOpenCheck, badge: "Ops", tone: "ops" },
+        { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Hội đồng", tone: "beta" },
+        { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
   manager: [
     {
-      group: "Quan ly",
+      group: "Quản lý hồ sơ",
       items: [
-        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
-        { label: "Phan cong can bo", to: "/app/assignment", icon: UserCog },
-        { label: "Nhap su kien", to: "/app/event-registry", icon: CalendarCheck },
-        { label: "SmartUX Analytics", to: "/app/analytics", icon: ChartNoAxesCombined },
-        { label: "VNPT AI Center", to: "/app/vnpt", icon: Cpu },
-        { label: "Audit Log", to: "/app/audit", icon: History },
-        { label: "Export Center", to: "/app/export", icon: Download },
-        { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion },
-        { label: "Cau hinh tieu chi", to: "/app/settings", icon: SlidersHorizontal },
+        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
+        { label: "Dashboard thống kê", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "Core", tone: "core" },
+        { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog, badge: "Ops", tone: "ops" },
+        { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Ops", tone: "ops" },
+      ],
+    },
+    {
+      group: "Module nâng cao",
+      items: [
+        { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Data", tone: "ops" },
+        { label: "SmartUX Analytics", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "AI", tone: "ai" },
+        { label: "VNPT AI Center", to: "/app/vnpt", icon: Cpu, badge: "Demo", tone: "demo" },
+        { label: "eKYC", to: "/app/ekyc", icon: ScanFace, badge: "Demo", tone: "demo" },
+        { label: "Audit Log", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },
+        { label: "Export Center", to: "/app/export", icon: Download, badge: "Ops", tone: "ops" },
+        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal, badge: "Beta", tone: "beta" },
       ],
     },
   ],
   collective: [
     {
-      group: "Tap the",
+      group: "Tập thể",
       items: [
-        { label: "Bang dieu khien", to: "/app", icon: LayoutDashboard },
-        { label: "Ho so tap the", to: "/app/collective", icon: UsersRound },
-        { label: "Minh chung", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho su kien", to: "/app/event-library", icon: ListChecks },
-        { label: "Thong bao", to: "/app/notifications", icon: Bell },
+        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
+        { label: "Hồ sơ tập thể", to: "/app/collective", icon: UsersRound, badge: "Core", tone: "core" },
+        { label: "Upload minh chứng", to: "/app/upload", icon: Upload, badge: "Core", tone: "core" },
+        { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
+        { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
 };
 
-export function Sidebar() {
-  const { data: notifications = [] } = useNotifications();
-  const unreadCount = notifications.filter((n) => !n.readAt).length;
+const badgeClass: Record<BadgeTone, string> = {
+  core: "bg-emerald-50 text-emerald-700",
+  ai: "bg-sky-50 text-sky-700",
+  demo: "bg-amber-50 text-amber-700",
+  ops: "bg-indigo-50 text-indigo-700",
+  beta: "bg-slate-100 text-slate-700",
+};
 
+export function Sidebar() {
   const user = useAuth((s) => s.user);
   const refreshToken = useAuth((s) => s.refreshToken);
   const clearAuth = useAuth((s) => s.clearAuth);
@@ -115,7 +139,7 @@ export function Sidebar() {
     try {
       await authApi.logout(refreshToken ?? undefined);
     } catch {
-      // Local logout must still happen if the server token is already invalid.
+      // Local logout vẫn cần chạy nếu refresh token đã invalid.
     } finally {
       clearAuth();
       setRole("student");
@@ -123,15 +147,22 @@ export function Sidebar() {
     }
   };
 
+  const isActive = (to: string) =>
+    pathname === to ||
+    (to !== "/app" && pathname.startsWith(to)) ||
+    (role === "student" &&
+      to === "/app/drafts" &&
+      ["/app/ai-precheck", "/app/cascade"].some((path) => pathname.startsWith(path)));
+
   return (
-    <aside className="w-72 shrink-0 bg-white border-r border-[#EEF2F7] min-h-screen px-4 py-6 flex flex-col gap-5 sticky top-0">
+    <aside className="sticky top-0 flex min-h-screen w-72 shrink-0 flex-col gap-5 border-r border-[#EEF2F7] bg-white px-4 py-6">
       <Link to="/app" className="flex items-center gap-3 px-2">
-        <div className="w-10 h-10 rounded-xl bg-[#0057C2] flex items-center justify-center text-white font-bold text-sm">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0057C2] text-sm font-bold text-white">
           5T
         </div>
         <div>
-          <div className="font-bold text-brand-deep leading-tight text-[15px]">5TOT Platform</div>
-          <div className="text-[11px] text-muted-foreground">Sinh vien 5 tot - 2025-2026</div>
+          <div className="text-[15px] font-bold leading-tight text-brand-deep">5TOT Platform</div>
+          <div className="text-[11px] text-muted-foreground">SV5T 2025-2026</div>
         </div>
       </Link>
 
@@ -140,30 +171,38 @@ export function Sidebar() {
       <nav className="flex flex-col gap-5 overflow-y-auto pr-1">
         {groups.map((group) => (
           <div key={group.group}>
-            <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground/80 px-3 mb-2 font-semibold">
+            <div className="mb-2 px-3 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground/80">
               {group.group}
             </div>
             <ul className="flex flex-col gap-0.5">
               {group.items.map((item) => {
-                const active = pathname === item.to || (item.to !== "/app" && pathname.startsWith(item.to));
+                const active = isActive(item.to);
                 const Icon = item.icon;
                 return (
-                  <li key={item.to}>
+                  <li key={`${group.group}-${item.to}-${item.label}`}>
                     <Link
                       to={item.to}
-                      className={`group flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                      className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
                         active
                           ? "bg-[#0057C2] text-white"
                           : "text-foreground/80 hover:bg-[#F1F7FD] hover:text-brand-deep"
                       }`}
                     >
-                      <span className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${active ? "bg-white/15" : "bg-[#F1F7FD] text-[#0057C2] group-hover:bg-white"}`}>
-                        <Icon className="w-3.5 h-3.5" strokeWidth={1.8} />
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
+                          active ? "bg-white/15" : "bg-[#F1F7FD] text-[#0057C2] group-hover:bg-white"
+                        }`}
+                      >
+                        <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
                       </span>
-                      <span className="truncate flex-1">{item.label}</span>
-                      {item.to === "/app/notifications" && unreadCount > 0 && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none shrink-0 ${active ? "bg-white text-[#0057C2]" : "bg-rose-500 text-white"}`}>
-                          {unreadCount}
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      {item.badge && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            active ? "bg-white/15 text-white" : badgeClass[item.tone ?? "beta"]
+                          }`}
+                        >
+                          {item.badge}
                         </span>
                       )}
                     </Link>
@@ -181,7 +220,7 @@ export function Sidebar() {
           onClick={handleLogout}
           className="flex items-center gap-2 px-3 py-2 text-[13px] text-muted-foreground hover:text-brand-deep"
         >
-          <LogOut className="w-4 h-4" /> Dang xuat
+          <LogOut className="h-4 w-4" /> Đăng xuất
         </button>
       </div>
     </aside>
@@ -197,19 +236,19 @@ function RolePanel() {
   const roleMeta = ROLES[role];
 
   return (
-    <div className="rounded-xl border border-[#EEF2F7] p-3 mx-1">
-      <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-2 px-1 font-semibold">
-        Dang dang nhap
+    <div className="mx-1 rounded-xl border border-[#EEF2F7] p-3">
+      <div className="mb-2 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Đang đăng nhập
       </div>
-      <div className="flex items-center gap-3 px-1 mb-3">
-        <div className="w-9 h-9 rounded-lg bg-[#0057C2] text-white flex items-center justify-center font-bold text-xs shrink-0">
+      <div className="mb-3 flex items-center gap-3 px-1">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0057C2] text-xs font-bold text-white">
           {roleMeta.initial}
         </div>
         <div className="min-w-0">
-          <div className="font-semibold text-brand-deep text-[13px] truncate">
+          <div className="truncate text-[13px] font-semibold text-brand-deep">
             {user?.fullName ?? roleMeta.label}
           </div>
-          <div className="text-[11px] text-muted-foreground truncate">
+          <div className="truncate text-[11px] text-muted-foreground">
             {user ? getRoleLabel(user.role) : roleMeta.desc}
           </div>
         </div>
@@ -218,12 +257,12 @@ function RolePanel() {
       {ENABLE_DEMO_ROLE_SWITCH ? (
         <>
           <div className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800">
-            Demo-only mock role switch. Backend permissions still use the authenticated account.
+            Demo role switch chỉ đổi UI. Backend permissions vẫn theo tài khoản đang đăng nhập.
           </div>
           <select
             value={role}
             onChange={(event) => setRole(event.target.value as Role)}
-            className="w-full text-[12px] rounded-lg bg-[#F1F7FD] px-3 py-2 font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#0057C2]/40"
+            className="w-full rounded-lg bg-[#F1F7FD] px-3 py-2 text-[12px] font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#0057C2]/40"
           >
             {Object.entries(ROLES).map(([key, value]) => (
               <option key={key} value={key}>

@@ -29,3 +29,12 @@ export function ResolutionDetails() {
     </>
   );
 }
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3 border-b border-white/70 py-2 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="max-w-[60%] text-right font-semibold text-brand-deep">{value}</span>
+    </div>
+  );
+}

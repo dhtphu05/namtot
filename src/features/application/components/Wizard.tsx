@@ -71,14 +71,16 @@ export function Wizard() {
       const conductItem = metricsList.find((m: any) => m.metricType === "conduct_score");
       const physicalItem = metricsList.find((m: any) => m.metricType === "physical_score");
       const volunteerItem = metricsList.find((m: any) => m.metricType === "volunteer_days");
-      const integrationItem = metricsList.find((m: any) => m.metricType === "language_certificate");
+      const integrationItem = metricsList.find(
+        (m: any) => m.metricType === "foreign_language_score" || m.metricType === "language_certificate",
+      );
 
       setMetricsForm({
         gpa: gpaItem ? String(gpaItem.valueNumber ?? "") : "",
         conductScore: conductItem ? String(conductItem.valueNumber ?? "") : "",
         physicalScore: physicalItem ? String(physicalItem.valueNumber ?? physicalItem.valueText ?? "") : "",
         volunteerDays: volunteerItem ? String(volunteerItem.valueNumber ?? "") : "",
-        languageCertificate: integrationItem ? String(integrationItem.valueText ?? "") : "",
+        languageCertificate: integrationItem ? String(integrationItem.valueNumber ?? integrationItem.valueText ?? "") : "",
       });
     }
   }, [metricsList]);
@@ -266,7 +268,7 @@ export function Wizard() {
         {
           metricType: "physical_score" as const,
           criterion: "physical" as const,
-          valueText: metricsForm.physicalScore || undefined,
+          valueNumber: Number.isNaN(Number(metricsForm.physicalScore)) ? undefined : Number(metricsForm.physicalScore),
           unit: "chỉ số",
         },
         {
@@ -276,9 +278,9 @@ export function Wizard() {
           unit: "ngày",
         },
         {
-          metricType: "language_certificate" as const,
+          metricType: "foreign_language_score" as const,
           criterion: "integration" as const,
-          valueText: metricsForm.languageCertificate || undefined,
+          valueNumber: Number.isNaN(Number(metricsForm.languageCertificate)) ? undefined : Number(metricsForm.languageCertificate),
           unit: "chứng chỉ",
         },
       ];

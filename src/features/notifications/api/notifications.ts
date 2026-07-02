@@ -19,6 +19,19 @@ export interface NotificationResponse extends Notification {
   desc?: string;
 }
 
+type NotificationListPayload =
+  | Notification[]
+  | {
+      items?: Notification[];
+      data?: Notification[];
+      notifications?: Notification[];
+    };
+
+function normalizeNotifications(payload: NotificationListPayload | null): Notification[] {
+  if (Array.isArray(payload)) return payload;
+  return payload?.items ?? payload?.data ?? payload?.notifications ?? [];
+}
+
 export const notificationsApi = {
   getNotifications: async (params?: { page?: number; limit?: number }) => {
     const query = new URLSearchParams();
@@ -30,9 +43,10 @@ export const notificationsApi = {
       });
     }
     const qString = query.toString();
-    return apiClient<Notification[]>(`/api/notifications${qString ? `?${qString}` : ""}`, {
+    const res = await apiClient<NotificationListPayload>(`/api/notifications${qString ? `?${qString}` : ""}`, {
       method: "GET",
     });
+    return { ...res, data: normalizeNotifications(res.data) };
   },
 
   markNotificationRead: async (notificationId: string) => {

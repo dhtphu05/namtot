@@ -218,7 +218,7 @@ function EvidenceWorkspace() {
   );
 }
 
-function Section({ title, items, tone }: { title: string; items: string[]; tone: "error" | "success" | "brand" }) {
+function Section({ title, items = [], tone }: { title: string; items?: string[]; tone: "error" | "success" | "brand" }) {
   const icons = { error: "alert", success: "ok", brand: "ocr" } as const;
   return (
     <div>

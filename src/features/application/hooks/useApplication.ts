@@ -1,12 +1,14 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { applicationApi } from "@/features/application/api/application";
-import type { Level, MetricInput } from "@/lib/api/types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { applicationApi } from "@/features/application/api/application";
+import type { Level, MetricInput, MetricType, VerificationStatus } from "@/lib/api/types";
 
 export const applicationKeys = {
   all: ["applications"] as const,
   current: () => ["application", "current"] as const,
   timeline: (id: string) => ["application", id, "timeline"] as const,
+  latestPrecheck: (id: string) => ["application", id, "precheck", "latest"] as const,
+  metrics: (id: string) => ["application", id, "metrics"] as const,
 };
 
 export function useCurrentApplication(schoolYear?: string) {
@@ -23,7 +25,11 @@ export function useStartApplication() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { schoolYear?: string; applicationType?: "individual" | "collective"; targetLevel?: Level }) => {
+    mutationFn: async (data: {
+      schoolYear?: string;
+      applicationType?: "individual" | "collective";
+      targetLevel?: Level;
+    }) => {
       const res = await applicationApi.startCurrentApplication(data);
       return res.data;
     },
@@ -54,8 +60,21 @@ export function useSaveApplicationDraft() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, draftData, step }: { id: string; draftData: Record<string, unknown>; step?: string }) => {
-      const res = await applicationApi.saveDraft(id, { draftData, step });
+    mutationFn: async ({
+      id,
+      draftData,
+      draftPayload,
+      step,
+    }: {
+      id: string;
+      draftData?: Record<string, unknown>;
+      draftPayload?: Record<string, unknown>;
+      step?: string;
+    }) => {
+      const res = await applicationApi.saveDraft(id, {
+        draftData: draftData ?? draftPayload ?? {},
+        step,
+      });
       return res.data;
     },
     onSuccess: () => {
@@ -64,26 +83,23 @@ export function useSaveApplicationDraft() {
   });
 }
 
-export function useSaveDraft() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, draftPayload }: { id: string; draftPayload: Record<string, unknown> }) => {
-      const res = await applicationApi.saveDraft(id, { draftData: draftPayload });
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
-    },
-  });
-}
+export const useSaveDraft = useSaveApplicationDraft;
 
 export function useSubmitApplication() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, allowSubmitWithWarnings }: { id: string; allowSubmitWithWarnings: boolean }) => {
-      const res = await applicationApi.submitApplication(id, { allowSubmitWithWarnings });
+    mutationFn: async ({
+      id,
+      allowSubmitWithWarnings,
+    }: {
+      id: string;
+      allowSubmitWithWarnings?: boolean;
+      studentNote?: string;
+    }) => {
+      const res = await applicationApi.submitApplication(id, {
+        allowSubmitWithWarnings: !!allowSubmitWithWarnings,
+      });
       return res.data;
     },
     onSuccess: () => {
@@ -96,6 +112,18 @@ export function useSubmitApplication() {
   });
 }
 
+export function useLatestPrecheck(applicationId: string | undefined) {
+  return useQuery({
+    queryKey: applicationKeys.latestPrecheck(applicationId ?? ""),
+    queryFn: async () => {
+      if (!applicationId) return null;
+      const res = await applicationApi.getLatestPrecheck(applicationId);
+      return res.data;
+    },
+    enabled: !!applicationId,
+  });
+}
+
 export function usePrecheck() {
   const queryClient = useQueryClient();
 
@@ -104,8 +132,9 @@ export function usePrecheck() {
       const res = await applicationApi.precheck(id, { level, runMode: "sync" });
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) });
     },
   });
 }
@@ -114,7 +143,7 @@ export function useApplicationTimeline(id: string | undefined) {
   return useQuery({
     queryKey: applicationKeys.timeline(id ?? ""),
     queryFn: async () => {
-      if (!id) return null;
+      if (!id) return [];
       const res = await applicationApi.getApplicationTimeline(id);
       return res.data;
     },
@@ -124,7 +153,7 @@ export function useApplicationTimeline(id: string | undefined) {
 
 export function useApplicationMetrics(id: string | undefined) {
   return useQuery({
-    queryKey: [...applicationKeys.all, "metrics", id ?? ""],
+    queryKey: applicationKeys.metrics(id ?? ""),
     queryFn: async () => {
       if (!id) return [];
       const res = await applicationApi.getMetrics(id);
@@ -134,23 +163,48 @@ export function useApplicationMetrics(id: string | undefined) {
   });
 }
 
-export function useCreateMetric() {
+export function useUpsertMetric() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
-      applicationId,
-      data,
+      id,
+      metricType,
+      value,
+      scale,
     }: {
-      applicationId: string;
-      data: MetricInput;
+      id: string;
+      metricType: MetricType;
+      value: number;
+      scale?: number | string;
     }) => {
+      const res = await applicationApi.createApplicationMetric(id, {
+        criterion: metricType === "gpa" ? "academic" : "ethics",
+        metricType: metricType as MetricInput["metricType"],
+        valueNumber: value,
+        unit: typeof scale === "string" ? scale : undefined,
+        source: "student_input",
+      });
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+    },
+  });
+}
+
+export function useCreateMetric() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ applicationId, data }: { applicationId: string; data: MetricInput }) => {
       const res = await applicationApi.createApplicationMetric(applicationId, data);
       return res.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...applicationKeys.all, "metrics", variables.applicationId] });
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.applicationId) });
       toast.success("Đã lưu chỉ số thành công!");
     },
     onError: (err: Error) => {
@@ -166,18 +220,29 @@ export function useUpdateMetric() {
     mutationFn: async ({
       metricId,
       applicationId,
+      value,
+      scale,
+      verificationStatus,
       data,
     }: {
       metricId: string;
-      applicationId: string;
-      data: Partial<MetricInput>;
+      applicationId?: string;
+      value?: number;
+      scale?: number | string;
+      verificationStatus?: VerificationStatus;
+      data?: Partial<MetricInput>;
     }) => {
-      const res = await applicationApi.updateMetric(metricId, data);
+      const res = await applicationApi.updateMetric(
+        metricId,
+        data ?? { value, scale, verificationStatus },
+      );
       return res.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...applicationKeys.all, "metrics", variables.applicationId] });
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      if (variables.applicationId) {
+        queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.applicationId) });
+      }
       toast.success("Đã cập nhật chỉ số thành công!");
     },
     onError: (err: Error) => {

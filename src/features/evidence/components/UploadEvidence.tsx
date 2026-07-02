@@ -20,7 +20,7 @@ export function UploadEvidence() {
   const appId = appRes?.application?.id;
 
   const { data: filesData, isLoading: isLoadingList } = useEvidences(appId);
-  const files = filesData || [];
+  const files = Array.isArray(filesData) ? filesData : [];
   
   const createEvidence = useCreateEvidence();
   const uploadAndIndex = useUploadAndIndex();
