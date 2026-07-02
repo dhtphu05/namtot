@@ -232,8 +232,16 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
 
   const readinessScore = precheck?.readinessScore ?? application.readinessScore ?? 0;
   const metrics = application.metrics ?? [];
+  const canEditApplication = ["draft", "prechecked", "ready_to_submit", "supplement_required"].includes(
+    application.status,
+  );
 
   const saveMetric = (metricType: MetricType, scale?: number) => {
+    if (!canEditApplication) {
+      toast.error("Hồ sơ đã khóa, không thể sửa chỉ số.");
+      return;
+    }
+
     const value = Number(metricValues[metricType]);
     if (!Number.isFinite(value)) {
       toast.error("Vui lòng nhập giá trị hợp lệ.");
@@ -261,6 +269,11 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   };
 
   const addEvidenceForCriterion = (criterion: Criterion) => {
+    if (!canEditApplication) {
+      toast.error("Hồ sơ đã khóa, không thể thêm minh chứng.");
+      return;
+    }
+
     createEvidence.mutate({
       applicationId: application.id,
       data: {
@@ -278,6 +291,12 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
 
   const submitEvidenceForm = async () => {
     if (!evidenceForm) return;
+    if (!canEditApplication) {
+      toast.error("Hồ sơ đã khóa, không thể thêm minh chứng.");
+      setEvidenceForm(null);
+      return;
+    }
+
     const evidenceName = evidenceForm.evidenceName.trim();
     if (evidenceName.length < 3) {
       toast.error("Vui lòng nhập tên minh chứng ít nhất 3 ký tự.");
@@ -360,6 +379,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
           </div>
         </Card>
 
+        {!canEditApplication && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Hồ sơ đang ở trạng thái <b>{statusLabel[application.status]}</b>, nên backend không cho sửa
+            chỉ số hoặc thêm minh chứng. Nếu muốn test lại flow thêm minh chứng, hãy dùng tài khoản/hồ sơ mới
+            hoặc hồ sơ còn ở trạng thái bản nháp/cần bổ sung.
+          </div>
+        )}
+
         <div className="mb-5 flex gap-2 overflow-x-auto rounded-lg border border-[#E3ECF6] bg-white p-1">
           {(Object.keys(tabLabels) as WorkspaceTab[]).map((key) => (
             <button
@@ -422,7 +449,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                         <Button
                           size="sm"
                           variant="secondary"
-                          disabled={upsertMetric.isPending}
+                          disabled={!canEditApplication || upsertMetric.isPending}
                           onClick={() => saveMetric(metric.key, metric.scale)}
                         >
                           Lưu
@@ -460,7 +487,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                     </div>
                     <Button
                       variant="secondary"
-                      disabled={createEvidence.isPending || uploadAndIndex.isPending}
+                      disabled={!canEditApplication || createEvidence.isPending || uploadAndIndex.isPending}
                       onClick={() =>
                         setEvidenceForm({
                           criterion: criterion.key,
@@ -632,7 +659,10 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               >
                 Hủy
               </Button>
-              <Button onClick={submitEvidenceForm} disabled={createEvidence.isPending || uploadAndIndex.isPending}>
+              <Button
+                onClick={submitEvidenceForm}
+                disabled={!canEditApplication || createEvidence.isPending || uploadAndIndex.isPending}
+              >
                 {createEvidence.isPending || uploadAndIndex.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
