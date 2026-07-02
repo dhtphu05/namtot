@@ -56,6 +56,11 @@ export interface SafeUser {
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
+  officerSpecializations?: Array<{
+    criterion: Criterion;
+    facultyScope?: string | null;
+    isActive?: boolean;
+  }>;
 }
 
 export interface LoginData {

@@ -4,9 +4,11 @@ import type {
   Criterion,
   EvidenceStatus,
   ApiResponse,
+  CriterionLevelAssessment,
   EscalateResolutionRequest,
   EscalateResolutionResponse,
   Level,
+  OfficerDashboardResponse,
   QueryValue,
   RequestSupplementRequest,
   RequestSupplementResponse,
@@ -102,7 +104,12 @@ function normalizeListItem(item: RawRecord): ReviewTaskListItem {
     assignedOfficerId: item.assignedOfficerId ?? assignedOfficer?.id ?? null,
     assignedOfficerName: item.assignedOfficerName ?? assignedOfficer?.fullName ?? null,
     evidenceCount: asNumber(item.evidenceCount ?? count?.evidences),
-    supplementCount: item.supplementCount,
+    supplementCount: asNumber(item.supplementCount),
+    aiConfidence:
+      item.aiConfidence === undefined || item.aiConfidence === null ? null : asNumber(item.aiConfidence),
+    riskLevel: (item.riskLevel ?? "low") as ReviewTaskListItem["riskLevel"],
+    dueDate: item.dueDate === undefined || item.dueDate === null ? null : asString(item.dueDate),
+    officerSuggestedLevel: (item.officerSuggestedLevel ?? null) as Level | null,
     createdAt: asString(item.createdAt),
     updatedAt: asString(item.updatedAt ?? item.createdAt),
   };
@@ -163,6 +170,13 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
     checklist: normalizeChecklist(
       asRecordArray(payload.criteriaChecklist ?? payload.checklist ?? rawTask.checklist),
     ),
+    criterionLevelAssessment: normalizeCriterionLevelAssessment(
+      asRecord(payload.criterionLevelAssessment ?? rawTask.criterionLevelAssessment),
+    ),
+    officerSuggestedLevel: (rawTask.officerSuggestedLevel ?? null) as Level | null,
+    levelAssessmentJson: rawTask.levelAssessmentJson ?? null,
+    decisionReason: asString(rawTask.decisionReason) || null,
+    supplementRequestJson: rawTask.supplementRequestJson ?? null,
     decisionHistory: normalizeDecisionHistory(
       asRecordArray(payload.audit ?? payload.decisionHistory),
     ),
@@ -178,6 +192,7 @@ function normalizeEvidences(items: RawRecord[]): ReviewTaskEvidence[] {
     criterion: (item.criterion ?? "academic") as Criterion,
     sourceType: item.sourceType ?? "manual_upload",
     status: (item.status ?? "under_review") as EvidenceStatus,
+    indexingStatus: asString(item.indexingStatus),
     confidence: item.confidence ?? asRecord(item.card)?.confidence ?? null,
     note: item.note ?? null,
     reviewerNote: item.reviewerNote ?? null,
@@ -191,8 +206,60 @@ function normalizeEvidences(items: RawRecord[]): ReviewTaskEvidence[] {
       url: file.url ?? file.publicUrl ?? null,
       storageKey: file.storageKey ?? null,
       createdAt: asString(file.createdAt ?? item.createdAt),
+      uploadedAt: asString(file.uploadedAt ?? file.createdAt ?? item.createdAt),
     })),
+    card: normalizeEvidenceCard(asRecord(item.card)),
+    event: asRecord(item.event)
+      ? {
+          id: asString(asRecord(item.event)?.id),
+          eventName: asString(asRecord(item.event)?.eventName),
+          organizer: asRecord(item.event)?.organizer as string | null,
+          organizerLevel: (asRecord(item.event)?.organizerLevel ?? null) as Level | null,
+        }
+      : null,
   }));
+}
+
+function normalizeEvidenceCard(card: RawRecord | null) {
+  if (!card) return null;
+  return {
+    id: asString(card.id),
+    ocrText: (card.ocrText ?? null) as string | null,
+    extractedFieldsJson: card.extractedFieldsJson ?? null,
+    warningsJson: card.warningsJson ?? card.warnings ?? [],
+    matchedEventId: (card.matchedEventId ?? null) as string | null,
+    matchedKnowledgeItemIds: card.matchedKnowledgeItemIds ?? null,
+    confidence: card.confidence === undefined || card.confidence === null ? null : asNumber(card.confidence),
+    aiSummary: (card.aiSummary ?? null) as string | null,
+    createdAt: asString(card.createdAt),
+    updatedAt: asString(card.updatedAt),
+  };
+}
+
+function normalizeCriterionLevelAssessment(payload: RawRecord | null): CriterionLevelAssessment | null {
+  if (!payload) return null;
+  return {
+    taskId: asString(payload.taskId),
+    criterion: (payload.criterion ?? "academic") as Criterion,
+    targetLevel: (payload.targetLevel ?? null) as Level | null,
+    levels: asRecordArray(payload.levels).map((level) => ({
+      level: (level.level ?? "school") as Level,
+      status: (level.status ?? "needs_review") as CriterionLevelAssessment["levels"][number]["status"],
+      score: level.score === undefined || level.score === null ? null : asNumber(level.score),
+      summary: asString(level.summary),
+      requirements: asRecordArray(level.requirements).map((requirement) => ({
+        key: asString(requirement.key),
+        label: asString(requirement.label),
+        status: (requirement.status ?? "needs_review") as CriterionLevelAssessment["levels"][number]["requirements"][number]["status"],
+        actualValue: requirement.actualValue === undefined || requirement.actualValue === null ? null : asString(requirement.actualValue),
+        requiredValue: requirement.requiredValue === undefined || requirement.requiredValue === null ? null : asString(requirement.requiredValue),
+        source: requirement.source === undefined || requirement.source === null ? null : asString(requirement.source),
+        reason: requirement.reason === undefined || requirement.reason === null ? null : asString(requirement.reason),
+      })),
+    })),
+    suggestedCriterionLevel: (payload.suggestedCriterionLevel ?? null) as Level | null,
+    humanConfirmationRequired: Boolean(payload.humanConfirmationRequired ?? true),
+  };
 }
 
 function normalizeMetrics(items: RawRecord[]): ReviewTaskMetric[] {
@@ -320,6 +387,11 @@ export const reviewApi = {
     );
   },
 
+  getOfficerDashboard: async (): Promise<ApiResponse<OfficerDashboardResponse>> => {
+    const response = await apiClient<OfficerDashboardResponse>("/api/review/dashboard");
+    return withDataFallback(response);
+  },
+
   getReviewTask: async (id: string): Promise<ApiResponse<ReviewTaskDetail>> => {
     const response = await apiClient<RawRecord>(`/api/review/tasks/${id}`);
 
@@ -327,6 +399,24 @@ export const reviewApi = {
       ...response,
       data: normalizeReviewTaskDetail(response.data),
     });
+  },
+
+  getCriterionLevelAssessment: async (
+    id: string,
+  ): Promise<ApiResponse<CriterionLevelAssessment>> => {
+    const response = await apiClient<RawRecord>(`/api/review/tasks/${id}/criterion-level-assessment`);
+    return withDataFallback({
+      ...response,
+      data: normalizeCriterionLevelAssessment(response.data),
+    });
+  },
+
+  getReviewTaskTimeline: async (id: string): Promise<ApiResponse<unknown[]>> => {
+    return apiClient<unknown[]>(`/api/review/tasks/${id}/timeline`);
+  },
+
+  getSignedFileUrl: async (fileId: string) => {
+    return apiClient<{ url: string }>(`/api/files/${fileId}/signed-url`);
   },
 
   submitReviewDecision: async (
@@ -338,8 +428,12 @@ export const reviewApi = {
       headers: { "Content-Type": "application/json" },
       body: {
         decision: payload.decision,
+        officerSuggestedLevel: payload.officerSuggestedLevel ?? null,
+        levelAssessmentJson: payload.levelAssessmentJson,
+        supplementRequestJson: payload.supplementRequestJson,
         officerNote: payload.note,
         evidenceDecisions: payload.evidenceDecisions,
+        evidenceAssessments: payload.evidenceAssessments,
       },
     });
 

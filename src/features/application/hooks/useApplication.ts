@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { applicationApi } from "@/features/application/api/application";
 import type { Level, MetricInput, MetricType, VerificationStatus } from "@/lib/api/types";
+import { notificationKeys } from "@/features/notifications/hooks/useNotifications";
 
 export const applicationKeys = {
   all: ["applications"] as const,
@@ -35,6 +36,7 @@ export function useStartApplication() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     },
     onError: (err: Error) => {
       toast.error(`Không thể tạo hồ sơ: ${err.message}`);
@@ -92,19 +94,25 @@ export function useSubmitApplication() {
     mutationFn: async ({
       id,
       allowSubmitWithWarnings,
+      successMessage,
     }: {
       id: string;
       allowSubmitWithWarnings?: boolean;
       studentNote?: string;
+      successMessage?: string;
     }) => {
       const res = await applicationApi.submitApplication(id, {
         allowSubmitWithWarnings: !!allowSubmitWithWarnings,
       });
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
-      toast.success("Đã nộp hồ sơ thành công!");
+      queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.timeline(variables.id) });
+      queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+      toast.success(variables.successMessage ?? "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.");
     },
     onError: (err: Error) => {
       toast.error(`Không thể nộp hồ sơ: ${err.message}`);

@@ -18,6 +18,7 @@ import {
   ShieldQuestion,
   SlidersHorizontal,
   Sparkles,
+  Trophy,
   Upload,
   UserCog,
   UsersRound,
@@ -32,6 +33,7 @@ import {
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useApp } from "@/lib/store";
 import { ROLES, type Role } from "@/lib/mock-data";
+import { criterionLabel } from "@/lib/api/types";
 
 type BadgeTone = "core" | "ai" | "demo" | "ops" | "beta";
 type NavItem = {
@@ -73,7 +75,7 @@ const NAV: Record<Role, NavGroup[]> = {
         { label: "Hàng chờ xét duyệt", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
         { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Ops", tone: "ops" },
         { label: "Kho tri thức", to: "/app/evidence-search", icon: BookOpenCheck, badge: "Ops", tone: "ops" },
-        { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Hội đồng", tone: "beta" },
+        { label: "Hồ sơ đã chuyển hội ý", to: "/app/resolution", icon: ShieldQuestion, badge: "Theo dõi", tone: "beta" },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
@@ -84,6 +86,7 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Dashboard thống kê", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "Core", tone: "core" },
+        { label: "Kết quả theo cấp", to: "/app/manager/results", icon: Trophy, badge: "Core", tone: "core" },
         { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog, badge: "Ops", tone: "ops" },
         { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Ops", tone: "ops" },
       ],
@@ -92,7 +95,7 @@ const NAV: Record<Role, NavGroup[]> = {
       group: "Module nâng cao",
       items: [
         { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Data", tone: "ops" },
-        { label: "SmartUX Analytics", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "AI", tone: "ai" },
+        { label: "SmartUX Analytics", to: "/app/smartux", icon: ChartNoAxesCombined, badge: "AI", tone: "ai" },
         { label: "VNPT AI Center", to: "/app/vnpt", icon: Cpu, badge: "Demo", tone: "demo" },
         { label: "eKYC", to: "/app/ekyc", icon: ScanFace, badge: "Demo", tone: "demo" },
         { label: "Audit Log", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },
@@ -155,20 +158,25 @@ export function Sidebar() {
       ["/app/ai-precheck", "/app/cascade"].some((path) => pathname.startsWith(path)));
 
   return (
-    <aside className="sticky top-0 flex min-h-screen w-72 shrink-0 flex-col gap-5 border-r border-[#EEF2F7] bg-white px-4 py-6">
-      <Link to="/app" className="flex items-center gap-3 px-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0057C2] text-sm font-bold text-white">
-          5T
-        </div>
-        <div>
-          <div className="text-[15px] font-bold leading-tight text-brand-deep">5TOT Platform</div>
-          <div className="text-[11px] text-muted-foreground">SV5T 2025-2026</div>
-        </div>
-      </Link>
+    <aside className="flex h-screen w-72 shrink-0 flex-col border-r border-[#EEF2F7] bg-white">
+      <div className="shrink-0 px-4 pb-4 pt-6">
+        <Link to="/app" className="flex items-center gap-3 px-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0057C2] text-sm font-bold text-white">
+            5T
+          </div>
+          <div>
+            <div className="text-[15px] font-bold leading-tight text-brand-deep">5TOT Platform</div>
+            <div className="text-[11px] text-muted-foreground">SV5T 2025-2026</div>
+          </div>
+        </Link>
+      </div>
 
-      <RolePanel />
+      <div className="shrink-0 px-4 pb-4">
+        <RolePanel />
+      </div>
 
-      <nav className="flex flex-col gap-5 overflow-y-auto pr-1">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-4 pr-3">
+        <div className="flex flex-col gap-5 pb-4">
         {groups.map((group) => (
           <div key={group.group}>
             <div className="mb-2 px-3 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground/80">
@@ -212,13 +220,14 @@ export function Sidebar() {
             </ul>
           </div>
         ))}
+        </div>
       </nav>
 
-      <div className="mt-auto">
+      <div className="shrink-0 border-t border-[#EEF2F7] bg-white px-4 py-4">
         <button
           type="button"
           onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-2 text-[13px] text-muted-foreground hover:text-brand-deep"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[#F1F7FD] hover:text-brand-deep"
         >
           <LogOut className="h-4 w-4" /> Đăng xuất
         </button>
@@ -234,6 +243,10 @@ function RolePanel() {
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const roleMeta = ROLES[role];
+  const officerSpecializationText =
+    user?.role === "officer" && user.officerSpecializations?.length
+      ? user.officerSpecializations.map((item) => criterionLabel[item.criterion]).join(", ")
+      : null;
 
   return (
     <div className="mx-1 rounded-xl border border-[#EEF2F7] p-3">
@@ -273,7 +286,7 @@ function RolePanel() {
         </>
       ) : (
         <div className="rounded-lg bg-[#F1F7FD] px-3 py-2 text-[12px] font-medium text-brand-deep">
-          {user ? getRoleLabel(user.role) : roleMeta.label}
+          {officerSpecializationText ? `Phụ trách: ${officerSpecializationText}` : user ? getRoleLabel(user.role) : roleMeta.label}
         </div>
       )}
     </div>

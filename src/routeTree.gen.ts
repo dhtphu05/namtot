@@ -17,6 +17,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppWizardRouteImport } from './routes/app.wizard'
 import { Route as AppVnptRouteImport } from './routes/app.vnpt'
 import { Route as AppUploadRouteImport } from './routes/app.upload'
+import { Route as AppSmartuxRouteImport } from './routes/app.smartux'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppResolutionRouteImport } from './routes/app.resolution'
 import { Route as AppQueueRouteImport } from './routes/app.queue'
@@ -37,6 +38,8 @@ import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 import { Route as AppAiPrecheckRouteImport } from './routes/app.ai-precheck'
 import { Route as AppReviewIdRouteImport } from './routes/app.review.$id'
 import { Route as AppResolutionIdRouteImport } from './routes/app.resolution.$id'
+import { Route as AppManagerResultsRouteImport } from './routes/app.manager.results'
+import { Route as AppManagerResultRouteImport } from './routes/app.manager.result'
 import { Route as AppCollectiveIdRouteImport } from './routes/app.collective.$id'
 
 const SignupRoute = SignupRouteImport.update({
@@ -77,6 +80,11 @@ const AppVnptRoute = AppVnptRouteImport.update({
 const AppUploadRoute = AppUploadRouteImport.update({
   id: '/upload',
   path: '/upload',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSmartuxRoute = AppSmartuxRouteImport.update({
+  id: '/smartux',
+  path: '/smartux',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
@@ -179,6 +187,16 @@ const AppResolutionIdRoute = AppResolutionIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppResolutionRoute,
 } as any)
+const AppManagerResultsRoute = AppManagerResultsRouteImport.update({
+  id: '/manager/results',
+  path: '/manager/results',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppManagerResultRoute = AppManagerResultRouteImport.update({
+  id: '/manager/result',
+  path: '/manager/result',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCollectiveIdRoute = AppCollectiveIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -208,11 +226,14 @@ export interface FileRoutesByFullPath {
   '/app/queue': typeof AppQueueRoute
   '/app/resolution': typeof AppResolutionRouteWithChildren
   '/app/settings': typeof AppSettingsRoute
+  '/app/smartux': typeof AppSmartuxRoute
   '/app/upload': typeof AppUploadRoute
   '/app/vnpt': typeof AppVnptRoute
   '/app/wizard': typeof AppWizardRoute
   '/app/': typeof AppIndexRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
+  '/app/manager/result': typeof AppManagerResultRoute
+  '/app/manager/results': typeof AppManagerResultsRoute
   '/app/resolution/$id': typeof AppResolutionIdRoute
   '/app/review/$id': typeof AppReviewIdRoute
 }
@@ -238,11 +259,14 @@ export interface FileRoutesByTo {
   '/app/queue': typeof AppQueueRoute
   '/app/resolution': typeof AppResolutionRouteWithChildren
   '/app/settings': typeof AppSettingsRoute
+  '/app/smartux': typeof AppSmartuxRoute
   '/app/upload': typeof AppUploadRoute
   '/app/vnpt': typeof AppVnptRoute
   '/app/wizard': typeof AppWizardRoute
   '/app': typeof AppIndexRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
+  '/app/manager/result': typeof AppManagerResultRoute
+  '/app/manager/results': typeof AppManagerResultsRoute
   '/app/resolution/$id': typeof AppResolutionIdRoute
   '/app/review/$id': typeof AppReviewIdRoute
 }
@@ -270,11 +294,14 @@ export interface FileRoutesById {
   '/app/queue': typeof AppQueueRoute
   '/app/resolution': typeof AppResolutionRouteWithChildren
   '/app/settings': typeof AppSettingsRoute
+  '/app/smartux': typeof AppSmartuxRoute
   '/app/upload': typeof AppUploadRoute
   '/app/vnpt': typeof AppVnptRoute
   '/app/wizard': typeof AppWizardRoute
   '/app/': typeof AppIndexRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
+  '/app/manager/result': typeof AppManagerResultRoute
+  '/app/manager/results': typeof AppManagerResultsRoute
   '/app/resolution/$id': typeof AppResolutionIdRoute
   '/app/review/$id': typeof AppReviewIdRoute
 }
@@ -303,11 +330,14 @@ export interface FileRouteTypes {
     | '/app/queue'
     | '/app/resolution'
     | '/app/settings'
+    | '/app/smartux'
     | '/app/upload'
     | '/app/vnpt'
     | '/app/wizard'
     | '/app/'
     | '/app/collective/$id'
+    | '/app/manager/result'
+    | '/app/manager/results'
     | '/app/resolution/$id'
     | '/app/review/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -333,11 +363,14 @@ export interface FileRouteTypes {
     | '/app/queue'
     | '/app/resolution'
     | '/app/settings'
+    | '/app/smartux'
     | '/app/upload'
     | '/app/vnpt'
     | '/app/wizard'
     | '/app'
     | '/app/collective/$id'
+    | '/app/manager/result'
+    | '/app/manager/results'
     | '/app/resolution/$id'
     | '/app/review/$id'
   id:
@@ -364,11 +397,14 @@ export interface FileRouteTypes {
     | '/app/queue'
     | '/app/resolution'
     | '/app/settings'
+    | '/app/smartux'
     | '/app/upload'
     | '/app/vnpt'
     | '/app/wizard'
     | '/app/'
     | '/app/collective/$id'
+    | '/app/manager/result'
+    | '/app/manager/results'
     | '/app/resolution/$id'
     | '/app/review/$id'
   fileRoutesById: FileRoutesById
@@ -436,6 +472,13 @@ declare module '@tanstack/react-router' {
       path: '/upload'
       fullPath: '/app/upload'
       preLoaderRoute: typeof AppUploadRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/smartux': {
+      id: '/app/smartux'
+      path: '/smartux'
+      fullPath: '/app/smartux'
+      preLoaderRoute: typeof AppSmartuxRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/settings': {
@@ -578,6 +621,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppResolutionIdRouteImport
       parentRoute: typeof AppResolutionRoute
     }
+    '/app/manager/results': {
+      id: '/app/manager/results'
+      path: '/manager/results'
+      fullPath: '/app/manager/results'
+      preLoaderRoute: typeof AppManagerResultsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/manager/result': {
+      id: '/app/manager/result'
+      path: '/manager/result'
+      fullPath: '/app/manager/result'
+      preLoaderRoute: typeof AppManagerResultRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/collective/$id': {
       id: '/app/collective/$id'
       path: '/$id'
@@ -631,10 +688,13 @@ interface AppRouteChildren {
   AppQueueRoute: typeof AppQueueRoute
   AppResolutionRoute: typeof AppResolutionRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRoute
+  AppSmartuxRoute: typeof AppSmartuxRoute
   AppUploadRoute: typeof AppUploadRoute
   AppVnptRoute: typeof AppVnptRoute
   AppWizardRoute: typeof AppWizardRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppManagerResultRoute: typeof AppManagerResultRoute
+  AppManagerResultsRoute: typeof AppManagerResultsRoute
   AppReviewIdRoute: typeof AppReviewIdRoute
 }
 
@@ -657,10 +717,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppQueueRoute: AppQueueRoute,
   AppResolutionRoute: AppResolutionRouteWithChildren,
   AppSettingsRoute: AppSettingsRoute,
+  AppSmartuxRoute: AppSmartuxRoute,
   AppUploadRoute: AppUploadRoute,
   AppVnptRoute: AppVnptRoute,
   AppWizardRoute: AppWizardRoute,
   AppIndexRoute: AppIndexRoute,
+  AppManagerResultRoute: AppManagerResultRoute,
+  AppManagerResultsRoute: AppManagerResultsRoute,
   AppReviewIdRoute: AppReviewIdRoute,
 }
 

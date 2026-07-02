@@ -8,15 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui-kit";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useSubmitReviewDecision } from "../hooks/useReview";
-import type { ReviewDecision, ReviewTaskDetail, SubmitReviewDecisionRequest } from "../types";
-import { getCriterionLabel, getTaskStatusLabel } from "../utils/formatters";
+import type { Level, ReviewDecision, ReviewTaskDetail, SubmitReviewDecisionRequest } from "../types";
+import { getCriterionLabel, getLevelLabel, getTaskStatusLabel } from "../utils/formatters";
 
 type ReviewDecisionPanelProps = {
   task: ReviewTaskDetail;
   onSuccess?: () => void;
 };
 
-type TaskDecision = Extract<ReviewDecision, "accepted" | "rejected" | "resolution_needed">;
+type TaskDecision = ReviewDecision;
 
 const finalStatuses = ["accepted", "rejected", "resolution_needed"] as const;
 
@@ -36,6 +36,11 @@ const decisionOptions: Array<{
     description: "Hồ sơ không đáp ứng yêu cầu, cần ghi rõ căn cứ.",
   },
   {
+    value: "supplement_required",
+    label: "Cần sinh viên bổ sung",
+    description: "Minh chứng chưa đủ rõ, gửi yêu cầu bổ sung cho sinh viên.",
+  },
+  {
     value: "resolution_needed",
     label: "Chuyển hội ý / xử lý mập mờ",
     description: "Trường hợp cần hội đồng hoặc cấp có thẩm quyền xem xét.",
@@ -45,6 +50,7 @@ const decisionOptions: Array<{
 export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProps) {
   const role = useAuth((state) => state.user?.role);
   const [decision, setDecision] = useState<TaskDecision>("accepted");
+  const [suggestedLevel, setSuggestedLevel] = useState<Level | "">(task.officerSuggestedLevel ?? "");
   const [note, setNote] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submittedMessage, setSubmittedMessage] = useState<string | null>(null);
@@ -55,7 +61,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const canSubmit = role === "officer" && !isFinal;
   const evidenceOptions = useMemo(() => task.evidences ?? [], [task.evidences]);
 
-  const validationMessage = validateDecision(decision, note);
+  const validationMessage = validateDecisionV2(decision, note, suggestedLevel);
   const apiError =
     submitDecision.error instanceof Error
       ? submitDecision.error.message
@@ -88,6 +94,8 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
 
     const payload: SubmitReviewDecisionRequest = {
       decision,
+      officerSuggestedLevel: decision === "accepted" ? (suggestedLevel as Level) : null,
+      levelAssessmentJson: task.criterionLevelAssessment ? { assessment: task.criterionLevelAssessment } : undefined,
       note: note.trim(),
       ...(evidenceDecisions.length ? { evidenceDecisions } : {}),
     };
@@ -154,6 +162,31 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
             </label>
           ))}
         </RadioGroup>
+
+        {decision === "accepted" ? (
+          <div>
+            <label className="text-sm font-semibold text-brand-deep" htmlFor="criterion-level">
+              Tiêu chí này đủ đến cấp nào?
+            </label>
+            <select
+              className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              disabled={!canSubmit || submitDecision.isPending}
+              id="criterion-level"
+              value={suggestedLevel}
+              onChange={(event) => {
+                setSuggestedLevel(event.target.value as Level | "");
+                setFormError(null);
+              }}
+            >
+              <option value="">Chọn cấp đạt</option>
+              {(["school", "university", "city", "central"] as Level[]).map((level) => (
+                <option key={level} value={level}>
+                  {getLevelLabel(level)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div>
           <label className="text-sm font-semibold text-brand-deep" htmlFor="review-decision-note">
@@ -247,6 +280,24 @@ function validateDecision(decision: TaskDecision, note: string) {
   }
 
   if ((decision === "rejected" || decision === "resolution_needed") && trimmedNote.length < 10) {
+    return "Ghi chú cho quyết định này cần ít nhất 10 ký tự.";
+  }
+
+  return null;
+}
+
+function validateDecisionV2(decision: TaskDecision, note: string, suggestedLevel: Level | "") {
+  const trimmedNote = note.trim();
+
+  if (decision === "accepted" && !suggestedLevel) {
+    return "Vui lòng chọn cấp đạt của tiêu chí này.";
+  }
+
+  if (decision !== "accepted" && !trimmedNote) {
+    return "Vui lòng nhập ghi chú xét duyệt.";
+  }
+
+  if ((decision === "rejected" || decision === "resolution_needed" || decision === "supplement_required") && trimmedNote.length < 10) {
     return "Ghi chú cho quyết định này cần ít nhất 10 ký tự.";
   }
 

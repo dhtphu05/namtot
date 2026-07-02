@@ -14,6 +14,12 @@ import { getCriterionLabel, getLevelLabel, getTaskStatusLabel } from "../utils/f
 
 type ReviewFiltersValue = Pick<ReviewTaskListParams, "q" | "criterion" | "status"> & {
   targetLevel?: Level;
+  riskLevel?: ReviewTaskListParams["riskLevel"];
+  aiConfidenceMax?: number;
+  dueSoon?: boolean;
+  overdue?: boolean;
+  supplementRequired?: boolean;
+  resolutionNeeded?: boolean;
 };
 
 type ReviewFiltersProps = {
@@ -72,7 +78,7 @@ export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps)
   };
 
   return (
-    <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_180px_auto]">
+    <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_180px_160px_auto]">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -148,10 +154,63 @@ export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps)
         </SelectContent>
       </Select>
 
+      <Select
+        disabled={disabled}
+        value={value.riskLevel ?? allValue}
+        onValueChange={(nextValue) =>
+          updateFilter("riskLevel", nextValue === allValue ? undefined : (nextValue as ReviewTaskListParams["riskLevel"]))
+        }
+      >
+        <SelectTrigger aria-label="Lọc mức ưu tiên">
+          <SelectValue placeholder="Ưu tiên" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={allValue}>Tất cả ưu tiên</SelectItem>
+          <SelectItem value="high">Rủi ro cao</SelectItem>
+          <SelectItem value="medium">Cần chú ý</SelectItem>
+          <SelectItem value="low">Thấp</SelectItem>
+        </SelectContent>
+      </Select>
+
       <Button disabled={disabled} type="button" variant="outline" onClick={clearFilters}>
         <X className="h-4 w-4" />
         Xóa lọc
       </Button>
+      <div className="md:col-span-full flex flex-wrap gap-2">
+        <QuickToggle active={value.aiConfidenceMax === 0.7} disabled={disabled} onClick={() => updateFilter("aiConfidenceMax", value.aiConfidenceMax === 0.7 ? undefined : 0.7)}>
+          AI thấp
+        </QuickToggle>
+        <QuickToggle active={Boolean(value.dueSoon)} disabled={disabled} onClick={() => updateFilter("dueSoon", value.dueSoon ? undefined : true)}>
+          Sắp quá hạn
+        </QuickToggle>
+        <QuickToggle active={Boolean(value.overdue)} disabled={disabled} onClick={() => updateFilter("overdue", value.overdue ? undefined : true)}>
+          Quá hạn
+        </QuickToggle>
+        <QuickToggle active={Boolean(value.supplementRequired)} disabled={disabled} onClick={() => updateFilter("supplementRequired", value.supplementRequired ? undefined : true)}>
+          Cần bổ sung
+        </QuickToggle>
+        <QuickToggle active={Boolean(value.resolutionNeeded)} disabled={disabled} onClick={() => updateFilter("resolutionNeeded", value.resolutionNeeded ? undefined : true)}>
+          Cần hội ý
+        </QuickToggle>
+      </div>
     </div>
+  );
+}
+
+function QuickToggle({
+  active,
+  children,
+  disabled,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button disabled={disabled} size="sm" type="button" variant={active ? "default" : "outline"} onClick={onClick}>
+      {children}
+    </Button>
   );
 }

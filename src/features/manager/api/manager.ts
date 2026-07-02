@@ -4,10 +4,45 @@ import type {
   ManagerApplicationsParams,
   ManagerApplicationsResponse,
   ManagerDashboardSummary,
+  ManagerResultFilters,
+  ManagerResultsResponse,
   ManagerWorkloadResponse,
+  FinalizeApplicationInput,
 } from "../types";
 
 const emptyDashboardSummary: ManagerDashboardSummary = {
+  applicationOverview: {
+    totalApplications: 0,
+    draftCount: 0,
+    submittedCount: 0,
+    underReviewCount: 0,
+    supplementRequiredCount: 0,
+    resolutionNeededCount: 0,
+    completedCount: 0,
+    rejectedCount: 0,
+  },
+  targetLevelBreakdown: { school: 0, university: 0, city: 0, central: 0 },
+  finalStatusBreakdown: { passed: 0, failed: 0, partiallyPassed: 0, pending: 0 },
+  finalLevelBreakdown: {
+    school: 0,
+    university: 0,
+    city: 0,
+    central: 0,
+    notAchieved: 0,
+    unfinalized: 0,
+  },
+  reviewTaskSummary: {
+    total: 0,
+    accepted: 0,
+    rejected: 0,
+    supplementRequired: 0,
+    resolutionNeeded: 0,
+    waiting: 0,
+  },
+  resolutionSummary: { open: 0, resolved: 0, rejected: 0, closed: 0 },
+  workloadByOfficer: [],
+  recentApplications: [],
+  recentFinalizedApplications: [],
   totalApplications: 0,
   submitted: 0,
   underReview: 0,
@@ -61,5 +96,28 @@ export const managerApi = {
     const response = await apiClient<ManagerDashboardSummary>("/api/manager/dashboard-summary");
 
     return withDataFallback(response, emptyDashboardSummary);
+  },
+
+  getManagerResults: async (
+    params?: ManagerResultFilters,
+  ): Promise<ApiResponse<ManagerResultsResponse>> => {
+    const response = await apiClient<ManagerResultsResponse>(
+      `/api/manager/results${buildQueryString(params)}`,
+    );
+
+    return withDataFallback(response, {
+      items: [],
+      pagination: { page: params?.page ?? 1, pageSize: params?.pageSize ?? 20, total: 0 },
+    });
+  },
+
+  finalizeApplication: async (
+    applicationId: string,
+    payload: FinalizeApplicationInput,
+  ): Promise<ApiResponse<unknown>> => {
+    return apiClient(`/api/manager/applications/${applicationId}/finalize`, {
+      method: "POST",
+      body: payload,
+    });
   },
 };

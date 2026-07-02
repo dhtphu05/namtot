@@ -1,7 +1,7 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+﻿import { Link, useNavigate } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip, Progress } from "@/components/ui-kit";
-import { CRITERIA, EVIDENCE_SAMPLES, LEVELS } from "@/lib/mock-data";
+import { CRITERIA } from "@/lib/mock-data";
 import { motion } from "framer-motion";
 import { AlertTriangle, ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { CriterionIcon } from "@/components/AppIcon";
@@ -12,7 +12,10 @@ import {
   usePrecheck,
   useSubmitApplication,
 } from "@/features/application/hooks/useApplication";
+import { SubmitConfirmationModal } from "@/features/application/components/SubmitConfirmationModal";
+import { useEvidences } from "@/features/evidence/hooks/useEvidence";
 import type { Criterion } from "@/lib/api/types";
+import { useMemo, useState } from "react";
 
 const criterionMap: Record<string, Criterion> = {
   "dao-duc": "ethics",
@@ -22,35 +25,38 @@ const criterionMap: Record<string, Criterion> = {
   "hoi-nhap": "integration",
 };
 
-const fallbackScores = [95, 88, 72, 60, 84];
-
 export function AiPrecheck() {
   const nav = useNavigate();
+  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const { data: appRes, isLoading: appLoading } = useCurrentApplication();
   const application = appRes?.application;
   const latestPrecheck = useLatestPrecheck(application?.id);
+  const evidencesQuery = useEvidences(application?.id, { limit: 100 });
   const runPrecheck = usePrecheck();
   const submitMutation = useSubmitApplication();
   const result = latestPrecheck.data;
 
-  const scores = CRITERIA.map((criterion, index) => {
+  const scores = CRITERIA.map((criterion) => {
     const backendCriterion = criterionMap[criterion.key];
     const criterionResult = result?.criteriaResults?.find((item) => item.criterion === backendCriterion);
-    return typeof criterionResult?.score === "number" ? criterionResult.score : fallbackScores[index];
+    return typeof criterionResult?.score === "number" ? criterionResult.score : undefined;
   });
-  const overall = result?.readinessScore ?? Math.round(scores.reduce((a, b) => a + b) / scores.length);
-  const minScore = Math.min(...scores);
+  const overall = result?.readinessScore ?? application?.readinessScore ?? 0;
   const profileState: "missing" | "uncertain" | "ready" = result
     ? result.readyToSubmit
       ? "ready"
       : result.missingItems.length > 0
         ? "missing"
         : "uncertain"
-    : minScore < 60
-      ? "missing"
-      : minScore < 85
-        ? "uncertain"
-        : "ready";
+    : "missing";
+
+  const evidenceCounts = useMemo(() => {
+    const rows = Array.isArray(evidencesQuery.data) ? evidencesQuery.data : [];
+    return rows.reduce<Partial<Record<Criterion, number>>>((acc, item) => {
+      acc[item.criterion] = (acc[item.criterion] ?? 0) + 1;
+      return acc;
+    }, {});
+  }, [evidencesQuery.data]);
 
   const submitProfile = () => {
     if (!application) {
@@ -59,16 +65,30 @@ export function AiPrecheck() {
       return;
     }
 
+    setConfirmSubmitOpen(true);
+  };
+
+  const confirmSubmit = () => {
+    if (!application) return;
+    const status = String(application.status);
+    const isSupplement = status === "supplement_required" || status === "draft_supplement";
     submitMutation.mutate(
       {
         id: application.id,
         allowSubmitWithWarnings: profileState !== "ready",
         studentNote: result?.nextBestAction,
+        successMessage: isSupplement
+          ? "Đã gửi lại hồ sơ bổ sung. Cán bộ sẽ tiếp tục xét duyệt."
+          : "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.",
       },
-      { onSuccess: () => nav({ to: "/app/cascade" }) }
+      {
+        onSuccess: () => {
+          setConfirmSubmitOpen(false);
+          nav({ to: "/app/cascade" });
+        },
+      },
     );
   };
-
   const precheckNow = () => {
     if (!application) {
       toast.error("Hãy tạo hồ sơ trước khi tiền kiểm.");
@@ -105,7 +125,9 @@ export function AiPrecheck() {
           <div className="md:col-span-2">
             <Chip tone="brand"><Sparkles className="w-3 h-3" /> AI gợi ý - cán bộ xác nhận</Chip>
             <h2 className="text-3xl font-bold text-brand-deep mt-3">
-              Hồ sơ đạt khoảng {overall}% cho cấp {result?.level ?? application?.targetLevel ?? "đang chọn"}
+              {result
+                ? `Hồ sơ đạt khoảng ${overall}% cho cấp ${result.level ?? application?.targetLevel ?? "đang chọn"}`
+                : "Bạn chưa chạy tiền kiểm"}
             </h2>
             <p className="text-muted-foreground mt-2">
               {result?.nextBestAction ??
@@ -154,7 +176,7 @@ export function AiPrecheck() {
               </defs>
             </svg>
             <div className="absolute text-center">
-              <div className="text-4xl font-extrabold text-brand-deep">{overall}%</div>
+              <div className="text-4xl font-extrabold text-brand-deep">{result ? `${overall}%` : "--"}</div>
               <div className="text-xs text-muted-foreground">Sẵn sàng</div>
             </div>
           </div>
@@ -164,19 +186,20 @@ export function AiPrecheck() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-7">
         {CRITERIA.map((c, i) => {
           const v = scores[i];
-          const status = v >= 85 ? "Có thể đạt" : v >= 70 ? "Cần xác minh" : "Cần bổ sung";
-          const tone = v >= 85 ? "success" : v >= 70 ? "brand" : "warning";
+          const hasScore = typeof v === "number";
+          const status = !hasScore ? "Chưa tiền kiểm" : v >= 85 ? "Có thể đạt" : v >= 70 ? "Cần xác minh" : "Cần bổ sung";
+          const tone = !hasScore ? "muted" : v >= 85 ? "success" : v >= 70 ? "brand" : "warning";
           return (
             <motion.div key={c.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="card-soft p-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${c.color}1A`, color: c.color }}>
                   <CriterionIcon criterion={c.key} size={18} />
                 </span>
-                <Chip tone={tone as "success" | "brand" | "warning"}>{status}</Chip>
+                <Chip tone={tone as "success" | "brand" | "warning" | "muted"}>{status}</Chip>
               </div>
               <div className="font-semibold text-sm">{c.label}</div>
-              <div className="text-3xl font-bold text-brand-deep mt-2">{v}%</div>
-              <div className="mt-2"><Progress value={v} tint={c.color} /></div>
+              <div className="text-3xl font-bold text-brand-deep mt-2">{hasScore ? `${v}%` : "--"}</div>
+              <div className="mt-2"><Progress value={hasScore ? v : 0} tint={c.color} /></div>
             </motion.div>
           );
         })}
@@ -215,35 +238,17 @@ export function AiPrecheck() {
         </Card>
       </div>
 
-      <Card>
-        <h3 className="font-bold text-brand-deep mb-3">Evidence Cards ({EVIDENCE_SAMPLES.length})</h3>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {EVIDENCE_SAMPLES.map((e) => {
-            const cr = CRITERIA.find((c) => c.key === e.criteria);
-            const lv = LEVELS.find((l) => l.key === e.level);
-            return (
-              <motion.div key={e.id} whileHover={{ y: -3 }} className="card-soft p-4 fade-up">
-                <div className="flex gap-3">
-                  <img src={e.img} alt="" className="w-16 h-20 object-cover rounded-lg" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-brand-deep">{e.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{e.org}</div>
-                    <div className="text-xs text-muted-foreground">Cap: {e.date}</div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  <Chip tone="brand">
-                    {cr && <CriterionIcon criterion={cr.key} size={12} className="mr-1" />}
-                    {cr?.label}
-                  </Chip>
-                  {lv && <Chip>{lv.label}</Chip>}
-                  {e.days && <Chip tone="success">{e.days} ngày</Chip>}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </Card>
+      {confirmSubmitOpen && application && (
+        <SubmitConfirmationModal
+          application={application}
+          precheck={result}
+          evidenceCounts={evidenceCounts}
+          onCancel={() => setConfirmSubmitOpen(false)}
+          onConfirm={confirmSubmit}
+          pending={submitMutation.isPending}
+        />
+      )}
     </>
   );
 }
+

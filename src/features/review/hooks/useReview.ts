@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/features/auth/store/auth-store";
 import { reviewApi } from "../api/review";
 import type {
   EscalateResolutionRequest,
@@ -9,9 +10,13 @@ import type {
 
 export const reviewKeys = {
   all: ["reviewTasks"] as const,
-  lists: () => [...reviewKeys.all, "list"] as const,
-  list: (params?: ReviewTaskListParams) => [...reviewKeys.lists(), params ?? {}] as const,
+  lists: (userId?: string) => ["officerTasks", userId ?? "anonymous"] as const,
+  list: (userId?: string, params?: ReviewTaskListParams) => [...reviewKeys.lists(userId), params ?? {}] as const,
   detail: (taskId: string) => ["reviewTask", taskId] as const,
+  dashboard: (userId?: string) => ["officerDashboard", userId ?? "anonymous"] as const,
+  assessment: (taskId: string) => ["criterionLevelAssessment", taskId] as const,
+  timeline: (taskId: string) => ["reviewTaskTimeline", taskId] as const,
+  signedUrl: (fileId: string) => ["signedFileUrl", fileId] as const,
 };
 
 export const managerInvalidationKeys = {
@@ -30,12 +35,26 @@ type ReviewMutationVariables<TPayload> = {
 };
 
 export function useReviewTasks(params?: ReviewTaskListParams) {
+  const userId = useAuth((state) => state.user?.id);
   return useQuery({
-    queryKey: reviewKeys.list(params),
+    queryKey: reviewKeys.list(userId, params),
     queryFn: async () => {
       const response = await reviewApi.getReviewTasks(params);
       return response.data;
     },
+    enabled: Boolean(userId),
+  });
+}
+
+export function useOfficerDashboard() {
+  const userId = useAuth((state) => state.user?.id);
+  return useQuery({
+    queryKey: reviewKeys.dashboard(userId),
+    queryFn: async () => {
+      const response = await reviewApi.getOfficerDashboard();
+      return response.data;
+    },
+    enabled: Boolean(userId),
   });
 }
 
@@ -51,6 +70,40 @@ export function useReviewTask(taskId?: string) {
 }
 
 export const useReviewTaskDetail = useReviewTask;
+
+export function useCriterionLevelAssessment(taskId?: string) {
+  return useQuery({
+    queryKey: reviewKeys.assessment(taskId ?? ""),
+    queryFn: async () => {
+      const response = await reviewApi.getCriterionLevelAssessment(taskId ?? "");
+      return response.data;
+    },
+    enabled: Boolean(taskId),
+  });
+}
+
+export function useReviewTaskTimeline(taskId?: string) {
+  return useQuery({
+    queryKey: reviewKeys.timeline(taskId ?? ""),
+    queryFn: async () => {
+      const response = await reviewApi.getReviewTaskTimeline(taskId ?? "");
+      return response.data ?? [];
+    },
+    enabled: Boolean(taskId),
+  });
+}
+
+export function useSignedFileUrl(fileId?: string, enabled = false) {
+  return useQuery({
+    queryKey: reviewKeys.signedUrl(fileId ?? ""),
+    queryFn: async () => {
+      const response = await reviewApi.getSignedFileUrl(fileId ?? "");
+      return response.data?.url ?? null;
+    },
+    enabled: Boolean(fileId) && enabled,
+    staleTime: 4 * 60 * 1000,
+  });
+}
 
 export function useSubmitReviewDecision(taskId?: string) {
   const queryClient = useQueryClient();
@@ -76,6 +129,8 @@ export function useSubmitReviewDecision(taskId?: string) {
       }
 
       queryClient.invalidateQueries({ queryKey: reviewKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["officerTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["officerDashboard"] });
       queryClient.invalidateQueries({
         queryKey: managerInvalidationKeys.dashboard,
       });
@@ -121,6 +176,8 @@ export function useRequestSupplement(taskId?: string) {
       }
 
       queryClient.invalidateQueries({ queryKey: reviewKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["officerTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["officerDashboard"] });
       queryClient.invalidateQueries({
         queryKey: managerInvalidationKeys.applications,
       });
@@ -152,6 +209,8 @@ export function useEscalateResolution(taskId?: string) {
       }
 
       queryClient.invalidateQueries({ queryKey: reviewKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["officerTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["officerDashboard"] });
       queryClient.invalidateQueries({
         queryKey: resolutionInvalidationKeys.cases,
       });

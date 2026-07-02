@@ -38,7 +38,7 @@ export const Route = createFileRoute("/app/resolution")({
   component: ResolutionCasesRoute,
 });
 
-const managerRoles: Role[] = ["manager", "committee", "admin"];
+const managerRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const defaultLimit = 10;
 const fallbackText = "Chưa có dữ liệu";
 

@@ -35,6 +35,30 @@ const quickRoles = [
     email: "classrep@dut.udn.vn",
     icon: UsersRound,
   },
+  {
+    label: "Cán bộ Đạo đức",
+    desc: "Xét duyệt minh chứng tiêu chí Đạo đức tốt.",
+    email: "officer.ethics@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Thể lực",
+    desc: "Xét duyệt minh chứng tiêu chí Thể lực tốt.",
+    email: "officer.physical@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Tình nguyện",
+    desc: "Xét duyệt minh chứng tiêu chí Tình nguyện tốt.",
+    email: "officer.volunteer@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Hội nhập",
+    desc: "Xét duyệt minh chứng tiêu chí Hội nhập tốt.",
+    email: "officer.integration@dut.udn.vn",
+    icon: ShieldCheck,
+  },
 ];
 
 export const Route = createFileRoute("/login")({

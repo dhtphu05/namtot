@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   CalendarDays,
   CheckSquare,
   ClipboardList,
   Download,
+  ExternalLink,
+  Eye,
   FileText,
   History,
   ListChecks,
@@ -24,6 +27,7 @@ import { ReviewDecisionPanel } from "@/features/review/components/ReviewDecision
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
 import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingState";
 import { ReviewStatusBadge } from "@/features/review/components/ReviewStatusBadge";
+import { reviewApi } from "@/features/review/api/review";
 import { useReviewTask } from "@/features/review/hooks/useReview";
 import type {
   ReviewDecision,
@@ -134,9 +138,6 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
   const metrics = task.metrics ?? [];
   const checklist = task.checklist ?? [];
   const decisionHistory = task.decisionHistory ?? [];
-  const files = evidences.flatMap((evidence) =>
-    (evidence.files ?? []).map((file) => ({ ...file, evidenceName: evidence.evidenceName })),
-  );
   const student = task.application.student;
   const facultyClass =
     [student.faculty, student.className].filter(Boolean).join(" / ") || fallbackText;
@@ -175,22 +176,25 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
           </div>
         </Card>
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.45fr)]">
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
           <div className="space-y-5">
             <ApplicationSummary task={task} />
             <MetricsSection metrics={metrics} />
             <EvidenceSection evidences={evidences} />
-            <FilesSection files={files} />
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
             <ReviewDecisionPanel task={task} onSuccess={() => void refetch()} />
             <RequestSupplementPanel task={task} onSuccess={() => void refetch()} />
-            <ChecklistSection checklist={checklist} />
-            <DecisionHistorySection history={decisionHistory} />
-            <AuditTimeline applicationId={task.application.id} limit={10} taskId={task.id} />
           </div>
         </section>
+
+        <section className="grid gap-5 xl:grid-cols-2">
+          <ChecklistSection checklist={checklist} />
+          <DecisionHistorySection history={decisionHistory} />
+        </section>
+
+        <AuditTimeline applicationId={task.application.id} limit={10} taskId={task.id} />
       </div>
     </>
   );
@@ -309,8 +313,16 @@ function EvidenceSection({ evidences }: { evidences: ReviewTaskEvidence[] }) {
                   </h3>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Badge variant="outline">{getSourceTypeLabel(evidence.sourceType)}</Badge>
+                    {evidence.indexingStatus ? (
+                      <Badge variant="outline">{getIndexingStatusLabel(evidence.indexingStatus)}</Badge>
+                    ) : null}
                     <CriterionBadge criterion={evidence.criterion} />
                     <ReviewStatusBadge status={evidence.status} />
+                    {typeof evidence.confidence === "number" ? (
+                      <Badge variant={evidence.confidence < 0.7 ? "destructive" : "secondary"}>
+                        AI {Math.round(evidence.confidence * 100)}%
+                      </Badge>
+                    ) : null}
                   </div>
                 </div>
                 <div className="text-sm text-muted-foreground">
@@ -328,10 +340,12 @@ function EvidenceSection({ evidences }: { evidences: ReviewTaskEvidence[] }) {
                 </p>
               ) : null}
 
+              <EvidenceAiBlock evidence={evidence} />
+
               {evidence.files?.length ? (
                 <div className="mt-4 space-y-2">
                   {evidence.files.map((file) => (
-                    <FileAttachment key={file.id} file={file} />
+                    <UnifiedFileAttachment key={file.id} file={file} />
                   ))}
                 </div>
               ) : (
@@ -377,6 +391,110 @@ function FilesSection({
         />
       )}
     </Card>
+  );
+}
+
+function EvidenceAiBlock({ evidence }: { evidence: ReviewTaskEvidence }) {
+  const card = evidence.card;
+  const warnings = toReadableList(card?.warningsJson);
+  const fields = toFieldEntries(card?.extractedFieldsJson);
+
+  if (!card) {
+    return <div className="mt-4 rounded-md border border-dashed p-3 text-sm text-muted-foreground">AI chưa xử lý minh chứng này.</div>;
+  }
+
+  return (
+    <div className="mt-4 space-y-3 rounded-md bg-muted/30 p-3">
+      {card.aiSummary ? <InfoRow label="AI tóm tắt" value={card.aiSummary} /> : null}
+      {fields.length ? (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trường AI trích xuất</div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {fields.map(([key, value]) => <InfoRow key={key} label={key} value={String(value)} />)}
+          </div>
+        </div>
+      ) : null}
+      {warnings.length ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+          <div className="text-sm font-semibold text-amber-900">Cảnh báo cần kiểm tra</div>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">
+            {warnings.map((warning, index) => <li key={`${warning}-${index}`}>{warning}</li>)}
+          </ul>
+        </div>
+      ) : null}
+      {card.ocrText ? (
+        <details className="text-sm">
+          <summary className="cursor-pointer font-semibold text-brand-deep">OCR preview</summary>
+          <p className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap text-muted-foreground">{card.ocrText}</p>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function UnifiedFileAttachment({ file }: { file: ReviewTaskEvidenceFile }) {
+  const [loadingAction, setLoadingAction] = useState<"preview" | "open" | "download" | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const runAction = async (action: "preview" | "open" | "download") => {
+    setError(null);
+    setLoadingAction(action);
+    try {
+      const response = await reviewApi.getSignedFileUrl(file.id);
+      const url = response.data?.url;
+      if (!url) throw new Error("Không lấy được liên kết file.");
+      if (action === "preview") {
+        setPreviewUrl(url);
+      } else {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể mở file.");
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  return (
+    <div className="rounded-md border p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-brand-deep">{file.originalName || fallbackText}</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {[file.mimeType, formatFileSize(file.size), formatDateTime(file.uploadedAt ?? file.createdAt)].filter(Boolean).join(" • ")}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" type="button" variant="outline" onClick={() => void runAction("preview")} disabled={Boolean(loadingAction)}>
+            <Eye className="h-4 w-4" />
+            Xem file
+          </Button>
+          <Button size="sm" type="button" variant="outline" onClick={() => void runAction("open")} disabled={Boolean(loadingAction)}>
+            <ExternalLink className="h-4 w-4" />
+            Mở tab mới
+          </Button>
+          <Button size="sm" type="button" variant="outline" onClick={() => void runAction("download")} disabled={Boolean(loadingAction)}>
+            <Download className="h-4 w-4" />
+            Tải xuống
+          </Button>
+        </div>
+      </div>
+      {error ? <div className="mt-2 text-xs text-destructive">{error}</div> : null}
+      {previewUrl ? (
+        <div className="mt-3 overflow-hidden rounded-md border bg-muted/30">
+          {file.mimeType?.startsWith("image/") ? (
+            <img alt={file.originalName} className="max-h-[520px] w-full object-contain" src={previewUrl} />
+          ) : file.mimeType === "application/pdf" ? (
+            <iframe className="h-[520px] w-full" src={previewUrl} title={file.originalName} />
+          ) : (
+            <div className="p-4 text-sm text-muted-foreground">
+              Trình duyệt không preview được loại file này. Hãy mở tab mới hoặc tải xuống.
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -517,6 +635,38 @@ function getSourceTypeLabel(sourceType: ReviewTaskEvidence["sourceType"]) {
   };
 
   return labels[sourceType] ?? fallbackText;
+}
+
+function getIndexingStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    not_started: "Chưa xử lý AI",
+    uploaded: "Đã tải lên",
+    pending_indexing: "Đang chờ AI xử lý",
+    ocr_processing: "AI đang đọc file",
+    extracting: "AI đang đọc file",
+    checking_registry: "AI đang đối chiếu",
+    indexed: "AI đã xử lý xong",
+    needs_manual_review: "Cần cán bộ kiểm tra",
+    failed: "AI không đọc được",
+  };
+  return labels[status] ?? status;
+}
+
+function toFieldEntries(value: unknown): Array<[string, unknown]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  return Object.entries(value as Record<string, unknown>).filter(([, fieldValue]) => fieldValue !== null && fieldValue !== undefined && fieldValue !== "");
+}
+
+function toReadableList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    if (typeof item === "string") return item;
+    if (item && typeof item === "object") {
+      const record = item as Record<string, unknown>;
+      return String(record.message ?? record.reason ?? record.code ?? JSON.stringify(record));
+    }
+    return String(item);
+  });
 }
 
 function getDecisionLabel(decision: ReviewDecision) {

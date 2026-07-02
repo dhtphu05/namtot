@@ -130,6 +130,12 @@ function ReviewQueueContent({ role }: { role: Role }) {
                 criterion: nextFilters.criterion,
                 status: nextFilters.status,
                 targetLevel: nextFilters.targetLevel,
+                riskLevel: nextFilters.riskLevel,
+                aiConfidenceMax: nextFilters.aiConfidenceMax,
+                dueSoon: nextFilters.dueSoon,
+                overdue: nextFilters.overdue,
+                supplementRequired: nextFilters.supplementRequired,
+                resolutionNeeded: nextFilters.resolutionNeeded,
                 page: 1,
                 limit: current.limit ?? defaultLimit,
               }))

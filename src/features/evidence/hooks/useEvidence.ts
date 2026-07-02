@@ -2,12 +2,31 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import type { Criterion, EvidenceSourceType, EvidenceStatus, IndexingStatus } from "@/lib/api/types";
 import { toast } from "sonner";
+import { applicationKeys } from "@/features/application/hooks/useApplication";
 
 export const evidenceKeys = {
   all: ["evidences"] as const,
   list: (appId: string) => ["evidences", appId] as const,
   detail: (id: string) => ["evidence", id, "card"] as const,
+  signedUrl: (fileId: string) => ["file", fileId, "signed-url"] as const,
 };
+
+function invalidateStudentState(
+  queryClient: ReturnType<typeof useQueryClient>,
+  applicationId?: string,
+  evidenceId?: string,
+) {
+  queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+  if (applicationId) {
+    queryClient.invalidateQueries({ queryKey: evidenceKeys.list(applicationId) });
+    queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(applicationId) });
+  } else {
+    queryClient.invalidateQueries({ queryKey: evidenceKeys.all });
+  }
+  if (evidenceId) {
+    queryClient.invalidateQueries({ queryKey: evidenceKeys.detail(evidenceId) });
+  }
+}
 
 export function useEvidences(
   applicationId: string | undefined,
@@ -27,6 +46,18 @@ export function useEvidences(
       return res.data;
     },
     enabled: !!applicationId,
+  });
+}
+
+export function useEvidenceCard(evidenceId: string | undefined) {
+  return useQuery({
+    queryKey: evidenceKeys.detail(evidenceId ?? ""),
+    queryFn: async () => {
+      if (!evidenceId) return null;
+      const res = await evidenceApi.getEvidenceCard(evidenceId);
+      return res.data;
+    },
+    enabled: !!evidenceId,
   });
 }
 
@@ -55,9 +86,7 @@ export function useCreateEvidence(applicationId?: string) {
     },
     onSuccess: (data, variables) => {
       const activeAppId = variables.applicationId || applicationId;
-      if (activeAppId) {
-        queryClient.invalidateQueries({ queryKey: ["evidences", activeAppId] });
-      }
+      invalidateStudentState(queryClient, activeAppId, data?.id);
     },
     onError: (err: Error) => {
       toast.error(`Không thể tạo minh chứng: ${err.message}`);
@@ -88,7 +117,7 @@ export function useUpdateEvidence() {
       return res.data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["evidences", variables.applicationId] });
+      invalidateStudentState(queryClient, variables.applicationId, variables.evidenceId);
       toast.success("Đã cập nhật minh chứng");
     },
     onError: (err: Error) => {
@@ -106,9 +135,7 @@ export function useDeleteEvidence(applicationId?: string) {
       return { id, applicationId: mutationAppId || applicationId };
     },
     onSuccess: (data) => {
-      if (data.applicationId) {
-        queryClient.invalidateQueries({ queryKey: ["evidences", data.applicationId] });
-      }
+      invalidateStudentState(queryClient, data.applicationId, data.id);
       toast.success("Đã xoá minh chứng");
     },
     onError: (err: Error) => {
@@ -135,10 +162,7 @@ export function useUploadEvidenceFile(applicationId?: string) {
       return { evidenceId, applicationId: activeAppId, res: res.data };
     },
     onSuccess: (data) => {
-      if (data.applicationId) {
-        queryClient.invalidateQueries({ queryKey: ["evidences", data.applicationId] });
-        queryClient.invalidateQueries({ queryKey: ["application", "current"] });
-      }
+      invalidateStudentState(queryClient, data.applicationId, data.evidenceId);
       toast.success("Đã tải lên tệp tin minh chứng thành công");
     },
     onError: (err: Error) => {
