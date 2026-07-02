@@ -19,7 +19,7 @@ export const applicationApi = {
   },
 
   startApplication: async (data: { schoolYear?: string; targetLevel?: Level }) => {
-    return apiClient<CurrentApplicationResponse>("/api/applications/current/start", {
+    return apiClient<ApplicationState>("/api/applications/current/start", {
       method: "POST",
       body: data,
     });

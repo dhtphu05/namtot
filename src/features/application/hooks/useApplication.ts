@@ -34,7 +34,10 @@ export function useStartApplication() {
       return res.data;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData([...applicationKeys.current(userId), { schoolYear: data.application.schoolYear }], data);
+      queryClient.setQueryData(
+        [...applicationKeys.current(userId), { schoolYear: data.schoolYear }],
+        { application: data, state: data.status, schoolYear: data.schoolYear },
+      );
       queryClient.invalidateQueries({ queryKey: applicationKeys.current(userId) });
     },
     onError: (err: Error) => {
