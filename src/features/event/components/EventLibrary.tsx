@@ -1,79 +1,113 @@
-import { Link } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip } from "@/components/ui-kit";
-import { CRITERIA, LEVELS, MEDIA } from "@/lib/mock-data";
+import { CRITERIA, LEVELS } from "@/lib/mock-data";
 import { useState } from "react";
-import { Search, ListChecks, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import { Search, ListChecks, CheckCircle2, AlertTriangle, Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { useEvents, useCheckParticipant, useImportToApplication } from "@/features/event/hooks/useEvent";
 import { useCurrentApplication } from "@/features/application/hooks/useApplication";
-import { useCheckEventParticipant, useEvents, useImportEventToApplication } from "@/features/event/hooks/useEvents";
-import type { Criterion, EventParticipantCheck, Level } from "@/lib/api/types";
-
-const criterionMap: Record<string, Criterion> = {
-  "dao-duc": "ethics",
-  "hoc-tap": "academic",
-  "the-luc": "physical",
-  "tinh-nguyen": "volunteer",
-  "hoi-nhap": "integration",
-};
-
-const levelLabel: Record<Level, string> = {
-  school: "Cấp Trường",
-  university: "Cấp Đại học",
-  city: "Cấp Thành phố",
-  central: "Cấp Trung ương",
-};
-
-function criterionLabel(criterion: Criterion) {
-  const item = CRITERIA.find((c) => criterionMap[c.key] === criterion);
-  return item?.label ?? criterion;
-}
-
-function eventImage(event: { sampleCertificateFile?: { publicUrl?: string | null } | null }) {
-  return event.sampleCertificateFile?.publicUrl || MEDIA.events[0];
-}
+import { useAuth } from "@/features/auth/store/auth-store";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 export function EventLibrary() {
-  const [q, setQ] = useState("");
-  const [criterion, setCriterion] = useState<Criterion | "all">("all");
-  const [check, setCheck] = useState<Record<string, EventParticipantCheck>>({});
-
-  const { data: appRes, isLoading: appLoading } = useCurrentApplication();
+  const user = useAuth((s) => s.user);
+  const studentCode = user?.studentCode;
+  const nav = useNavigate();
+  const criterionMap: Record<string, string> = {
+    "dao-duc": "ethics",
+    "hoc-tap": "academic",
+    "the-luc": "physical",
+    "tinh-nguyen": "volunteer",
+    "hoi-nhap": "integration",
+  };
+  
+  const { data: appRes } = useCurrentApplication();
   const applicationId = appRes?.application?.id;
-  const eventsQuery = useEvents({
-    q: q.trim() || undefined,
-    criterion: criterion === "all" ? undefined : criterion,
-    status: "active",
-    limit: 100,
+
+  const [q, setQ] = useState("");
+  const [criterion, setCriterion] = useState("all");
+  const [check, setCheck] = useState<Record<string, { ok: boolean; message?: string; loading?: boolean }>>({});
+
+  // Query events from real API using search input and criterion filters
+  const { data: eventsList = [], isLoading: isLoadingEvents } = useEvents({
+    search: q || undefined,
+    criterion: criterion !== "all" ? criterion : undefined,
   });
-  const checkParticipant = useCheckEventParticipant();
-  const importEvent = useImportEventToApplication();
 
-  const events = eventsQuery.data ?? [];
+  const checkParticipantMutation = useCheckParticipant();
+  const importToAppMutation = useImportToApplication();
 
-  const checkName = async (eventId: string) => {
-    if (!applicationId) {
-      toast.error("Hãy tạo hồ sơ trước khi kiểm tra sự kiện.");
-      return;
-    }
+  const checkName = async (id: string) => {
+    setCheck((c) => ({ ...c, [id]: { ok: false, loading: true } }));
+    try {
+      const res = await checkParticipantMutation.mutateAsync({
+        eventId: id,
+        studentCode: studentCode || undefined,
+        applicationId: applicationId || undefined,
+      });
 
-    const result = await checkParticipant.mutateAsync({ eventId, applicationId });
-    setCheck((current) => ({ ...current, [eventId]: result }));
-    if (result.found) {
-      const value = result.participant?.convertedValue;
-      toast.success(value == null ? "Tìm thấy MSSV trong danh sách sự kiện" : `Tìm thấy MSSV - được tính ${value}`);
-    } else {
-      toast.warning(result.reason ?? "Chưa tìm thấy MSSV trong danh sách đã index");
+      if (res.matched) {
+        const roleText = res.participant?.role ? ` - Vai trò: ${res.participant.role}` : "";
+        const hoursText = res.participant?.hours ? ` (${res.participant.hours} giờ)` : "";
+        setCheck((c) => ({
+          ...c,
+          [id]: {
+            ok: true,
+            message: `Có tên trong danh sách${roleText}${hoursText}`,
+            loading: false,
+          },
+        }));
+        toast.success("Đã tìm thấy thông tin của bạn trong danh sách tham gia!");
+      } else {
+        setCheck((c) => ({
+          ...c,
+          [id]: {
+            ok: false,
+            message: res.message || "Chưa tìm thấy MSSV của bạn trong danh sách sự kiện này",
+            loading: false,
+          },
+        }));
+        toast.warning("Không tìm thấy trong danh sách.");
+      }
+    } catch (err: any) {
+      setCheck((c) => ({ ...c, [id]: { ok: false, message: `Kiểm tra thất bại: ${err.message}`, loading: false } }));
+      toast.error(`Kiểm tra thất bại: ${err.message}`);
     }
   };
 
-  const importEv = async (eventId: string) => {
+  const importEv = async (id: string) => {
     if (!applicationId) {
-      toast.error("Hãy tạo hồ sơ trước khi import sự kiện.");
+      toast.error("Vui lòng khởi tạo hồ sơ trước khi import!");
       return;
     }
-    await importEvent.mutateAsync({ eventId, applicationId });
+    importToAppMutation.mutate(
+      { eventId: id, applicationId },
+      {
+        onSuccess: () => {
+          toast.success("Đã thêm sự kiện vào minh chứng!", {
+            action: {
+              label: "Xem trong Minh chứng",
+              onClick: () => nav({ to: "/app/evidence" }),
+            },
+          });
+        },
+      }
+    );
   };
+
+  if (!appRes || appRes.state === "not_started" || !appRes.application) {
+    return (
+      <>
+        <TopBar title="Kho minh chứng & sự kiện hợp lệ" subtitle="Vui lòng tạo hồ sơ xét duyệt trước" />
+        <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
+          <div className="text-muted-foreground font-semibold">Vui lòng tạo hồ sơ trước khi tham chiếu kho sự kiện.</div>
+          <Link to="/app/wizard">
+            <Button>Tạo hồ sơ ngay <ArrowRight className="w-4 h-4 ml-2" /></Button>
+          </Link>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -89,18 +123,18 @@ export function EventLibrary() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Tìm tên sự kiện, đơn vị tổ chức..."
+              placeholder="Tìm tên minh chứng, tên sự kiện, đơn vị tổ chức…"
               className="bg-transparent flex-1 text-[13px] focus:outline-none"
             />
           </div>
           <select
             value={criterion}
-            onChange={(e) => setCriterion(e.target.value as Criterion | "all")}
-            className="bg-[#F6F9FC] rounded-lg px-3 py-2 text-[12.5px] font-semibold text-brand-deep"
+            onChange={(e) => setCriterion(e.target.value)}
+            className="bg-[#F6F9FC] rounded-lg px-3 py-2 text-[12.5px] font-semibold text-[#0057C2]"
           >
             <option value="all">Tất cả tiêu chí</option>
             {CRITERIA.map((c) => (
-              <option key={c.key} value={criterionMap[c.key]}>
+              <option key={c.key} value={criterionMap[c.key] ?? c.key}>
                 {c.label}
               </option>
             ))}
@@ -108,91 +142,84 @@ export function EventLibrary() {
         </div>
       </Card>
 
-      {!appLoading && !applicationId && (
-        <Card className="mb-4 border-amber-200 bg-amber-50">
-          <div className="flex flex-wrap items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600" />
-            <div className="text-sm text-amber-900 flex-1">
-              Bạn cần tạo hồ sơ sinh viên trước khi kiểm tra hoặc import sự kiện.
-            </div>
-            <Link to="/app/drafts">
-              <Button size="sm">Tạo hồ sơ</Button>
-            </Link>
-          </div>
-        </Card>
-      )}
-
-      {eventsQuery.isLoading ? (
-        <div className="flex items-center justify-center p-10 text-muted-foreground">
-          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-          Đang tải kho sự kiện...
-        </div>
+      {isLoadingEvents ? (
+        <div className="py-10 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#0057C2]" /></div>
+      ) : eventsList.length === 0 ? (
+        <div className="p-8 text-center text-muted-foreground">Không tìm thấy sự kiện nào phù hợp.</div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {events.map((e) => {
+          {eventsList.map((e) => {
+            const cr = CRITERIA.find(c => c.key === e.criterion);
             const c = check[e.id];
-            const canImport = Boolean(applicationId && c?.found && c.canImport);
             return (
-              <Card key={e.id} className="!p-4 flex flex-col">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0">
-                    <div className="font-bold text-brand-deep text-[14px] leading-snug">{e.eventName}</div>
-                    <div className="text-[11.5px] text-muted-foreground mt-0.5">
-                      {e.organizer} - {levelLabel[e.organizerLevel]}
+              <Card key={e.id} className="!p-4 flex flex-col justify-between h-full bg-white shadow-sm border border-[#EEF2F7]">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-brand-deep text-[14px] leading-snug">{e.eventName}</div>
+                      <div className="text-[11.5px] text-muted-foreground mt-0.5">
+                        {e.organizer || "Đơn vị tổ chức"}
+                      </div>
                     </div>
+                    {e.status === "indexed" && <Chip tone="success">Đã xác thực</Chip>}
                   </div>
-                  <Chip tone={e.rosterIndexed ? "success" : "muted"}>
-                    {e.rosterIndexed ? "Indexed" : "Chưa index"}
-                  </Chip>
-                </div>
-                <div className="flex flex-wrap gap-1 mb-2">
-                  <Chip tone="brand">{criterionLabel(e.criterion)}</Chip>
-                  <Chip>
-                    {e.convertedValue ?? "-"} {e.convertedUnit ?? ""}
-                  </Chip>
-                  <Chip tone="muted">{e.participantCount} SV</Chip>
-                </div>
-                <div className="text-[11.5px] text-muted-foreground mb-2">
-                  Cấp xét: {e.eligibleLevels.map((lv) => levelLabel[lv] ?? LEVELS.find((l) => l.key === lv)?.label ?? lv).join(" / ")}
-                </div>
-                <img src={eventImage(e)} alt="" className="rounded-md border border-[#EEF2F7] mb-2 max-h-32 object-cover w-full" />
-                {c && (
-                  <div className={`text-[11.5px] rounded-md p-2 mb-2 flex items-start gap-1.5 ${c.found ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
-                    {c.found ? <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />}
-                    {c.found
-                      ? `Tìm thấy ${c.participant?.studentName ?? "MSSV của bạn"} - được tính ${c.participant?.convertedValue ?? e.convertedValue ?? "-"} ${e.convertedUnit ?? ""}`
-                      : c.reason ?? "Chưa tìm thấy MSSV trong danh sách."}
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {cr && <Chip tone="brand">{cr.label}</Chip>}
+                    {e.level && <Chip>{e.level === "school" ? "Cấp Trường" : e.level === "university" ? "Cấp Đại học" : e.level === "city" ? "Cấp Thành phố" : "Cấp Trung ương"}</Chip>}
+                    {e.participantCount !== undefined && e.participantCount !== null && (
+                      <Chip tone="muted">{e.participantCount} SV tham gia</Chip>
+                    )}
                   </div>
-                )}
-                <div className="mt-auto flex gap-2">
+
+                  {e.startDate && (
+                    <div className="text-[11px] text-muted-foreground">
+                      Thời gian: {new Date(e.startDate).toLocaleDateString("vi-VN")}
+                      {e.endDate && ` - ${new Date(e.endDate).toLocaleDateString("vi-VN")}`}
+                    </div>
+                  )}
+
+                  {c && !c.loading && (
+                    <div
+                      className={`text-[11.5px] rounded-md p-2.5 flex items-start gap-1.5 ${
+                        c.ok ? "bg-emerald-50 text-emerald-800 border border-emerald-100" : "bg-amber-50 text-amber-800 border border-amber-100"
+                      }`}
+                    >
+                      {c.ok ? <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />}
+                      <span className="leading-snug">{c.message}</span>
+                    </div>
+                  )}
+
+                  {c?.loading && (
+                    <div className="text-[11.5px] text-muted-foreground p-2 flex items-center gap-2 bg-[#F4FBFF] border border-[#DCE7F2] rounded-md">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0057C2]" /> Đang kiểm tra danh sách...
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex gap-2 pt-3 border-t">
                   <Button
                     size="sm"
                     variant="secondary"
                     onClick={() => checkName(e.id)}
-                    disabled={!applicationId || checkParticipant.isPending}
-                    className="flex-1"
+                    disabled={checkParticipantMutation.isPending || c?.loading}
+                    className="flex-1 text-xs"
                   >
-                    {checkParticipant.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ListChecks className="w-3.5 h-3.5" />}
-                    Kiểm tra tên tôi
+                    <ListChecks className="w-3.5 h-3.5 mr-1" /> Kiểm tra
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => importEv(e.id)}
-                    disabled={!canImport || importEvent.isPending}
-                    className="flex-1"
+                    disabled={!c?.ok || importToAppMutation.isPending}
+                    className="flex-1 text-xs"
                   >
-                    {importEvent.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                    Import
+                    {importToAppMutation.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+                    Import vào hồ sơ
                   </Button>
                 </div>
               </Card>
             );
           })}
-          {events.length === 0 && (
-            <Card className="md:col-span-2 lg:col-span-3 text-center text-sm text-muted-foreground">
-              Chưa có sự kiện active/indexed phù hợp.
-            </Card>
-          )}
         </div>
       )}
     </>

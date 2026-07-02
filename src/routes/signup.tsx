@@ -1,14 +1,14 @@
-import { createFileRoute, useNavigate, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Loader2, UserPlus } from "lucide-react";
-import { useAuth } from "@/features/auth/store/auth-store";
-import { useApp } from "@/lib/store";
+import { toast } from "sonner";
 import { authApi } from "@/features/auth/api/auth";
 import { toUiRole } from "@/features/auth/role-map";
-import { toast } from "sonner";
+import { useAuth } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
+import { useApp } from "@/lib/store";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Đăng ký - 5TOT Platform" }] }),
@@ -80,28 +80,20 @@ function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12">
+    <div className="flex min-h-screen items-center justify-center px-6 py-12">
       <div className="w-full max-w-2xl">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
-        >
-          <div className="w-16 h-16 rounded-3xl gradient-brand flex items-center justify-center text-white font-bold text-xl mx-auto mb-5 shadow-[var(--shadow-glow)]">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-10 text-center">
+          <div className="gradient-brand mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl text-xl font-bold text-white shadow-[var(--shadow-glow)]">
             5T
           </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-brand-deep">Tạo tài khoản</h1>
-          <p className="text-muted-foreground mt-3">
+          <h1 className="text-3xl font-extrabold text-brand-deep md:text-4xl">Tạo tài khoản</h1>
+          <p className="mt-3 text-muted-foreground">
             Đăng ký tài khoản sinh viên để bắt đầu hồ sơ Sinh viên 5 tốt.
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <form onSubmit={handleSignup} className="card-glow p-7 space-y-5">
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <form onSubmit={handleSignup} className="card-glow space-y-5 p-7">
             <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-semibold text-foreground">Họ và tên</label>
@@ -185,7 +177,7 @@ function Signup() {
                   required
                   minLength={8}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
@@ -199,7 +191,7 @@ function Signup() {
                   required
                   minLength={8}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={isLoading}
@@ -210,7 +202,7 @@ function Signup() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 mt-4"
+              className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
             >
               {isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -222,9 +214,9 @@ function Signup() {
               )}
             </button>
 
-            <div className="text-center mt-6 text-sm text-muted-foreground">
+            <div className="mt-6 text-center text-sm text-muted-foreground">
               Đã có tài khoản?{" "}
-              <Link to="/login" className="text-primary hover:underline font-medium">
+              <Link to="/login" className="font-medium text-primary hover:underline">
                 Đăng nhập
               </Link>
             </div>

@@ -1,57 +1,52 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { resolutionApi, type ResolutionFilters } from "../api/resolution";
+import { resolutionApi } from "../api/resolution";
+import type { ResolutionCasesParams, ResolveResolutionCaseRequest } from "../types";
 
 export const resolutionKeys = {
-  all: ["resolution"] as const,
-  cases: (filters: ResolutionFilters) => [...resolutionKeys.all, "cases", filters] as const,
-  detail: (id: string) => [...resolutionKeys.all, "detail", id] as const,
+  cases: ["resolutionCases"] as const,
+  casesList: (params?: ResolutionCasesParams) => [...resolutionKeys.cases, params ?? {}] as const,
+  caseDetail: (caseId: string) => ["resolutionCase", caseId] as const,
 };
 
-export function useResolutionCases(filters: ResolutionFilters = {}) {
+export function useResolutionCases(params?: ResolutionCasesParams) {
   return useQuery({
-    queryKey: resolutionKeys.cases(filters),
-    queryFn: () => resolutionApi.listCases(filters),
+    queryKey: resolutionKeys.casesList(params),
+    queryFn: async () => {
+      const response = await resolutionApi.getResolutionCases(params);
+      return response.data;
+    },
   });
 }
 
-export function useResolutionCase(id: string) {
+export function useResolutionCase(caseId?: string) {
   return useQuery({
-    queryKey: resolutionKeys.detail(id),
-    queryFn: () => resolutionApi.getCase(id),
-    enabled: Boolean(id),
+    queryKey: resolutionKeys.caseDetail(caseId ?? ""),
+    queryFn: async () => {
+      const response = await resolutionApi.getResolutionCase(caseId ?? "");
+      return response.data;
+    },
+    enabled: Boolean(caseId),
   });
 }
 
-export function useDecideResolutionCase() {
+export function useResolveResolutionCase(caseId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof resolutionApi.decideCase>[1] }) =>
-      resolutionApi.decideCase(id, payload),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: resolutionKeys.all });
-      queryClient.invalidateQueries({ queryKey: resolutionKeys.detail(variables.id) });
-      toast.success("Đã lưu quyết định hội đồng");
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || "Không thể lưu quyết định hội đồng");
-    },
-  });
-}
+    mutationFn: (payload: ResolveResolutionCaseRequest) => {
+      if (!caseId) {
+        throw new Error("Missing resolution case id");
+      }
 
-export function useReopenResolutionCase() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => resolutionApi.reopenCase(id, { reason }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: resolutionKeys.all });
-      queryClient.invalidateQueries({ queryKey: resolutionKeys.detail(variables.id) });
-      toast.success("Đã mở lại resolution case");
+      return resolutionApi.resolveResolutionCase(caseId, payload);
     },
-    onError: (err: Error) => {
-      toast.error(err.message || "Không thể mở lại resolution case");
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: resolutionKeys.cases }),
+        caseId
+          ? queryClient.invalidateQueries({ queryKey: resolutionKeys.caseDetail(caseId) })
+          : Promise.resolve(),
+      ]);
     },
   });
 }

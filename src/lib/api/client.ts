@@ -82,10 +82,19 @@ export async function apiClient<T>(
     const response = await fetch(url, config);
 
     // Parse JSON
-    let data: ApiResponse<T> | ApiFailure | null = null;
+    let data: any = null;
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       data = await response.json();
+    }
+
+    if (data && data.success === false) {
+      throw new ApiError(
+        data.error?.message || "API Error",
+        data.error?.code || "API_ERROR",
+        data.error?.details,
+        data.meta
+      );
     }
 
     if (!response.ok) {
@@ -93,11 +102,7 @@ export async function apiClient<T>(
         return handle401Error<T>(endpoint, options);
       }
       
-      if (data && data.success === false) {
-        throw new ApiError(data.error.message, data.error.code, data.error.details, data.meta, response.status);
-      }
-      
-      throw new ApiError(response.statusText, response.status.toString(), undefined, { requestId: response.headers.get("x-request-id") ?? undefined }, response.status);
+      throw new ApiError(response.statusText, response.status.toString());
     }
 
     if (!data) {

@@ -1,18 +1,50 @@
 import { apiClient } from "@/lib/api/client";
-import type { Criterion, EvidenceSourceType, EvidenceStatus, IndexingStatus } from "@/lib/api/types";
+import type { Criterion, EvidenceSourceType, EvidenceStatus, IndexingStatus, Evidence } from "@/lib/api/types";
 
-export interface EvidenceResponse {
-  id: string;
-  applicationId: string;
-  evidenceName: string;
-  criterion: Criterion;
-  sourceType: EvidenceSourceType;
-  status: EvidenceStatus;
-  indexingStatus: IndexingStatus;
+export interface EvidenceResponse extends Evidence {
   fileId?: string;
   jobId?: string;
-  createdAt: string;
-  updatedAt: string;
+}
+
+type EvidenceListPayload =
+  | EvidenceResponse[]
+  | {
+      items?: EvidenceResponse[];
+      data?: EvidenceResponse[];
+      evidences?: EvidenceResponse[];
+    };
+
+type EvidencePayload =
+  | EvidenceResponse
+  | {
+      evidence?: EvidenceResponse;
+      file?: {
+        id?: string;
+        fileName?: string;
+        size?: number;
+        [key: string]: unknown;
+      };
+      jobId?: string | null;
+      [key: string]: unknown;
+    }
+  | null;
+
+function normalizeEvidences(payload: EvidenceListPayload | null): EvidenceResponse[] {
+  if (Array.isArray(payload)) return payload;
+  return payload?.items ?? payload?.data ?? payload?.evidences ?? [];
+}
+
+function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
+  if (!payload) return payload as EvidenceResponse;
+  if ("evidence" in payload && payload.evidence) {
+    return {
+      ...payload.evidence,
+      fileId: payload.file?.id,
+      fileName: payload.file?.fileName,
+      jobId: payload.jobId ?? undefined,
+    } as EvidenceResponse;
+  }
+  return payload as EvidenceResponse;
 }
 
 export const evidenceApi = {
@@ -35,64 +67,91 @@ export const evidenceApi = {
       });
     }
     const qString = query.toString();
-    return apiClient<EvidenceResponse[]>(
+    const res = await apiClient<EvidenceListPayload>(
       `/api/applications/${applicationId}/evidences${qString ? `?${qString}` : ""}`,
       { method: "GET" }
     );
+    return { ...res, data: normalizeEvidences(res.data) };
   },
 
   createEvidence: async (
     applicationId: string,
-    data: { evidenceName: string; criterion: Criterion; sourceType?: EvidenceSourceType }
+    input: {
+      evidenceName: string;
+      criterion: Criterion;
+      sourceType: EvidenceSourceType;
+      description?: string;
+      note?: string;
+      metadata?: Record<string, unknown>;
+    }
   ) => {
-    return apiClient<EvidenceResponse>(`/api/applications/${applicationId}/evidences`, {
+    const res = await apiClient<EvidencePayload>(`/api/applications/${applicationId}/evidences`, {
       method: "POST",
-      body: data,
+      body: input,
     });
+    return { ...res, data: normalizeEvidence(res.data) };
   },
 
   updateEvidence: async (
-    id: string,
-    data: { evidenceName?: string; criterion?: Criterion }
+    evidenceId: string,
+    input: {
+      evidenceName?: string;
+      criterion?: Criterion;
+      description?: string;
+      note?: string;
+      metadata?: Record<string, unknown>;
+    }
   ) => {
-    return apiClient<EvidenceResponse>(`/api/evidences/${id}`, {
+    const res = await apiClient<EvidencePayload>(`/api/evidences/${evidenceId}`, {
       method: "PATCH",
-      body: data,
+      body: input,
     });
+    return { ...res, data: normalizeEvidence(res.data) };
   },
 
-  deleteEvidence: async (id: string) => {
-    return apiClient<null>(`/api/evidences/${id}`, {
+  deleteEvidence: async (evidenceId: string) => {
+    return apiClient<null>(`/api/evidences/${evidenceId}`, {
       method: "DELETE",
     });
   },
 
-  uploadFile: async (id: string, file: File) => {
+  uploadEvidenceFile: async (evidenceId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return apiClient<{ fileId: string; fileName: string; size: number }>(
-      `/api/evidences/${id}/files`,
+    const res = await apiClient<EvidencePayload>(
+      `/api/evidences/${evidenceId}/files`,
       {
         method: "POST",
         body: formData,
-        // Browser will set Content-Type with correct boundary automatically for FormData
       }
     );
+    return { ...res, data: normalizeEvidence(res.data) };
   },
 
-  startIndexing: async (id: string, options?: { force?: boolean; runMode?: "sync" | "async" }) => {
-    return apiClient<{ jobId: string; status: IndexingStatus }>(
-      `/api/evidences/${id}/start-indexing`,
+  // Alias for compatibility
+  uploadFile: async (evidenceId: string, file: File) => {
+    return evidenceApi.uploadEvidenceFile(evidenceId, file);
+  },
+
+  startIndexing: async (evidenceId: string, options?: { force?: boolean; runMode?: "sync" | "async" }) => {
+    const res = await apiClient<EvidencePayload>(
+      `/api/evidences/${evidenceId}/start-indexing`,
       {
         method: "POST",
         body: options || {},
       }
     );
+    return { ...res, data: normalizeEvidence(res.data) };
   },
 
-  getCard: async (id: string) => {
-    return apiClient<unknown>(`/api/evidences/${id}/card`, {
+  getEvidenceCard: async (evidenceId: string) => {
+    return apiClient<unknown>(`/api/evidences/${evidenceId}/card`, {
       method: "GET",
     });
+  },
+
+  // Alias for compatibility
+  getCard: async (evidenceId: string) => {
+    return evidenceApi.getEvidenceCard(evidenceId);
   },
 };

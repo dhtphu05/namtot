@@ -64,7 +64,7 @@ function Login() {
 
     setIsLoading(true);
     try {
-      const res = await authApi.login(email, password);
+      const res = await authApi.login(email.trim(), password);
       queryClient.clear();
       resetSessionState();
       setAuthData(res.data.user, res.data.accessToken, res.data.refreshToken);
@@ -85,11 +85,7 @@ function Login() {
   return (
     <div className="min-h-screen px-6 py-12">
       <div className="mx-auto grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <div className="mb-5">
             <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-[#0057C2] text-lg font-bold text-white shadow-[var(--shadow-glow)]">
               5T
@@ -97,8 +93,8 @@ function Login() {
             <div className="mt-5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Quick start</div>
             <h1 className="mt-2 text-4xl font-extrabold text-brand-deep">Đăng nhập theo vai trò</h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Trả lại trải nghiệm chọn vai trò thân thiện của bản mới, nhưng vẫn giữ đăng nhập backend thật.
-              Chọn một vai trò để điền sẵn account demo.
+              Trải nghiệm chọn vai trò thân thiện, nhưng vẫn dùng backend auth thật. Chọn một vai trò để điền sẵn
+              account demo.
             </p>
           </div>
 
@@ -137,7 +133,7 @@ function Login() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <form onSubmit={handleLogin} className="card-glow p-7 space-y-5">
+          <form onSubmit={handleLogin} className="card-glow space-y-5 p-7">
             <div>
               <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Backend auth</div>
               <h2 className="mt-1 text-2xl font-extrabold text-brand-deep">Vào hệ thống</h2>

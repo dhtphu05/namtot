@@ -5,16 +5,20 @@ export interface Pagination {
   totalPages: number;
 }
 
-export interface ApiResponse<T> {
-  success: true;
-  data: T;
-  error: null;
+export type ApiResponse<T> = {
+  success: boolean;
+  data: T | null;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  } | null;
   meta: {
     requestId?: string;
     pagination?: Pagination;
     [key: string]: unknown;
   };
-}
+};
 
 export interface ApiFailure {
   success: false;
@@ -66,13 +70,12 @@ export type Level = 'school' | 'university' | 'city' | 'central';
 export type FinalStatus = 'pending' | 'passed' | 'failed' | 'partially_passed';
 
 export type ApplicationStatus =
-  | 'not_started'
   | 'draft'
   | 'prechecked'
   | 'ready_to_submit'
   | 'submitted'
-  | 'supplement_required'
   | 'under_review'
+  | 'supplement_required'
   | 'resolution_needed'
   | 'completed'
   | 'rejected';
@@ -99,6 +102,46 @@ export type EvidenceStatus =
   | 'accepted'
   | 'rejected'
   | 'resolution_needed';
+
+export const levelLabel: Record<Level, string> = {
+  school: "Cấp Trường",
+  university: "Cấp Đại học Đà Nẵng",
+  city: "Cấp Thành phố",
+  central: "Cấp Trung ương"
+};
+
+export const criterionLabel: Record<Criterion, string> = {
+  ethics: "Đạo đức tốt",
+  academic: "Học tập tốt",
+  physical: "Thể lực tốt",
+  volunteer: "Tình nguyện tốt",
+  integration: "Hội nhập tốt",
+  priority: "Thành tích ưu tiên",
+  collective: "Tập thể"
+};
+
+export const applicationStatusLabel: Record<ApplicationStatus, string> = {
+  draft: "Bản nháp",
+  prechecked: "Đã tiền kiểm",
+  ready_to_submit: "Sẵn sàng nộp",
+  submitted: "Đã nộp",
+  under_review: "Đang xét duyệt",
+  supplement_required: "Cần bổ sung",
+  resolution_needed: "Hồ sơ mập mờ",
+  completed: "Hoàn tất",
+  rejected: "Từ chối"
+};
+
+export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
+  draft: "Bản nháp",
+  pending_indexing: "Chờ OCR/Index",
+  indexed: "Đã bóc tách",
+  needs_supplement: "Cần bổ sung",
+  under_review: "Đang xét duyệt",
+  accepted: "Đã duyệt",
+  rejected: "Từ chối",
+  resolution_needed: "Hồ sơ mập mờ"
+};
 
 export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
 export type EventStatus = 'draft' | 'active' | 'archived';
@@ -206,16 +249,24 @@ export interface EvidenceResponse {
   [key: string]: unknown;
 }
 
-export interface ApplicationState {
+export interface Application {
   id: string;
+  studentId: string;
   schoolYear: string;
   applicationType: "individual" | "collective";
-  status: ApplicationStatus;
   targetLevel: Level;
-  readinessScore: number;
+  status: ApplicationStatus;
+  finalStatus?: string | null;
+  readinessScore?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApplicationState extends Application {
   lastUpdatedAt: string;
   submittedAt: string | null;
   currentDraftVersion: number;
+  metrics?: ApplicationMetric[];
   progress?: number;
   basicInfo?: {
     fullName?: string;
@@ -231,6 +282,63 @@ export interface CurrentApplicationEmpty {
   application: null;
   state: 'not_started';
   schoolYear: string;
+}
+
+export interface Metric {
+  id: string;
+  applicationId: string;
+  criterion: Criterion;
+  metricType: string;
+  valueNumber?: number | null;
+  valueText?: string | null;
+  unit?: string | null;
+  source?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MetricInput {
+  criterion: "academic" | "ethics" | "physical" | "volunteer" | "integration";
+  metricType:
+    | "gpa"
+    | "conduct_score"
+    | "physical_score"
+    | "volunteer_days"
+    | "foreign_language_score"
+    | "language_certificate"
+    | "integration_activity";
+  value?: number;
+  valueNumber?: number;
+  valueText?: string;
+  scale?: number | string;
+  unit?: string;
+  source?: "student_input";
+}
+
+export interface EvidenceFile {
+  id: string;
+  evidenceId: string;
+  fileName: string;
+  filePath?: string;
+  fileSize: number;
+  mimeType?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Evidence {
+  id: string;
+  applicationId: string;
+  evidenceName: string;
+  criterion: Criterion;
+  sourceType: EvidenceSourceType;
+  status: EvidenceStatus;
+  description?: string | null;
+  note?: string | null;
+  confidence?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  files?: EvidenceFile[];
 }
 
 export interface CurrentApplicationResponse {

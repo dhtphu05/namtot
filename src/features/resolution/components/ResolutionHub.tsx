@@ -1,27 +1,9 @@
 import { Link } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
-import { Card, Chip } from "@/components/ui-kit";
-import { AlertTriangle, ChevronRight, Loader2, Search } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useResolutionCases } from "../hooks/useResolution";
-import type { ResolutionCaseListItem } from "../api/resolution";
-
-const STATUS_LABEL: Record<string, { label: string; tone: "brand" | "success" | "warning" | "error" | "muted" }> = {
-  open: { label: "Đang mở", tone: "warning" },
-  in_review: { label: "Hội đồng đang xét", tone: "brand" },
-  resolved: { label: "Đã xử lý", tone: "success" },
-  rejected: { label: "Từ chối", tone: "error" },
-};
-
-const CRITERION_LABEL: Record<string, string> = {
-  ethics: "Đạo đức",
-  academic: "Học tập",
-  physical: "Thể lực",
-  volunteer: "Tình nguyện",
-  integration: "Hội nhập",
-  priority: "Ưu tiên",
-  collective: "Tập thể",
-};
+import { Card } from "@/components/ui-kit";
+import { Button } from "@/components/ui/button";
+import { EmptyReviewState } from "@/features/review/components/EmptyReviewState";
 
 export function ResolutionHub() {
   const [status, setStatus] = useState("all");
@@ -42,42 +24,22 @@ export function ResolutionHub() {
 
   return (
     <>
-      <TopBar title="Resolution Hub" subtitle="Hồ sơ mập mờ cần hội đồng quyết định" />
-      <Card className="mb-4 !p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="rounded-lg bg-[#F6F9FC] px-3 py-1.5 text-[12px] font-semibold text-brand-deep"
-          >
-            <option value="all">Mọi trạng thái</option>
-            {Object.entries(STATUS_LABEL).map(([key, item]) => (
-              <option key={key} value={key}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={criterion}
-            onChange={(event) => setCriterion(event.target.value)}
-            className="rounded-lg bg-[#F6F9FC] px-3 py-1.5 text-[12px] font-semibold text-brand-deep"
-          >
-            <option value="all">Mọi tiêu chí</option>
-            {Object.entries(CRITERION_LABEL).map(([key, item]) => (
-              <option key={key} value={key}>
-                {item}
-              </option>
-            ))}
-          </select>
-          <div className="relative min-w-[220px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm sinh viên, MSSV, lý do..."
-              className="w-full rounded-lg bg-[#F6F9FC] py-1.5 pl-8 pr-3 text-[12px] font-semibold text-brand-deep"
-            />
-          </div>
+      <TopBar
+        title="Hồ sơ hội ý"
+        subtitle="Danh sách hồ sơ cần hội ý được tải trực tiếp từ backend."
+      />
+      <Card>
+        <EmptyReviewState
+          title="Resolution Hub legacy không còn dùng dữ liệu mẫu"
+          description="Vui lòng mở trang hồ sơ hội ý chính để xem các trường hợp cần xử lý."
+        />
+        <div className="mt-4 flex justify-center">
+          <Button asChild>
+            <Link to="/app/resolution">
+              Mở hồ sơ hội ý
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
         </div>
       </Card>
 

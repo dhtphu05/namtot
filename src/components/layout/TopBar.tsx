@@ -4,7 +4,7 @@ import { useNotifications } from "@/features/core/hooks/useNotifications";
 
 export function TopBar({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   const { data } = useNotifications({ page: 1, limit: 20 });
-  const items = data?.items ?? [];
+  const items = Array.isArray(data?.items) ? data.items : [];
   const unread = items.filter((item) => !item.readAt).length;
   return (
     <header className="flex items-center justify-between gap-6 mb-6">

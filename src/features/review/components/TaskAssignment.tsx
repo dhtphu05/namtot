@@ -1,126 +1,30 @@
+import { Link } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
-import { Button, Card, Chip, Progress } from "@/components/ui-kit";
-import { AppIcon } from "@/components/AppIcon";
-import { Loader2, RefreshCw } from "lucide-react";
-import { useAssignReviewTask, useManagerWorkloads } from "../hooks/useManager";
-import { useReviewTasks } from "../hooks/useReview";
-import type { OfficerWorkload } from "../api/manager";
-import type { ReviewTaskListItem } from "../api/review";
-
-const CRITERION_LABEL: Record<string, string> = {
-  ethics: "Đạo đức",
-  academic: "Học tập",
-  physical: "Thể lực",
-  volunteer: "Tình nguyện",
-  integration: "Hội nhập",
-  priority: "Ưu tiên",
-  collective: "Tập thể",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  waiting: "Chờ xét",
-  reviewing: "Đang xét",
-  supplement_required: "Cần bổ sung",
-  resolution_needed: "Cần hội đồng",
-  accepted: "Đạt",
-  rejected: "Không đạt",
-};
+import { Card } from "@/components/ui-kit";
+import { Button } from "@/components/ui/button";
+import { EmptyReviewState } from "./EmptyReviewState";
 
 export function TaskAssignment() {
-  const workloads = useManagerWorkloads();
-  const tasks = useReviewTasks({ assignedToMe: undefined, limit: 100 });
-  const assign = useAssignReviewTask();
-  const officers = workloads.data?.officers ?? [];
-  const reviewTasks = tasks.data?.items ?? [];
-  const isLoading = workloads.isLoading || tasks.isLoading;
-  const isError = workloads.isError || tasks.isError;
-
-  const reassign = (taskId: string, officerId: string, task: ReviewTaskListItem) => {
-    const officer = officers.find((item) => item.id === officerId);
-    const needsOverride = officer ? !officer.specializations.includes(task.criterion) : false;
-    assign.mutate({
-      taskId,
-      officerId,
-      note: needsOverride ? `Manager override: cán bộ không chuyên trách tiêu chí ${task.criterion}.` : undefined,
-    });
-  };
-
   return (
     <>
       <TopBar
-        title="Phân công cán bộ xét duyệt"
-        subtitle="Dữ liệu workload và task lấy trực tiếp từ backend"
-        action={
-          <Button
-            variant="outline"
-            onClick={() => {
-              workloads.refetch();
-              tasks.refetch();
-            }}
-          >
-            <RefreshCw className="h-4 w-4" />
-            Tải lại
-          </Button>
-        }
+        title="Phân công cán bộ"
+        subtitle="Theo dõi workload và phân bổ tác vụ xét duyệt theo dữ liệu backend."
       />
-
-      <Card className="mb-4">
-        <h3 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-brand-deep">
-          <AppIcon name="officer" />
-          Workload từng cán bộ
-        </h3>
-        {workloads.isLoading && <LoadingRow label="Đang tải workload..." />}
-        {workloads.isError && <ErrorRow label={(workloads.error as Error)?.message || "Không thể tải workload."} />}
-        {!workloads.isLoading && !workloads.isError && (
-          <div className="space-y-2">
-            {officers.map((officer) => (
-              <OfficerWorkloadRow key={officer.id} officer={officer} />
-            ))}
-            {officers.length === 0 && <Empty label="Chưa có cán bộ xét duyệt hoạt động." />}
-          </div>
-        )}
-      </Card>
-
       <Card>
-        <h3 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-brand-deep">
-          <AppIcon name="assign" />
-          Phân công / phân công lại task
-        </h3>
-        {isLoading && <LoadingRow label="Đang tải danh sách task..." />}
-        {isError && <ErrorRow label={(tasks.error as Error)?.message || (workloads.error as Error)?.message || "Không thể tải dữ liệu phân công."} />}
-        {!isLoading && !isError && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-[12.5px]">
-              <thead className="bg-[#F6F9FC] text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2">Đối tượng</th>
-                  <th className="px-3 py-2">Tiêu chí</th>
-                  <th className="px-3 py-2">Trạng thái</th>
-                  <th className="px-3 py-2">Minh chứng</th>
-                  <th className="px-3 py-2">Cán bộ phụ trách</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reviewTasks.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    officers={officers}
-                    pending={assign.isPending}
-                    onAssign={(officerId) => reassign(task.id, officerId, task)}
-                  />
-                ))}
-                {reviewTasks.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
-                      Chưa có task để phân công.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <EmptyReviewState
+          title="Trang phân công đã được chuyển sang phiên bản mới"
+          description="Vui lòng mở trang phân công chính để xem workload cán bộ và phân bổ theo tiêu chí."
+        />
+        <div className="mt-4 flex justify-center">
+          <Button asChild>
+            <Link to="/app/assignment">
+              Mở trang phân công
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </Card>
     </>
   );
