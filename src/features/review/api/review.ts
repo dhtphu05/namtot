@@ -1,94 +1,100 @@
 import { apiClient } from "@/lib/api/client";
+import type {
+  ApiResponse,
+  EscalateResolutionRequest,
+  EscalateResolutionResponse,
+  QueryValue,
+  RequestSupplementRequest,
+  RequestSupplementResponse,
+  ReviewTaskDetail,
+  ReviewTaskListParams,
+  ReviewTaskListResponse,
+  SubmitReviewDecisionRequest,
+  SubmitReviewDecisionResponse,
+} from "../types";
 
-export interface ReviewTaskResponse {
-  id: string;
-  applicationId: string;
-  studentId: string;
-  studentName: string;
-  studentMssv: string;
-  studentKhoa: string;
-  evidenceName: string;
-  criterion: string;
-  targetLevel: string;
-  sourceType: string;
-  confidence: number;
-  status: string;
-  dueDate: string;
-  assignedOfficerId: string;
+function buildQueryString(params?: Record<string, QueryValue>) {
+  const query = new URLSearchParams();
+
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.append(key, String(value));
+    }
+  });
+
+  const queryString = query.toString();
+  return queryString ? `?${queryString}` : "";
+}
+
+function withDataFallback<T>(response: ApiResponse<T>, fallback: T | null = null): ApiResponse<T> {
+  return {
+    ...response,
+    data: response.data ?? fallback,
+  };
 }
 
 export const reviewApi = {
-  getReviewTasks: async (filters?: {
-    criterion?: string;
-    status?: string;
-    assignedToMe?: boolean;
-    applicationId?: string;
-    q?: string;
-    page?: number;
-    limit?: number;
-  }) => {
-    const query = new URLSearchParams();
-    if (filters) {
-      Object.entries(filters).forEach(([k, v]) => {
-        if (v !== undefined && v !== "all") query.append(k, String(v));
-      });
-    }
-    const qString = query.toString();
-    return apiClient<ReviewTaskResponse[]>(
-      `/api/review/tasks${qString ? `?${qString}` : ""}`,
-      { method: "GET" }
+  getReviewTasks: async (
+    params?: ReviewTaskListParams,
+  ): Promise<ApiResponse<ReviewTaskListResponse>> => {
+    const response = await apiClient<ReviewTaskListResponse>(
+      `/api/review/tasks${buildQueryString(params)}`,
     );
+
+    return withDataFallback(response, { items: [] });
   },
 
-  getReviewTaskDetail: async (id: string) => {
-    return apiClient<ReviewTaskResponse>(`/api/review/tasks/${id}`, {
-      method: "GET",
-    });
+  getReviewTask: async (id: string): Promise<ApiResponse<ReviewTaskDetail>> => {
+    const response = await apiClient<ReviewTaskDetail>(`/api/review/tasks/${id}`);
+
+    return withDataFallback(response);
   },
 
-  submitDecision: async (
-    id: string,
-    payload: {
-      decision: "accepted" | "rejected";
-      officerNote?: string;
-      evidenceDecisions?: Array<{
-        evidenceId: string;
-        status: "draft" | "pending_indexing" | "indexed" | "needs_supplement" | "under_review" | "accepted" | "rejected" | "resolution_needed";
-        note?: string;
-      }>;
-    }
-  ) => {
-    return apiClient(`/api/review/tasks/${id}/decision`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+  submitReviewDecision: async (
+    taskId: string,
+    payload: SubmitReviewDecisionRequest,
+  ): Promise<ApiResponse<SubmitReviewDecisionResponse>> => {
+    const response = await apiClient<SubmitReviewDecisionResponse>(
+      `/api/review/tasks/${taskId}/decision`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
+
+    return withDataFallback(response);
   },
 
   requestSupplement: async (
-    id: string,
-    payload: {
-      reason: string;
-      requestedEvidenceName?: string;
-      allowedCriteria?: string[];
-      deadline?: string;
-    }
-  ) => {
-    return apiClient(`/api/review/tasks/${id}/request-supplement`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    taskId: string,
+    payload: RequestSupplementRequest,
+  ): Promise<ApiResponse<RequestSupplementResponse>> => {
+    const response = await apiClient<RequestSupplementResponse>(
+      `/api/review/tasks/${taskId}/request-supplement`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
+
+    return withDataFallback(response);
   },
 
   escalateResolution: async (
-    id: string,
-    payload: {
-      reason: string;
-      evidenceId?: string;
-    }
-  ) => {
-    return apiClient(`/api/review/tasks/${id}/escalate-resolution`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    taskId: string,
+    payload: EscalateResolutionRequest,
+  ): Promise<ApiResponse<EscalateResolutionResponse>> => {
+    const response = await apiClient<EscalateResolutionResponse>(
+      `/api/review/tasks/${taskId}/escalate-resolution`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
+
+    return withDataFallback(response);
   },
 };
