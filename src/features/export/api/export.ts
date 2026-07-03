@@ -3,6 +3,7 @@ import { useAuth } from "@/features/auth/store/auth-store";
 import type { ApiResponse, ApplicationStatus, Level, QueryValue } from "@/features/review/types";
 
 export type ExportFormat = "csv" | "json";
+export type ExportDataset = "applications" | "reviewTasks" | "reviewResults";
 
 export type ExportApplicationsParams = {
   schoolYear?: string;
@@ -44,6 +45,10 @@ function buildExportEndpoint(format: ExportFormat, params?: ExportApplicationsPa
   return `/api/exports/applications.${format}${buildQueryString(params)}`;
 }
 
+function buildReviewTasksEndpoint(params?: ExportApplicationsParams) {
+  return `/api/exports/review-tasks.csv${buildQueryString(params)}`;
+}
+
 function getContentType(format: ExportFormat) {
   return format === "csv" ? "text/csv;charset=utf-8" : "application/json;charset=utf-8";
 }
@@ -59,15 +64,18 @@ function createBlobFromContent(
   return new Blob([JSON.stringify(content ?? {}, null, 2)], { type: getContentType(format) });
 }
 
-async function fetchWithAuth(url: string, format: ExportFormat) {
+async function fetchWithAuth(url: string, format: ExportFormat, init?: RequestInit) {
   const headers = new Headers({ Accept: getContentType(format) });
   const token = useAuth.getState().accessToken;
+
+  new Headers(init?.headers).forEach((value, key) => headers.set(key, value));
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(url, {
+    ...init,
     credentials: "include",
     headers,
   });
@@ -153,5 +161,51 @@ export const exportApi = {
     }
 
     return response.blob();
+  },
+
+  downloadReviewTasksExport: async (params?: ExportApplicationsParams): Promise<Blob> => {
+    const response = await fetchWithAuth(
+      `${BASE_URL}${buildReviewTasksEndpoint(params)}`,
+      "csv",
+    );
+
+    if (!response.ok) {
+      throw new Error(await parseError(response));
+    }
+
+    return response.blob();
+  },
+
+  downloadReviewResultsExport: async (
+    format: ExportFormat,
+    params?: ExportApplicationsParams,
+  ): Promise<Blob> => {
+    const response = await fetchWithAuth(`${BASE_URL}/api/exports/review-results`, format, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ ...params, format }),
+    });
+
+    if (!response.ok) {
+      throw new Error(await parseError(response));
+    }
+
+    const body = (await response.json()) as ApiResponse<ExportApplicationsResponse>;
+
+    if (body.success === false) {
+      throw new Error(body.error?.message ?? "Không thể xuất dữ liệu.");
+    }
+
+    if (body.data?.downloadUrl) {
+      const fileResponse = await fetchWithAuth(toAbsoluteUrl(body.data.downloadUrl), format);
+
+      if (!fileResponse.ok) {
+        throw new Error(await parseError(fileResponse));
+      }
+
+      return fileResponse.blob();
+    }
+
+    return createBlobFromContent(body.data?.content ?? body.data ?? {}, format);
   },
 };

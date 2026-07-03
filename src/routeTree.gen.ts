@@ -40,6 +40,8 @@ import { Route as AppReviewIdRouteImport } from './routes/app.review.$id'
 import { Route as AppResolutionIdRouteImport } from './routes/app.resolution.$id'
 import { Route as AppManagerResultsRouteImport } from './routes/app.manager.results'
 import { Route as AppManagerResultRouteImport } from './routes/app.manager.result'
+import { Route as AppManagerCollectiveRouteImport } from './routes/app.manager.collective'
+import { Route as AppCommitteeInboxRouteImport } from './routes/app.committee.inbox'
 import { Route as AppCollectiveIdRouteImport } from './routes/app.collective.$id'
 import { Route as AppManagerResultsApplicationIdRouteImport } from './routes/app.manager.results.$applicationId'
 
@@ -198,6 +200,16 @@ const AppManagerResultRoute = AppManagerResultRouteImport.update({
   path: '/manager/result',
   getParentRoute: () => AppRoute,
 } as any)
+const AppManagerCollectiveRoute = AppManagerCollectiveRouteImport.update({
+  id: '/manager/collective',
+  path: '/manager/collective',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCommitteeInboxRoute = AppCommitteeInboxRouteImport.update({
+  id: '/committee/inbox',
+  path: '/committee/inbox',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCollectiveIdRoute = AppCollectiveIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -239,6 +251,8 @@ export interface FileRoutesByFullPath {
   '/app/wizard': typeof AppWizardRoute
   '/app/': typeof AppIndexRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
+  '/app/committee/inbox': typeof AppCommitteeInboxRoute
+  '/app/manager/collective': typeof AppManagerCollectiveRoute
   '/app/manager/result': typeof AppManagerResultRoute
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
   '/app/resolution/$id': typeof AppResolutionIdRoute
@@ -273,6 +287,8 @@ export interface FileRoutesByTo {
   '/app/wizard': typeof AppWizardRoute
   '/app': typeof AppIndexRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
+  '/app/committee/inbox': typeof AppCommitteeInboxRoute
+  '/app/manager/collective': typeof AppManagerCollectiveRoute
   '/app/manager/result': typeof AppManagerResultRoute
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
   '/app/resolution/$id': typeof AppResolutionIdRoute
@@ -309,6 +325,8 @@ export interface FileRoutesById {
   '/app/wizard': typeof AppWizardRoute
   '/app/': typeof AppIndexRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
+  '/app/committee/inbox': typeof AppCommitteeInboxRoute
+  '/app/manager/collective': typeof AppManagerCollectiveRoute
   '/app/manager/result': typeof AppManagerResultRoute
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
   '/app/resolution/$id': typeof AppResolutionIdRoute
@@ -346,6 +364,8 @@ export interface FileRouteTypes {
     | '/app/wizard'
     | '/app/'
     | '/app/collective/$id'
+    | '/app/committee/inbox'
+    | '/app/manager/collective'
     | '/app/manager/result'
     | '/app/manager/results'
     | '/app/resolution/$id'
@@ -380,6 +400,8 @@ export interface FileRouteTypes {
     | '/app/wizard'
     | '/app'
     | '/app/collective/$id'
+    | '/app/committee/inbox'
+    | '/app/manager/collective'
     | '/app/manager/result'
     | '/app/manager/results'
     | '/app/resolution/$id'
@@ -415,6 +437,8 @@ export interface FileRouteTypes {
     | '/app/wizard'
     | '/app/'
     | '/app/collective/$id'
+    | '/app/committee/inbox'
+    | '/app/manager/collective'
     | '/app/manager/result'
     | '/app/manager/results'
     | '/app/resolution/$id'
@@ -648,6 +672,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppManagerResultRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/manager/collective': {
+      id: '/app/manager/collective'
+      path: '/manager/collective'
+      fullPath: '/app/manager/collective'
+      preLoaderRoute: typeof AppManagerCollectiveRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/committee/inbox': {
+      id: '/app/committee/inbox'
+      path: '/committee/inbox'
+      fullPath: '/app/committee/inbox'
+      preLoaderRoute: typeof AppCommitteeInboxRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/collective/$id': {
       id: '/app/collective/$id'
       path: '/$id'
@@ -724,6 +762,8 @@ interface AppRouteChildren {
   AppVnptRoute: typeof AppVnptRoute
   AppWizardRoute: typeof AppWizardRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppCommitteeInboxRoute: typeof AppCommitteeInboxRoute
+  AppManagerCollectiveRoute: typeof AppManagerCollectiveRoute
   AppManagerResultRoute: typeof AppManagerResultRoute
   AppManagerResultsRoute: typeof AppManagerResultsRouteWithChildren
   AppReviewIdRoute: typeof AppReviewIdRoute
@@ -753,6 +793,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppVnptRoute: AppVnptRoute,
   AppWizardRoute: AppWizardRoute,
   AppIndexRoute: AppIndexRoute,
+  AppCommitteeInboxRoute: AppCommitteeInboxRoute,
+  AppManagerCollectiveRoute: AppManagerCollectiveRoute,
   AppManagerResultRoute: AppManagerResultRoute,
   AppManagerResultsRoute: AppManagerResultsRouteWithChildren,
   AppReviewIdRoute: AppReviewIdRoute,

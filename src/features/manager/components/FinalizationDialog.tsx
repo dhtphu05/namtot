@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui-kit";
 import {
   Dialog,
@@ -9,33 +9,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useFinalizeManagerApplication } from "@/features/manager/hooks/useManager";
 import type { ManagerResultItem } from "@/features/manager/types";
-import type { Level } from "@/features/review/types";
+import type { Criterion, ReviewTaskStatus } from "@/features/review/types";
+import { getDownrankReason, getFinalizeActionLabel, getLevelLabel, isLegacyCentral } from "@/lib/levels";
 import { getApplicationStatusLabel } from "@/lib/status-labels";
 
-const levels: Level[] = ["school", "university", "city", "central"];
-
-const levelLabel: Record<Level, string> = {
-  school: "Cấp Trường",
-  university: "Cấp ĐHĐN",
-  city: "Cấp Thành phố",
-  central: "Cấp Trung ương",
+const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
+const criterionLabel: Record<Criterion, string> = {
+  ethics: "Đạo đức",
+  academic: "Học tập",
+  physical: "Thể lực",
+  volunteer: "Tình nguyện",
+  integration: "Hội nhập",
+  priority: "Ưu tiên",
+  collective: "Tập thể",
 };
-
-const applicationStatusLabel: Record<string, string> = {
-  draft: "Bản nháp",
-  prechecked: "Đã tiền kiểm",
-  ready_to_submit: "Sẵn sàng nộp",
-  submitted: "Đã nộp",
-  under_review: "Đang xét duyệt",
-  supplement_required: "Cần bổ sung",
-  resolution_needed: "Cần hội đồng xử lý",
-  completed: "Hoàn tất",
-  rejected: "Chưa đạt",
-};
-type DecisionMode = "target" | "lower" | "failed";
 
 export function FinalizationDialog({
   item,
@@ -47,37 +36,36 @@ export function FinalizationDialog({
   open: boolean;
 }) {
   const finalizeMutation = useFinalizeManagerApplication();
-  const [mode, setMode] = useState<DecisionMode>("target");
-  const [finalLevel, setFinalLevel] = useState<Level>("school");
   const [note, setNote] = useState("");
 
-  const lowerLevels = useMemo(() => {
-    if (!item) return [];
-    const index = levels.indexOf(item.targetLevel);
-    return levels.slice(0, index);
+  useEffect(() => {
+    setNote("");
+  }, [item?.applicationId]);
+
+  const decision = useMemo(() => {
+    if (!item) return null;
+    if (!item.suggestedLevel) {
+      return { finalStatus: "failed" as const, finalLevel: null };
+    }
+    return { finalStatus: "passed" as const, finalLevel: item.suggestedLevel };
   }, [item]);
 
-  useEffect(() => {
-    setMode("target");
-    setFinalLevel(lowerLevels[0] ?? "school");
-    setNote("");
-  }, [item?.applicationId, lowerLevels]);
+  if (!item || !decision) return null;
 
-  if (!item) return null;
-
-  const resolvedLevel = mode === "target" ? item.targetLevel : mode === "lower" ? finalLevel : null;
-  const resolvedStatus = mode === "target" ? "passed" : mode === "lower" ? "partially_passed" : "failed";
   const noteRequired = !note.trim();
-  const lowerLevelMissing = mode === "lower" && (!resolvedLevel || !lowerLevels.includes(resolvedLevel));
+  const blockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
+  const legacyCentral = isLegacyCentral(item.targetLevel) || isLegacyCentral(item.suggestedLevel);
+  const submitDisabled =
+    finalizeMutation.isPending || noteRequired || !item.canFinalize || legacyCentral;
 
   const submit = () => {
-    if (noteRequired || lowerLevelMissing) return;
+    if (submitDisabled) return;
     finalizeMutation.mutate(
       {
         applicationId: item.applicationId,
         payload: {
-          finalStatus: resolvedStatus,
-          finalLevel: resolvedLevel,
+          finalStatus: decision.finalStatus,
+          finalLevel: decision.finalLevel,
           finalNote: note.trim(),
           notifyStudent: true,
           overrideAggregation: false,
@@ -85,6 +73,12 @@ export function FinalizationDialog({
       },
       {
         onSuccess: () => onOpenChange(false),
+        onError: (error) => {
+          const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+          if (code === "FINAL_LEVEL_MISMATCH" || code === "FINAL_STATUS_MISMATCH") {
+            onOpenChange(false);
+          }
+        },
       },
     );
   };
@@ -95,7 +89,7 @@ export function FinalizationDialog({
         <DialogHeader>
           <DialogTitle>Chốt kết quả hồ sơ</DialogTitle>
           <DialogDescription>
-            Quyết định này sẽ được lưu audit và thông báo cho sinh viên.
+            Hệ thống sẽ kiểm tra lại gợi ý cấp đạt lần cuối trước khi lưu kết quả chính thức.
           </DialogDescription>
         </DialogHeader>
 
@@ -103,11 +97,11 @@ export function FinalizationDialog({
           <div className="rounded-lg border p-4">
             <div className="text-sm font-bold text-brand-deep">{item.studentName}</div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {item.studentCode ?? "--"} • {item.className ?? "--"} • {item.faculty ?? "--"}
+              {item.studentCode ?? "--"} - {item.className ?? "--"} - {item.faculty ?? "--"}
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <Info label="Cấp đăng ký" value={levelLabel[item.targetLevel]} />
-              <Info label="Gợi ý" value={item.suggestedLevel ? levelLabel[item.suggestedLevel] : "--"} />
+              <Info label="Cấp đăng ký" value={getLevelLabel(item.targetLevel)} />
+              <Info label="Cấp đề xuất" value={getLevelLabel(item.suggestedLevel)} />
               <Info label="Readiness" value={`${item.readinessScore}`} />
               <Info label="Trạng thái" value={getApplicationStatusLabel(item.applicationStatus)} />
             </div>
@@ -126,34 +120,50 @@ export function FinalizationDialog({
           </div>
         </div>
 
-        <div className="rounded-lg border p-4">
-          <div className="mb-3 text-sm font-bold text-brand-deep">Quyết định cuối</div>
-          <RadioGroup value={mode} onValueChange={(value) => setMode(value as DecisionMode)}>
-            <DecisionOption id="target" label="Đạt cấp đăng ký" />
-            <DecisionOption id="lower" label="Không đạt cấp đăng ký nhưng đạt cấp thấp hơn" />
-            <DecisionOption id="failed" label="Chưa đạt" />
-          </RadioGroup>
+        {!item.canFinalize ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+            {blockedReason}
+          </div>
+        ) : null}
 
-          {mode === "lower" ? (
-            <label className="mt-4 block text-sm">
-              <span className="mb-1 block font-semibold text-brand-deep">Cấp đạt</span>
-              <select
-                value={finalLevel}
-                onChange={(event) => setFinalLevel(event.target.value as Level)}
-                className="w-full rounded-lg border border-[#DCE7F2] px-3 py-2"
-              >
-                {lowerLevels.length === 0 ? (
-                  <option value="">Không có cấp thấp hơn</option>
-                ) : (
-                  lowerLevels.map((level) => (
-                    <option key={level} value={level}>
-                      {levelLabel[level]}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-          ) : null}
+        {legacyCentral ? (
+          <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Hồ sơ cấp Trung ương đang nằm ngoài phạm vi flow chính hiện tại.</span>
+          </div>
+        ) : null}
+
+        <div className="rounded-lg border p-4">
+          <div className="mb-3 text-sm font-bold text-brand-deep">Tóm tắt 5 tiêu chí</div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {criterionOrder.map((criterion) => {
+              const task = item.criterionStatuses?.[criterion];
+              return (
+                <div key={criterion} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                  <span className="font-semibold text-brand-deep">{criterionLabel[criterion]}</span>
+                  <span className={`rounded-full px-2 py-0.5 font-semibold ${criterionClass(task?.status)}`}>
+                    {criterionStatusLabel(task?.status)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-lg border p-4">
+          <div className="text-sm font-bold text-brand-deep">Quyết định sẽ gửi</div>
+          <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
+            <div className="text-base font-semibold text-brand-deep">
+              {getFinalizeActionLabel(item.suggestedLevel)}
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {getDownrankReason(item.targetLevel, item.suggestedLevel)}
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+            Backend sẽ recompute cascade lần cuối khi bấm chốt. Nếu đề xuất mới khác dữ liệu đang hiển thị, hệ thống sẽ từ chối kết quả cũ.
+          </div>
 
           <label className="mt-4 block text-sm">
             <span className="mb-1 block font-semibold text-brand-deep">Ghi chú kết quả</span>
@@ -163,6 +173,7 @@ export function FinalizationDialog({
               placeholder="Nhập căn cứ và ghi chú chốt kết quả..."
               className="min-h-24 w-full rounded-lg border border-[#DCE7F2] px-3 py-2 outline-none focus:ring-2 focus:ring-[#0057C2]/20"
             />
+            {noteRequired ? <span className="text-xs text-red-600">Ghi chu la bat buoc.</span> : null}
           </label>
         </div>
 
@@ -170,22 +181,17 @@ export function FinalizationDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Hủy
           </Button>
-          <Button onClick={submit} disabled={finalizeMutation.isPending || noteRequired || lowerLevelMissing}>
-            {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-            Chốt kết quả
+          <Button onClick={submit} disabled={submitDisabled}>
+            {finalizeMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
+            {getFinalizeActionLabel(item.suggestedLevel)}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function DecisionOption({ id, label }: { id: DecisionMode; label: string }) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm">
-      <RadioGroupItem value={id} id={id} />
-      <span className="font-medium text-brand-deep">{label}</span>
-    </label>
   );
 }
 
@@ -196,4 +202,23 @@ function Info({ label, value }: { label: string; value: string }) {
       <div className="font-semibold text-brand-deep">{value}</div>
     </div>
   );
+}
+
+function criterionStatusLabel(status?: ReviewTaskStatus) {
+  if (status === "accepted") return "Đạt";
+  if (status === "rejected") return "Không đạt";
+  if (status === "supplement_required") return "Cần bổ sung";
+  if (status === "resolution_needed") return "Cần hội ý";
+  if (status === "reviewing") return "Đang xét";
+  if (status === "waiting") return "Chờ xét";
+  return "Chưa có";
+}
+
+function criterionClass(status?: ReviewTaskStatus) {
+  if (status === "accepted") return "bg-emerald-50 text-emerald-700";
+  if (status === "rejected") return "bg-rose-50 text-rose-700";
+  if (status === "supplement_required") return "bg-amber-50 text-amber-700";
+  if (status === "resolution_needed") return "bg-violet-50 text-violet-700";
+  if (status === "reviewing") return "bg-sky-50 text-sky-700";
+  return "bg-slate-100 text-slate-600";
 }

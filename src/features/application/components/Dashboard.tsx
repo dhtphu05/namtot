@@ -450,18 +450,25 @@ function ManagerDashReal() {
     { name: "Cấp Trường", value: targetBreakdown.school, color: "#22c55e" },
     { name: "ĐHĐN", value: targetBreakdown.university, color: "#00AEEF" },
     { name: "Thành phố", value: targetBreakdown.city, color: "#f59e0b" },
-    { name: "Trung ương", value: targetBreakdown.central, color: "#0057C2" },
   ];
   const finalRows = [
     { name: "Trường", value: finalBreakdown.school, fill: "#22c55e" },
     { name: "ĐHĐN", value: finalBreakdown.university, fill: "#00AEEF" },
     { name: "Thành phố", value: finalBreakdown.city, fill: "#7c3aed" },
-    { name: "TW", value: finalBreakdown.central, fill: "#0057C2" },
     { name: "Chưa đạt", value: finalBreakdown.notAchieved, fill: "#ef4444" },
     { name: "Chưa chốt", value: finalBreakdown.unfinalized, fill: "#f59e0b" },
   ];
   const workload = data?.workloadByOfficer ?? [];
   const recent = data?.recentApplications ?? [];
+  const decisionSummary = data?.decisionSummary;
+  const decisionCards = [
+    { label: "Có thể chốt ngay", value: decisionSummary?.ready ?? 0, bucket: "ready_to_finalize", tint: "#22C55E" },
+    { label: "Cần hội ý", value: decisionSummary?.resolution ?? 0, bucket: "needs_resolution", tint: "#7C3AED" },
+    { label: "Bị hạ cấp", value: decisionSummary?.downgraded ?? 0, bucket: "downgraded", tint: "#F59E0B" },
+    { label: "Không đạt cấp nào", value: decisionSummary?.notEligible ?? 0, bucket: "no_eligible_level", tint: "#EF4444" },
+    { label: "Cần bổ sung", value: decisionSummary?.supplement ?? 0, bucket: "supplement_required", tint: "#F97316" },
+    { label: "Quá hạn", value: decisionSummary?.overdue ?? 0, bucket: "overdue", tint: "#DC2626" },
+  ];
 
   if (isLoading) {
     return (
@@ -503,9 +510,33 @@ function ManagerDashReal() {
         <StatCard label="Mập mờ / Resolution" value={overview?.resolutionNeededCount ?? 0} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
       </div>
 
+      <div className="mb-3">
+        <h3 className="font-bold text-brand-deep">Việc cần xử lý hôm nay</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Bấm vào từng nhóm để mở hàng chờ đã lọc đúng việc cần làm.
+        </p>
+      </div>
+      <div className="grid sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-7">
+        {decisionCards.map((card) => (
+          <Link
+            key={card.bucket}
+            to="/app/committee/inbox"
+            search={{ bucket: card.bucket }}
+            className="block"
+          >
+            <StatCard
+              label={card.label}
+              value={card.value}
+              icon={<Target className="w-5 h-5" />}
+              tint={card.tint}
+            />
+          </Link>
+        ))}
+      </div>
+
       <div className="grid lg:grid-cols-3 gap-5 mb-5">
         <Card className="lg:col-span-2">
-          <h3 className="font-bold text-brand-deep mb-3">Hồ sơ theo cấp aim</h3>
+          <h3 className="font-bold text-brand-deep mb-3">Hồ sơ theo 3 cấp active</h3>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={targetRows}>
               <XAxis dataKey="name" stroke="#0057C2" fontSize={12} />
@@ -518,7 +549,7 @@ function ManagerDashReal() {
           </ResponsiveContainer>
         </Card>
         <Card glow>
-          <h3 className="font-bold text-brand-deep mb-3">Kết quả cuối theo cấp đạt</h3>
+          <h3 className="font-bold text-brand-deep mb-3">Đề xuất cấp đạt theo tiêu chí</h3>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={finalRows} dataKey="value" innerRadius={50} outerRadius={80} />

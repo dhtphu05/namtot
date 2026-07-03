@@ -20,6 +20,7 @@ const studentOrCollectiveRoutes = ["/app/upload", "/app/ai-precheck"];
 const managerRoutes = [
   "/app/assignment",
   "/app/analytics",
+  "/app/committee",
   "/app/manager",
   "/app/vnpt",
   "/app/ekyc",

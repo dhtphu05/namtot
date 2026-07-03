@@ -28,7 +28,12 @@ export interface ExportReviewResultRow {
 
 export type ExportReviewResultsResponse =
   | { format: "json"; data: ExportReviewResultRow[] }
-  | { format: "csv"; file: { id: string; originalName: string; mimeType: string; fileSize: number } };
+  | {
+      format: "csv";
+      fileId: string;
+      downloadUrl: string;
+      file: { id: string; originalName: string; mimeType: string; fileSize: number };
+    };
 
 export const exportsApi = {
   exportReviewResults: async (payload: ExportReviewResultsInput) => {

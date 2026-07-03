@@ -11,13 +11,14 @@ import type { ExportApplicationsParams, ExportFormat } from "@/features/export/a
 import { useExportApplications } from "@/features/export/hooks/useExport";
 import type { ApplicationStatus, Level, Role } from "@/features/review/types";
 import { getLevelLabel, getTaskStatusLabel } from "@/features/review/utils/formatters";
+import { ACTIVE_LEVELS } from "@/lib/levels";
 
 export const Route = createFileRoute("/app/export")({
   component: ExportRoute,
 });
 
 const allowedRoles: Role[] = ["manager", "committee", "admin"];
-const levelOptions: Level[] = ["school", "university", "city", "central"];
+const levelOptions: Level[] = [...ACTIVE_LEVELS];
 const statusOptions: ApplicationStatus[] = [
   "submitted",
   "under_review",
@@ -57,7 +58,7 @@ function ExportRoute() {
 
 function ExportContent() {
   const [filters, setFilters] = useState<ExportApplicationsParams>({});
-  const { download, error, exportingFormat, isExporting } = useExportApplications();
+  const { downloadDataset, error, exportingDataset, exportingFormat, isExporting } = useExportApplications();
   const normalizedFilters = useMemo(
     () => ({
       schoolYear: filters.schoolYear?.trim() || undefined,
@@ -70,7 +71,7 @@ function ExportContent() {
 
   const handleExport = async (format: ExportFormat) => {
     try {
-      await download(format, normalizedFilters);
+      await downloadDataset("applications", format, normalizedFilters);
       toast.success(
         format === "csv" ? "Đã tải danh sách hồ sơ CSV." : "Đã tải dữ liệu hồ sơ JSON.",
       );
@@ -184,7 +185,7 @@ function ExportContent() {
             disabled={isExporting}
             format="csv"
             icon={<FileSpreadsheet className="h-6 w-6" />}
-            isLoading={exportingFormat === "csv"}
+            isLoading={exportingDataset === "applications" && exportingFormat === "csv"}
             title="Xuất danh sách hồ sơ CSV"
             onExport={() => void handleExport("csv")}
           />
@@ -193,9 +194,76 @@ function ExportContent() {
             disabled={isExporting}
             format="json"
             icon={<FileJson className="h-6 w-6" />}
-            isLoading={exportingFormat === "json"}
+            isLoading={exportingDataset === "applications" && exportingFormat === "json"}
             title="Xuất dữ liệu hồ sơ JSON"
             onExport={() => void handleExport("json")}
+          />
+          <ExportOptionCard
+            description="Tải danh sách task xét duyệt, cán bộ phụ trách, trạng thái và số minh chứng kèm theo."
+            disabled={isExporting}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewTasks"}
+            title="Chi tiết task xét duyệt CSV"
+            onExport={() => void downloadDataset("reviewTasks", "csv", normalizedFilters)}
+          />
+          <ExportOptionCard
+            description="Tải kết quả xét duyệt đã tổng hợp, gồm final result và snapshot cascade tại thời điểm xuất/chốt."
+            disabled={isExporting}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
+            title="Biên bản kết quả cuối CSV"
+            onExport={() => void downloadDataset("reviewResults", "csv", normalizedFilters)}
+          />
+          <ExportOptionCard
+            description="Tải review results dạng JSON để đối soát, tích hợp hoặc lưu snapshot ngoài hệ thống."
+            disabled={isExporting}
+            format="json"
+            icon={<FileJson className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewResults" && exportingFormat === "json"}
+            title="Snapshot kết quả cuối JSON"
+            onExport={() => void downloadDataset("reviewResults", "json", normalizedFilters)}
+          />
+          <ExportOptionCard
+            description="Báo cáo hồ sơ đã chốt đạt, dùng để tổng hợp danh sách công nhận theo cấp."
+            disabled={isExporting}
+            fields={["student", "aim", "final level", "finalized at", "finalized by", "final note"]}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
+            title="Danh sách đạt theo cấp"
+            onExport={() => void downloadDataset("reviewResults", "csv", { ...normalizedFilters, status: "completed" })}
+          />
+          <ExportOptionCard
+            description="Báo cáo hồ sơ bị hạ so với aim đăng ký, dựa trên aim, đề xuất cấp đạt và final level trong file kết quả."
+            disabled={isExporting}
+            fields={["student", "aim", "suggested level", "final level", "downrank reason", "5 criteria"]}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
+            title="Danh sách bị hạ cấp"
+            onExport={() => void downloadDataset("reviewResults", "csv", normalizedFilters)}
+          />
+          <ExportOptionCard
+            description="Báo cáo hồ sơ đã chốt chưa đạt, phục vụ đối soát và phản hồi."
+            disabled={isExporting}
+            fields={["student", "aim", "final status", "5 criteria", "final note", "cascade snapshot"]}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
+            title="Danh sách chưa đạt"
+            onExport={() => void downloadDataset("reviewResults", "csv", { ...normalizedFilters, status: "rejected" })}
+          />
+          <ExportOptionCard
+            description="Dữ liệu phục vụ đối chiếu minh chứng và các case hội ý, gồm task status và ghi chú xử lý."
+            disabled={isExporting}
+            fields={["student", "criterion", "evidence count", "task decision", "officer note", "updated at"]}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewTasks"}
+            title="Chi tiết minh chứng/hội ý"
+            onExport={() => void downloadDataset("reviewTasks", "csv", normalizedFilters)}
           />
         </div>
 
@@ -231,6 +299,7 @@ function FilterField({ children, label }: { children: React.ReactNode; label: st
 function ExportOptionCard({
   description,
   disabled,
+  fields,
   format,
   icon,
   isLoading,
@@ -239,6 +308,7 @@ function ExportOptionCard({
 }: {
   description: string;
   disabled?: boolean;
+  fields?: string[];
   format: ExportFormat;
   icon: React.ReactNode;
   isLoading?: boolean;
@@ -259,6 +329,18 @@ function ExportOptionCard({
           <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
             Tên file: {fileName}
           </div>
+          {fields?.length ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {fields.map((field) => (
+                <span
+                  key={field}
+                  className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600"
+                >
+                  {field}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
 

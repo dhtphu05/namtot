@@ -52,4 +52,13 @@ export const authApi = {
       body: data,
     });
   },
+
+  uploadAvatar: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient<SafeUser>("/api/me/avatar", {
+      method: "POST",
+      body: formData,
+    });
+  },
 };

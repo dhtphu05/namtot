@@ -1,4 +1,4 @@
-import type { FinalStatus } from "@/lib/api/types";
+import type { CollectiveMemberSummary, CollectiveStatus, FinalStatus } from "@/lib/api/types";
 import type {
   ApplicationStatus,
   Criterion,
@@ -24,10 +24,89 @@ export type ManagerResultFilters = {
   faculty?: string;
   className?: string;
   search?: string;
+  resultView?:
+    | "ready"
+    | "downgraded"
+    | "not_eligible"
+    | "resolution"
+    | "supplement"
+    | "overdue"
+    | "recently_finalized"
+    | "unfinished";
   page?: number;
   pageSize?: number;
   sortBy?: "lastActivityAt" | "updatedAt" | "newest" | "oldest" | "readiness_desc" | "unfinalized_first" | "target_level_desc";
   sortOrder?: "asc" | "desc";
+};
+
+export type ManagerCollectiveFilters = {
+  schoolYear?: string;
+  targetLevel?: Level;
+  status?: CollectiveStatus;
+  className?: string;
+  faculty?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type ManagerCollectiveItem = {
+  id: string;
+  representativeId: string;
+  className: string;
+  schoolYear: string;
+  targetLevel: Level;
+  status: CollectiveStatus;
+  readinessScore: number;
+  submittedAt?: string | null;
+  finalLevel?: Level | null;
+  finalStatus: FinalStatus;
+  finalNote?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  representative?: {
+    id: string;
+    fullName: string;
+    email?: string | null;
+    faculty?: string | null;
+  } | null;
+  memberSummary?: CollectiveMemberSummary;
+  canFinalize: boolean;
+  blockingReasons: string[];
+  _count?: {
+    members?: number;
+    evidences?: number;
+    reviewTasks?: number;
+  };
+};
+
+export type ManagerCollectivesResponse = {
+  items: ManagerCollectiveItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+export type ManagerCollectiveAggregation = {
+  canFinalize: boolean;
+  blockingReasons: string[];
+  blockers: Array<{
+    reviewTaskId: string;
+    status: ReviewTaskStatus;
+    message?: string;
+  }>;
+};
+
+export type FinalizeCollectiveInput = {
+  finalStatus: Exclude<FinalStatus, "pending">;
+  finalLevel?: Level | null;
+  finalNote: string;
+  overrideAggregation?: boolean;
+  notifyRepresentative?: boolean;
 };
 
 export type ManagerApplicationListItem = {
@@ -79,10 +158,22 @@ export type ManagerResultItem = {
     fullName: string;
   } | null;
   reviewTaskSummary: ReviewTaskSummary;
+  criterionStatuses?: Partial<
+    Record<
+      Criterion,
+      {
+        status: ReviewTaskStatus;
+        officerSuggestedLevel?: Level | null;
+      }
+    >
+  >;
   taskProgress?: {
     accepted: number;
     total: number;
   };
+  canFinalize: boolean;
+  blockingReasons: string[];
+  topBlockerReason?: string | null;
 };
 
 export type ManagerResultsResponse = {
@@ -96,6 +187,80 @@ export type ManagerResultsResponse = {
   sort?: {
     sortBy: string;
     sortOrder: "asc" | "desc";
+  };
+};
+
+export type CommitteeInboxBucket =
+  | "all"
+  | "ready_to_finalize"
+  | "downgraded"
+  | "no_eligible_level"
+  | "needs_resolution"
+  | "supplement_required"
+  | "overdue"
+  | "recently_finalized";
+
+export type CommitteeInboxNextAction =
+  | "open_decision_console"
+  | "finalize_city"
+  | "finalize_university"
+  | "finalize_school"
+  | "finalize_failed"
+  | "open_resolution_case"
+  | "review_downgrade_reason"
+  | "wait_for_supplement"
+  | "send_reminder"
+  | "reopen_final_result";
+
+export type CommitteeInboxParams = {
+  bucket?: CommitteeInboxBucket;
+  page?: number;
+  limit?: number;
+  search?: string;
+  targetLevel?: Extract<Level, "school" | "university" | "city">;
+  suggestedLevel?: Extract<Level, "school" | "university" | "city"> | "none";
+  status?: ApplicationStatus;
+};
+
+export type CommitteeInboxSummary = {
+  readyToFinalize: number;
+  downgraded: number;
+  noEligibleLevel: number;
+  needsResolution: number;
+  supplementRequired: number;
+  overdue: number;
+  recentlyFinalized: number;
+};
+
+export type CommitteeInboxItem = {
+  id: string;
+  type: Exclude<CommitteeInboxBucket, "all">;
+  applicationId: string;
+  resolutionCaseId?: string | null;
+  studentName?: string | null;
+  studentCode?: string | null;
+  className?: string | null;
+  faculty?: string | null;
+  targetLevel?: Extract<Level, "school" | "university" | "city">;
+  suggestedLevel?: Extract<Level, "school" | "university" | "city"> | null;
+  finalLevel?: Level | null;
+  finalStatus?: FinalStatus;
+  mainReason: string;
+  blockers: string[];
+  nextAction: CommitteeInboxNextAction;
+  priority: "high" | "medium" | "low";
+  updatedAt: string;
+  dueAt?: string | null;
+};
+
+export type CommitteeInboxResponse = {
+  summary: CommitteeInboxSummary;
+  items: CommitteeInboxItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
   };
 };
 
@@ -184,6 +349,7 @@ export type ManagerResultDetail = {
     phone?: string | null;
     className?: string | null;
     faculty?: string | null;
+    avatarUrl?: string | null;
   };
   metrics: Array<{
     id?: string;
@@ -299,6 +465,16 @@ export type ManagerDashboardSummary = {
     rejected: number;
     closed: number;
   };
+  decisionSummary?: {
+    ready: number;
+    downgraded: number;
+    notEligible: number;
+    resolution: number;
+    supplement: number;
+    overdue: number;
+    recentlyFinalized: number;
+    unfinished: number;
+  };
   workloadByOfficer?: Array<{
     officerId: string;
     fullName: string;
@@ -338,4 +514,9 @@ export type FinalizeApplicationInput = {
   finalNote: string;
   overrideAggregation?: boolean;
   notifyStudent?: boolean;
+};
+
+export type ReopenFinalInput = {
+  reason: string;
+  status?: Extract<ApplicationStatus, "under_review" | "supplement_required">;
 };

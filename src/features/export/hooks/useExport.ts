@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
-import { exportApi, type ExportApplicationsParams, type ExportFormat } from "../api/export";
+import { exportApi, type ExportApplicationsParams, type ExportDataset, type ExportFormat } from "../api/export";
 
-function getFilename(format: ExportFormat) {
+function getFilename(dataset: ExportDataset, format: ExportFormat) {
   const date = new Date().toISOString().slice(0, 10);
-  return `sv5t-applications-${date}.${format}`;
+  return `sv5t-${dataset}-${date}.${format}`;
 }
 
 function triggerBlobDownload(blob: Blob, filename: string) {
@@ -20,19 +20,30 @@ function triggerBlobDownload(blob: Blob, filename: string) {
 
 export function useExportApplications() {
   const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null);
+  const [exportingDataset, setExportingDataset] = useState<ExportDataset | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const getExportUrl = useCallback((format: ExportFormat, params?: ExportApplicationsParams) => {
     return exportApi.getApplicationsExportUrl(format, params);
   }, []);
 
-  const download = useCallback(async (format: ExportFormat, params?: ExportApplicationsParams) => {
+  const downloadDataset = useCallback(async (
+    dataset: ExportDataset,
+    format: ExportFormat,
+    params?: ExportApplicationsParams,
+  ) => {
     setExportingFormat(format);
+    setExportingDataset(dataset);
     setError(null);
 
     try {
-      const blob = await exportApi.downloadApplicationsExport(format, params);
-      triggerBlobDownload(blob, getFilename(format));
+      const blob =
+        dataset === "applications"
+          ? await exportApi.downloadApplicationsExport(format, params)
+          : dataset === "reviewTasks"
+            ? await exportApi.downloadReviewTasksExport(params)
+            : await exportApi.downloadReviewResultsExport(format, params);
+      triggerBlobDownload(blob, getFilename(dataset, format));
     } catch (caughtError) {
       const message =
         caughtError instanceof Error ? caughtError.message : "Không thể xuất dữ liệu hồ sơ.";
@@ -40,8 +51,13 @@ export function useExportApplications() {
       throw caughtError;
     } finally {
       setExportingFormat(null);
+      setExportingDataset(null);
     }
   }, []);
+
+  const download = useCallback(async (format: ExportFormat, params?: ExportApplicationsParams) => {
+    await downloadDataset("applications", format, params);
+  }, [downloadDataset]);
 
   const downloadCsv = useCallback(
     async (params?: ExportApplicationsParams) => {
@@ -59,10 +75,12 @@ export function useExportApplications() {
 
   return {
     error,
+    exportingDataset,
     exportingFormat,
     getExportUrl,
-    isExporting: Boolean(exportingFormat),
+    isExporting: Boolean(exportingDataset),
     download,
+    downloadDataset,
     downloadCsv,
     downloadJson,
   };

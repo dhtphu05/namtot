@@ -27,5 +27,5 @@ export function getRoleLabel(role: ApiRole): string {
   if (role === "class_representative") return "Tập thể / Chi hội";
   if (role === "officer") return "Cán bộ xét duyệt";
   if (role === "admin") return "Quản trị hệ thống";
-  return "Quản lý / Hội đồng";
+  return "Hội đồng / Cấp quản lý";
 }

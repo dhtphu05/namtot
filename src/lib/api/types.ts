@@ -262,6 +262,13 @@ export interface Application {
   targetLevel: Level;
   status: ApplicationStatus;
   finalStatus?: string | null;
+  finalLevel?: Level | null;
+  finalNote?: string | null;
+  finalizedAt?: string | null;
+  finalizedBy?: {
+    id: string;
+    fullName: string;
+  } | null;
   readinessScore?: number | null;
   createdAt: string;
   updatedAt: string;

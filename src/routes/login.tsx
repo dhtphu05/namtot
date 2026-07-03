@@ -24,8 +24,8 @@ const quickRoles = [
     icon: ShieldCheck,
   },
   {
-    label: "Quản lý / Hội đồng",
-    desc: "Dashboard, workload, aggregation và final result.",
+    label: "Hội đồng / Cấp quản lý",
+    desc: "Quản lý mùa xét, phân công, xử lý vướng mắc và chốt kết quả.",
     email: "manager@dut.udn.vn",
     icon: BarChart3,
   },

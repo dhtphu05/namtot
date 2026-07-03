@@ -5,13 +5,15 @@ import { useCollectiveDetail, useLatestCollectivePrecheck } from "@/features/col
 import { useCollectiveMembers } from "@/features/collective/hooks/useCollectiveMembers";
 import { useCollectiveEvidences } from "@/features/collective/hooks/useCollectiveEvidence";
 import { Users, FileText, CheckCircle2, Loader2, ArrowLeft, Upload, Download } from "lucide-react";
-import { toast } from "sonner";
 
 const statusLabel: Record<string, string> = {
   draft: "Bản nháp",
   prechecked: "Đã tiền kiểm",
   ready_to_submit: "Sẵn sàng nộp",
+  submitted: "Đã nộp",
   under_review: "Đang xét duyệt",
+  supplement_required: "Cần bổ sung",
+  resolution_needed: "Cần hội ý",
   completed: "Hoàn tất",
   rejected: "Từ chối",
 };
@@ -22,6 +24,8 @@ export function CollectiveDetails() {
   const { data: members = [] } = useCollectiveMembers(id);
   const { data: evidences = [] } = useCollectiveEvidences(id);
   const { data: latestPrecheck } = useLatestCollectivePrecheck(id);
+  const safeMembers = Array.isArray(members) ? members : [];
+  const safeEvidences = Array.isArray(evidences) ? evidences : [];
 
   if (isLoading) {
     return (
@@ -44,23 +48,32 @@ export function CollectiveDetails() {
   }
 
   const summary = profile.memberSummary;
-  const totalMembers = summary?.totalMembers ?? members.length;
-  const participatedMembers = summary?.participatedMembers ?? members.filter((m) => m.participationStatus === "participated").length;
-  const schoolSv5tMembers = summary?.schoolSv5tMembers ?? members.filter((m) => !["none", "unknown"].includes(m.individualSv5tLevel ?? "unknown")).length;
-  const higherLevelMembers = summary?.higherLevelAchieverCount ?? members.filter((m) => ["university", "city", "central"].includes(m.individualSv5tLevel ?? "")).length;
-  const readinessScore = profile.readinessScore ?? 0;
+  const totalMembers = Number(summary?.totalMembers ?? safeMembers.length);
+  const participatedMembers = Number(
+    summary?.participatedMembers ??
+      safeMembers.filter((member) => member.participationStatus === "participated").length,
+  );
+  const schoolSv5tMembers = Number(
+    summary?.schoolSv5tMembers ??
+      safeMembers.filter((member) => !["none", "unknown"].includes(member.individualSv5tLevel ?? "unknown")).length,
+  );
+  const higherLevelMembers = Number(
+    summary?.higherLevelAchieverCount ??
+      safeMembers.filter((member) => ["university", "city", "central"].includes(member.individualSv5tLevel ?? "")).length,
+  );
+  const readinessScore = clampPercent(Number(profile.readinessScore ?? 0));
   const checks = [
     { t: "100% sinh viên tham gia phong trào", ok: totalMembers > 0 && participatedMembers === totalMembers },
     { t: "Ít nhất 25% đạt SV5T cấp Trường", ok: totalMembers > 0 && schoolSv5tMembers / totalMembers >= 0.25 },
     { t: "Có thành viên đạt cấp cao hơn", ok: higherLevelMembers > 0 },
-    { t: "Có minh chứng hoạt động tập thể", ok: evidences.length > 0 },
+    { t: "Có minh chứng hoạt động tập thể", ok: safeEvidences.length > 0 },
   ];
 
   return (
     <>
       <TopBar
-        title={`Hồ sơ tập thể ${profile.className}`}
-        subtitle={`${profile.schoolYear} • ${statusLabel[profile.status] ?? profile.status}`}
+        title={`Hồ sơ tập thể ${profile.className ?? "Chưa rõ lớp"}`}
+        subtitle={`${profile.schoolYear ?? "--"} • ${statusLabel[profile.status] ?? profile.status ?? "Chưa rõ trạng thái"}`}
         action={<Link to="/app/collective"><Button variant="ghost"><ArrowLeft className="h-4 w-4" /> Danh sách</Button></Link>}
       />
 
@@ -85,18 +98,18 @@ export function CollectiveDetails() {
           </div>
 
           <h3 className="mb-3 mt-6 font-bold text-brand-deep">Minh chứng tập thể</h3>
-          {evidences.length === 0 ? (
+          {safeEvidences.length === 0 ? (
             <div className="rounded-lg bg-[#F6F9FC] p-6 text-center text-sm text-muted-foreground">Chưa có minh chứng tập thể.</div>
           ) : (
             <div className="space-y-2">
-              {evidences.map((evidence) => (
+              {safeEvidences.map((evidence) => (
                 <div key={evidence.id} className="flex items-center gap-3 rounded-lg border border-[#EEF2F7] p-3">
                   <FileText className="h-5 w-5 text-[#0057C2]" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold text-brand-deep">{evidence.evidenceName}</div>
                     <div className="text-xs text-muted-foreground">{evidence.collectiveCriterion ?? "collective"} • {evidence.indexingStatus}</div>
                   </div>
-                  <Chip tone={evidence.status === "accepted" ? "success" : "warning"}>{evidence.status}</Chip>
+                  <Chip tone={evidence.status === "accepted" ? "success" : "warning"}>{evidence.status ?? "pending"}</Chip>
                 </div>
               ))}
             </div>
@@ -114,10 +127,12 @@ export function CollectiveDetails() {
             </div>
           </div>
           <div className="mt-5 space-y-2">
-            <Button className="w-full" onClick={() => toast.success("Đã upload minh chứng")}>
+            <Button asChild className="w-full">
+              <Link to="/app/collective">
               <Upload className="h-4 w-4" /> Upload minh chứng
+              </Link>
             </Button>
-            <Button variant="secondary" className="w-full" onClick={() => toast.success("Đã xuất báo cáo tập thể")}>
+            <Button variant="secondary" className="w-full" disabled title="Xuất báo cáo tập thể sẽ dùng màn Export khi backend hỗ trợ preset tập thể.">
               <Download className="h-4 w-4" /> Export báo cáo
             </Button>
           </div>
@@ -125,4 +140,9 @@ export function CollectiveDetails() {
       </div>
     </>
   );
+}
+
+function clampPercent(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(100, Math.max(0, Math.round(value)));
 }

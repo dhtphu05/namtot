@@ -1,14 +1,26 @@
 import { apiClient } from "@/lib/api/client";
 import type { ApiResponse, QueryValue } from "@/features/review/types";
 import type {
+  CollectiveStatus,
+  FinalStatus,
+  Level,
+} from "@/lib/api/types";
+import type {
   ManagerApplicationsParams,
   ManagerApplicationsResponse,
   ManagerDashboardSummary,
+  ManagerCollectiveAggregation,
+  ManagerCollectiveFilters,
+  ManagerCollectivesResponse,
   ManagerResultFilters,
   ManagerResultDetail,
   ManagerResultsResponse,
   ManagerWorkloadResponse,
   FinalizeApplicationInput,
+  FinalizeCollectiveInput,
+  CommitteeInboxParams,
+  CommitteeInboxResponse,
+  ReopenFinalInput,
 } from "../types";
 
 const emptyDashboardSummary: ManagerDashboardSummary = {
@@ -41,6 +53,16 @@ const emptyDashboardSummary: ManagerDashboardSummary = {
     waiting: 0,
   },
   resolutionSummary: { open: 0, resolved: 0, rejected: 0, closed: 0 },
+  decisionSummary: {
+    ready: 0,
+    downgraded: 0,
+    notEligible: 0,
+    resolution: 0,
+    supplement: 0,
+    overdue: 0,
+    recentlyFinalized: 0,
+    unfinished: 0,
+  },
   workloadByOfficer: [],
   recentApplications: [],
   recentFinalizedApplications: [],
@@ -76,6 +98,51 @@ function withDataFallback<T>(response: ApiResponse<T>, fallback: T | null = null
   };
 }
 
+type RawRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): RawRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as RawRecord) : {};
+}
+
+function normalizeCollectiveItem(value: unknown) {
+  const item = asRecord(value);
+  const representative = asRecord(item.representative);
+  const counts = asRecord(item._count);
+  const memberSummary = asRecord(item.memberSummary);
+  const blockingReasons = Array.isArray(item.blockingReasons)
+    ? item.blockingReasons.filter((reason): reason is string => typeof reason === "string")
+    : [];
+
+  return {
+    ...item,
+    id: String(item.id ?? ""),
+    representativeId: String(item.representativeId ?? ""),
+    className: String(item.className ?? "Chưa rõ lớp"),
+    schoolYear: String(item.schoolYear ?? ""),
+    targetLevel: (item.targetLevel ?? "school") as Level,
+    status: (item.status ?? "draft") as CollectiveStatus,
+    readinessScore: Number(item.readinessScore ?? 0),
+    finalStatus: (item.finalStatus ?? "pending") as FinalStatus,
+    finalLevel: (item.finalLevel ?? null) as Level | null,
+    representative: item.representative
+      ? {
+          id: String(representative.id ?? ""),
+          fullName: String(representative.fullName ?? "Chưa rõ đại diện"),
+          email: (representative.email ?? null) as string | null,
+          faculty: (representative.faculty ?? null) as string | null,
+        }
+      : null,
+    memberSummary,
+    canFinalize: Boolean(item.canFinalize),
+    blockingReasons,
+    _count: {
+      members: Number(counts.members ?? 0),
+      evidences: Number(counts.evidences ?? 0),
+      reviewTasks: Number(counts.reviewTasks ?? 0),
+    },
+  };
+}
+
 export const managerApi = {
   getManagerApplications: async (
     params?: ManagerApplicationsParams,
@@ -97,6 +164,75 @@ export const managerApi = {
     const response = await apiClient<ManagerDashboardSummary>("/api/manager/dashboard-summary");
 
     return withDataFallback(response, emptyDashboardSummary);
+  },
+
+  getCommitteeInbox: async (
+    params?: CommitteeInboxParams,
+  ): Promise<ApiResponse<CommitteeInboxResponse>> => {
+    const response = await apiClient<CommitteeInboxResponse>(
+      `/api/committee/inbox${buildQueryString(params)}`,
+    );
+
+    return withDataFallback(response, {
+      summary: {
+        readyToFinalize: 0,
+        downgraded: 0,
+        noEligibleLevel: 0,
+        needsResolution: 0,
+        supplementRequired: 0,
+        overdue: 0,
+        recentlyFinalized: 0,
+      },
+      items: [],
+      pagination: {
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 20,
+        total: 0,
+        totalPages: 0,
+      },
+    });
+  },
+
+  getManagerCollectives: async (
+    params?: ManagerCollectiveFilters,
+  ): Promise<ApiResponse<ManagerCollectivesResponse>> => {
+    const response = await apiClient<unknown>(
+      `/api/manager/collective-profiles${buildQueryString(params)}`,
+    );
+    const data = response.data;
+    const pagination = response.meta?.pagination as ManagerCollectivesResponse["pagination"] | undefined;
+
+    return withDataFallback(
+      {
+        ...response,
+        data: {
+          items: Array.isArray(data) ? data.map(normalizeCollectiveItem) : [],
+          pagination: pagination ?? {
+            page: params?.page ?? 1,
+            limit: params?.limit ?? 20,
+            total: 0,
+            totalPages: 0,
+          },
+        },
+      } as ApiResponse<ManagerCollectivesResponse>,
+      {
+        items: [],
+        pagination: {
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 20,
+          total: 0,
+          totalPages: 0,
+        },
+      },
+    );
+  },
+
+  getManagerCollectiveAggregation: async (
+    collectiveId: string,
+  ): Promise<ApiResponse<ManagerCollectiveAggregation>> => {
+    return apiClient<ManagerCollectiveAggregation>(
+      `/api/manager/collective-profiles/${collectiveId}/aggregation`,
+    );
   },
 
   getManagerResults: async (
@@ -124,6 +260,26 @@ export const managerApi = {
     payload: FinalizeApplicationInput,
   ): Promise<ApiResponse<unknown>> => {
     return apiClient(`/api/manager/applications/${applicationId}/finalize`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  reopenFinalApplication: async (
+    applicationId: string,
+    payload: ReopenFinalInput,
+  ): Promise<ApiResponse<unknown>> => {
+    return apiClient(`/api/manager/applications/${applicationId}/reopen-final`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  finalizeCollective: async (
+    collectiveId: string,
+    payload: FinalizeCollectiveInput,
+  ): Promise<ApiResponse<unknown>> => {
+    return apiClient(`/api/manager/collective-profiles/${collectiveId}/finalize`, {
       method: "POST",
       body: payload,
     });

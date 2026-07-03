@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
-  CheckCircle2,
   ClipboardCheck,
   FileSearch,
   Loader2,
@@ -11,24 +10,16 @@ import {
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip, StatCard } from "@/components/ui-kit";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/features/auth/store/auth-store";
 import {
-  useFinalizeManagerApplication,
   useManagerDashboardSummary,
   useManagerResults,
 } from "@/features/manager/hooks/useManager";
+import { FinalizationDialog } from "@/features/manager/components/FinalizationDialog";
 import type { ManagerResultFilters, ManagerResultItem } from "@/features/manager/types";
-import type { Level, Role } from "@/features/review/types";
+import type { Criterion, Level, ReviewTaskStatus, Role } from "@/features/review/types";
 import type { FinalStatus } from "@/lib/api/types";
+import { ACTIVE_LEVELS, getDownrankReason, getFinalizeActionLabel, getLevelLabel, isLegacyCentral } from "@/lib/levels";
 import {
   finalStatusTone,
   getApplicationStatusLabel,
@@ -36,38 +27,40 @@ import {
 } from "@/lib/status-labels";
 
 export const Route = createFileRoute("/app/manager/results")({
+  validateSearch: (search) => ({
+    filter: typeof search.filter === "string" ? normalizeActiveFilter(search.filter) : undefined,
+  }),
   component: ManagerResultsShell,
 });
 
-const levels: Level[] = ["school", "university", "city", "central"];
+const levels: Level[] = [...ACTIVE_LEVELS];
 const allowedRoles: Role[] = ["manager", "committee", "admin"];
-const finalizerRoles: Role[] = ["committee", "admin"];
+const finalizerRoles: Role[] = ["manager", "committee", "admin"];
+const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
 
-const levelLabel: Record<Level, string> = {
-  school: "Cấp Trường",
-  university: "Cấp ĐHĐN",
-  city: "Cấp Thành phố",
-  central: "Cấp Trung ương",
+const criterionShortLabel: Record<Criterion, string> = {
+  ethics: "ĐĐ",
+  academic: "HT",
+  physical: "TL",
+  volunteer: "TN",
+  integration: "HN",
+  priority: "UT",
+  collective: "TT",
 };
 
-const finalStatusLabel: Record<FinalStatus, string> = {
-  pending: "Chưa chốt",
-  passed: "Đạt",
-  partially_passed: "Đạt cấp thấp hơn",
-  failed: "Chưa đạt",
-};
-const applicationStatusLabel: Record<string, string> = {
-  draft: "Bản nháp",
-  prechecked: "Đã tiền kiểm",
-  ready_to_submit: "Sẵn sàng nộp",
-  submitted: "Đã nộp",
-  under_review: "Đang xét duyệt",
-  supplement_required: "Cần bổ sung",
-  resolution_needed: "Cần hội đồng xử lý",
-  completed: "Hoàn tất",
-  rejected: "Chưa đạt",
-};
-type ActiveFilter = "all" | Level | "failed" | "pending";
+type ActiveFilter =
+  | "all"
+  | Level
+  | "failed"
+  | "pending"
+  | "ready"
+  | "downgraded"
+  | "not_eligible"
+  | "resolution"
+  | "supplement"
+  | "overdue"
+  | "recently_finalized"
+  | "unfinished";
 
 function ManagerResultsShell() {
   const user = useAuth((state) => state.user);
@@ -103,7 +96,8 @@ function ManagerResultsShell() {
 }
 
 function ManagerResultsContent({ role }: { role: Role }) {
-  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
+  const searchState = Route.useSearch();
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>(searchState.filter ?? "all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -127,6 +121,18 @@ function ManagerResultsContent({ role }: { role: Role }) {
     }
     if (activeFilter === "pending") {
       next.finalStatus = "pending";
+    }
+    if (
+      activeFilter === "ready" ||
+      activeFilter === "downgraded" ||
+      activeFilter === "not_eligible" ||
+      activeFilter === "resolution" ||
+      activeFilter === "supplement" ||
+      activeFilter === "overdue" ||
+      activeFilter === "recently_finalized" ||
+      activeFilter === "unfinished"
+    ) {
+      next.resultView = activeFilter;
     }
     return next;
   }, [activeFilter, page, pageSize, search, sortBy]);
@@ -156,9 +162,9 @@ function ManagerResultsContent({ role }: { role: Role }) {
           <StatCard
             key={level}
             icon={<ShieldCheck className="h-5 w-5" />}
-            label={`Đạt ${levelLabel[level]}`}
+            label={`Dat ${getLevelLabel(level)}`}
             value={breakdown?.[level] ?? 0}
-            tint={level === "central" ? "#0057C2" : level === "city" ? "#7C3AED" : "#16A34A"}
+            tint={level === "city" ? "#7C3AED" : "#16A34A"}
           />
         ))}
         <StatCard
@@ -179,10 +185,15 @@ function ManagerResultsContent({ role }: { role: Role }) {
         <div className="flex flex-wrap items-center gap-2">
           {[
             ["all", "Tất cả"],
+            ["ready", "Có thể chốt"],
+            ["downgraded", "Bị hạ cấp"],
+            ["not_eligible", "Không đạt cấp nào"],
+            ["resolution", "Cần hội ý"],
+            ["supplement", "Cần bổ sung"],
+            ["unfinished", "Chưa đủ task"],
             ["school", "Cấp Trường"],
             ["university", "Cấp ĐHĐN"],
             ["city", "Cấp Thành phố"],
-            ["central", "Cấp Trung ương"],
             ["failed", "Chưa đạt"],
             ["pending", "Chưa chốt"],
           ].map(([value, label]) => (
@@ -259,9 +270,11 @@ function ManagerResultsContent({ role }: { role: Role }) {
                   <th className="px-4 py-3">Lớp</th>
                   <th className="px-4 py-3">Khoa</th>
                   <th className="px-4 py-3">Cấp đăng ký</th>
-                  <th className="px-4 py-3">AI/Cascade gợi ý</th>
+                  <th className="px-4 py-3">Đề xuất cấp đạt</th>
                   <th className="px-4 py-3">Kết quả cuối</th>
                   <th className="px-4 py-3">Cấp đạt</th>
+                  <th className="px-4 py-3">5 tiêu chí</th>
+                  <th className="px-4 py-3">Lý do</th>
                   <th className="px-4 py-3">Trạng thái hồ sơ</th>
                   <th className="px-4 py-3">Tiến độ task</th>
                   <th className="px-4 py-3">Cập nhật lần cuối</th>
@@ -271,21 +284,42 @@ function ManagerResultsContent({ role }: { role: Role }) {
               <tbody>
                 {items.map((item) => {
                   const finalized = item.finalStatus !== "pending" && Boolean(item.finalizedAt);
+                  const blockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
+                  const legacyCentral = isLegacyCentral(item.targetLevel);
+                  const finalizeDisabled = !canFinalize || finalized || !item.canFinalize || legacyCentral;
+                  const finalizeTitle = !canFinalize
+                    ? "Chỉ Hội đồng/Cấp quản lý được chốt kết quả."
+                    : finalized
+                      ? "Hồ sơ đã có kết quả cuối."
+                      : legacyCentral
+                        ? "Scope Trung ương không nằm trong flow chính hiện tại."
+                      : !item.canFinalize
+                        ? blockedReason
+                        : "Chốt kết quả hồ sơ";
+                  const downrankReason =
+                    item.topBlockerReason ??
+                    getDownrankReason(item.targetLevel, item.suggestedLevel, item.blockingReasons);
                   return (
                     <tr key={item.applicationId} className="border-b last:border-0">
                       <td className="px-4 py-3 font-semibold text-brand-deep">{item.studentName}</td>
                       <td className="px-4 py-3">{item.studentCode ?? "--"}</td>
                       <td className="px-4 py-3">{item.className ?? "--"}</td>
                       <td className="px-4 py-3">{item.faculty ?? "--"}</td>
-                      <td className="px-4 py-3">{levelLabel[item.targetLevel]}</td>
+                      <td className="px-4 py-3">{getLevelLabel(item.targetLevel)}</td>
                       <td className="px-4 py-3">
-                        {item.suggestedLevel ? levelLabel[item.suggestedLevel] : "--"}
+                        {item.suggestedLevel ? getLevelLabel(item.suggestedLevel) : "--"}
                       </td>
                       <td className="px-4 py-3">
                         <FinalStatusChip status={item.finalStatus} />
                       </td>
                       <td className="px-4 py-3">
-                        {item.finalLevel ? levelLabel[item.finalLevel] : "--"}
+                        {item.finalLevel ? getLevelLabel(item.finalLevel) : "--"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <CriterionStatusStrip item={item} />
+                      </td>
+                      <td className="max-w-64 px-4 py-3 text-xs text-muted-foreground">
+                        {downrankReason}
                       </td>
                       <td className="px-4 py-3">
                         {getApplicationStatusLabel(item.applicationStatus)}
@@ -307,18 +341,17 @@ function ManagerResultsContent({ role }: { role: Role }) {
                           </Button>
                           <Button
                             size="sm"
-                            disabled={!canFinalize || finalized}
-                            title={
-                              canFinalize
-                                ? finalized
-                                  ? "Hồ sơ đã có kết quả cuối."
-                                  : "Chốt kết quả hồ sơ"
-                                : "Chỉ Hội đồng/Admin được chốt kết quả."
-                            }
+                            disabled={finalizeDisabled}
+                            title={finalizeTitle}
                             onClick={() => setSelected(item)}
                           >
-                            Chốt kết quả
+                            {getFinalizeActionLabel(item.suggestedLevel)}
                           </Button>
+                          {canFinalize && !finalized && !item.canFinalize ? (
+                            <div className="max-w-44 text-right text-[11px] font-medium text-amber-700">
+                              {blockedReason}
+                            </div>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -378,8 +411,52 @@ function ManagerResultsContent({ role }: { role: Role }) {
   );
 }
 
+function normalizeActiveFilter(value: string): ActiveFilter | undefined {
+  const allowed: ActiveFilter[] = [
+    "all",
+    ...levels,
+    "failed",
+    "pending",
+    "ready",
+    "downgraded",
+    "not_eligible",
+    "resolution",
+    "supplement",
+    "unfinished",
+  ];
+  return allowed.includes(value as ActiveFilter) ? (value as ActiveFilter) : undefined;
+}
+
 function FinalStatusChip({ status }: { status: FinalStatus }) {
   return <Chip tone={finalStatusTone[status]}>{getFinalStatusLabel(status)}</Chip>;
+}
+
+function CriterionStatusStrip({ item }: { item: ManagerResultItem }) {
+  return (
+    <div className="flex min-w-40 flex-wrap gap-1.5">
+      {criterionOrder.map((criterion) => {
+        const task = item.criterionStatuses?.[criterion];
+        return (
+          <span
+            key={criterion}
+            className={`inline-flex h-6 min-w-8 items-center justify-center rounded-md px-1.5 text-[11px] font-bold ${criterionClass(task?.status)}`}
+            title={`${criterionShortLabel[criterion]}: ${task?.status ?? "Chưa có task"}`}
+          >
+            {criterionShortLabel[criterion]}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function criterionClass(status?: ReviewTaskStatus) {
+  if (status === "accepted") return "bg-emerald-50 text-emerald-700";
+  if (status === "rejected") return "bg-rose-50 text-rose-700";
+  if (status === "supplement_required") return "bg-amber-50 text-amber-700";
+  if (status === "resolution_needed") return "bg-violet-50 text-violet-700";
+  if (status === "reviewing") return "bg-sky-50 text-sky-700";
+  return "bg-slate-100 text-slate-600";
 }
 
 function formatDateTime(value?: string | null) {
@@ -393,173 +470,4 @@ function formatDateTime(value?: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
-}
-
-type DecisionMode = "target" | "lower" | "failed";
-
-export function FinalizationDialog({
-  item,
-  onOpenChange,
-  open,
-}: {
-  item: ManagerResultItem | null;
-  onOpenChange: (open: boolean) => void;
-  open: boolean;
-}) {
-  const finalizeMutation = useFinalizeManagerApplication();
-  const [mode, setMode] = useState<DecisionMode>("target");
-  const [finalLevel, setFinalLevel] = useState<Level>("school");
-  const [note, setNote] = useState("");
-
-  const lowerLevels = useMemo(() => {
-    if (!item) return [];
-    const index = levels.indexOf(item.targetLevel);
-    return levels.slice(0, index);
-  }, [item]);
-
-  useEffect(() => {
-    setMode("target");
-    setFinalLevel(lowerLevels[0] ?? "school");
-    setNote("");
-  }, [item?.applicationId, lowerLevels]);
-
-  if (!item) return null;
-
-  const resolvedLevel =
-    mode === "target" ? item.targetLevel : mode === "lower" ? finalLevel : null;
-  const resolvedStatus =
-    mode === "target" ? "passed" : mode === "lower" ? "partially_passed" : "failed";
-  const noteRequired = !note.trim();
-  const lowerLevelMissing =
-    mode === "lower" && (!resolvedLevel || !lowerLevels.includes(resolvedLevel));
-
-  const submit = () => {
-    if (noteRequired || lowerLevelMissing) return;
-    finalizeMutation.mutate(
-      {
-        applicationId: item.applicationId,
-        payload: {
-          finalStatus: resolvedStatus,
-          finalLevel: resolvedLevel,
-          finalNote: note.trim(),
-          notifyStudent: true,
-          overrideAggregation: false,
-        },
-      },
-      {
-        onSuccess: () => onOpenChange(false),
-      },
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Chốt kết quả hồ sơ</DialogTitle>
-          <DialogDescription>
-            Quyết định này sẽ được lưu audit và thông báo cho sinh viên.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border p-4">
-            <div className="text-sm font-bold text-brand-deep">{item.studentName}</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {item.studentCode ?? "--"} • {item.className ?? "--"} • {item.faculty ?? "--"}
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <Info label="Cấp đăng ký" value={levelLabel[item.targetLevel]} />
-              <Info label="Gợi ý" value={item.suggestedLevel ? levelLabel[item.suggestedLevel] : "--"} />
-              <Info label="Readiness" value={`${item.readinessScore}`} />
-              <Info label="Trạng thái" value={getApplicationStatusLabel(item.applicationStatus)} />
-            </div>
-          </div>
-
-          <div className="rounded-lg border p-4">
-            <div className="text-sm font-bold text-brand-deep">Tổng hợp xét duyệt</div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-              <Info label="Tổng task" value={`${item.reviewTaskSummary.total}`} />
-              <Info label="Đạt" value={`${item.reviewTaskSummary.accepted}`} />
-              <Info label="Không đạt" value={`${item.reviewTaskSummary.rejected}`} />
-              <Info label="Bổ sung" value={`${item.reviewTaskSummary.supplementRequired}`} />
-              <Info label="Hội ý" value={`${item.reviewTaskSummary.resolutionNeeded}`} />
-              <Info label="Chờ" value={`${item.reviewTaskSummary.waiting}`} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border p-4">
-          <div className="mb-3 text-sm font-bold text-brand-deep">Quyết định cuối</div>
-          <RadioGroup value={mode} onValueChange={(value) => setMode(value as DecisionMode)}>
-            <DecisionOption id="target" label="Đạt cấp đăng ký" />
-            <DecisionOption id="lower" label="Không đạt cấp đăng ký nhưng đạt cấp thấp hơn" />
-            <DecisionOption id="failed" label="Chưa đạt" />
-          </RadioGroup>
-
-          {mode === "lower" ? (
-            <label className="mt-4 block text-sm">
-              <span className="mb-1 block font-semibold text-brand-deep">Cấp đạt</span>
-              <select
-                value={finalLevel}
-                onChange={(event) => setFinalLevel(event.target.value as Level)}
-                className="w-full rounded-lg border border-[#DCE7F2] px-3 py-2"
-              >
-                {lowerLevels.length === 0 ? (
-                  <option value="">Không có cấp thấp hơn</option>
-                ) : (
-                  lowerLevels.map((level) => (
-                    <option key={level} value={level}>
-                      {levelLabel[level]}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-          ) : null}
-
-          <label className="mt-4 block text-sm">
-            <span className="mb-1 block font-semibold text-brand-deep">Ghi chú kết quả</span>
-            <textarea
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="Nhập căn cứ và ghi chú chốt kết quả..."
-              className="min-h-24 w-full rounded-lg border border-[#DCE7F2] px-3 py-2 outline-none focus:ring-2 focus:ring-[#0057C2]/20"
-            />
-          </label>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Hủy
-          </Button>
-          <Button
-            onClick={submit}
-            disabled={finalizeMutation.isPending || noteRequired || lowerLevelMissing}
-          >
-            {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-            Chốt kết quả
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function DecisionOption({ id, label }: { id: DecisionMode; label: string }) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm">
-      <RadioGroupItem value={id} id={id} />
-      <span className="font-medium text-brand-deep">{label}</span>
-    </label>
-  );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className="font-semibold text-brand-deep">{value}</div>
-    </div>
-  );
 }
