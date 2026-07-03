@@ -4,11 +4,16 @@ import type {
   ManagerApplicationsParams,
   ManagerApplicationsResponse,
   ManagerDashboardSummary,
+  ManagerCollectiveAggregation,
+  ManagerCollectiveFilters,
+  ManagerCollectivesResponse,
   ManagerResultFilters,
   ManagerResultDetail,
   ManagerResultsResponse,
   ManagerWorkloadResponse,
   FinalizeApplicationInput,
+  FinalizeCollectiveInput,
+  ReopenFinalInput,
 } from "../types";
 
 const emptyDashboardSummary: ManagerDashboardSummary = {
@@ -99,6 +104,48 @@ export const managerApi = {
     return withDataFallback(response, emptyDashboardSummary);
   },
 
+  getManagerCollectives: async (
+    params?: ManagerCollectiveFilters,
+  ): Promise<ApiResponse<ManagerCollectivesResponse>> => {
+    const response = await apiClient<unknown>(
+      `/api/manager/collective-profiles${buildQueryString(params)}`,
+    );
+    const data = response.data;
+    const pagination = response.meta?.pagination as ManagerCollectivesResponse["pagination"] | undefined;
+
+    return withDataFallback(
+      {
+        ...response,
+        data: {
+          items: Array.isArray(data) ? data : [],
+          pagination: pagination ?? {
+            page: params?.page ?? 1,
+            limit: params?.limit ?? 20,
+            total: 0,
+            totalPages: 0,
+          },
+        },
+      } as ApiResponse<ManagerCollectivesResponse>,
+      {
+        items: [],
+        pagination: {
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 20,
+          total: 0,
+          totalPages: 0,
+        },
+      },
+    );
+  },
+
+  getManagerCollectiveAggregation: async (
+    collectiveId: string,
+  ): Promise<ApiResponse<ManagerCollectiveAggregation>> => {
+    return apiClient<ManagerCollectiveAggregation>(
+      `/api/manager/collective-profiles/${collectiveId}/aggregation`,
+    );
+  },
+
   getManagerResults: async (
     params?: ManagerResultFilters,
   ): Promise<ApiResponse<ManagerResultsResponse>> => {
@@ -124,6 +171,26 @@ export const managerApi = {
     payload: FinalizeApplicationInput,
   ): Promise<ApiResponse<unknown>> => {
     return apiClient(`/api/manager/applications/${applicationId}/finalize`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  reopenFinalApplication: async (
+    applicationId: string,
+    payload: ReopenFinalInput,
+  ): Promise<ApiResponse<unknown>> => {
+    return apiClient(`/api/manager/applications/${applicationId}/reopen-final`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  finalizeCollective: async (
+    collectiveId: string,
+    payload: FinalizeCollectiveInput,
+  ): Promise<ApiResponse<unknown>> => {
+    return apiClient(`/api/manager/collective-profiles/${collectiveId}/finalize`, {
       method: "POST",
       body: payload,
     });

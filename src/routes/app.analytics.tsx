@@ -34,13 +34,14 @@ import {
 } from "@/features/review/utils/formatters";
 import { useManagerDashboardSummary } from "@/features/manager/hooks/useManager";
 import type { ManagerDashboardSummary } from "@/features/manager/types";
+import { ACTIVE_LEVELS } from "@/lib/levels";
 
 export const Route = createFileRoute("/app/analytics")({
   component: AnalyticsRoute,
 });
 
 const allowedRoles: Role[] = ["manager", "committee", "admin"];
-const levels: Level[] = ["school", "university", "city", "central"];
+const levels: Level[] = [...ACTIVE_LEVELS];
 const criteria: Criterion[] = [
   "ethics",
   "academic",

@@ -26,6 +26,7 @@ import type {
   PrecheckCriterionResult,
   PrecheckMissingItem,
 } from "@/lib/api/types";
+import { finalStatusTone, getFinalStatusLabel } from "@/lib/status-labels";
 import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
 
 const SCHOOL_YEAR = "2025-2026";
@@ -73,6 +74,14 @@ const criteria: Array<{ key: Criterion; label: string; color: string }> = [
 
 type ApplicationWithSummary = ApplicationState & {
   updatedAt?: string;
+  finalStatus?: string | null;
+  finalLevel?: Level | null;
+  finalNote?: string | null;
+  finalizedAt?: string | null;
+  finalizedBy?: {
+    id: string;
+    fullName: string;
+  } | null;
   metrics?: unknown[];
   summary?: {
     totalEvidences?: number;
@@ -173,6 +182,8 @@ export function StudentOverview() {
   const nextActions = buildNextActions(application, precheck?.criteriaResults, precheck?.missingItems);
   const updatedAt = formatDateTime(application.lastUpdatedAt ?? application.updatedAt);
   const primaryActionPath = getPrimaryActionPath(status);
+  const finalStatus = application.finalStatus ?? "pending";
+  const hasFinalResult = finalStatus !== "pending" && Boolean(application.finalizedAt);
 
   return (
     <>
@@ -235,6 +246,37 @@ export function StudentOverview() {
                 </Button>
               </Link>
             </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="mb-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Kết quả cuối
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Chip tone={getFinalTone(finalStatus)}>{getFinalStatusLabel(finalStatus)}</Chip>
+              {application.finalLevel ? (
+                <Chip tone="brand">{levelLabel[application.finalLevel]}</Chip>
+              ) : null}
+            </div>
+            <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+              {hasFinalResult
+                ? "Kết quả này đã được hội đồng xác nhận và ghi nhận trong hệ thống."
+                : "Hồ sơ chưa có kết quả cuối. Sinh viên tiếp tục theo dõi trạng thái xét duyệt và phản hồi yêu cầu bổ sung nếu có."}
+            </p>
+            {application.finalNote ? (
+              <p className="mt-3 max-w-2xl rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                {application.finalNote}
+              </p>
+            ) : null}
+          </div>
+          <div className="grid min-w-64 gap-2 text-sm">
+            <ResultMeta label="Thời điểm chốt" value={formatFinalDate(application.finalizedAt)} />
+            <ResultMeta label="Người chốt" value={application.finalizedBy?.fullName ?? "--"} />
+            <ResultMeta label="Cấp đăng ký" value={levelLabel[application.targetLevel]} />
           </div>
         </div>
       </Card>
@@ -420,6 +462,24 @@ function getPrimaryActionPath(status: ApplicationStatus) {
   if (status === "completed" || status === "rejected") return "/app/cascade";
   if (status === "supplement_required") return "/app/evidence";
   return "/app/drafts";
+}
+
+function ResultMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-[#E3ECF6] px-3 py-2">
+      <div className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</div>
+      <div className="mt-1 font-semibold text-brand-deep">{value}</div>
+    </div>
+  );
+}
+
+function getFinalTone(status?: string | null) {
+  return finalStatusTone[status as keyof typeof finalStatusTone] ?? "warning";
+}
+
+function formatFinalDate(value?: string | null) {
+  if (!value) return "Chưa chốt";
+  return formatDateTime(value);
 }
 
 function formatDateTime(value?: string | null) {

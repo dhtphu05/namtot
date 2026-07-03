@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import type { Criterion, Level, ReviewTaskListParams, ReviewTaskStatus } from "../types";
 import { getCriterionLabel, getLevelLabel, getTaskStatusLabel } from "../utils/formatters";
+import { ACTIVE_LEVELS } from "@/lib/levels";
 
 type ReviewFiltersValue = Pick<ReviewTaskListParams, "q" | "criterion" | "status"> & {
   targetLevel?: Level;
@@ -46,7 +47,7 @@ const statuses: ReviewTaskStatus[] = [
   "rejected",
   "resolution_needed",
 ];
-const levels: Level[] = ["school", "university", "city", "central"];
+const levels: Level[] = [...ACTIVE_LEVELS];
 
 export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps) {
   const [search, setSearch] = useState(value.q ?? "");

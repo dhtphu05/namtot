@@ -26,7 +26,7 @@ import {
 import { useAuth } from "@/features/auth/store/auth-store";
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import { FinalizationDialog } from "@/features/manager/components/FinalizationDialog";
-import { useManagerResultDetail } from "@/features/manager/hooks/useManager";
+import { useManagerResultDetail, useReopenFinalApplication } from "@/features/manager/hooks/useManager";
 import type { ManagerResultDetail, ManagerResultEvidence, ManagerResultItem } from "@/features/manager/types";
 import type { Criterion, Level, Role } from "@/features/review/types";
 import { fallbackStatusLabel, getStatusTone, getWorkflowStatusLabel } from "@/lib/status-labels";
@@ -92,6 +92,7 @@ function ManagerResultDetailRoute() {
   const role = user?.role as Role | undefined;
   const detailQuery = useManagerResultDetail(applicationId);
   const [finalizing, setFinalizing] = useState(false);
+  const [reopening, setReopening] = useState(false);
 
   if (detailQuery.isLoading) {
     return (
@@ -168,8 +169,8 @@ function ManagerResultDetailRoute() {
             ) : null}
             <div className="mt-5">
               {detail.application.finalizedAt ? (
-                <Button className="w-full" disabled>
-                  Đã chốt
+                <Button className="w-full" variant="outline" disabled={!canFinalize} onClick={() => setReopening(true)} title="Mở lại kết quả đã chốt">
+                  Mở lại kết quả đã chốt
                 </Button>
               ) : canFinalize ? (
                 <Button className="w-full" onClick={() => setFinalizing(true)}>
@@ -191,7 +192,93 @@ function ManagerResultDetailRoute() {
         open={finalizing}
         onOpenChange={(open) => setFinalizing(open)}
       />
+      <ReopenFinalDialog
+        applicationId={detail.application.id}
+        open={reopening}
+        onOpenChange={setReopening}
+      />
     </>
+  );
+}
+
+function ReopenFinalDialog({
+  applicationId,
+  onOpenChange,
+  open,
+}: {
+  applicationId: string;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+}) {
+  const reopenMutation = useReopenFinalApplication();
+  const [reason, setReason] = useState("");
+  const [status, setStatus] = useState<"under_review" | "supplement_required">("under_review");
+
+  const submit = () => {
+    const trimmed = reason.trim();
+    if (!trimmed) return;
+    reopenMutation.mutate(
+      {
+        applicationId,
+        payload: { reason: trimmed, status },
+      },
+      {
+        onSuccess: () => {
+          setReason("");
+          onOpenChange(false);
+        },
+      },
+    );
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setReason("");
+        onOpenChange(nextOpen);
+      }}
+    >
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Mở lại kết quả đã chốt</DialogTitle>
+          <DialogDescription>
+            Ket qua cu se duoc xoa final status/final level va ghi audit voi ly do mo lai.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <label className="block text-sm">
+            <span className="mb-1 block font-semibold text-brand-deep">Trang thai sau khi mo lai</span>
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value as "under_review" | "supplement_required")}
+              className="w-full rounded-lg border border-[#DCE7F2] px-3 py-2"
+            >
+              <option value="under_review">Đang xét duyệt</option>
+              <option value="supplement_required">Cần bổ sung</option>
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block font-semibold text-brand-deep">Lý do</span>
+            <textarea
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              className="min-h-24 w-full rounded-lg border border-[#DCE7F2] px-3 py-2 outline-none focus:ring-2 focus:ring-[#0057C2]/20"
+              placeholder="Nhập lý do mở lại kết quả..."
+            />
+          </label>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Hủy
+            </Button>
+            <Button disabled={!reason.trim() || reopenMutation.isPending} onClick={submit}>
+              {reopenMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Xác nhận mở lại
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -723,6 +810,8 @@ function toFinalizationItem(detail: ManagerResultDetail): ManagerResultItem {
     finalizedBy: detail.application.finalizedBy,
     reviewTaskSummary: summary,
     taskProgress: { accepted: summary.accepted, total: summary.total },
+    canFinalize: detail.aggregation.canFinalize,
+    blockingReasons: detail.aggregation.blockingIssues.map((issue) => issue.message),
   };
 }
 

@@ -450,13 +450,11 @@ function ManagerDashReal() {
     { name: "Cấp Trường", value: targetBreakdown.school, color: "#22c55e" },
     { name: "ĐHĐN", value: targetBreakdown.university, color: "#00AEEF" },
     { name: "Thành phố", value: targetBreakdown.city, color: "#f59e0b" },
-    { name: "Trung ương", value: targetBreakdown.central, color: "#0057C2" },
   ];
   const finalRows = [
     { name: "Trường", value: finalBreakdown.school, fill: "#22c55e" },
     { name: "ĐHĐN", value: finalBreakdown.university, fill: "#00AEEF" },
     { name: "Thành phố", value: finalBreakdown.city, fill: "#7c3aed" },
-    { name: "TW", value: finalBreakdown.central, fill: "#0057C2" },
     { name: "Chưa đạt", value: finalBreakdown.notAchieved, fill: "#ef4444" },
     { name: "Chưa chốt", value: finalBreakdown.unfinalized, fill: "#f59e0b" },
   ];

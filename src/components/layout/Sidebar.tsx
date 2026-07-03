@@ -87,6 +87,7 @@ const NAV: Record<Role, NavGroup[]> = {
         { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Dashboard thống kê", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "Core", tone: "core" },
         { label: "Kết quả theo cấp", to: "/app/manager/results", icon: Trophy, badge: "Core", tone: "core" },
+        { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound, badge: "Core", tone: "core" },
         { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog, badge: "Ops", tone: "ops" },
         { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Ops", tone: "ops" },
       ],

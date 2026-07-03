@@ -145,6 +145,11 @@ function ResolutionCaseDetailContent({ caseId }: { caseId: string }) {
     );
   }
 
+  const resolutionEvidences = dedupeEvidences([
+    resolutionCase.primaryEvidence,
+    ...(resolutionCase.relatedEvidences ?? []),
+  ]);
+
   return (
     <>
       <TopBar
@@ -195,6 +200,7 @@ function ResolutionCaseDetailContent({ caseId }: { caseId: string }) {
           <div className="space-y-5">
             <ResolveResolutionPanel
               caseId={resolutionCase.id}
+              evidences={resolutionEvidences}
               status={resolutionCase.status}
               onSuccess={() => void refetch()}
             />
@@ -221,6 +227,15 @@ function BackToResolutionButton() {
       </Link>
     </Button>
   );
+}
+
+function dedupeEvidences(evidences: Array<ResolutionEvidence | null | undefined>) {
+  const seen = new Set<string>();
+  return evidences.filter((evidence): evidence is ResolutionEvidence => {
+    if (!evidence?.id || seen.has(evidence.id)) return false;
+    seen.add(evidence.id);
+    return true;
+  });
 }
 
 function HeaderField({ label, value }: { label: string; value?: React.ReactNode }) {
@@ -474,15 +489,22 @@ function TimelineSection({ timeline }: { timeline: ResolutionTimelineItem[] }) {
 
 function ResolveResolutionPanel({
   caseId,
+  evidences,
   status,
   onSuccess,
 }: {
   caseId: string;
+  evidences: ResolutionEvidence[];
   status: ResolutionCaseStatus;
   onSuccess?: () => void;
 }) {
   const [decision, setDecision] =
     useState<(typeof resolveDecisionOptions)[number]["value"]>("accepted");
+  const [evidenceDecisions, setEvidenceDecisions] = useState<
+    Record<string, Exclude<ResolutionFinalDecision, "closed_no_action">>
+  >({});
+  const [updateKnowledgeBase, setUpdateKnowledgeBase] = useState(false);
+  const [knowledgeBaseTitle, setKnowledgeBaseTitle] = useState("");
   const [note, setNote] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submittedMessage, setSubmittedMessage] = useState<string | null>(null);
@@ -509,9 +531,24 @@ function ResolveResolutionPanel({
       return;
     }
 
+    if (updateKnowledgeBase && !knowledgeBaseTitle.trim()) {
+      setFormError("Vui long nhap tieu de knowledge base.");
+      return;
+    }
+
     setFormError(null);
     resolveCase.mutate(
-      { decision, note: note.trim() },
+      {
+        decision,
+        note: note.trim(),
+        updateKnowledgeBase,
+        knowledgeBaseTitle: updateKnowledgeBase ? knowledgeBaseTitle.trim() : undefined,
+        evidenceDecisions: evidences.map((evidence) => ({
+          evidenceId: evidence.id,
+          decision: evidenceDecisions[evidence.id] ?? decision,
+          note: note.trim(),
+        })),
+      },
       {
         onSuccess: () => {
           const message = "Đã lưu kết luận hội ý.";
@@ -566,6 +603,66 @@ function ResolveResolutionPanel({
               </option>
             ))}
           </select>
+        </div>
+
+        {evidences.length ? (
+          <div className="rounded-md border bg-muted/20 p-3">
+            <div className="text-sm font-semibold text-brand-deep">Quyết định theo minh chứng</div>
+            <div className="mt-3 space-y-3">
+              {evidences.map((evidence) => (
+                <label key={evidence.id} className="block text-sm">
+                  <span className="mb-1 block font-medium text-foreground">
+                    {evidence.evidenceName || evidence.id}
+                  </span>
+                  <select
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                    disabled={isResolved || resolveCase.isPending}
+                    value={evidenceDecisions[evidence.id] ?? decision}
+                    onChange={(event) => {
+                      setEvidenceDecisions((current) => ({
+                        ...current,
+                        [evidence.id]: event.target.value as Exclude<ResolutionFinalDecision, "closed_no_action">,
+                      }));
+                      setFormError(null);
+                    }}
+                  >
+                    {resolveDecisionOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="rounded-md border bg-muted/20 p-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-brand-deep">
+            <input
+              type="checkbox"
+              checked={updateKnowledgeBase}
+              disabled={isResolved || resolveCase.isPending}
+              onChange={(event) => {
+                setUpdateKnowledgeBase(event.target.checked);
+                setFormError(null);
+              }}
+            />
+            Lưu kết luận vào knowledge base
+          </label>
+          {updateKnowledgeBase ? (
+            <input
+              className="mt-3 h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              disabled={isResolved || resolveCase.isPending}
+              placeholder="Tiêu đề knowledge base"
+              value={knowledgeBaseTitle}
+              onChange={(event) => {
+                setKnowledgeBaseTitle(event.target.value);
+                setFormError(null);
+              }}
+            />
+          ) : null}
         </div>
 
         <div>

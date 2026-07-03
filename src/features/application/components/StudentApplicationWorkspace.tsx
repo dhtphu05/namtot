@@ -30,7 +30,7 @@ import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDeta
 import { StudentEvidenceCard } from "@/features/evidence/components/StudentEvidenceCard";
 import { useCreateEvidence, useDeleteEvidence, useEvidences, useUploadAndIndex } from "@/features/evidence/hooks/useEvidence";
 import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
-import { getFinalStatusLabel } from "@/lib/status-labels";
+import { finalStatusTone, getFinalStatusLabel } from "@/lib/status-labels";
 import type {
   ApplicationMetric,
   ApplicationState,
@@ -47,7 +47,13 @@ type WorkspaceTab = "info" | "criteria" | "precheck" | "tracking";
 type ApplicationWithDetails = ApplicationState & {
   updatedAt?: string;
   finalStatus?: string | null;
-  finalLevel?: string | null;
+  finalLevel?: Level | null;
+  finalNote?: string | null;
+  finalizedAt?: string | null;
+  finalizedBy?: {
+    id: string;
+    fullName: string;
+  } | null;
   metrics?: ApplicationMetric[];
   summary?: {
     totalEvidences?: number;
@@ -95,7 +101,6 @@ const levels: Array<{ key: Level; label: string; desc: string }> = [
   { key: "school", label: "Cấp Trường", desc: "Mức xét cơ bản cho hồ sơ đủ dữ liệu nền." },
   { key: "university", label: "Cấp ĐHĐN", desc: "Yêu cầu minh chứng rõ hơn và điểm học tập tốt." },
   { key: "city", label: "Cấp Thành phố", desc: "Yêu cầu hoạt động, tình nguyện và hội nhập nổi bật hơn." },
-  { key: "central", label: "Cấp Trung ương", desc: "Mức cao nhất, cần hồ sơ mạnh ở hầu hết tiêu chí." },
 ];
 
 const criteria: Array<{ key: Criterion; label: string; color: string; requirement: string }> = [
@@ -786,10 +791,23 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                   Trạng thái này được đọc từ backend. Sinh viên không thấy danh sách task nội bộ của cán bộ,
                   chỉ theo dõi trạng thái hồ sơ và phản hồi yêu cầu bổ sung nếu có.
                 </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Chip tone={getFinalTone(application.finalStatus)}>
+                    {getFinalStatusLabel(application.finalStatus ?? "pending")}
+                  </Chip>
+                  {application.finalLevel ? (
+                    <Chip tone="brand">{levelLabel[application.finalLevel]}</Chip>
+                  ) : null}
+                </div>
+                {application.finalNote ? (
+                  <p className="mt-4 max-w-2xl rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                    {application.finalNote}
+                  </p>
+                ) : null}
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <InfoBlock label="Kết quả cuối" value={getFinalStatusLabel(application.finalStatus ?? "pending")} />
-                  <InfoBlock label="Final level" value={application.finalLevel ?? "--"} />
-                  <InfoBlock label="Submitted at" value={formatDate(application.submittedAt)} />
+                  <InfoBlock label="Thời điểm nộp" value={formatDate(application.submittedAt)} />
+                  <InfoBlock label="Thời điểm chốt" value={formatFinalDate(application.finalizedAt)} />
+                  <InfoBlock label="Người chốt" value={application.finalizedBy?.fullName ?? "--"} />
                 </div>
                 <Link to="/app" className="mt-5 inline-block">
                   <Button variant="secondary">Quay lại tổng quan</Button>
@@ -976,6 +994,15 @@ function normalizeEvidences(value: unknown): EvidenceResponse[] {
     return (value as { evidences: EvidenceResponse[] }).evidences;
   }
   return [];
+}
+
+function getFinalTone(status?: string | null) {
+  return finalStatusTone[status as keyof typeof finalStatusTone] ?? "warning";
+}
+
+function formatFinalDate(value?: string | null) {
+  if (!value) return "Chưa chốt";
+  return formatDate(value);
 }
 
 function formatDate(value?: string | null) {

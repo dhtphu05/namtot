@@ -7,6 +7,7 @@ import { Check, Loader2, ArrowRight, Save, Send, AlertTriangle, History, FileTex
 import { toast } from "sonner";
 import { useCurrentApplication, useStartApplication, useUpdateTargetLevel, useSaveApplicationDraft, useSubmitApplication, useCreateMetric, useUpdateMetric, useApplicationMetrics } from "@/features/application/hooks/useApplication";
 import { levelLabel, applicationStatusLabel, type Level, type ApplicationStatus, type MetricInput } from "@/lib/api/types";
+import { ACTIVE_LEVELS } from "@/lib/levels";
 import { MEDIA } from "@/lib/mock-data";
 import { Link } from "@tanstack/react-router";
 
@@ -369,7 +370,7 @@ export function Wizard() {
           <Card>
             <h3 className="font-bold text-brand-deep text-lg mb-3">1. Cấp aim mong muốn xét duyệt</h3>
             <div className="grid grid-cols-2 gap-4">
-              {(["school", "university", "city", "central"] as Level[]).map((lvl) => {
+              {([...ACTIVE_LEVELS] as Level[]).map((lvl) => {
                 const active = localLevel === lvl;
                 const isPending = updateTargetLvlMutation.isPending && localLevel === lvl;
                 return (
@@ -380,7 +381,7 @@ export function Wizard() {
                     className={`p-5 rounded-2xl text-left border transition-all flex flex-col justify-between h-32 hover:-translate-y-0.5 ${active ? "bg-[#0057C2] text-white border-[#0057C2]" : "bg-white border-[#EEF2F7] hover:bg-slate-50"} disabled:opacity-60 disabled:cursor-not-allowed`}
                   >
                     <div>
-                      <div className={`text-xs uppercase font-bold tracking-wider ${active ? "text-white/80" : "text-muted-foreground"}`}>{lvl === "school" ? "Cấp 1/4" : lvl === "university" ? "Cấp 2/4" : lvl === "city" ? "Cấp 3/4" : "Cấp 4/4"}</div>
+                      <div className={`text-xs uppercase font-bold tracking-wider ${active ? "text-white/80" : "text-muted-foreground"}`}>{lvl === "school" ? "Cấp 1/3" : lvl === "university" ? "Cấp 2/3" : "Cấp 3/3"}</div>
                       <div className="font-bold text-base mt-1">{levelLabel[lvl]}</div>
                     </div>
                     {isPending && <Loader2 className="w-4 h-4 animate-spin text-white self-end" />}

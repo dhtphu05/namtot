@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui-kit";
 import { useAuth } from "@/features/auth/store/auth-store";
+import { ACTIVE_LEVELS } from "@/lib/levels";
 import { useSubmitReviewDecision } from "../hooks/useReview";
 import type { Level, ReviewDecision, ReviewTaskDetail, SubmitReviewDecisionRequest } from "../types";
 import { getCriterionLabel, getLevelLabel, getTaskStatusLabel } from "../utils/formatters";
@@ -187,7 +188,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
               }}
             >
               <option value="">Chọn cấp đạt</option>
-              {(["school", "university", "city", "central"] as Level[]).map((level) => (
+              {([...ACTIVE_LEVELS] as Level[]).map((level) => (
                 <option key={level} value={level}>
                   {getLevelLabel(level)}
                 </option>

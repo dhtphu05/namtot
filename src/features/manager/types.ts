@@ -1,4 +1,4 @@
-import type { FinalStatus } from "@/lib/api/types";
+import type { CollectiveMemberSummary, CollectiveStatus, FinalStatus } from "@/lib/api/types";
 import type {
   ApplicationStatus,
   Criterion,
@@ -28,6 +28,76 @@ export type ManagerResultFilters = {
   pageSize?: number;
   sortBy?: "lastActivityAt" | "updatedAt" | "newest" | "oldest" | "readiness_desc" | "unfinalized_first" | "target_level_desc";
   sortOrder?: "asc" | "desc";
+};
+
+export type ManagerCollectiveFilters = {
+  schoolYear?: string;
+  targetLevel?: Level;
+  status?: CollectiveStatus;
+  className?: string;
+  faculty?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type ManagerCollectiveItem = {
+  id: string;
+  representativeId: string;
+  className: string;
+  schoolYear: string;
+  targetLevel: Level;
+  status: CollectiveStatus;
+  readinessScore: number;
+  submittedAt?: string | null;
+  finalLevel?: Level | null;
+  finalStatus: FinalStatus;
+  finalNote?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  representative?: {
+    id: string;
+    fullName: string;
+    email?: string | null;
+    faculty?: string | null;
+  } | null;
+  memberSummary?: CollectiveMemberSummary;
+  canFinalize: boolean;
+  blockingReasons: string[];
+  _count?: {
+    members?: number;
+    evidences?: number;
+    reviewTasks?: number;
+  };
+};
+
+export type ManagerCollectivesResponse = {
+  items: ManagerCollectiveItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+export type ManagerCollectiveAggregation = {
+  canFinalize: boolean;
+  blockingReasons: string[];
+  blockers: Array<{
+    reviewTaskId: string;
+    status: ReviewTaskStatus;
+    message?: string;
+  }>;
+};
+
+export type FinalizeCollectiveInput = {
+  finalStatus: Exclude<FinalStatus, "pending">;
+  finalLevel?: Level | null;
+  finalNote: string;
+  overrideAggregation?: boolean;
+  notifyRepresentative?: boolean;
 };
 
 export type ManagerApplicationListItem = {
@@ -83,6 +153,8 @@ export type ManagerResultItem = {
     accepted: number;
     total: number;
   };
+  canFinalize: boolean;
+  blockingReasons: string[];
 };
 
 export type ManagerResultsResponse = {
@@ -338,4 +410,9 @@ export type FinalizeApplicationInput = {
   finalNote: string;
   overrideAggregation?: boolean;
   notifyStudent?: boolean;
+};
+
+export type ReopenFinalInput = {
+  reason: string;
+  status?: Extract<ApplicationStatus, "under_review" | "supplement_required">;
 };
