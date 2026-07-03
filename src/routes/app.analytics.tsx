@@ -157,7 +157,7 @@ function AnalyticsContent() {
             />
             <StatCard
               icon={<ShieldQuestion className="h-5 w-5" />}
-              label="Cần hội ý"
+              label="Cần hội đồng xử lý"
               value={getCount(summary.resolutionNeeded)}
               tint="#7C3AED"
             />

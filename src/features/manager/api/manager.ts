@@ -5,6 +5,7 @@ import type {
   ManagerApplicationsResponse,
   ManagerDashboardSummary,
   ManagerResultFilters,
+  ManagerResultDetail,
   ManagerResultsResponse,
   ManagerWorkloadResponse,
   FinalizeApplicationInput,
@@ -107,8 +108,15 @@ export const managerApi = {
 
     return withDataFallback(response, {
       items: [],
-      pagination: { page: params?.page ?? 1, pageSize: params?.pageSize ?? 20, total: 0 },
+      pagination: { page: params?.page ?? 1, pageSize: params?.pageSize ?? 10, total: 0, totalPages: 0 },
+      sort: { sortBy: params?.sortBy ?? "lastActivityAt", sortOrder: params?.sortOrder ?? "desc" },
     });
+  },
+
+  getManagerResultDetail: async (
+    applicationId: string,
+  ): Promise<ApiResponse<ManagerResultDetail>> => {
+    return apiClient<ManagerResultDetail>(`/api/manager/results/${applicationId}`);
   },
 
   finalizeApplication: async (

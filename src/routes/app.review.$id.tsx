@@ -43,6 +43,7 @@ import {
   getCriterionLabel,
   getTaskStatusLabel,
 } from "@/features/review/utils/formatters";
+import { getFinalStatusLabel } from "@/lib/status-labels";
 
 export const Route = createFileRoute("/app/review/$id")({
   component: ReviewTaskDetailRoute,
@@ -252,7 +253,7 @@ function ApplicationSummary({ task }: { task: ReviewTaskDetail }) {
           value={getApplicationTypeLabel(task.application.applicationType)}
         />
         <InfoRow label="Ngày nộp" value={formatDateTime(task.application.submittedAt)} />
-        <InfoRow label="Trạng thái cuối" value={task.application.finalStatus} />
+        <InfoRow label="Trạng thái cuối" value={getFinalStatusLabel(task.application.finalStatus ?? "pending")} />
         <InfoRow label="Cán bộ phụ trách" value={task.assignedOfficer?.fullName} />
         <InfoRow label="Email cán bộ" value={task.assignedOfficer?.email} />
       </div>

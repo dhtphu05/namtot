@@ -190,7 +190,7 @@ export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps)
           Cần bổ sung
         </QuickToggle>
         <QuickToggle active={Boolean(value.resolutionNeeded)} disabled={disabled} onClick={() => updateFilter("resolutionNeeded", value.resolutionNeeded ? undefined : true)}>
-          Cần hội ý
+          Cần hội đồng xử lý
         </QuickToggle>
       </div>
     </div>

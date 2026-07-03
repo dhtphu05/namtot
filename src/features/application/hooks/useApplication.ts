@@ -94,6 +94,7 @@ export function useSubmitApplication() {
     mutationFn: async ({
       id,
       allowSubmitWithWarnings,
+      studentNote,
       successMessage,
     }: {
       id: string;
@@ -103,15 +104,23 @@ export function useSubmitApplication() {
     }) => {
       const res = await applicationApi.submitApplication(id, {
         allowSubmitWithWarnings: !!allowSubmitWithWarnings,
+        studentNote,
       });
       return res.data;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
-      queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) });
-      queryClient.invalidateQueries({ queryKey: applicationKeys.timeline(variables.id) });
-      queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] });
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: applicationKeys.current() }),
+        queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) }),
+        queryClient.invalidateQueries({ queryKey: applicationKeys.timeline(variables.id) }),
+        queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] }),
+        queryClient.invalidateQueries({ queryKey: notificationKeys.all }),
+      ]);
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: applicationKeys.current(), type: "active" }),
+        queryClient.refetchQueries({ queryKey: ["evidences", variables.id], type: "active" }),
+        queryClient.refetchQueries({ queryKey: notificationKeys.all, type: "active" }),
+      ]);
       toast.success(variables.successMessage ?? "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.");
     },
     onError: (err: Error) => {

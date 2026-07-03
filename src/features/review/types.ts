@@ -86,12 +86,12 @@ export const levelLabels: Record<Level, string> = {
 };
 
 export const taskStatusLabels: Record<ReviewTaskStatus, string> = {
-  waiting: "Cho xet",
-  reviewing: "Dang xet",
-  supplement_required: "Can bo sung",
-  accepted: "Da duyet",
-  rejected: "Khong dat",
-  resolution_needed: "Can hoi dong",
+  waiting: "Chờ xét",
+  reviewing: "Đang xét",
+  supplement_required: "Cần bổ sung",
+  accepted: "Đạt",
+  rejected: "Không đạt",
+  resolution_needed: "Cần hội đồng xử lý",
 };
 
 export type ReviewTaskListItem = {

@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2, Clock3, Loader2, Send, X, XCircle } from "
 import { Button, Chip, Progress } from "@/components/ui-kit";
 import type { ApplicationState, Criterion, Level, PrecheckMissingItem, PrecheckResult } from "@/lib/api/types";
 import { getApplicationStatusLabel, getCriterionResultStatusLabel } from "@/lib/status-labels";
+import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
 import { studentCriterionLabel } from "@/features/evidence/components/student-evidence-utils";
 
 const levelLabel: Record<Level, string> = {
@@ -292,7 +293,10 @@ function buildCriterionSummary(
     return {
       criterion,
       label: "Cần cán bộ xác nhận",
-      explanation: warnings[0] ?? reasons[0] ?? "Dữ liệu đã có nhưng cần cán bộ xác nhận trước khi chốt kết quả.",
+      explanation: getUserFacingText(
+        warnings[0] ?? reasons[0] ?? result?.status,
+        "Dữ liệu đã có nhưng cần cán bộ xác nhận trước khi chốt kết quả.",
+      ),
       tone: "warning",
       icon: AlertTriangle,
       requiredAttention: false,
@@ -303,7 +307,7 @@ function buildCriterionSummary(
     return {
       criterion,
       label: getCriterionResultStatusLabel(result.status),
-      explanation: reasons[0] ?? "Đủ dữ liệu theo kết quả tiền kiểm mới nhất.",
+      explanation: getUserFacingText(reasons[0], "Đủ dữ liệu theo kết quả tiền kiểm mới nhất."),
       tone: "success",
       icon: CheckCircle2,
       requiredAttention: false,
@@ -314,7 +318,10 @@ function buildCriterionSummary(
     return {
       criterion,
       label: "Cần bổ sung",
-      explanation: reasons[0] ?? "Tiền kiểm cho thấy tiêu chí này cần bổ sung thêm dữ liệu.",
+      explanation: getUserFacingText(
+        reasons[0] ?? result?.status,
+        "Tiền kiểm cho thấy tiêu chí này cần bổ sung thêm dữ liệu.",
+      ),
       tone: "warning",
       icon: AlertTriangle,
       requiredAttention: true,
@@ -343,7 +350,7 @@ function buildCriterionSummary(
 }
 
 function getMissingExplanation(item: PrecheckMissingItem) {
-  return item.message ?? item.code ?? "Tiêu chí này còn thiếu thông tin cần bổ sung.";
+  return getPrecheckMissingMessage(item).description;
 }
 
 function getIconClass(tone: CriterionSummary["tone"]) {
@@ -352,4 +359,3 @@ function getIconClass(tone: CriterionSummary["tone"]) {
   if (tone === "warning") return "text-amber-600";
   return "text-[#0057C2]";
 }
-

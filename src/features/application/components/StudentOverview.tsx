@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   Bell,
@@ -7,7 +7,6 @@ import {
   FileText,
   Loader2,
   Plus,
-  Target,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/layout/TopBar";
@@ -25,7 +24,9 @@ import type {
   Criterion,
   Level,
   PrecheckCriterionResult,
+  PrecheckMissingItem,
 } from "@/lib/api/types";
+import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
 
 const SCHOOL_YEAR = "2025-2026";
 
@@ -39,7 +40,7 @@ const statusLabel: Record<ApplicationStatus | "not_started", string> = {
   supplement_required: "Cần bổ sung",
   resolution_needed: "Cần hội đồng xử lý",
   completed: "Hoàn tất",
-  rejected: "Không đạt",
+  rejected: "Chưa đạt",
 };
 
 const statusCta: Record<ApplicationStatus | "not_started", string> = {
@@ -81,13 +82,12 @@ type ApplicationWithSummary = ApplicationState & {
   latestPrecheckResult?: {
     readinessScore?: number;
     criteriaResults?: PrecheckCriterionResult[];
-    missingItems?: Array<{ criterion?: Criterion; message?: string; code?: string }>;
+    missingItems?: PrecheckMissingItem[];
     nextBestAction?: string;
   } | null;
 };
 
 export function StudentOverview() {
-  const nav = useNavigate();
   const user = useAuth((s) => s.user);
   const { data, isLoading, isError } = useCurrentApplication(SCHOOL_YEAR);
   const apiUnavailable = isError;
@@ -172,6 +172,7 @@ export function StudentOverview() {
   const evidenceCount = application.summary?.totalEvidences ?? Object.values(evidenceByCriterion).reduce((sum, count) => sum + (count ?? 0), 0);
   const nextActions = buildNextActions(application, precheck?.criteriaResults, precheck?.missingItems);
   const updatedAt = formatDateTime(application.lastUpdatedAt ?? application.updatedAt);
+  const primaryActionPath = getPrimaryActionPath(status);
 
   return (
     <>
@@ -228,7 +229,7 @@ export function StudentOverview() {
                   className="h-full rounded-full bg-white"
                 />
               </div>
-              <Link to={status === "completed" ? "/app/cascade" : "/app/drafts"} className="mt-4 block">
+              <Link to={primaryActionPath} className="mt-4 block">
                 <Button className="w-full bg-white !text-[#0057C2] hover:bg-[#F1F7FD]">
                   {statusCta[status]} <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -246,22 +247,7 @@ export function StudentOverview() {
             evidenceCount,
             latestPrecheck: precheck,
           }}
-          onUpload={() => nav({ to: "/app/upload" })}
-          onPrecheck={() => nav({ to: "/app/ai-precheck" })}
-          onSubmit={() => nav({ to: "/app/drafts" })}
-          onTrack={() => nav({ to: "/app/cascade" })}
         />
-      </div>
-
-      <div className="mb-5 flex flex-wrap gap-2">
-        <Link to="/app/drafts">
-          <Button>
-            <Target className="h-4 w-4" /> {statusCta[status]}
-          </Button>
-        </Link>
-        <Link to="/app/evidence">
-          <Button variant="secondary">Kho minh chứng</Button>
-        </Link>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
@@ -273,7 +259,7 @@ export function StudentOverview() {
             {nextActions.map((item) => (
               <Link
                 key={item}
-                to="/app/drafts"
+                to={primaryActionPath}
                 className="flex gap-3 rounded-lg bg-[#F6F9FC] px-3 py-3 text-sm hover:bg-[#EEF9FF]"
               >
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#0057C2]" />
@@ -305,7 +291,7 @@ export function StudentOverview() {
                   </div>
                   <div className="mt-3 text-sm font-bold text-brand-deep">{criterion.label}</div>
                   <div className="mt-1 min-h-8 text-xs text-muted-foreground">
-                    {result?.explanation ? String(result.explanation) : "Chưa có dữ liệu tiền kiểm."}
+                    {getUserFacingText(result?.explanation, "Chưa có dữ liệu tiền kiểm.")}
                   </div>
                   <div className="mt-3">
                     <Progress value={progress} tint={criterion.color} />
@@ -338,7 +324,7 @@ export function StudentOverview() {
           <div className="rounded-lg bg-[#F6F9FC] px-3 py-3">
             <div className="text-sm font-semibold text-brand-deep">Tiền kiểm</div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {precheck?.nextBestAction ?? "Chưa chạy tiền kiểm cho hồ sơ này."}
+              {getUserFacingText(precheck?.nextBestAction, "Chưa chạy tiền kiểm cho hồ sơ này.")}
             </div>
           </div>
         </div>
@@ -399,7 +385,7 @@ function buildDemoApplication(userId?: string): ApplicationWithSummary {
 function buildNextActions(
   application: ApplicationWithSummary,
   criteriaResults?: PrecheckCriterionResult[],
-  missingItems?: Array<{ criterion?: Criterion; message?: string; code?: string }>,
+  missingItems?: PrecheckMissingItem[],
 ) {
   if (application.status === "completed") {
     return ["Hồ sơ đã hoàn tất. Bạn có thể xem kết quả xét duyệt."];
@@ -414,7 +400,7 @@ function buildNextActions(
   }
 
   const fromMissing = missingItems
-    ?.map((item) => item.message || item.code)
+    ?.map((item) => getPrecheckMissingMessage(item).description)
     .filter((item): item is string => Boolean(item))
     .slice(0, 3);
 
@@ -427,6 +413,13 @@ function buildNextActions(
   }
 
   return ["Theo dõi trạng thái xét duyệt và phản hồi yêu cầu bổ sung nếu có."];
+}
+
+function getPrimaryActionPath(status: ApplicationStatus) {
+  if (status === "submitted" || status === "under_review" || status === "resolution_needed") return "/app/cascade";
+  if (status === "completed" || status === "rejected") return "/app/cascade";
+  if (status === "supplement_required") return "/app/evidence";
+  return "/app/drafts";
 }
 
 function formatDateTime(value?: string | null) {

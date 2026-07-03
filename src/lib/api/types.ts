@@ -112,7 +112,7 @@ export const levelLabel: Record<Level, string> = {
   school: "Cấp Trường",
   university: "Cấp Đại học Đà Nẵng",
   city: "Cấp Thành phố",
-  central: "Cấp Trung ương"
+  central: "Cấp Trung ương",
 };
 
 export const criterionLabel: Record<Criterion, string> = {
@@ -122,7 +122,7 @@ export const criterionLabel: Record<Criterion, string> = {
   volunteer: "Tình nguyện tốt",
   integration: "Hội nhập tốt",
   priority: "Thành tích ưu tiên",
-  collective: "Tập thể"
+  collective: "Tập thể",
 };
 
 export const applicationStatusLabel: Record<ApplicationStatus, string> = {
@@ -132,20 +132,20 @@ export const applicationStatusLabel: Record<ApplicationStatus, string> = {
   submitted: "Đã nộp",
   under_review: "Đang xét duyệt",
   supplement_required: "Cần bổ sung",
-  resolution_needed: "Hồ sơ mập mờ",
+  resolution_needed: "Cần hội đồng xử lý",
   completed: "Hoàn tất",
-  rejected: "Từ chối"
+  rejected: "Chưa đạt",
 };
 
 export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
   draft: "Bản nháp",
-  pending_indexing: "Chờ OCR/Index",
-  indexed: "Đã bóc tách",
+  pending_indexing: "Chờ xử lý",
+  indexed: "Đã xử lý",
   needs_supplement: "Cần bổ sung",
   under_review: "Đang xét duyệt",
   accepted: "Đã duyệt",
   rejected: "Từ chối",
-  resolution_needed: "Hồ sơ mập mờ"
+  resolution_needed: "Cần hội đồng xử lý",
 };
 
 export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
@@ -272,6 +272,7 @@ export interface ApplicationState extends Application {
   submittedAt: string | null;
   currentDraftVersion: number;
   metrics?: ApplicationMetric[];
+  reviewTasks?: ApplicationReviewTaskSummary[];
   progress?: number;
   basicInfo?: {
     fullName?: string;
@@ -281,6 +282,24 @@ export interface ApplicationState extends Application {
     phone?: string | null;
     [key: string]: unknown;
   };
+}
+
+export interface ApplicationReviewTaskSummary {
+  id: string;
+  criterion: Criterion;
+  status: ReviewTaskStatus | string;
+  decision?: string | null;
+  officerNote?: string | null;
+  decisionReason?: string | null;
+  supplementRequestJson?: {
+    reason?: string;
+    deadline?: string | null;
+    evidenceIds?: string[];
+    requestedFields?: string[];
+    [key: string]: unknown;
+  } | null;
+  dueDate?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface CurrentApplicationEmpty {

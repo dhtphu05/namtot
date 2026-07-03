@@ -70,6 +70,10 @@ export type ResolutionCaseDetail = ResolutionCaseListItem & {
   applicationStatus: ApplicationStatus;
   officerNote?: string | null;
   evidenceNames?: string[];
+  primaryEvidence?: ResolutionEvidence | null;
+  relatedEvidences?: ResolutionEvidence[];
+  latestPrecheck?: unknown | null;
+  latestCascade?: unknown | null;
   comments?: ResolutionComment[];
   auditTimeline?: ResolutionTimelineItem[];
   decisionHistory?: Array<{
@@ -81,6 +85,33 @@ export type ResolutionCaseDetail = ResolutionCaseListItem & {
     actorRole: Role;
     createdAt: string;
   }>;
+};
+
+export type ResolutionEvidence = {
+  id: string;
+  evidenceName: string;
+  criterion: Criterion;
+  sourceType: string;
+  status: string;
+  indexingStatus: string;
+  confidence?: number | null;
+  files: Array<{
+    id: string;
+    originalName: string;
+    mimeType: string;
+    fileSize: number;
+    createdAt: string;
+  }>;
+  evidenceCard?: {
+    id: string;
+    aiSummary?: string | null;
+    confidence?: number | null;
+    ocrText?: string | null;
+    extractedFieldsJson?: unknown;
+    warningsJson?: unknown;
+    matchedEventId?: string | null;
+    matchedKnowledgeItemIds?: unknown;
+  } | null;
 };
 
 export type ResolveResolutionCaseRequest = {

@@ -61,6 +61,25 @@ const quickRoles = [
   },
 ];
 
+function persistAuthSession(data: {
+  user: unknown;
+  accessToken: string;
+  refreshToken: string;
+}) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    "5tot-auth",
+    JSON.stringify({
+      state: {
+        user: data.user,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+      },
+      version: 0,
+    }),
+  );
+}
+
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Đăng nhập - 5TOT Platform" }] }),
   beforeLoad: () => {
@@ -91,6 +110,7 @@ function Login() {
       const res = await authApi.login(email.trim(), password);
       queryClient.clear();
       resetSessionState();
+      persistAuthSession(res.data);
       setAuthData(res.data.user, res.data.accessToken, res.data.refreshToken);
       setRole(toUiRole(res.data.user.role));
       toast.success("Đăng nhập thành công.");
