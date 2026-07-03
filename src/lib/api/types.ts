@@ -272,6 +272,7 @@ export interface ApplicationState extends Application {
   submittedAt: string | null;
   currentDraftVersion: number;
   metrics?: ApplicationMetric[];
+  reviewTasks?: ApplicationReviewTaskSummary[];
   progress?: number;
   basicInfo?: {
     fullName?: string;
@@ -281,6 +282,24 @@ export interface ApplicationState extends Application {
     phone?: string | null;
     [key: string]: unknown;
   };
+}
+
+export interface ApplicationReviewTaskSummary {
+  id: string;
+  criterion: Criterion;
+  status: ReviewTaskStatus | string;
+  decision?: string | null;
+  officerNote?: string | null;
+  decisionReason?: string | null;
+  supplementRequestJson?: {
+    reason?: string;
+    deadline?: string | null;
+    evidenceIds?: string[];
+    requestedFields?: string[];
+    [key: string]: unknown;
+  } | null;
+  dueDate?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface CurrentApplicationEmpty {
