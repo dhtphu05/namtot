@@ -267,6 +267,7 @@ export type ManagerResultDetail = {
     phone?: string | null;
     className?: string | null;
     faculty?: string | null;
+    avatarUrl?: string | null;
   };
   metrics: Array<{
     id?: string;

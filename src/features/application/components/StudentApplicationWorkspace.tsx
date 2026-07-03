@@ -1,5 +1,5 @@
 ﻿import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   CheckCircle2,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip, Progress } from "@/components/ui-kit";
+import { authApi } from "@/features/auth/api/auth";
 import { useAuth } from "@/features/auth/store/auth-store";
 import {
   useCurrentApplication,
@@ -27,6 +28,7 @@ import {
 import { StudentFlowStepper } from "@/features/application/components/StudentFlowStepper";
 import { SubmitConfirmationModal } from "@/features/application/components/SubmitConfirmationModal";
 import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDetailModal";
+import { evidenceApi } from "@/features/evidence/api/evidence";
 import { StudentEvidenceCard } from "@/features/evidence/components/StudentEvidenceCard";
 import { useCreateEvidence, useDeleteEvidence, useEvidences, useUploadAndIndex } from "@/features/evidence/hooks/useEvidence";
 import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
@@ -151,6 +153,8 @@ const metricInputs: Array<{
 
 export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTab?: WorkspaceTab }) {
   const user = useAuth((s) => s.user);
+  const setUser = useAuth((s) => s.setUser);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [tab, setTab] = useState<WorkspaceTab>(initialTab);
   const [metricValues, setMetricValues] = useState<Record<MetricType, string>>({
     gpa: "",
@@ -162,6 +166,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const [evidenceForm, setEvidenceForm] = useState<EvidenceUploadForm | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceResponse | null>(null);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const current = useCurrentApplication(SCHOOL_YEAR);
   const startApplication = useStartApplication();
@@ -180,6 +185,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
 
   const evidences = normalizeEvidences(evidencesQuery.data);
   const precheck = latestPrecheck.data ?? null;
+  const avatarSrc = useResolvedAvatarUrl(user?.avatarUrl);
   const nextBestAction = getUserFacingText(
     precheck?.nextBestAction,
     "Bấm chạy tiền kiểm để backend đánh giá hồ sơ hiện tại theo dữ liệu của account này.",
@@ -403,6 +409,30 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     );
   };
 
+  const handleAvatarSelected = async (file?: File | null) => {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Ảnh hồ sơ chỉ hỗ trợ JPG, PNG hoặc WEBP.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ảnh hồ sơ tối đa 5MB.");
+      return;
+    }
+
+    try {
+      setAvatarUploading(true);
+      const response = await authApi.uploadAvatar(file);
+      setUser(response.data);
+      toast.success("Đã cập nhật ảnh hồ sơ.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật ảnh hồ sơ.");
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  };
+
   return (
     <>
       <TopBar
@@ -413,22 +443,48 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
       <div className="pb-24">
         <Card className="mb-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Chip tone="brand">
-                  <FileText className="h-3 w-3" /> Hồ sơ {application.schoolYear}
-                </Chip>
-                <Chip tone={application.status === "completed" ? "success" : "warning"}>
-                  {statusLabel[application.status]}
-                </Chip>
+            <div className="flex min-w-0 gap-4">
+              <div className="h-20 w-20 flex-none overflow-hidden rounded-2xl border bg-slate-100">
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt={user?.fullName ?? "Ảnh hồ sơ"} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xl font-bold text-brand-deep">
+                    {getInitials(user?.fullName)}
+                  </div>
+                )}
               </div>
-              <h2 className="mt-3 text-2xl font-bold text-brand-deep">
-                {user?.fullName ?? "Sinh viên"} - {user?.studentCode ?? "chưa có MSSV"}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {user?.faculty ?? "Chưa có khoa"} • {user?.className ?? "Chưa có lớp"} • Aim{" "}
-                {levelLabel[application.targetLevel]}
-              </p>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip tone="brand">
+                    <FileText className="h-3 w-3" /> Hồ sơ {application.schoolYear}
+                  </Chip>
+                  <Chip tone={application.status === "completed" ? "success" : "warning"}>
+                    {statusLabel[application.status]}
+                  </Chip>
+                  {!avatarSrc ? <Chip tone="muted">Chưa có ảnh hồ sơ</Chip> : null}
+                </div>
+                <h2 className="mt-3 break-words text-2xl font-bold text-brand-deep">
+                  {user?.fullName ?? "Sinh viên"} - {user?.studentCode ?? "chưa có MSSV"}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {user?.faculty ?? "Chưa có khoa"} • {user?.className ?? "Chưa có lớp"} • Aim{" "}
+                  {levelLabel[application.targetLevel]}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(event) => void handleAvatarSelected(event.target.files?.[0])}
+                  />
+                  <Button size="sm" variant="outline" disabled={avatarUploading} onClick={() => avatarInputRef.current?.click()}>
+                    {avatarUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    Cập nhật ảnh
+                  </Button>
+                  <span className="text-xs text-muted-foreground">JPG, PNG, WEBP tối đa 5MB.</span>
+                </div>
+              </div>
             </div>
             <div className="w-full max-w-xs">
               <div className="mb-1 flex items-center justify-between text-xs">
@@ -998,6 +1054,57 @@ function normalizeEvidences(value: unknown): EvidenceResponse[] {
 
 function getFinalTone(status?: string | null) {
   return finalStatusTone[status as keyof typeof finalStatusTone] ?? "warning";
+}
+
+function useResolvedAvatarUrl(avatarUrl?: string | null) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveAvatar() {
+      if (!avatarUrl) {
+        setResolvedUrl(null);
+        return;
+      }
+      if (!avatarUrl.startsWith("file:")) {
+        setResolvedUrl(avatarUrl);
+        return;
+      }
+
+      const fileId = avatarUrl.slice("file:".length);
+      if (!fileId) {
+        setResolvedUrl(null);
+        return;
+      }
+
+      try {
+        const response = await evidenceApi.getSignedFileUrl(fileId);
+        if (!cancelled) setResolvedUrl(response.data.url);
+      } catch {
+        if (!cancelled) setResolvedUrl(null);
+      }
+    }
+
+    void resolveAvatar();
+    return () => {
+      cancelled = true;
+    };
+  }, [avatarUrl]);
+
+  return resolvedUrl;
+}
+
+function getInitials(name?: string | null) {
+  const words = (name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return "SV";
+  return words
+    .slice(-2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("") || "SV";
 }
 
 function formatFinalDate(value?: string | null) {

@@ -113,6 +113,16 @@ export function useFinalizeManagerApplication() {
       toast.success("Đã chốt kết quả hồ sơ.");
     },
     onError: (error: Error) => {
+      const code = "code" in error ? String(error.code) : "";
+      if (code === "FINAL_LEVEL_MISMATCH" || code === "FINAL_STATUS_MISMATCH") {
+        queryClient.invalidateQueries({ queryKey: managerKeys.dashboard });
+        queryClient.invalidateQueries({ queryKey: ["managerResults"] });
+        queryClient.invalidateQueries({ queryKey: ["managerResultDetail"] });
+        toast.error(
+          "Đề xuất cấp đạt đã thay đổi sau khi hệ thống kiểm tra lại. Dữ liệu mới đang được tải lại, vui lòng kiểm tra trước khi chốt.",
+        );
+        return;
+      }
       toast.error(error.message || "Không thể chốt kết quả hồ sơ.");
     },
   });

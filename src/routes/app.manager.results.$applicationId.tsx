@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  Download,
   Eye,
   ExternalLink,
   FileText,
@@ -12,7 +13,7 @@ import {
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip } from "@/components/ui-kit";
@@ -30,6 +31,7 @@ import { useManagerResultDetail, useReopenFinalApplication } from "@/features/ma
 import type { ManagerResultDetail, ManagerResultEvidence, ManagerResultItem } from "@/features/manager/types";
 import type { Criterion, Level, Role } from "@/features/review/types";
 import { fallbackStatusLabel, getStatusTone, getWorkflowStatusLabel } from "@/lib/status-labels";
+import { getFinalizeActionLabel } from "@/lib/levels";
 
 export const Route = createFileRoute("/app/manager/results/$applicationId")({
   component: ManagerResultDetailRoute,
@@ -123,6 +125,12 @@ function ManagerResultDetailRoute() {
   const detail = detailQuery.data;
   const canFinalize = role ? finalizerRoles.includes(role) : false;
   const selectedItem = toFinalizationItem(detail);
+  const suggestedLevel = getSuggestedLevel(detail);
+  const processedCount = detail.reviewTasks.filter((task) =>
+    ["accepted", "rejected", "supplement_required", "resolution_needed"].includes(task.status),
+  ).length;
+  const openResolutionCount = detail.resolutionCases.filter((item) => item.status === "open" || item.status === "in_review").length;
+  const supplementCount = detail.reviewTasks.filter((task) => task.status === "supplement_required").length;
 
   return (
     <>
@@ -135,56 +143,23 @@ function ManagerResultDetailRoute() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <HeaderCard detail={detail} />
-          <DecisionConsole detail={detail} />
-          <CriterionSummary detail={detail} />
-          <ReviewTasks detail={detail} />
-          <EvidenceSection evidences={detail.applicationEvidences} />
           <AnalysisSection detail={detail} />
+          <CriterionDecisionBoard detail={detail} />
           <ResolutionSection detail={detail} />
           <AuditSection detail={detail} />
         </div>
 
         <aside className="space-y-5 xl:sticky xl:top-4 xl:self-start">
-          <Card>
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="mt-1 h-5 w-5 text-[#0057C2]" />
-              <div>
-                <h2 className="font-bold text-brand-deep">Tổng hợp quyết định</h2>
-                <p className="mt-2 text-sm text-muted-foreground">{detail.aggregation.reason}</p>
-              </div>
-            </div>
-            <div className="mt-4 space-y-2 text-sm">
-              <Info label="Gợi ý trạng thái" value={label(detail.aggregation.suggestedFinalStatus)} />
-              <Info label="Gợi ý cấp đạt" value={level(detail.aggregation.suggestedFinalLevel)} />
-              <Info label="Có thể chốt" value={detail.aggregation.canFinalize ? "Có" : "Chưa"} />
-            </div>
-            {detail.aggregation.blockingIssues.length ? (
-              <div className="mt-4 space-y-2">
-                {detail.aggregation.blockingIssues.map((issue, index) => (
-                  <div key={`${issue.type}-${index}`} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    {issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}
-                    {issue.message}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            <div className="mt-5">
-              {detail.application.finalizedAt ? (
-                <Button className="w-full" variant="outline" disabled={!canFinalize} onClick={() => setReopening(true)} title="Mở lại kết quả đã chốt">
-                  Mở lại kết quả đã chốt
-                </Button>
-              ) : canFinalize ? (
-                <Button className="w-full" onClick={() => setFinalizing(true)}>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Chốt kết quả
-                </Button>
-              ) : (
-                <div className="rounded-lg border bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
-                  Chỉ Hội đồng/Admin được chốt kết quả. Quản lý xem tổng quan và theo dõi các tiêu chí còn vướng.
-                </div>
-              )}
-            </div>
-          </Card>
+          <DecisionPanel
+            detail={detail}
+            canFinalize={canFinalize}
+            processedCount={processedCount}
+            openResolutionCount={openResolutionCount}
+            supplementCount={supplementCount}
+            suggestedLevel={suggestedLevel}
+            onFinalize={() => setFinalizing(true)}
+            onReopen={() => setReopening(true)}
+          />
         </aside>
       </div>
 
@@ -294,27 +269,156 @@ function BackButton() {
   );
 }
 
+function DecisionPanel({
+  canFinalize,
+  detail,
+  onFinalize,
+  onReopen,
+  openResolutionCount,
+  processedCount,
+  suggestedLevel,
+  supplementCount,
+}: {
+  canFinalize: boolean;
+  detail: ManagerResultDetail;
+  onFinalize: () => void;
+  onReopen: () => void;
+  openResolutionCount: number;
+  processedCount: number;
+  suggestedLevel: Level | null;
+  supplementCount: number;
+}) {
+  const isFinalized = Boolean(detail.application.finalizedAt);
+  const blockerMessages = detail.aggregation.blockingIssues.map((issue) =>
+    `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`,
+  );
+  const canSubmitFinal = canFinalize && detail.aggregation.canFinalize && blockerMessages.length === 0;
+
+  if (isFinalized) {
+    return (
+      <Card>
+        <div className="flex items-start gap-3">
+          <ShieldAlert className="mt-1 h-5 w-5 text-emerald-600" />
+          <div>
+            <h2 className="font-bold text-brand-deep">Kết quả đã chốt</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Hồ sơ đã có kết quả cuối cùng. Chỉ mở lại khi có căn cứ nghiệp vụ cần xét lại.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-2 text-sm">
+          <Info label="Kết quả cuối" value={getFinalResultLabel(detail)} />
+          <Info label="Cấp đạt" value={getLevelLabel(detail.application.finalLevel, "Không có cấp đạt")} />
+          <Info label="Thời gian chốt" value={formatDate(detail.application.finalizedAt)} />
+          <Info label="Người chốt" value={detail.application.finalizedBy?.fullName ?? "--"} />
+        </div>
+
+        {detail.application.finalNote ? (
+          <div className="mt-4 rounded-lg border bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Ghi chú hội đồng</div>
+            <p className="mt-1 whitespace-pre-wrap">{detail.application.finalNote}</p>
+          </div>
+        ) : null}
+
+        {canFinalize ? (
+          <Button className="mt-5 w-full" variant="outline" onClick={onReopen} title="Mở lại kết quả đã chốt">
+            Mở lại kết quả
+          </Button>
+        ) : null}
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <div className="flex items-start gap-3">
+        <ShieldAlert className="mt-1 h-5 w-5 text-[#0057C2]" />
+        <div>
+          <h2 className="font-bold text-brand-deep">Tổng hợp quyết định</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{detail.aggregation.reason}</p>
+        </div>
+      </div>
+      <div className="mt-4 space-y-2 text-sm">
+        <Info label="Aim đăng ký" value={getLevelLabel(detail.application.targetLevel)} />
+        <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
+        <Info label="Kết quả sẽ lưu" value={getPendingFinalResultLabel(suggestedLevel)} />
+        <Info label="Có thể chốt" value={canSubmitFinal ? "Có" : "Không"} />
+      </div>
+      <div className="mt-4 space-y-2 rounded-lg border bg-slate-50 p-3 text-sm">
+        <DecisionCheck ok={processedCount >= 5} label={`${Math.min(processedCount, 5)}/5 tiêu chí đã xử lý`} />
+        <DecisionCheck ok={openResolutionCount === 0} label="Không còn hội ý đang mở" />
+        <DecisionCheck ok={supplementCount === 0} label="Không còn yêu cầu bổ sung" />
+      </div>
+      {blockerMessages.length ? (
+        <div className="mt-4 space-y-2">
+          {blockerMessages.map((message, index) => (
+            <div key={`${message}-${index}`} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {message}
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <div className="mt-5">
+        {canFinalize ? (
+          <Button className="w-full" disabled={!canSubmitFinal} onClick={onFinalize}>
+            <CheckCircle2 className="h-4 w-4" />
+            {getFinalizeActionLabel(suggestedLevel)}
+          </Button>
+        ) : (
+          <div className="rounded-lg border bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
+            Chỉ Hội đồng/Admin được chốt kết quả. Quản lý xem tổng quan và theo dõi các tiêu chí còn vướng.
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function HeaderCard({ detail }: { detail: ManagerResultDetail }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const rawPhotoUrl = getStudentPhotoUrl(detail);
+  const resolvedPhotoUrl = useResolvedAvatarUrl(rawPhotoUrl);
+  const photoUrl = imageFailed ? null : resolvedPhotoUrl;
+  const isLegacyCentral = detail.application.targetLevel === "central";
+  const hasFinalLevel = Boolean(detail.application.finalizedAt && detail.application.finalLevel);
+
   return (
     <Card>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-brand-deep">{detail.student.fullName}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {detail.student.studentCode ?? "--"} • {detail.student.className ?? "--"} • {detail.student.faculty ?? "--"}
-          </p>
+        <div className="flex min-w-0 gap-4">
+          <div className="h-20 w-20 flex-none overflow-hidden rounded-2xl border bg-slate-100">
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt={detail.student.fullName}
+                className="h-full w-full object-cover"
+                onError={() => setImageFailed(true)}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xl font-bold text-brand-deep">
+                {getInitials(detail.student.fullName)}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <h1 className="break-words text-2xl font-bold text-brand-deep">{detail.student.fullName}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {detail.student.studentCode ?? "--"} • {detail.student.className ?? "--"} • {detail.student.faculty ?? "--"}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Chip tone="brand">Hồ sơ {detail.application.schoolYear}</Chip>
+              <Chip tone={statusTone(detail.application.status)}>{label(detail.application.status)}</Chip>
+              <Chip tone="brand">{getLevelLabel(detail.application.targetLevel)}</Chip>
+              {hasFinalLevel ? <Chip tone="success">Đã chốt {getLevelLabel(detail.application.finalLevel)}</Chip> : null}
+              {!photoUrl ? <Chip tone="muted">Chưa có ảnh hồ sơ</Chip> : null}
+              {isLegacyCentral ? <Chip tone="warning">Ngoài phạm vi flow chính hiện tại</Chip> : null}
+            </div>
+          </div>
         </div>
-        <Chip tone="brand">Hồ sơ {detail.application.schoolYear}</Chip>
-      </div>
-      <div className="mt-5 grid gap-3 md:grid-cols-4">
-        <Info label="Cấp đăng ký" value={level(detail.application.targetLevel)} />
-        <Info label="AI/Cascade gợi ý" value={level(detail.latestCascade?.suggestedLevel)} />
-        <Info label="Kết quả cuối" value={label(detail.application.finalStatus)} />
-        <Info label="Cấp đạt" value={level(detail.application.finalLevel)} />
-        <Info label="Trạng thái hồ sơ" value={label(detail.application.status)} />
-        <Info label="Readiness" value={`${detail.application.readinessScore}%`} />
-        <Info label="Submitted" value={formatDate(detail.application.submittedAt)} />
-        <Info label="Cập nhật lần cuối" value={formatDate(detail.application.lastActivityAt)} />
+        <Chip tone={detail.application.finalizedAt ? "success" : "warning"}>
+          {detail.application.finalizedAt ? "Đã chốt" : "Chưa chốt"}
+        </Chip>
       </div>
     </Card>
   );
@@ -350,6 +454,116 @@ function DecisionConsole({ detail }: { detail: ManagerResultDetail }) {
         {blocker}
       </div>
     </Card>
+  );
+}
+
+function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
+  const [selectedEvidence, setSelectedEvidence] = useState<ManagerResultEvidence | null>(null);
+
+  return (
+    <>
+      <Card>
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="font-bold text-brand-deep">5 tiêu chí xét duyệt</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Mỗi tiêu chí gom task, minh chứng, ghi chú cán bộ và blocker vào một dòng để hội đồng ra quyết định nhanh.
+            </p>
+          </div>
+          <Chip tone={detail.aggregation.canFinalize ? "success" : "warning"}>
+            {detail.aggregation.canFinalize ? "Có thể chốt" : "Chưa thể chốt"}
+          </Chip>
+        </div>
+
+        <div className="mt-4 divide-y rounded-lg border">
+          {criterionOrder.map((criterion) => {
+            const summary = detail.criterionSummary[criterion];
+            const task = detail.reviewTasks.find((candidate) => candidate.criterion === criterion);
+            const evidences = detail.applicationEvidences.filter((evidence) => evidence.criterion === criterion);
+            const note = getBusinessNote(task?.decisionReason, task?.officerNote, summary?.summary);
+
+            return (
+              <details key={criterion} className="group">
+                <summary className="flex cursor-pointer list-none flex-col gap-3 px-4 py-3 hover:bg-slate-50 lg:flex-row lg:items-center">
+                  <div className="min-w-48 flex-1">
+                    <div className="font-semibold text-brand-deep">{criterionLabel[criterion]}</div>
+                    <div className="mt-1 line-clamp-1 text-xs text-muted-foreground">{note}</div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Chip tone={statusTone(summary?.status)}>{label(summary?.status)}</Chip>
+                    <Chip tone="brand">{evidences.length} minh chứng</Chip>
+                    <span className="max-w-40 truncate text-xs font-medium text-muted-foreground">
+                      {task?.assignedOfficer?.fullName ?? "Chưa phân công"}
+                    </span>
+                    <span className="rounded-md border px-2 py-1 text-xs font-semibold text-brand-deep group-open:bg-slate-100">
+                      Xem chi tiết
+                    </span>
+                  </div>
+                </summary>
+
+                <div className="border-t bg-slate-50/70 p-4">
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <Info label="Trạng thái cuối" value={label(summary?.status)} />
+                    <Info label="Cấp tối đa" value={level(summary?.officerSuggestedLevel)} />
+                    <Info label="Cán bộ xử lý" value={task?.assignedOfficer?.fullName ?? "--"} />
+                    <Info label="Task review" value={task ? task.id.slice(0, 8) : "--"} />
+                  </div>
+
+                  <div className="mt-3 rounded-lg border bg-white px-3 py-2 text-sm">
+                    <span className="font-semibold text-brand-deep">Ghi chú/blocker: </span>
+                    <span className="text-muted-foreground">{note}</span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {task ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/app/review/$id" params={{ id: task.id }}>
+                          Mở task review
+                        </Link>
+                      </Button>
+                    ) : null}
+                    {detail.resolutionCases
+                      .filter((item) => item.evidenceId && evidences.some((evidence) => evidence.id === item.evidenceId))
+                      .slice(0, 2)
+                      .map((item) => (
+                        <Button key={item.id} asChild size="sm" variant="secondary">
+                          <Link to="/app/resolution/$id" params={{ id: item.id }}>
+                            Mở hội ý
+                          </Link>
+                        </Button>
+                      ))}
+                  </div>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    {evidences.length ? (
+                      evidences.slice(0, 4).map((evidence) => (
+                        <EvidenceCard key={evidence.id} evidence={evidence} onSelect={setSelectedEvidence} />
+                      ))
+                    ) : (
+                      <div className="rounded-lg border border-dashed bg-white p-3 text-sm text-muted-foreground">
+                        Chưa có minh chứng liên quan.
+                      </div>
+                    )}
+                  </div>
+                  {evidences.length > 4 ? (
+                    <div className="mt-3 rounded-lg border bg-white px-3 py-2 text-sm text-muted-foreground">
+                      Còn {evidences.length - 4} minh chứng khác. Mở task review để xem toàn bộ hồ sơ tiêu chí.
+                    </div>
+                  ) : null}
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      </Card>
+      <EvidenceDetailDialog
+        evidence={selectedEvidence}
+        detail={detail}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEvidence(null);
+        }}
+      />
+    </>
   );
 }
 
@@ -576,9 +790,11 @@ function EvidenceCard({
 }
 
 function EvidenceDetailDialog({
+  detail,
   evidence,
   onOpenChange,
 }: {
+  detail?: ManagerResultDetail;
   evidence: ManagerResultEvidence | null;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -586,6 +802,13 @@ function EvidenceDetailDialog({
   const [loadingFileId, setLoadingFileId] = useState<string | null>(null);
   const fields = useReadableFields(evidence?.evidenceCard?.extractedFieldsJson);
   const warnings = useWarnings(evidence?.evidenceCard?.warningsJson);
+  const relatedTask = useMemo(() => {
+    if (!detail || !evidence) return null;
+    return detail.reviewTasks.find((task) =>
+      task.evidences.some((item) => item.id === evidence.id) || task.criterion === evidence.criterion,
+    ) ?? null;
+  }, [detail, evidence]);
+  const taskNote = getBusinessNote(relatedTask?.decisionReason, relatedTask?.officerNote);
 
   const openPreview = async (file: ManagerResultEvidence["files"][number], openInNewTab = false) => {
     try {
@@ -602,6 +825,14 @@ function EvidenceDetailDialog({
     }
   };
 
+  useEffect(() => {
+    setPreview(null);
+    const firstFile = evidence?.files?.[0];
+    if (firstFile) {
+      void openPreview(firstFile);
+    }
+  }, [evidence?.id]);
+
   return (
     <Dialog
       open={Boolean(evidence)}
@@ -610,24 +841,104 @@ function EvidenceDetailDialog({
         onOpenChange(open);
       }}
     >
-      <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto">
+      <DialogContent className="max-h-[94vh] max-w-7xl overflow-hidden">
         {evidence ? (
           <>
-            <DialogHeader>
+            <DialogHeader className="pr-8">
               <DialogTitle className="pr-8">{evidence.evidenceName}</DialogTitle>
               <DialogDescription>
-                Chi tiết minh chứng cho tiêu chí {criterionLabel[evidence.criterion]}: file, trạng thái xét duyệt, OCR, dữ liệu AI trích xuất và cảnh báo.
+                {criterionLabel[evidence.criterion]} • {label(evidence.status)} • {evidence.files.length} file
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="space-y-4">
-                <section className="rounded-lg border p-4">
+            <div className="grid max-h-[calc(94vh-110px)] gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.9fr)] lg:overflow-hidden">
+              <section className="min-h-0 rounded-lg border bg-white p-3">
+                <div className="flex flex-col gap-3 border-b pb-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <h3 className="flex items-center gap-2 font-bold text-brand-deep">
+                      <FileText className="h-4 w-4 text-[#0057C2]" />
+                      Tài liệu gốc
+                    </h3>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {preview?.file.originalName ?? evidence.files[0]?.originalName ?? "Minh chứng chưa có file đính kèm."}
+                    </p>
+                  </div>
+                  {preview ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={() => openPreview(preview.file, true)} disabled={loadingFileId === preview.file.id}>
+                        <ExternalLink className="h-4 w-4" />
+                        Mở tab mới
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <a href={preview.url} download={preview.file.originalName}>
+                          <Download className="h-4 w-4" />
+                          Tải xuống
+                        </a>
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+
+                {evidence.files.length ? (
+                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                    {evidence.files.map((file) => {
+                      const active = preview?.file.id === file.id;
+                      return (
+                        <button
+                          key={file.id}
+                          type="button"
+                          onClick={() => openPreview(file)}
+                          className={`min-w-48 rounded-lg border px-3 py-2 text-left text-xs transition ${
+                            active ? "border-[#0057C2] bg-blue-50 text-brand-deep" : "bg-slate-50 text-muted-foreground hover:bg-slate-100"
+                          }`}
+                        >
+                          <div className="truncate font-semibold">{file.originalName}</div>
+                          <div className="mt-1 truncate">{file.mimeType || "--"} • {formatFileSize(file.fileSize)}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                <div className="mt-3 flex min-h-[55vh] items-center justify-center overflow-hidden rounded-lg border bg-slate-100">
+                  {loadingFileId && !preview ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Đang tải preview...
+                    </div>
+                  ) : preview ? (
+                    isImageMime(preview.file.mimeType) ? (
+                      <img src={preview.url} alt={preview.file.originalName} className="max-h-[65vh] w-full object-contain" />
+                    ) : isPdfMime(preview.file.mimeType) ? (
+                      <iframe title={preview.file.originalName} src={preview.url} className="h-[65vh] w-full bg-white" />
+                    ) : (
+                      <div className="max-w-md p-5 text-center">
+                        <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
+                        <div className="mt-3 font-semibold text-brand-deep">{preview.file.originalName}</div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {preview.file.mimeType || "File"} • {formatFileSize(preview.file.fileSize)} • {formatDate(preview.file.createdAt)}
+                        </div>
+                        <Button className="mt-4" variant="outline" onClick={() => openPreview(preview.file, true)}>
+                          <ExternalLink className="h-4 w-4" />
+                          Mở file
+                        </Button>
+                      </div>
+                    )
+                  ) : (
+                    <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      Minh chứng chưa có file đính kèm.
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+                <section className="rounded-lg border bg-white p-4">
                   <h3 className="flex items-center gap-2 font-bold text-brand-deep">
                     <SearchCheck className="h-4 w-4 text-[#0057C2]" />
                     Thông tin kiểm tra
                   </h3>
-                  <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                  <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-1">
                     <Info label="Tiêu chí" value={criterionLabel[evidence.criterion]} />
                     <Info label="Nguồn" value={label(evidence.sourceType)} />
                     <Info label="Trạng thái" value={label(evidence.status)} />
@@ -640,65 +951,15 @@ function EvidenceDetailDialog({
                   </div>
                 </section>
 
-                <section className="rounded-lg border p-4">
-                  <h3 className="flex items-center gap-2 font-bold text-brand-deep">
-                    <FileText className="h-4 w-4 text-[#0057C2]" />
-                    File minh chứng
-                  </h3>
-                  <div className="mt-3 space-y-2">
-                    {evidence.files.length ? evidence.files.map((file) => (
-                      <div key={file.id} className="rounded-lg border bg-slate-50 p-3">
-                        <div className="font-semibold text-brand-deep">{file.originalName}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {file.mimeType || "--"} • {formatFileSize(file.fileSize)} • {formatDate(file.createdAt)}
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Button size="sm" onClick={() => openPreview(file)} disabled={loadingFileId === file.id}>
-                            {loadingFileId === file.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-                            Preview
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => openPreview(file, true)} disabled={loadingFileId === file.id}>
-                            <ExternalLink className="h-4 w-4" />
-                            Mở tab mới
-                          </Button>
-                        </div>
-                      </div>
-                    )) : (
-                      <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-                        Minh chứng này chưa có file, nên cán bộ chưa thể đối chiếu tài liệu gốc.
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                {preview ? (
-                  <section className="rounded-lg border p-4">
-                    <h3 className="font-bold text-brand-deep">Preview file</h3>
-                    <div className="mt-3 overflow-hidden rounded-lg border bg-slate-50">
-                      {isImageMime(preview.file.mimeType) ? (
-                        <img src={preview.url} alt={preview.file.originalName} className="max-h-[480px] w-full object-contain" />
-                      ) : isPdfMime(preview.file.mimeType) ? (
-                        <iframe title={preview.file.originalName} src={preview.url} className="h-[480px] w-full" />
-                      ) : (
-                        <div className="p-4 text-sm text-muted-foreground">
-                          Loại file này không preview trực tiếp được. Hãy dùng "Mở tab mới" để xem/tải xuống.
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                ) : null}
-              </div>
-
-              <div className="space-y-4">
-                <section className="rounded-lg border p-4">
+                <section className="rounded-lg border bg-white p-4">
                   <h3 className="flex items-center gap-2 font-bold text-brand-deep">
                     <Sparkles className="h-4 w-4 text-[#0057C2]" />
-                    AI đã đọc gì?
+                    AI/OCR
                   </h3>
                   <TextBlock
                     label="Tóm tắt AI"
                     value={evidence.evidenceCard?.aiSummary}
-                    empty="Chưa có tóm tắt AI cho minh chứng này."
+                    empty="Chưa có tóm tắt AI."
                   />
                   <TextBlock
                     label="OCR preview"
@@ -715,12 +976,12 @@ function EvidenceDetailDialog({
                         ))}
                       </div>
                     ) : (
-                      <p className="mt-2 text-sm text-muted-foreground">AI chưa trích xuất được trường dữ liệu rõ ràng.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Chưa có trường trích xuất.</p>
                     )}
                   </div>
                 </section>
 
-                <section className="rounded-lg border p-4">
+                <section className="rounded-lg border bg-white p-4">
                   <h3 className="flex items-center gap-2 font-bold text-brand-deep">
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                     Cảnh báo cần đối chiếu
@@ -734,8 +995,22 @@ function EvidenceDetailDialog({
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">Chưa có cảnh báo AI cho minh chứng này.</p>
+                    <p className="mt-3 text-sm text-muted-foreground">Chưa có cảnh báo cần đối chiếu.</p>
                   )}
+                </section>
+
+                <section className="rounded-lg border bg-white p-4">
+                  <h3 className="font-bold text-brand-deep">Trạng thái task/quyết định</h3>
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <Info label="Task liên quan" value={relatedTask ? relatedTask.id.slice(0, 8) : "--"} />
+                    <Info label="Cán bộ xử lý" value={relatedTask?.assignedOfficer?.fullName ?? "--"} />
+                    <Info label="Trạng thái task" value={label(relatedTask?.status)} />
+                    <Info label="Gợi ý cấp" value={getLevelLabel(relatedTask?.officerSuggestedLevel)} />
+                  </div>
+                  <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    <span className="font-semibold text-brand-deep">Ghi chú cán bộ: </span>
+                    {taskNote}
+                  </div>
                 </section>
               </div>
             </div>
@@ -747,16 +1022,55 @@ function EvidenceDetailDialog({
 }
 
 function AnalysisSection({ detail }: { detail: ManagerResultDetail }) {
+  const suggestedLevel = getSuggestedLevel(detail);
+  const hasBlockingIssue = detail.aggregation.blockingIssues.length > 0;
+  const hasOpenResolution = detail.resolutionCases.some((item) => item.status === "open" || item.status === "in_review");
+  const hasSupplement = detail.reviewTasks.some((task) => task.status === "supplement_required");
+  const isDowngraded = Boolean(suggestedLevel && suggestedLevel !== detail.application.targetLevel);
+  const isStraightPass = suggestedLevel === detail.application.targetLevel && !hasBlockingIssue && !hasOpenResolution && !hasSupplement;
+  const reason =
+    suggestedLevel === detail.application.targetLevel
+      ? "Đủ 5/5 tiêu chí theo cấp đăng ký."
+      : suggestedLevel
+        ? `Đề xuất hạ từ ${getLevelLabel(detail.application.targetLevel)} xuống ${getLevelLabel(suggestedLevel)} theo kết quả tiêu chí.`
+        : "Chưa đủ điều kiện đạt cấp nào theo kết quả tiêu chí.";
+  const reasons = [
+    ...detail.aggregation.blockingIssues.map((issue) => `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`),
+    ...(hasOpenResolution ? ["Đang còn hồ sơ hội ý cần xử lý."] : []),
+    ...(hasSupplement ? ["Đang còn yêu cầu bổ sung minh chứng."] : []),
+  ];
+
+  if (isStraightPass) {
+    return (
+      <div className="rounded-lg border bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+        Đủ 5/5 tiêu chí theo cấp đăng ký.
+      </div>
+    );
+  }
+
   return (
     <Card>
-      <h2 className="font-bold text-brand-deep">AI / Precheck / Cascade</h2>
+      <h2 className="font-bold text-brand-deep">Gợi ý cấp đạt</h2>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <Info label="Cascade gợi ý" value={level(detail.latestCascade?.suggestedLevel)} />
-        <Info label="Hội đồng xác nhận" value={detail.latestCascade?.humanConfirmationRequired ? "Có" : "Không"} />
+        <Info label="Cấp đăng ký" value={getLevelLabel(detail.application.targetLevel)} />
+        <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
       </div>
       <p className="mt-4 text-sm text-muted-foreground">
-        AI chỉ là gợi ý. Kết quả cuối cùng phụ thuộc vào task xét duyệt, minh chứng và quyết định của hội đồng.
+        {reason} Kết quả cuối do Hội đồng/Admin chốt.
       </p>
+      {(isDowngraded || !suggestedLevel || reasons.length) ? (
+        <div className="mt-4 space-y-2">
+          {reasons.length ? reasons.map((item, index) => (
+            <div key={`${item}-${index}`} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {item}
+            </div>
+          )) : (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Cần đối chiếu lại từng tiêu chí trước khi chốt kết quả.
+            </div>
+          )}
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -780,25 +1094,46 @@ function ResolutionSection({ detail }: { detail: ManagerResultDetail }) {
 }
 
 function AuditSection({ detail }: { detail: ManagerResultDetail }) {
+  const businessEvents = detail.auditTimeline.filter((item) => !item.action.includes("VIEWED"));
+  const recent = businessEvents.slice(0, 5);
+
   return (
     <Card>
-      <h2 className="flex items-center gap-2 font-bold text-brand-deep">
-        <History className="h-5 w-5" />
-        Audit timeline
-      </h2>
-      <div className="mt-4 space-y-3">
-        {detail.auditTimeline.length ? detail.auditTimeline.map((item) => (
-          <div key={item.id} className="rounded-lg border p-3 text-sm">
-            <div className="font-semibold text-brand-deep">{item.action}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{formatDate(item.createdAt)} • {item.actorRole ?? "--"}</div>
-            {item.note ? <p className="mt-2 text-muted-foreground">{item.note}</p> : null}
-          </div>
-        )) : (
-          <div className="rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground">Chưa có lịch sử xử lý.</div>
-        )}
-      </div>
+      <details>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 font-bold text-brand-deep">
+            <History className="h-5 w-5" />
+            Lịch sử xử lý
+          </h2>
+          <span className="text-xs font-semibold text-muted-foreground">
+            {businessEvents.length ? `${Math.min(5, businessEvents.length)} sự kiện gần nhất` : "Chưa có"}
+          </span>
+        </summary>
+        <div className="mt-4 space-y-3">
+          {recent.length ? recent.map((item) => (
+            <div key={item.id} className="rounded-lg border p-3 text-sm">
+              <div className="font-semibold text-brand-deep">{auditActionLabel(item.action)}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {formatDate(item.createdAt)} • {item.actorRole ?? "--"} • <span className="font-mono">{item.action}</span>
+              </div>
+              {item.note ? <p className="mt-2 text-muted-foreground">{item.note}</p> : null}
+            </div>
+          )) : (
+            <div className="rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground">Chưa có lịch sử xử lý.</div>
+          )}
+        </div>
+      </details>
     </Card>
   );
+}
+
+function auditActionLabel(action: string) {
+  if (action.includes("FINAL_RESULT_CONFIRMED") || action.includes("APPLICATION_FINALIZED")) return "Đã chốt kết quả";
+  if (action.includes("AGGREG")) return "Đã tổng hợp hồ sơ";
+  if (action.includes("REVIEW")) return "Cán bộ đã duyệt tiêu chí";
+  if (action.includes("REOPEN")) return "Đã mở lại kết quả";
+  if (action.includes("RESOLUTION")) return "Đã xử lý hội ý";
+  return "Cập nhật hồ sơ";
 }
 
 function Info({ label, value }: { label: string; value?: string | number | null }) {
@@ -806,6 +1141,17 @@ function Info({ label, value }: { label: string; value?: string | number | null 
     <div className="rounded-lg border bg-white px-3 py-2">
       <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 min-w-0 break-words text-sm font-semibold text-brand-deep">{value ?? "--"}</div>
+    </div>
+  );
+}
+
+function DecisionCheck({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${ok ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+        {ok ? "Đạt" : "Cần xử lý"}
+      </span>
     </div>
   );
 }
@@ -855,7 +1201,7 @@ function toFinalizationItem(detail: ManagerResultDetail): ManagerResultItem {
     faculty: detail.student.faculty,
     schoolYear: detail.application.schoolYear,
     targetLevel: detail.application.targetLevel,
-    suggestedLevel: detail.latestCascade?.suggestedLevel ?? null,
+    suggestedLevel: getSuggestedLevel(detail),
     finalStatus: detail.application.finalStatus,
     finalLevel: detail.application.finalLevel,
     finalNote: detail.application.finalNote,
@@ -890,7 +1236,108 @@ function groupByCriterion(evidences: ManagerResultEvidence[]) {
 }
 
 function level(value?: Level | null) {
-  return value ? levelLabel[value] : "--";
+  return getLevelLabel(value);
+}
+
+function getLevelLabel(value?: Level | null, empty = "--") {
+  return value ? levelLabel[value] : empty;
+}
+
+function getSuggestedLevel(detail: ManagerResultDetail) {
+  return detail.latestCascade?.suggestedLevel ?? detail.aggregation.suggestedFinalLevel ?? null;
+}
+
+function getSuggestedLevelLabel(detail: ManagerResultDetail) {
+  return getLevelLabel(getSuggestedLevel(detail), "Chưa có đề xuất");
+}
+
+function getPendingFinalResultLabel(suggestedLevel?: Level | null) {
+  return suggestedLevel ? `Đạt ${getLevelLabel(suggestedLevel)}` : "Chưa đạt";
+}
+
+function getFinalResultLabel(detail: ManagerResultDetail) {
+  if (detail.application.finalStatus === "passed" && detail.application.finalLevel) {
+    return `Đạt ${getLevelLabel(detail.application.finalLevel)}`;
+  }
+  if (detail.application.finalStatus === "partially_passed" && detail.application.finalLevel) {
+    return `Đạt cấp thấp hơn: ${getLevelLabel(detail.application.finalLevel)}`;
+  }
+  if (detail.application.finalStatus === "failed") return "Chưa đạt";
+  return label(detail.application.finalStatus);
+}
+
+function getStudentPhotoUrl(detail: ManagerResultDetail) {
+  const student = detail.student as ManagerResultDetail["student"] & {
+    avatarUrl?: string | null;
+    studentPhotoUrl?: string | null;
+    profileImageUrl?: string | null;
+    photoUrl?: string | null;
+  };
+  return student.avatarUrl ?? student.studentPhotoUrl ?? student.profileImageUrl ?? student.photoUrl ?? null;
+}
+
+function useResolvedAvatarUrl(avatarUrl?: string | null) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveAvatar() {
+      if (!avatarUrl) {
+        setResolvedUrl(null);
+        return;
+      }
+      if (!avatarUrl.startsWith("file:")) {
+        setResolvedUrl(avatarUrl);
+        return;
+      }
+
+      const fileId = avatarUrl.slice("file:".length);
+      if (!fileId) {
+        setResolvedUrl(null);
+        return;
+      }
+
+      try {
+        const response = await evidenceApi.getSignedFileUrl(fileId);
+        if (!cancelled) setResolvedUrl(response.data.url);
+      } catch {
+        if (!cancelled) setResolvedUrl(null);
+      }
+    }
+
+    void resolveAvatar();
+    return () => {
+      cancelled = true;
+    };
+  }, [avatarUrl]);
+
+  return resolvedUrl;
+}
+
+function getInitials(name?: string | null) {
+  const words = (name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return "SV";
+  const lastTwo = words.slice(-2);
+  return lastTwo.map((word) => word[0]?.toUpperCase() ?? "").join("") || "SV";
+}
+
+function getBusinessNote(...values: Array<string | null | undefined>) {
+  const note = values.find((value) => value?.trim() && !isValidationMessage(value));
+  return note?.trim() || "Chưa có ghi chú cán bộ.";
+}
+
+function isValidationMessage(value?: string | null) {
+  const normalized = value?.toLowerCase().trim() ?? "";
+  return (
+    normalized.includes("ít nhất 10") ||
+    normalized.includes("it nhat 10") ||
+    normalized.includes("at least 10") ||
+    normalized.includes("validation")
+  );
 }
 
 function label(value?: string | null) {

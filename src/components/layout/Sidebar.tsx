@@ -33,7 +33,7 @@ import {
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useApp } from "@/lib/store";
 import { ROLES, type Role } from "@/lib/mock-data";
-import { criterionLabel } from "@/lib/api/types";
+import { criterionLabel, type Role as ApiRole } from "@/lib/api/types";
 
 type BadgeTone = "core" | "ai" | "demo" | "ops" | "beta";
 type NavItem = {
@@ -119,6 +119,28 @@ const NAV: Record<Role, NavGroup[]> = {
   ],
 };
 
+const COMMITTEE_NAV: NavGroup[] = [
+  {
+    group: "Hội đồng",
+    items: [
+      { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
+      { label: "Kết quả theo cấp", to: "/app/manager/results", icon: Trophy, badge: "Core", tone: "core" },
+      { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound, badge: "Core", tone: "core" },
+      { label: "Theo dõi phân công", to: "/app/assignment", icon: UserCog, badge: "Read-only", tone: "beta" },
+      { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Ops", tone: "ops" },
+      { label: "Export Center", to: "/app/export", icon: Download, badge: "Ops", tone: "ops" },
+    ],
+  },
+  {
+    group: "Theo dõi",
+    items: [
+      { label: "Dashboard thống kê", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "Core", tone: "core" },
+      { label: "Audit Log", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },
+      { label: "Thông báo", to: "/app/notifications", icon: Bell },
+    ],
+  },
+];
+
 const badgeClass: Record<BadgeTone, string> = {
   core: "bg-emerald-50 text-emerald-700",
   ai: "bg-sky-50 text-sky-700",
@@ -135,7 +157,7 @@ export function Sidebar() {
   const setRole = useApp((s) => s.setRole);
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
-  const groups = NAV[role];
+  const groups = getNavGroups(role, user?.role);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const nav = useNavigate();
 
@@ -238,6 +260,12 @@ export function Sidebar() {
       </div>
     </aside>
   );
+}
+
+function getNavGroups(role: Role, backendRole?: ApiRole): NavGroup[] {
+  if (backendRole === "committee") return COMMITTEE_NAV;
+  if (backendRole === "admin") return NAV.manager;
+  return NAV[role];
 }
 
 function RolePanel() {

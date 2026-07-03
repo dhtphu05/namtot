@@ -200,7 +200,6 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
                   const finalized = isFinalized(item);
                   const blockedReason =
                     item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
-                  const finalizeDisabled = !canFinalizeRole || finalized || !item.canFinalize;
                   return (
                     <tr key={item.id} className="border-b border-[#EEF2F7] align-top">
                       <td className="py-3 pr-4">
@@ -241,19 +240,16 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
                       <td className="py-3 text-right">
                         <Button
                           size="sm"
-                          disabled={finalizeDisabled}
                           title={
-                            !canFinalizeRole
-                              ? "Chỉ hội đồng hoặc quản trị viên được chốt"
-                              : finalized
-                                ? "Hồ sơ đã chốt"
-                                : !item.canFinalize
-                                  ? blockedReason
-                                  : "Chốt kết quả tập thể"
+                            finalized
+                              ? "Xem biên bản kết quả tập thể đã chốt"
+                              : !item.canFinalize
+                                ? blockedReason
+                                : "Xem summary trước khi chốt"
                           }
                           onClick={() => setSelected(item)}
                         >
-                          Chốt kết quả
+                          Xem summary
                         </Button>
                       </td>
                     </tr>
@@ -292,6 +288,7 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
       {selected ? (
         <CollectiveFinalizeDialog
           item={selected}
+          canFinalizeRole={canFinalizeRole}
           onClose={() => setSelected(null)}
         />
       ) : null}
@@ -300,9 +297,11 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
 }
 
 function CollectiveFinalizeDialog({
+  canFinalizeRole,
   item,
   onClose,
 }: {
+  canFinalizeRole: boolean;
   item: ManagerCollectiveItem;
   onClose: () => void;
 }) {
@@ -319,7 +318,7 @@ function CollectiveFinalizeDialog({
     : `${finalStatus} + ${savedFinalLevel ? getLevelLabel(savedFinalLevel) : "--"}`;
 
   const submit = () => {
-    if (!item.canFinalize || levelRequired || noteRequired) return;
+    if (!canFinalizeRole || !item.canFinalize || levelRequired || noteRequired) return;
     finalizeMutation.mutate(
       {
         collectiveId: item.id,
@@ -347,6 +346,12 @@ function CollectiveFinalizeDialog({
         {!item.canFinalize ? (
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             {blockedReason}
+          </div>
+        ) : null}
+
+        {!canFinalizeRole ? (
+          <div className="rounded-md border bg-slate-50 p-3 text-sm text-muted-foreground">
+            Tài khoản hiện tại chỉ xem summary tập thể, không có quyền chốt kết quả.
           </div>
         ) : null}
 
@@ -423,6 +428,7 @@ function CollectiveFinalizeDialog({
             onClick={submit}
             disabled={
               finalizeMutation.isPending ||
+              !canFinalizeRole ||
               !item.canFinalize ||
               levelRequired ||
               noteRequired

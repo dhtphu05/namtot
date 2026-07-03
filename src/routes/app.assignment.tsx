@@ -63,20 +63,25 @@ function AssignmentWorkloadRoute() {
     );
   }
 
-  return <AssignmentWorkloadContent />;
+  return <AssignmentWorkloadContent role={role} />;
 }
 
-function AssignmentWorkloadContent() {
+function AssignmentWorkloadContent({ role }: { role: Role }) {
   const { data, error, isError, isLoading, refetch } = useManagerWorkload();
   const workloads = useMemo(() => data?.workloads ?? [], [data?.workloads]);
   const summary = useMemo(() => getWorkloadSummary(data), [data]);
   const distribution = useMemo(() => getCriterionDistribution(data), [data]);
+  const committeeReadOnly = role === "committee";
 
   return (
     <>
       <TopBar
-        title="Phân công cán bộ"
-        subtitle="Theo dõi workload cán bộ và phân bổ tác vụ xét duyệt theo từng tiêu chí Sinh viên 5 tốt."
+        title={committeeReadOnly ? "Theo dõi phân công" : "Phân công cán bộ"}
+        subtitle={
+          committeeReadOnly
+            ? "Theo dõi workload cán bộ và tình trạng phân công; tài khoản hội đồng không thực hiện assign/reassign."
+            : "Theo dõi workload cán bộ và phân bổ tác vụ xét duyệt theo từng tiêu chí Sinh viên 5 tốt."
+        }
       />
 
       {isLoading ? (
@@ -138,7 +143,7 @@ function AssignmentWorkloadContent() {
                   Số liệu do backend trả về; tiêu chí chưa có dữ liệu được hiển thị là 0.
                 </p>
               </div>
-              <Badge variant="outline">Read-only</Badge>
+              <Badge variant="outline">{committeeReadOnly ? "Theo dõi" : "Read-only"}</Badge>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {trackedCriteria.map((criterion) => (
@@ -157,7 +162,9 @@ function AssignmentWorkloadContent() {
             <div className="border-b p-5">
               <h2 className="text-base font-bold text-brand-deep">Workload từng cán bộ</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Điều phối lại cán bộ sẽ được bật ở phase sau.
+                {committeeReadOnly
+                  ? "Hội đồng chỉ theo dõi phân công và workload, không thao tác assign/reassign."
+                  : "Điều phối lại cán bộ sẽ được bật ở phase sau."}
               </p>
             </div>
 

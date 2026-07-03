@@ -19,13 +19,11 @@ import { EmptyReviewState } from "@/features/review/components/EmptyReviewState"
 import { LevelBadge } from "@/features/review/components/LevelBadge";
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
 import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingState";
-import { ReviewStatusBadge } from "@/features/review/components/ReviewStatusBadge";
 import type { Criterion, Role } from "@/features/review/types";
 import { getErrorMessage } from "@/features/review/utils/errors";
 import {
   formatDateTime,
   getCriterionLabel,
-  getTaskStatusLabel,
 } from "@/features/review/utils/formatters";
 import { useResolutionCases } from "@/features/resolution/hooks/useResolution";
 import type {
@@ -235,7 +233,9 @@ function ResolutionCasesContent() {
                       <CriterionBadge criterion={item.criterion} />
                     </TableCell>
                     <TableCell>
-                      <ReviewStatusBadge status={resolutionStatusToReviewStatus(item.status)} />
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${resolutionStatusClass(item.status)}`}>
+                        {getResolutionStatusLabel(item.status)}
+                      </span>
                     </TableCell>
                     <TableCell>{getCreatorLabel(item)}</TableCell>
                     <TableCell>{formatDateTime(item.createdAt)}</TableCell>
@@ -365,26 +365,20 @@ function getCreatorLabel(item: ResolutionCaseListItem) {
   return [name, role].filter(Boolean).join(" / ");
 }
 
-function resolutionStatusToReviewStatus(status: ResolutionCaseStatus) {
-  if (status === "resolved") {
-    return "accepted";
-  }
-
-  if (status === "in_review") {
-    return "reviewing";
-  }
-
-  return "resolution_needed";
-}
-
 function getResolutionStatusLabel(status: ResolutionCaseStatus) {
   if (status === "resolved") {
-    return "Đã kết luận";
+    return "Đã xử lý";
   }
 
   if (status === "in_review") {
-    return "Đang hội ý";
+    return "Đang xử lý";
   }
 
-  return getTaskStatusLabel("resolution_needed");
+  return "Đang mở";
+}
+
+function resolutionStatusClass(status: ResolutionCaseStatus) {
+  if (status === "resolved") return "bg-emerald-50 text-emerald-700";
+  if (status === "in_review") return "bg-sky-50 text-sky-700";
+  return "bg-violet-50 text-violet-700";
 }
