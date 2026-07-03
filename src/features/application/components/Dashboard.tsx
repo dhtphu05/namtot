@@ -460,6 +460,15 @@ function ManagerDashReal() {
   ];
   const workload = data?.workloadByOfficer ?? [];
   const recent = data?.recentApplications ?? [];
+  const decisionSummary = data?.decisionSummary;
+  const decisionCards = [
+    { label: "Có thể chốt ngay", value: decisionSummary?.ready ?? 0, filter: "ready", tint: "#22C55E" },
+    { label: "Bị hạ cấp", value: decisionSummary?.downgraded ?? 0, filter: "downgraded", tint: "#F59E0B" },
+    { label: "Không đạt cấp nào", value: decisionSummary?.notEligible ?? 0, filter: "not_eligible", tint: "#EF4444" },
+    { label: "Cần hội ý", value: decisionSummary?.resolution ?? 0, filter: "resolution", tint: "#7C3AED" },
+    { label: "Cần bổ sung", value: decisionSummary?.supplement ?? 0, filter: "supplement", tint: "#F97316" },
+    { label: "Chưa đủ task", value: decisionSummary?.unfinished ?? 0, filter: "unfinished", tint: "#64748B" },
+  ];
 
   if (isLoading) {
     return (
@@ -501,9 +510,27 @@ function ManagerDashReal() {
         <StatCard label="Mập mờ / Resolution" value={overview?.resolutionNeededCount ?? 0} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
       </div>
 
+      <div className="grid sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-7">
+        {decisionCards.map((card) => (
+          <Link
+            key={card.filter}
+            to="/app/manager/results"
+            search={{ filter: card.filter }}
+            className="block"
+          >
+            <StatCard
+              label={card.label}
+              value={card.value}
+              icon={<Target className="w-5 h-5" />}
+              tint={card.tint}
+            />
+          </Link>
+        ))}
+      </div>
+
       <div className="grid lg:grid-cols-3 gap-5 mb-5">
         <Card className="lg:col-span-2">
-          <h3 className="font-bold text-brand-deep mb-3">Hồ sơ theo cấp aim</h3>
+          <h3 className="font-bold text-brand-deep mb-3">Hồ sơ theo 3 cấp active</h3>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={targetRows}>
               <XAxis dataKey="name" stroke="#0057C2" fontSize={12} />
@@ -516,7 +543,7 @@ function ManagerDashReal() {
           </ResponsiveContainer>
         </Card>
         <Card glow>
-          <h3 className="font-bold text-brand-deep mb-3">Kết quả cuối theo cấp đạt</h3>
+          <h3 className="font-bold text-brand-deep mb-3">Đề xuất cấp đạt theo tiêu chí</h3>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={finalRows} dataKey="value" innerRadius={50} outerRadius={80} />

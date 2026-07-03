@@ -49,12 +49,13 @@ export const Route = createFileRoute("/app/resolution/$id")({
 const managerRoles: Role[] = ["manager", "committee", "admin"];
 const fallbackText = "Chưa có dữ liệu";
 const resolveDecisionOptions: Array<{
-  value: Exclude<ResolutionFinalDecision, "closed_no_action">;
+  value: ResolutionFinalDecision;
   label: string;
 }> = [
   { value: "accepted", label: "Đồng ý đạt tiêu chí" },
   { value: "rejected", label: "Kết luận không đạt" },
   { value: "supplement_required", label: "Yêu cầu bổ sung thêm" },
+  { value: "closed_no_action", label: "Đóng không xử lý" },
 ];
 
 function ResolutionCaseDetailRoute() {
@@ -498,8 +499,7 @@ function ResolveResolutionPanel({
   status: ResolutionCaseStatus;
   onSuccess?: () => void;
 }) {
-  const [decision, setDecision] =
-    useState<(typeof resolveDecisionOptions)[number]["value"]>("accepted");
+  const [decision, setDecision] = useState<ResolutionFinalDecision>("accepted");
   const [evidenceDecisions, setEvidenceDecisions] = useState<
     Record<string, Exclude<ResolutionFinalDecision, "closed_no_action">>
   >({});
@@ -545,7 +545,9 @@ function ResolveResolutionPanel({
         knowledgeBaseTitle: updateKnowledgeBase ? knowledgeBaseTitle.trim() : undefined,
         evidenceDecisions: evidences.map((evidence) => ({
           evidenceId: evidence.id,
-          decision: evidenceDecisions[evidence.id] ?? decision,
+          decision:
+            evidenceDecisions[evidence.id] ??
+            (decision === "closed_no_action" ? "rejected" : decision),
           note: note.trim(),
         })),
       },
@@ -626,7 +628,9 @@ function ResolveResolutionPanel({
                       setFormError(null);
                     }}
                   >
-                    {resolveDecisionOptions.map((option) => (
+                    {resolveDecisionOptions
+                      .filter((option) => option.value !== "closed_no_action")
+                      .map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -651,6 +655,9 @@ function ResolveResolutionPanel({
             />
             Lưu kết luận vào knowledge base
           </label>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Dùng làm tiền lệ cho các hồ sơ sau khi gặp minh chứng hoặc tình huống tương tự.
+          </p>
           {updateKnowledgeBase ? (
             <input
               className="mt-3 h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"

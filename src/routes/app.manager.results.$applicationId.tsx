@@ -135,6 +135,7 @@ function ManagerResultDetailRoute() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <HeaderCard detail={detail} />
+          <DecisionConsole detail={detail} />
           <CriterionSummary detail={detail} />
           <ReviewTasks detail={detail} />
           <EvidenceSection evidences={detail.applicationEvidences} />
@@ -319,6 +320,39 @@ function HeaderCard({ detail }: { detail: ManagerResultDetail }) {
   );
 }
 
+function DecisionConsole({ detail }: { detail: ManagerResultDetail }) {
+  const suggestedLevel = detail.latestCascade?.suggestedLevel ?? detail.aggregation.suggestedFinalLevel ?? null;
+  const canFinalize = detail.aggregation.canFinalize;
+  const blocker = detail.aggregation.blockingIssues[0]?.message ?? "Không có blocker chính.";
+  const finalText = suggestedLevel ? `passed + ${level(suggestedLevel)}` : "failed + không có cấp đạt";
+
+  return (
+    <Card>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="font-bold text-brand-deep">Decision Console</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tóm tắt quyết định để hội đồng kiểm tra trước khi chốt kết quả.
+          </p>
+        </div>
+        <Chip tone={canFinalize ? "success" : "warning"}>
+          {canFinalize ? "Có thể chốt" : "Chưa thể chốt"}
+        </Chip>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <Info label="Aim đăng ký" value={level(detail.application.targetLevel)} />
+        <Info label="Đề xuất cấp đạt" value={level(suggestedLevel)} />
+        <Info label="Kết quả sẽ lưu" value={finalText} />
+        <Info label="Readiness" value={`${detail.application.readinessScore}%`} />
+      </div>
+      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <span className="font-semibold">Blocker chính: </span>
+        {blocker}
+      </div>
+    </Card>
+  );
+}
+
 function CriterionSummary({ detail }: { detail: ManagerResultDetail }) {
   const incompleteCriteria = criterionOrder.filter((criterion) => {
     const item = detail.criterionSummary[criterion];
@@ -356,6 +390,9 @@ function CriterionSummary({ detail }: { detail: ManagerResultDetail }) {
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {criterionOrder.map((criterion) => {
           const item = detail.criterionSummary[criterion];
+          const task = detail.reviewTasks.find((candidate) => candidate.criterion === criterion);
+          const evidences = detail.applicationEvidences.filter((evidence) => evidence.criterion === criterion);
+          const blocker = task?.decisionReason || task?.officerNote || item?.summary;
           return (
             <div key={criterion} className="rounded-lg border p-4">
               <div className="flex items-center justify-between gap-2">
@@ -372,6 +409,27 @@ function CriterionSummary({ detail }: { detail: ManagerResultDetail }) {
                 <Info label="Gợi ý cấp" value={level(item?.officerSuggestedLevel)} />
                 <Info label="Minh chứng" value={`${item?.evidenceCount ?? 0}`} />
                 <Info label="Đã đạt" value={`${item?.acceptedEvidenceCount ?? 0}`} />
+              </div>
+              <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                <span className="font-semibold">Blocker/ghi chú: </span>
+                {blocker || "Chưa có ghi chú xử lý cho tiêu chí này."}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {task ? (
+                  <Button asChild size="sm" variant="outline">
+                    <Link to="/app/review/$id" params={{ id: task.id }}>
+                      Mở task review
+                    </Link>
+                  </Button>
+                ) : null}
+                {evidences.slice(0, 3).map((evidence) => (
+                  <Chip key={evidence.id} tone={statusTone(evidence.status)}>
+                    {evidence.evidenceName || evidence.id.slice(0, 8)}
+                  </Chip>
+                ))}
+                {evidences.length > 3 ? (
+                  <Chip tone="muted">+{evidences.length - 3} minh chứng</Chip>
+                ) : null}
               </div>
               {item?.warningCount ? (
                 <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -809,6 +867,15 @@ function toFinalizationItem(detail: ManagerResultDetail): ManagerResultItem {
     lastActivityAt: detail.application.lastActivityAt,
     finalizedBy: detail.application.finalizedBy,
     reviewTaskSummary: summary,
+    criterionStatuses: Object.fromEntries(
+      detail.reviewTasks.map((task) => [
+        task.criterion,
+        {
+          status: task.status,
+          officerSuggestedLevel: task.officerSuggestedLevel ?? null,
+        },
+      ]),
+    ),
     taskProgress: { accepted: summary.accepted, total: summary.total },
     canFinalize: detail.aggregation.canFinalize,
     blockingReasons: detail.aggregation.blockingIssues.map((issue) => issue.message),

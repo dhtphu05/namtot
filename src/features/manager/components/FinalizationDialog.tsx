@@ -11,8 +11,20 @@ import {
 } from "@/components/ui/dialog";
 import { useFinalizeManagerApplication } from "@/features/manager/hooks/useManager";
 import type { ManagerResultItem } from "@/features/manager/types";
+import type { Criterion, ReviewTaskStatus } from "@/features/review/types";
 import { getDownrankReason, getFinalizeActionLabel, getLevelLabel, isLegacyCentral } from "@/lib/levels";
 import { getApplicationStatusLabel } from "@/lib/status-labels";
+
+const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
+const criterionLabel: Record<Criterion, string> = {
+  ethics: "Đạo đức",
+  academic: "Học tập",
+  physical: "Thể lực",
+  volunteer: "Tình nguyện",
+  integration: "Hội nhập",
+  priority: "Ưu tiên",
+  collective: "Tập thể",
+};
 
 export function FinalizationDialog({
   item,
@@ -116,6 +128,23 @@ export function FinalizationDialog({
         ) : null}
 
         <div className="rounded-lg border p-4">
+          <div className="mb-3 text-sm font-bold text-brand-deep">Tóm tắt 5 tiêu chí</div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {criterionOrder.map((criterion) => {
+              const task = item.criterionStatuses?.[criterion];
+              return (
+                <div key={criterion} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                  <span className="font-semibold text-brand-deep">{criterionLabel[criterion]}</span>
+                  <span className={`rounded-full px-2 py-0.5 font-semibold ${criterionClass(task?.status)}`}>
+                    {criterionStatusLabel(task?.status)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-lg border p-4">
           <div className="text-sm font-bold text-brand-deep">Quyết định sẽ gửi</div>
           <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
             <div className="text-base font-semibold text-brand-deep">
@@ -124,6 +153,10 @@ export function FinalizationDialog({
             <div className="mt-1 text-sm text-muted-foreground">
               {getDownrankReason(item.targetLevel, item.suggestedLevel)}
             </div>
+          </div>
+
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+            Backend sẽ recompute cascade lần cuối khi bấm chốt. Nếu đề xuất mới khác dữ liệu đang hiển thị, hệ thống sẽ từ chối kết quả cũ.
           </div>
 
           <label className="mt-4 block text-sm">
@@ -163,4 +196,23 @@ function Info({ label, value }: { label: string; value: string }) {
       <div className="font-semibold text-brand-deep">{value}</div>
     </div>
   );
+}
+
+function criterionStatusLabel(status?: ReviewTaskStatus) {
+  if (status === "accepted") return "Đạt";
+  if (status === "rejected") return "Không đạt";
+  if (status === "supplement_required") return "Cần bổ sung";
+  if (status === "resolution_needed") return "Cần hội ý";
+  if (status === "reviewing") return "Đang xét";
+  if (status === "waiting") return "Chờ xét";
+  return "Chưa có";
+}
+
+function criterionClass(status?: ReviewTaskStatus) {
+  if (status === "accepted") return "bg-emerald-50 text-emerald-700";
+  if (status === "rejected") return "bg-rose-50 text-rose-700";
+  if (status === "supplement_required") return "bg-amber-50 text-amber-700";
+  if (status === "resolution_needed") return "bg-violet-50 text-violet-700";
+  if (status === "reviewing") return "bg-sky-50 text-sky-700";
+  return "bg-slate-100 text-slate-600";
 }

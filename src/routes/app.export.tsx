@@ -204,7 +204,7 @@ function ExportContent() {
             format="csv"
             icon={<FileSpreadsheet className="h-6 w-6" />}
             isLoading={exportingDataset === "reviewTasks"}
-            title="Xuất review tasks CSV"
+            title="Chi tiết task xét duyệt CSV"
             onExport={() => void downloadDataset("reviewTasks", "csv", normalizedFilters)}
           />
           <ExportOptionCard
@@ -213,7 +213,7 @@ function ExportContent() {
             format="csv"
             icon={<FileSpreadsheet className="h-6 w-6" />}
             isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
-            title="Xuất review results CSV"
+            title="Biên bản kết quả cuối CSV"
             onExport={() => void downloadDataset("reviewResults", "csv", normalizedFilters)}
           />
           <ExportOptionCard
@@ -222,8 +222,48 @@ function ExportContent() {
             format="json"
             icon={<FileJson className="h-6 w-6" />}
             isLoading={exportingDataset === "reviewResults" && exportingFormat === "json"}
-            title="Xuất review results JSON"
+            title="Snapshot kết quả cuối JSON"
             onExport={() => void downloadDataset("reviewResults", "json", normalizedFilters)}
+          />
+          <ExportOptionCard
+            description="Báo cáo hồ sơ đã chốt đạt, dùng để tổng hợp danh sách công nhận theo cấp."
+            disabled={isExporting}
+            fields={["student", "aim", "final level", "finalized at", "finalized by", "final note"]}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
+            title="Danh sách đạt theo cấp"
+            onExport={() => void downloadDataset("reviewResults", "csv", { ...normalizedFilters, status: "completed" })}
+          />
+          <ExportOptionCard
+            description="Báo cáo hồ sơ bị hạ so với aim đăng ký, dựa trên aim, đề xuất cấp đạt và final level trong file kết quả."
+            disabled={isExporting}
+            fields={["student", "aim", "suggested level", "final level", "downrank reason", "5 criteria"]}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
+            title="Danh sách bị hạ cấp"
+            onExport={() => void downloadDataset("reviewResults", "csv", normalizedFilters)}
+          />
+          <ExportOptionCard
+            description="Báo cáo hồ sơ đã chốt chưa đạt, phục vụ đối soát và phản hồi."
+            disabled={isExporting}
+            fields={["student", "aim", "final status", "5 criteria", "final note", "cascade snapshot"]}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
+            title="Danh sách chưa đạt"
+            onExport={() => void downloadDataset("reviewResults", "csv", { ...normalizedFilters, status: "rejected" })}
+          />
+          <ExportOptionCard
+            description="Dữ liệu phục vụ đối chiếu minh chứng và các case hội ý, gồm task status và ghi chú xử lý."
+            disabled={isExporting}
+            fields={["student", "criterion", "evidence count", "task decision", "officer note", "updated at"]}
+            format="csv"
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "reviewTasks"}
+            title="Chi tiết minh chứng/hội ý"
+            onExport={() => void downloadDataset("reviewTasks", "csv", normalizedFilters)}
           />
         </div>
 
@@ -259,6 +299,7 @@ function FilterField({ children, label }: { children: React.ReactNode; label: st
 function ExportOptionCard({
   description,
   disabled,
+  fields,
   format,
   icon,
   isLoading,
@@ -267,6 +308,7 @@ function ExportOptionCard({
 }: {
   description: string;
   disabled?: boolean;
+  fields?: string[];
   format: ExportFormat;
   icon: React.ReactNode;
   isLoading?: boolean;
@@ -287,6 +329,18 @@ function ExportOptionCard({
           <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
             Tên file: {fileName}
           </div>
+          {fields?.length ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {fields.map((field) => (
+                <span
+                  key={field}
+                  className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600"
+                >
+                  {field}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
 

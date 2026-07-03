@@ -19,7 +19,7 @@ import {
 } from "@/features/manager/hooks/useManager";
 import type { ManagerCollectiveItem, ManagerCollectiveFilters } from "@/features/manager/types";
 import type { CollectiveStatus, FinalStatus, Level, Role } from "@/lib/api/types";
-import { ACTIVE_LEVELS } from "@/lib/levels";
+import { ACTIVE_LEVELS, getFinalizeActionLabel, getLevelLabel } from "@/lib/levels";
 import {
   finalStatusTone,
   getApplicationStatusLabel,
@@ -148,7 +148,7 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
             <option value="all">Tất cả cấp</option>
             {levels.map((level) => (
               <option key={level} value={level}>
-                {levelLabel[level]}
+                {getLevelLabel(level)}
               </option>
             ))}
           </select>
@@ -209,7 +209,7 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
                           {item.schoolYear} · {item.representative?.fullName ?? "Chưa rõ đại diện"}
                         </div>
                       </td>
-                      <td className="py-3 pr-4">{levelLabel[item.targetLevel]}</td>
+                      <td className="py-3 pr-4">{getLevelLabel(item.targetLevel)}</td>
                       <td className="py-3 pr-4">
                         <Chip tone={item.status === "completed" ? "success" : "warning"}>
                           {getApplicationStatusLabel(item.status)}
@@ -235,7 +235,7 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
                           {getFinalStatusLabel(item.finalStatus)}
                         </Chip>
                         {item.finalLevel ? (
-                          <div className="mt-1 text-xs text-muted-foreground">{levelLabel[item.finalLevel]}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">{getLevelLabel(item.finalLevel)}</div>
                         ) : null}
                       </td>
                       <td className="py-3 text-right">
@@ -313,6 +313,10 @@ function CollectiveFinalizeDialog({
   const levelRequired = finalStatus !== "failed" && finalLevel === "none";
   const noteRequired = finalNote.trim().length === 0;
   const blockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
+  const savedFinalLevel = finalStatus === "failed" ? null : (finalLevel === "none" ? null : finalLevel);
+  const savedResultText = finalStatus === "failed"
+    ? "failed + không có cấp đạt"
+    : `${finalStatus} + ${savedFinalLevel ? getLevelLabel(savedFinalLevel) : "--"}`;
 
   const submit = () => {
     if (!item.canFinalize || levelRequired || noteRequired) return;
@@ -357,6 +361,14 @@ function CollectiveFinalizeDialog({
             <SummaryMetric label="SV5T cấp trường" value={formatPercent(item.memberSummary?.schoolSv5tRate)} />
             <SummaryMetric label="Đạt cấp cao hơn" value={`${item.memberSummary?.higherLevelAchieverCount ?? 0}`} />
             <SummaryMetric label="Readiness" value={`${item.readinessScore}%`} />
+            <SummaryMetric label="Cấp đề xuất" value={getLevelLabel(item.finalLevel ?? item.targetLevel)} />
+            <SummaryMetric label="Kết quả sẽ lưu" value={savedResultText} />
+          </div>
+          <div className="mt-3 rounded-md border bg-white p-3 text-sm">
+            <div className="font-semibold text-brand-deep">Blocker chính</div>
+            <div className="mt-1 text-muted-foreground">
+              {item.blockingReasons?.length ? item.blockingReasons.join(" ") : "Không có blocker chính."}
+            </div>
           </div>
         </div>
 
@@ -385,7 +397,7 @@ function CollectiveFinalizeDialog({
               <option value="none">Không áp dụng</option>
               {levels.map((level) => (
                 <option key={level} value={level}>
-                  {levelLabel[level]}
+                  {getLevelLabel(level)}
                 </option>
               ))}
             </select>
@@ -417,7 +429,7 @@ function CollectiveFinalizeDialog({
             }
           >
             {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Chốt kết quả
+            {finalStatus === "failed" ? "Chốt chưa đạt" : getFinalizeActionLabel(savedFinalLevel)}
           </Button>
         </DialogFooter>
       </DialogContent>

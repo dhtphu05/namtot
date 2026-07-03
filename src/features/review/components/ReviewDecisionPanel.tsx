@@ -48,10 +48,18 @@ const decisionOptions: Array<{
   },
 ];
 
+const reasonTemplates = [
+  "Thiếu minh chứng",
+  "Không đạt ngưỡng điểm/số ngày/số lượng",
+  "Minh chứng không hợp lệ",
+  "Cần hội đồng quyết định",
+];
+
 export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProps) {
   const role = useAuth((state) => state.user?.role);
   const [decision, setDecision] = useState<TaskDecision>("accepted");
   const [suggestedLevel, setSuggestedLevel] = useState<Level | "">(task.officerSuggestedLevel ?? "");
+  const [reasonTemplate, setReasonTemplate] = useState("");
   const [note, setNote] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submittedMessage, setSubmittedMessage] = useState<string | null>(null);
@@ -61,8 +69,14 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const isFinal = finalStatuses.includes(task.status as (typeof finalStatuses)[number]);
   const canSubmit = role === "officer" && !isFinal;
   const evidenceOptions = useMemo(() => task.evidences ?? [], [task.evidences]);
+  const aimImpactText =
+    decision === "accepted"
+      ? suggestedLevel
+        ? `Nếu các tiêu chí còn lại cũng đạt, hồ sơ có thể được xét tối đa ${getLevelLabel(suggestedLevel)}.`
+        : "Chọn cấp tối đa để cascade có dữ liệu chốt cấp đạt."
+      : `Nếu task này không đạt, hồ sơ có thể bị hạ khỏi aim ${getLevelLabel(task.application.targetLevel)} hoặc không đạt cấp nào.`;
 
-  const validationMessage = validateDecisionV2(decision, note, suggestedLevel);
+  const validationMessage = validateDecisionV2(decision, note, suggestedLevel, reasonTemplate);
   const apiError =
     submitDecision.error instanceof Error
       ? submitDecision.error.message
@@ -197,6 +211,40 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
           </div>
         ) : null}
 
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <span className="font-semibold">Ảnh hưởng tới cấp aim: </span>
+          {aimImpactText}
+        </div>
+
+        {decision !== "accepted" ? (
+          <div>
+            <label className="text-sm font-semibold text-brand-deep" htmlFor="review-reason-template">
+              Mẫu lý do
+            </label>
+            <select
+              className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              disabled={!canSubmit || submitDecision.isPending}
+              id="review-reason-template"
+              value={reasonTemplate}
+              onChange={(event) => {
+                const value = event.target.value;
+                setReasonTemplate(value);
+                if (value && !note.trim()) {
+                  setNote(value);
+                }
+                setFormError(null);
+              }}
+            >
+              <option value="">Chọn mẫu lý do</option>
+              {reasonTemplates.map((template) => (
+                <option key={template} value={template}>
+                  {template}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+
         <div>
           <label className="text-sm font-semibold text-brand-deep" htmlFor="review-decision-note">
             Ghi chú xét duyệt
@@ -295,11 +343,20 @@ function validateDecision(decision: TaskDecision, note: string) {
   return null;
 }
 
-function validateDecisionV2(decision: TaskDecision, note: string, suggestedLevel: Level | "") {
+function validateDecisionV2(
+  decision: TaskDecision,
+  note: string,
+  suggestedLevel: Level | "",
+  reasonTemplate: string,
+) {
   const trimmedNote = note.trim();
 
   if (decision === "accepted" && !suggestedLevel) {
     return "Vui lòng chọn cấp đạt của tiêu chí này.";
+  }
+
+  if (decision !== "accepted" && !reasonTemplate) {
+    return "Vui lòng chọn mẫu lý do cho quyết định này.";
   }
 
   if (decision !== "accepted" && !trimmedNote) {

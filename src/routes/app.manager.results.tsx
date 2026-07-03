@@ -17,7 +17,7 @@ import {
 } from "@/features/manager/hooks/useManager";
 import { FinalizationDialog } from "@/features/manager/components/FinalizationDialog";
 import type { ManagerResultFilters, ManagerResultItem } from "@/features/manager/types";
-import type { Level, Role } from "@/features/review/types";
+import type { Criterion, Level, ReviewTaskStatus, Role } from "@/features/review/types";
 import type { FinalStatus } from "@/lib/api/types";
 import { ACTIVE_LEVELS, getDownrankReason, getFinalizeActionLabel, getLevelLabel, isLegacyCentral } from "@/lib/levels";
 import {
@@ -27,14 +27,38 @@ import {
 } from "@/lib/status-labels";
 
 export const Route = createFileRoute("/app/manager/results")({
+  validateSearch: (search) => ({
+    filter: typeof search.filter === "string" ? normalizeActiveFilter(search.filter) : undefined,
+  }),
   component: ManagerResultsShell,
 });
 
 const levels: Level[] = [...ACTIVE_LEVELS];
 const allowedRoles: Role[] = ["manager", "committee", "admin"];
 const finalizerRoles: Role[] = ["committee", "admin"];
+const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
 
-type ActiveFilter = "all" | Level | "failed" | "pending";
+const criterionShortLabel: Record<Criterion, string> = {
+  ethics: "ĐĐ",
+  academic: "HT",
+  physical: "TL",
+  volunteer: "TN",
+  integration: "HN",
+  priority: "UT",
+  collective: "TT",
+};
+
+type ActiveFilter =
+  | "all"
+  | Level
+  | "failed"
+  | "pending"
+  | "ready"
+  | "downgraded"
+  | "not_eligible"
+  | "resolution"
+  | "supplement"
+  | "unfinished";
 
 function ManagerResultsShell() {
   const user = useAuth((state) => state.user);
@@ -70,7 +94,8 @@ function ManagerResultsShell() {
 }
 
 function ManagerResultsContent({ role }: { role: Role }) {
-  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
+  const searchState = Route.useSearch();
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>(searchState.filter ?? "all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -94,6 +119,16 @@ function ManagerResultsContent({ role }: { role: Role }) {
     }
     if (activeFilter === "pending") {
       next.finalStatus = "pending";
+    }
+    if (
+      activeFilter === "ready" ||
+      activeFilter === "downgraded" ||
+      activeFilter === "not_eligible" ||
+      activeFilter === "resolution" ||
+      activeFilter === "supplement" ||
+      activeFilter === "unfinished"
+    ) {
+      next.resultView = activeFilter;
     }
     return next;
   }, [activeFilter, page, pageSize, search, sortBy]);
@@ -146,6 +181,12 @@ function ManagerResultsContent({ role }: { role: Role }) {
         <div className="flex flex-wrap items-center gap-2">
           {[
             ["all", "Tất cả"],
+            ["ready", "Có thể chốt"],
+            ["downgraded", "Bị hạ cấp"],
+            ["not_eligible", "Không đạt cấp nào"],
+            ["resolution", "Cần hội ý"],
+            ["supplement", "Cần bổ sung"],
+            ["unfinished", "Chưa đủ task"],
             ["school", "Cấp Trường"],
             ["university", "Cấp ĐHĐN"],
             ["city", "Cấp Thành phố"],
@@ -225,9 +266,10 @@ function ManagerResultsContent({ role }: { role: Role }) {
                   <th className="px-4 py-3">Lớp</th>
                   <th className="px-4 py-3">Khoa</th>
                   <th className="px-4 py-3">Cấp đăng ký</th>
-                  <th className="px-4 py-3">AI/Cascade gợi ý</th>
+                  <th className="px-4 py-3">Đề xuất cấp đạt</th>
                   <th className="px-4 py-3">Kết quả cuối</th>
                   <th className="px-4 py-3">Cấp đạt</th>
+                  <th className="px-4 py-3">5 tiêu chí</th>
                   <th className="px-4 py-3">Lý do</th>
                   <th className="px-4 py-3">Trạng thái hồ sơ</th>
                   <th className="px-4 py-3">Tiến độ task</th>
@@ -250,7 +292,9 @@ function ManagerResultsContent({ role }: { role: Role }) {
                       : !item.canFinalize
                         ? blockedReason
                         : "Chốt kết quả hồ sơ";
-                  const downrankReason = getDownrankReason(item.targetLevel, item.suggestedLevel, item.blockingReasons);
+                  const downrankReason =
+                    item.topBlockerReason ??
+                    getDownrankReason(item.targetLevel, item.suggestedLevel, item.blockingReasons);
                   return (
                     <tr key={item.applicationId} className="border-b last:border-0">
                       <td className="px-4 py-3 font-semibold text-brand-deep">{item.studentName}</td>
@@ -266,6 +310,9 @@ function ManagerResultsContent({ role }: { role: Role }) {
                       </td>
                       <td className="px-4 py-3">
                         {item.finalLevel ? getLevelLabel(item.finalLevel) : "--"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <CriterionStatusStrip item={item} />
                       </td>
                       <td className="max-w-64 px-4 py-3 text-xs text-muted-foreground">
                         {downrankReason}
@@ -360,8 +407,52 @@ function ManagerResultsContent({ role }: { role: Role }) {
   );
 }
 
+function normalizeActiveFilter(value: string): ActiveFilter | undefined {
+  const allowed: ActiveFilter[] = [
+    "all",
+    ...levels,
+    "failed",
+    "pending",
+    "ready",
+    "downgraded",
+    "not_eligible",
+    "resolution",
+    "supplement",
+    "unfinished",
+  ];
+  return allowed.includes(value as ActiveFilter) ? (value as ActiveFilter) : undefined;
+}
+
 function FinalStatusChip({ status }: { status: FinalStatus }) {
   return <Chip tone={finalStatusTone[status]}>{getFinalStatusLabel(status)}</Chip>;
+}
+
+function CriterionStatusStrip({ item }: { item: ManagerResultItem }) {
+  return (
+    <div className="flex min-w-40 flex-wrap gap-1.5">
+      {criterionOrder.map((criterion) => {
+        const task = item.criterionStatuses?.[criterion];
+        return (
+          <span
+            key={criterion}
+            className={`inline-flex h-6 min-w-8 items-center justify-center rounded-md px-1.5 text-[11px] font-bold ${criterionClass(task?.status)}`}
+            title={`${criterionShortLabel[criterion]}: ${task?.status ?? "Chưa có task"}`}
+          >
+            {criterionShortLabel[criterion]}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function criterionClass(status?: ReviewTaskStatus) {
+  if (status === "accepted") return "bg-emerald-50 text-emerald-700";
+  if (status === "rejected") return "bg-rose-50 text-rose-700";
+  if (status === "supplement_required") return "bg-amber-50 text-amber-700";
+  if (status === "resolution_needed") return "bg-violet-50 text-violet-700";
+  if (status === "reviewing") return "bg-sky-50 text-sky-700";
+  return "bg-slate-100 text-slate-600";
 }
 
 function formatDateTime(value?: string | null) {

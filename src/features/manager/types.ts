@@ -24,6 +24,7 @@ export type ManagerResultFilters = {
   faculty?: string;
   className?: string;
   search?: string;
+  resultView?: "ready" | "downgraded" | "not_eligible" | "resolution" | "supplement" | "unfinished";
   page?: number;
   pageSize?: number;
   sortBy?: "lastActivityAt" | "updatedAt" | "newest" | "oldest" | "readiness_desc" | "unfinalized_first" | "target_level_desc";
@@ -149,12 +150,22 @@ export type ManagerResultItem = {
     fullName: string;
   } | null;
   reviewTaskSummary: ReviewTaskSummary;
+  criterionStatuses?: Partial<
+    Record<
+      Criterion,
+      {
+        status: ReviewTaskStatus;
+        officerSuggestedLevel?: Level | null;
+      }
+    >
+  >;
   taskProgress?: {
     accepted: number;
     total: number;
   };
   canFinalize: boolean;
   blockingReasons: string[];
+  topBlockerReason?: string | null;
 };
 
 export type ManagerResultsResponse = {
@@ -370,6 +381,14 @@ export type ManagerDashboardSummary = {
     resolved: number;
     rejected: number;
     closed: number;
+  };
+  decisionSummary?: {
+    ready: number;
+    downgraded: number;
+    notEligible: number;
+    resolution: number;
+    supplement: number;
+    unfinished: number;
   };
   workloadByOfficer?: Array<{
     officerId: string;
