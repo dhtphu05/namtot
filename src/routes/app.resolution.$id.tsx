@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   FileQuestion,
   History,
   Link2,
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AuditTimeline } from "@/features/audit/components/AuditTimeline";
 import { useAuth } from "@/features/auth/store/auth-store";
+import { evidenceApi } from "@/features/evidence/api/evidence";
 import { CriterionBadge } from "@/features/review/components/CriterionBadge";
 import { EmptyReviewState } from "@/features/review/components/EmptyReviewState";
 import { LevelBadge } from "@/features/review/components/LevelBadge";
@@ -35,6 +37,7 @@ import type {
   ResolutionCaseDetail,
   ResolutionCaseStatus,
   ResolutionComment,
+  ResolutionEvidence,
   ResolutionFinalDecision,
   ResolutionTimelineItem,
 } from "@/features/resolution/types";
@@ -275,6 +278,7 @@ function ReasonSection({ resolutionCase }: { resolutionCase: ResolutionCaseDetai
 function LinkedDataSection({ resolutionCase }: { resolutionCase: ResolutionCaseDetail }) {
   const evidenceIds = resolutionCase.evidenceIds ?? [];
   const evidenceNames = resolutionCase.evidenceNames ?? [];
+  const relatedEvidences = resolutionCase.relatedEvidences ?? [];
 
   return (
     <Card>
@@ -301,11 +305,83 @@ function LinkedDataSection({ resolutionCase }: { resolutionCase: ResolutionCaseD
           </div>
         ) : (
           <div className="mt-2 text-sm text-muted-foreground">
-            Backend chưa trả về minh chứng liên quan.
+            Case này chưa liên kết minh chứng cụ thể.
           </div>
         )}
       </div>
+      <div className="mt-5 space-y-4">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Minh chứng chính
+          </div>
+          {resolutionCase.primaryEvidence ? (
+            <div className="mt-2">
+              <ResolutionEvidenceCard evidence={resolutionCase.primaryEvidence} />
+            </div>
+          ) : (
+            <div className="mt-2 rounded-lg border bg-slate-50 p-3 text-sm text-muted-foreground">
+              Case này chưa liên kết minh chứng cụ thể.
+            </div>
+          )}
+        </div>
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Minh chứng liên quan
+          </div>
+          {relatedEvidences.length ? (
+            <div className="mt-2 grid gap-3 md:grid-cols-2">
+              {relatedEvidences.map((evidence) => (
+                <ResolutionEvidenceCard key={evidence.id} evidence={evidence} />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-2 rounded-lg border bg-slate-50 p-3 text-sm text-muted-foreground">
+              Không có minh chứng liên quan khác.
+            </div>
+          )}
+        </div>
+      </div>
     </Card>
+  );
+}
+
+function ResolutionEvidenceCard({ evidence }: { evidence: ResolutionEvidence }) {
+  const openFile = async (fileId: string) => {
+    try {
+      const response = await evidenceApi.getSignedFileUrl(fileId);
+      if (response.data?.url) window.open(response.data.url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể mở file.");
+    }
+  };
+
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="font-semibold text-brand-deep">{evidence.evidenceName}</div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        {evidence.sourceType} • {evidence.status} • {evidence.indexingStatus}
+      </div>
+      {evidence.evidenceCard?.aiSummary ? (
+        <p className="mt-2 text-sm text-muted-foreground">{evidence.evidenceCard.aiSummary}</p>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">AI chưa xử lý minh chứng này.</p>
+      )}
+      <div className="mt-3 space-y-2">
+        {evidence.files.length ? evidence.files.map((file) => (
+          <div key={file.id} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm">
+            <span className="truncate">{file.originalName}</span>
+            <Button size="sm" variant="ghost" onClick={() => openFile(file.id)}>
+              <ExternalLink className="h-4 w-4" />
+              Xem file
+            </Button>
+          </div>
+        )) : (
+          <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
+            Minh chứng chưa có file đính kèm.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

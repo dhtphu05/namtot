@@ -94,6 +94,8 @@ function normalizeResolutionCaseDetail(payload: RawRecord | null): ResolutionCas
   const application = asRecord(payload.application) ?? asRecord(rawCase.application);
   const student = asRecord(payload.student) ?? asRecord(application?.student);
   const evidence = asRecord(payload.evidence) ?? asRecord(rawCase.evidence);
+  const primaryEvidence = asRecord(payload.primaryEvidence);
+  const relatedEvidences = asRecordArray(payload.relatedEvidences);
   const relatedTask = asRecord(payload.relatedReviewTask);
   const base = normalizeResolutionCaseItem({
     ...rawCase,
@@ -113,7 +115,15 @@ function normalizeResolutionCaseDetail(payload: RawRecord | null): ResolutionCas
       rawCase.applicationStatus ??
       "resolution_needed") as ApplicationStatus,
     officerNote: asString(relatedTask?.officerNote ?? rawCase.officerNote) || null,
-    evidenceNames: [evidence?.evidenceName].filter(Boolean).map((item) => asString(item)),
+    evidenceNames: [
+      evidence?.evidenceName,
+      primaryEvidence?.evidenceName,
+      ...relatedEvidences.map((item) => item.evidenceName),
+    ].filter(Boolean).map((item) => asString(item)),
+    primaryEvidence: normalizeResolutionEvidence(primaryEvidence ?? evidence),
+    relatedEvidences: relatedEvidences.map(normalizeResolutionEvidence).filter(Boolean) as NonNullable<ResolutionCaseDetail["relatedEvidences"]>,
+    latestPrecheck: payload.latestPrecheck ?? payload.precheck ?? null,
+    latestCascade: payload.latestCascade ?? payload.cascade ?? null,
     comments: [],
     auditTimeline: asRecordArray(payload.auditTimeline).map((item) => ({
       id: asString(item.id),
@@ -125,6 +135,27 @@ function normalizeResolutionCaseDetail(payload: RawRecord | null): ResolutionCas
       createdAt: asString(item.createdAt),
     })),
     decisionHistory: buildDecisionHistory(rawCase, asRecordArray(payload.auditTimeline)),
+  };
+}
+
+function normalizeResolutionEvidence(raw: RawRecord | null) {
+  if (!raw) return null;
+  return {
+    id: asString(raw.id),
+    evidenceName: asString(raw.evidenceName),
+    criterion: (raw.criterion ?? "academic") as Criterion,
+    sourceType: asString(raw.sourceType),
+    status: asString(raw.status),
+    indexingStatus: asString(raw.indexingStatus),
+    confidence: typeof raw.confidence === "number" ? raw.confidence : null,
+    files: asRecordArray(raw.files).map((file) => ({
+      id: asString(file.id),
+      originalName: asString(file.originalName),
+      mimeType: asString(file.mimeType),
+      fileSize: Number(file.fileSize ?? 0),
+      createdAt: asString(file.createdAt),
+    })),
+    evidenceCard: asRecord(raw.evidenceCard),
   };
 }
 

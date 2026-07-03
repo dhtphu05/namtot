@@ -144,6 +144,9 @@ export function Sidebar() {
     } catch {
       // Local logout vẫn cần chạy nếu refresh token đã invalid.
     } finally {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("5tot-auth");
+      }
       clearAuth();
       setRole("student");
       nav({ to: "/login" });

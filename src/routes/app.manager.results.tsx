@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   CheckCircle2,
   ClipboardCheck,
@@ -31,7 +31,7 @@ import type { Level, Role } from "@/features/review/types";
 import type { FinalStatus } from "@/lib/api/types";
 
 export const Route = createFileRoute("/app/manager/results")({
-  component: ManagerResultsRoute,
+  component: ManagerResultsShell,
 });
 
 const levels: Level[] = ["school", "university", "city", "central"];
@@ -64,9 +64,10 @@ const applicationStatusLabel: Record<string, string> = {
 
 type ActiveFilter = "all" | Level | "failed" | "pending";
 
-function ManagerResultsRoute() {
+function ManagerResultsShell() {
   const user = useAuth((state) => state.user);
   const role = user?.role as Role | undefined;
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   if (!role || !allowedRoles.includes(role)) {
     return (
@@ -89,19 +90,28 @@ function ManagerResultsRoute() {
     );
   }
 
+  if (pathname !== "/app/manager/results") {
+    return <Outlet />;
+  }
+
   return <ManagerResultsContent role={role} />;
 }
 
 function ManagerResultsContent({ role }: { role: Role }) {
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState<NonNullable<ManagerResultFilters["sortBy"]>>("lastActivityAt");
   const [selected, setSelected] = useState<ManagerResultItem | null>(null);
   const canFinalize = finalizerRoles.includes(role);
   const summaryQuery = useManagerDashboardSummary();
   const filters = useMemo<ManagerResultFilters>(() => {
     const next: ManagerResultFilters = {
-      page: 1,
-      pageSize: 50,
+      page,
+      pageSize,
+      sortBy,
+      sortOrder: sortBy === "oldest" ? "asc" : "desc",
       search: search.trim() || undefined,
     };
     if (levels.includes(activeFilter as Level)) {
@@ -114,12 +124,19 @@ function ManagerResultsContent({ role }: { role: Role }) {
       next.finalStatus = "pending";
     }
     return next;
-  }, [activeFilter, search]);
+  }, [activeFilter, page, pageSize, search, sortBy]);
   const resultsQuery = useManagerResults(filters);
   const summary = summaryQuery.data;
   const breakdown = summary?.finalLevelBreakdown;
   const total = summary?.applicationOverview?.totalApplications ?? summary?.totalApplications ?? 0;
   const items = resultsQuery.data?.items ?? [];
+  const pagination = resultsQuery.data?.pagination ?? { page, pageSize, total: 0, totalPages: 0 };
+  const firstItem = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1;
+  const lastItem = Math.min(pagination.total, pagination.page * pagination.pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeFilter, pageSize, search, sortBy]);
 
   return (
     <>
@@ -183,6 +200,17 @@ function ManagerResultsContent({ role }: { role: Role }) {
               className="w-full rounded-lg border border-[#DCE7F2] bg-white py-2 pl-8 pr-3 text-[13px] font-medium text-brand-deep outline-none focus:ring-2 focus:ring-[#0057C2]/20"
             />
           </div>
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as NonNullable<ManagerResultFilters["sortBy"]>)}
+            className="rounded-lg border border-[#DCE7F2] bg-white px-3 py-2 text-[13px] font-medium text-brand-deep outline-none focus:ring-2 focus:ring-[#0057C2]/20"
+          >
+            <option value="lastActivityAt">Mới cập nhật nhất</option>
+            <option value="oldest">Cũ nhất</option>
+            <option value="readiness_desc">Mức sẵn sàng cao nhất</option>
+            <option value="unfinalized_first">Chưa chốt trước</option>
+            <option value="target_level_desc">Cấp đăng ký cao nhất</option>
+          </select>
         </div>
       </Card>
 
@@ -231,6 +259,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
                   <th className="px-4 py-3">Cấp đạt</th>
                   <th className="px-4 py-3">Trạng thái hồ sơ</th>
                   <th className="px-4 py-3">Tiến độ task</th>
+                  <th className="px-4 py-3">Cập nhật lần cuối</th>
                   <th className="px-4 py-3 text-right">Hành động</th>
                 </tr>
               </thead>
@@ -258,14 +287,19 @@ function ManagerResultsContent({ role }: { role: Role }) {
                       </td>
                       <td className="px-4 py-3">
                         <Chip tone="brand">
-                          {item.reviewTaskSummary.accepted}/{item.reviewTaskSummary.total} đạt
+                          {item.taskProgress?.accepted ?? item.reviewTaskSummary.accepted}/{item.taskProgress?.total ?? item.reviewTaskSummary.total} đạt
                         </Chip>
                       </td>
                       <td className="px-4 py-3">
+                        {formatDateTime(item.lastActivityAt ?? item.updatedAt)}
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
-                          <Link to="/app/analytics">
-                            <Button size="sm" variant="ghost">Xem chi tiết</Button>
-                          </Link>
+                          <Button asChild size="sm" variant="ghost">
+                            <Link to="/app/manager/results/$applicationId" params={{ applicationId: item.applicationId }}>
+                              Xem chi tiết
+                            </Link>
+                          </Button>
                           <Button
                             size="sm"
                             disabled={!canFinalize || finalized}
@@ -288,6 +322,43 @@ function ManagerResultsContent({ role }: { role: Role }) {
               </tbody>
             </table>
           </div>
+          <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+            <div>
+              Hiển thị {firstItem}-{lastItem} trên tổng {pagination.total} hồ sơ
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={pageSize}
+                onChange={(event) => setPageSize(Number(event.target.value))}
+                className="rounded-lg border border-[#DCE7F2] bg-white px-2 py-1.5 text-brand-deep"
+              >
+                {[10, 20, 50].map((size) => (
+                  <option key={size} value={size}>
+                    {size}/trang
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pagination.page <= 1 || resultsQuery.isFetching}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                Trang trước
+              </Button>
+              <span className="font-semibold text-brand-deep">
+                Trang {pagination.page} / {Math.max(1, pagination.totalPages)}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pagination.page >= pagination.totalPages || resultsQuery.isFetching}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                Trang sau
+              </Button>
+            </div>
+          </div>
         </Card>
       )}
 
@@ -308,9 +379,22 @@ function FinalStatusChip({ status }: { status: FinalStatus }) {
   return <Chip tone={tone}>{finalStatusLabel[status]}</Chip>;
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 type DecisionMode = "target" | "lower" | "failed";
 
-function FinalizationDialog({
+export function FinalizationDialog({
   item,
   onOpenChange,
   open,

@@ -17,6 +17,20 @@ interface AuthState {
   clearAuth: () => void;
 }
 
+const authStorageKey = "5tot-auth";
+
+type PersistedAuthState = Pick<AuthState, "user" | "accessToken" | "refreshToken">;
+
+function writeAuthStorage(state: PersistedAuthState) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(authStorageKey, JSON.stringify({ state, version: 0 }));
+}
+
+function clearAuthStorage() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(authStorageKey);
+}
+
 export const useAuth = create<AuthState>()(
   persist(
     (set) => ({
@@ -24,18 +38,31 @@ export const useAuth = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
 
-      setAuthData: (user, accessToken, refreshToken) =>
-        set({ user, accessToken, refreshToken }),
+      setAuthData: (user, accessToken, refreshToken) => {
+        const next = { user, accessToken, refreshToken };
+        writeAuthStorage(next);
+        set(next);
+      },
         
       setTokens: (accessToken, refreshToken) =>
-        set({ accessToken, refreshToken }),
+        set((state) => {
+          writeAuthStorage({ user: state.user, accessToken, refreshToken });
+          return { accessToken, refreshToken };
+        }),
 
-      setUser: (user) => set({ user }),
+      setUser: (user) =>
+        set((state) => {
+          writeAuthStorage({ user, accessToken: state.accessToken, refreshToken: state.refreshToken });
+          return { user };
+        }),
 
-      clearAuth: () => set({ user: null, accessToken: null, refreshToken: null }),
+      clearAuth: () => {
+        clearAuthStorage();
+        set({ user: null, accessToken: null, refreshToken: null });
+      },
     }),
     {
-      name: "5tot-auth",
+      name: authStorageKey,
     }
   )
 );

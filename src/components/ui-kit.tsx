@@ -1,3 +1,4 @@
+import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 export function Card({
@@ -70,15 +71,18 @@ export function Chip({ children, tone = "brand" }: { children: React.ReactNode; 
 }
 
 export function Button({
+  asChild = false,
   variant = "primary",
   size = "md",
   className,
   children,
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  asChild?: boolean;
   variant?: "primary" | "secondary" | "ghost" | "outline" | "danger" | "success";
   size?: "sm" | "md" | "lg";
 }) {
+  const Comp = asChild ? Slot : "button";
   const variants = {
     primary: "bg-[#0057C2] text-white hover:bg-[#004ba8]",
     secondary: "bg-[#F1F7FD] text-[#0057C2] hover:bg-[#E5EFFA]",
@@ -93,7 +97,7 @@ export function Button({
     lg: "px-5 py-2.5 text-sm",
   };
   return (
-    <button
+    <Comp
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none",
         variants[variant],
@@ -103,7 +107,7 @@ export function Button({
       {...rest}
     >
       {children}
-    </button>
+    </Comp>
   );
 }
 
