@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useFinalizeManagerApplication } from "@/features/manager/hooks/useManager";
 import type { ManagerResultItem } from "@/features/manager/types";
 import type { Level } from "@/features/review/types";
+import { getApplicationStatusLabel } from "@/lib/status-labels";
 
 const levels: Level[] = ["school", "university", "city", "central"];
 
@@ -25,15 +26,15 @@ const levelLabel: Record<Level, string> = {
 
 const applicationStatusLabel: Record<string, string> = {
   draft: "Bản nháp",
+  prechecked: "Đã tiền kiểm",
   ready_to_submit: "Sẵn sàng nộp",
   submitted: "Đã nộp",
   under_review: "Đang xét duyệt",
   supplement_required: "Cần bổ sung",
-  resolution_needed: "Cần hội ý",
+  resolution_needed: "Cần hội đồng xử lý",
   completed: "Hoàn tất",
   rejected: "Chưa đạt",
 };
-
 type DecisionMode = "target" | "lower" | "failed";
 
 export function FinalizationDialog({
@@ -108,7 +109,7 @@ export function FinalizationDialog({
               <Info label="Cấp đăng ký" value={levelLabel[item.targetLevel]} />
               <Info label="Gợi ý" value={item.suggestedLevel ? levelLabel[item.suggestedLevel] : "--"} />
               <Info label="Readiness" value={`${item.readinessScore}`} />
-              <Info label="Trạng thái" value={applicationStatusLabel[item.applicationStatus] ?? item.applicationStatus} />
+              <Info label="Trạng thái" value={getApplicationStatusLabel(item.applicationStatus)} />
             </div>
           </div>
 

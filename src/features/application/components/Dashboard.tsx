@@ -16,6 +16,7 @@ import { levelLabel, applicationStatusLabel, type ApplicationStatus } from "@/li
 import { StudentOverview } from "./StudentOverview";
 import { useOfficerDashboard } from "@/features/review/hooks/useReview";
 import { formatDateTime, getCriterionLabel, getLevelLabel, getTaskStatusLabel } from "@/features/review/utils/formatters";
+import { getStatusTone } from "@/lib/status-labels";
 
 
 
@@ -328,7 +329,7 @@ function OfficerDashReal() {
 
       <div className="grid lg:grid-cols-2 gap-5">
         <Card>
-          <h3 className="font-bold text-brand-deep mb-3 flex items-center gap-2"><ShieldQuestion className="w-4 h-4" /> Cần hội ý</h3>
+          <h3 className="font-bold text-brand-deep mb-3 flex items-center gap-2"><ShieldQuestion className="w-4 h-4" /> Cần hội đồng xử lý</h3>
           {(summary?.resolutionNeeded ?? 0) === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">Chưa có task cần hội ý.</div>
           ) : (
@@ -394,7 +395,7 @@ function OfficerDash() {
                   <div className="text-xs text-muted-foreground truncate">{t.evidenceName} • Aim {LEVELS.find(l => l.key === t.targetLevel)?.label}</div>
                 </div>
                 <Chip tone={t.confidence < 0.7 ? "warning" : "brand"}>AI {Math.round(t.confidence * 100)}%</Chip>
-                <Chip tone={t.status === "supplement_required" ? "warning" : t.status === "accepted" ? "success" : t.status === "rejected" ? "error" : t.status === "resolution_needed" ? "warning" : "brand"}>{t.status}</Chip>
+                <Chip tone={getStatusTone(t.status)}>{getTaskStatusLabel(t.status)}</Chip>
               </div>
             </Link>
           ))}

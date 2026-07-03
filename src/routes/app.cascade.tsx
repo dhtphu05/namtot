@@ -6,7 +6,7 @@ import { StudentRoleSurface } from "@/features/core/components/StudentRoleSurfac
 export const Route = createFileRoute("/app/cascade")({
   component: () => (
     <StudentRoleSurface
-      student={<StudentApplicationWorkspace initialTab="precheck" />}
+      student={<StudentApplicationWorkspace initialTab="tracking" />}
       fallback={<CascadeReview />}
     />
   ),

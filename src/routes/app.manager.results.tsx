@@ -29,6 +29,11 @@ import {
 import type { ManagerResultFilters, ManagerResultItem } from "@/features/manager/types";
 import type { Level, Role } from "@/features/review/types";
 import type { FinalStatus } from "@/lib/api/types";
+import {
+  finalStatusTone,
+  getApplicationStatusLabel,
+  getFinalStatusLabel,
+} from "@/lib/status-labels";
 
 export const Route = createFileRoute("/app/manager/results")({
   component: ManagerResultsShell,
@@ -51,9 +56,10 @@ const finalStatusLabel: Record<FinalStatus, string> = {
   partially_passed: "Đạt cấp thấp hơn",
   failed: "Chưa đạt",
 };
-
 const applicationStatusLabel: Record<string, string> = {
   draft: "Bản nháp",
+  prechecked: "Đã tiền kiểm",
+  ready_to_submit: "Sẵn sàng nộp",
   submitted: "Đã nộp",
   under_review: "Đang xét duyệt",
   supplement_required: "Cần bổ sung",
@@ -61,7 +67,6 @@ const applicationStatusLabel: Record<string, string> = {
   completed: "Hoàn tất",
   rejected: "Chưa đạt",
 };
-
 type ActiveFilter = "all" | Level | "failed" | "pending";
 
 function ManagerResultsShell() {
@@ -283,7 +288,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
                         {item.finalLevel ? levelLabel[item.finalLevel] : "--"}
                       </td>
                       <td className="px-4 py-3">
-                        {applicationStatusLabel[item.applicationStatus] ?? item.applicationStatus}
+                        {getApplicationStatusLabel(item.applicationStatus)}
                       </td>
                       <td className="px-4 py-3">
                         <Chip tone="brand">
@@ -374,9 +379,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
 }
 
 function FinalStatusChip({ status }: { status: FinalStatus }) {
-  const tone =
-    status === "passed" ? "success" : status === "failed" ? "error" : status === "pending" ? "warning" : "brand";
-  return <Chip tone={tone}>{finalStatusLabel[status]}</Chip>;
+  return <Chip tone={finalStatusTone[status]}>{getFinalStatusLabel(status)}</Chip>;
 }
 
 function formatDateTime(value?: string | null) {
@@ -469,7 +472,7 @@ export function FinalizationDialog({
               <Info label="Cấp đăng ký" value={levelLabel[item.targetLevel]} />
               <Info label="Gợi ý" value={item.suggestedLevel ? levelLabel[item.suggestedLevel] : "--"} />
               <Info label="Readiness" value={`${item.readinessScore}`} />
-              <Info label="Trạng thái" value={applicationStatusLabel[item.applicationStatus] ?? item.applicationStatus} />
+              <Info label="Trạng thái" value={getApplicationStatusLabel(item.applicationStatus)} />
             </div>
           </div>
 

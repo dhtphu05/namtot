@@ -29,6 +29,8 @@ import { SubmitConfirmationModal } from "@/features/application/components/Submi
 import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDetailModal";
 import { StudentEvidenceCard } from "@/features/evidence/components/StudentEvidenceCard";
 import { useCreateEvidence, useDeleteEvidence, useEvidences, useUploadAndIndex } from "@/features/evidence/hooks/useEvidence";
+import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
+import { getFinalStatusLabel } from "@/lib/status-labels";
 import type {
   ApplicationMetric,
   ApplicationState,
@@ -77,9 +79,9 @@ const statusLabel: Record<ApplicationStatus | "not_started", string> = {
   submitted: "Đã nộp",
   under_review: "Đang xét duyệt",
   supplement_required: "Cần bổ sung",
-  resolution_needed: "Cần xử lý hội đồng",
+  resolution_needed: "Cần hội đồng xử lý",
   completed: "Hoàn tất",
-  rejected: "Không đạt",
+  rejected: "Chưa đạt",
 };
 
 const levelLabel: Record<Level, string> = {
@@ -173,6 +175,10 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
 
   const evidences = normalizeEvidences(evidencesQuery.data);
   const precheck = latestPrecheck.data ?? null;
+  const nextBestAction = getUserFacingText(
+    precheck?.nextBestAction,
+    "Bấm chạy tiền kiểm để backend đánh giá hồ sơ hiện tại theo dữ liệu của account này.",
+  );
   const firstName = user?.fullName?.trim().split(/\s+/).slice(-1)[0] ?? "bạn";
 
   const supplementRequests = useMemo(
@@ -378,7 +384,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
       {
         id: application.id,
         allowSubmitWithWarnings: true,
-        studentNote: precheck?.nextBestAction,
+        studentNote: nextBestAction,
         successMessage: isSupplement
           ? "Đã gửi lại hồ sơ bổ sung. Cán bộ sẽ tiếp tục xét duyệt."
           : "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.",
@@ -606,19 +612,21 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                         <Progress value={score} tint={criterion.color} />
                       </div>
                     </div>
-                    <Button
-                      variant="secondary"
-                      disabled={!canEditApplication || createEvidence.isPending || uploadAndIndex.isPending}
-                      onClick={() =>
-                        setEvidenceForm({
-                          criterion: criterion.key,
-                          evidenceName: `Minh chứng ${criterion.label}`,
-                          file: null,
-                        })
-                      }
-                    >
-                      <Upload className="h-4 w-4" /> Thêm minh chứng
-                    </Button>
+                    {items.length > 0 && (
+                      <Button
+                        variant="secondary"
+                        disabled={!canEditApplication || createEvidence.isPending || uploadAndIndex.isPending}
+                        onClick={() =>
+                          setEvidenceForm({
+                            criterion: criterion.key,
+                            evidenceName: `Minh chứng ${criterion.label}`,
+                            file: null,
+                          })
+                        }
+                      >
+                        <Upload className="h-4 w-4" /> Thêm minh chứng
+                      </Button>
+                    )}
                   </div>
                   <div className="mt-4 grid gap-2 md:grid-cols-2">
                     {items.length === 0 ? (
@@ -658,13 +666,6 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                     criterion={criterion.key}
                     evidenceCount={items.length}
                     result={result}
-                    onUpload={() =>
-                      setEvidenceForm({
-                        criterion: criterion.key,
-                        evidenceName: `${criterion.label} - minh chứng mới`,
-                        file: null,
-                      })
-                    }
                   />
                 </Card>
               );
@@ -684,8 +685,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                     {precheck ? `Sẵn sàng ${precheck.readinessScore}%` : "Chưa chạy tiền kiểm"}
                   </h3>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {precheck?.nextBestAction ??
-                      "Bấm chạy tiền kiểm để backend đánh giá hồ sơ hiện tại theo dữ liệu của account này."}
+                    {nextBestAction}
                   </p>
                 </div>
                 <Button onClick={precheckNow} disabled={runPrecheck.isPending}>
@@ -723,10 +723,11 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                         ? item.criterion
                         : "academic";
                       const criterionLabel = criteria.find((entry) => entry.key === criterion)?.label ?? "Hồ sơ";
+                      const message = getPrecheckMissingMessage(item);
                       return (
                         <div key={String(item.code ?? index)} className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="text-sm font-bold text-amber-950">{item.message ?? "Cần bổ sung dữ liệu."}</div>
+                            <div className="text-sm font-bold text-amber-950">{message.description}</div>
                             <Chip tone={item.severity === "error" ? "warning" : "muted"}>
                               {item.severity === "error" ? "Bắt buộc" : item.severity === "warning" ? "Nên bổ sung" : "Cần xác nhận"}
                             </Chip>
@@ -786,7 +787,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                   chỉ theo dõi trạng thái hồ sơ và phản hồi yêu cầu bổ sung nếu có.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <InfoBlock label="Final status" value={application.finalStatus ?? "pending"} />
+                  <InfoBlock label="Kết quả cuối" value={getFinalStatusLabel(application.finalStatus ?? "pending")} />
                   <InfoBlock label="Final level" value={application.finalLevel ?? "--"} />
                   <InfoBlock label="Submitted at" value={formatDate(application.submittedAt)} />
                 </div>
@@ -907,12 +908,10 @@ function CriterionChecklist({
   criterion,
   evidenceCount,
   result,
-  onUpload,
 }: {
   criterion: Criterion;
   evidenceCount: number;
   result?: PrecheckCriterionResult;
-  onUpload: () => void;
 }) {
   const reasons = Array.isArray(result?.reasons) ? result.reasons : [];
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
@@ -929,12 +928,12 @@ function CriterionChecklist({
       source: result ? "Kết quả tiền kiểm mới nhất" : "Chưa chạy tiền kiểm",
     },
     ...reasons.slice(0, 3).map((reason) => ({
-      label: reason,
+      label: getUserFacingText(reason),
       state: "missing",
       source: "Tiền kiểm",
     })),
     ...warnings.slice(0, 3).map((warning) => ({
-      label: warning,
+      label: getUserFacingText(warning),
       state: "warning",
       source: "AI cảnh báo",
     })),
@@ -959,11 +958,6 @@ function CriterionChecklist({
           </div>
         ))}
       </div>
-      {evidenceCount === 0 && (
-        <Button className="mt-3" size="sm" variant="secondary" onClick={onUpload}>
-          <Upload className="h-4 w-4" /> Upload minh chứng
-        </Button>
-      )}
     </div>
   );
 }

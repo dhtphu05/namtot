@@ -96,6 +96,14 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
       decision,
       officerSuggestedLevel: decision === "accepted" ? (suggestedLevel as Level) : null,
       levelAssessmentJson: task.criterionLevelAssessment ? { assessment: task.criterionLevelAssessment } : undefined,
+      supplementRequestJson:
+        decision === "supplement_required"
+          ? {
+              reason: note.trim(),
+              evidenceIds: evidenceOptions.map((evidence) => evidence.id),
+              requestedFields: [],
+            }
+          : undefined,
       note: note.trim(),
       ...(evidenceDecisions.length ? { evidenceDecisions } : {}),
     };
@@ -241,7 +249,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                     <option value="">Không đánh dấu</option>
                     <option value="accepted">Đạt</option>
                     <option value="rejected">Không đạt</option>
-                    <option value="resolution_needed">Cần hội ý</option>
+                    <option value="resolution_needed">Cần hội đồng xử lý</option>
                   </select>
                 </div>
               ))}

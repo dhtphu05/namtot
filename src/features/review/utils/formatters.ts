@@ -5,6 +5,7 @@ import type {
   Level,
   ReviewTaskStatus,
 } from "../types";
+import { getWorkflowStatusLabel } from "@/lib/status-labels";
 
 export const fallbackText = "Chưa có dữ liệu";
 
@@ -31,7 +32,7 @@ const taskStatusLabels: Record<ReviewTaskStatus, string> = {
   supplement_required: "Cần bổ sung",
   accepted: "Đạt",
   rejected: "Không đạt",
-  resolution_needed: "Cần hội ý",
+  resolution_needed: "Cần hội đồng xử lý",
 };
 
 const applicationStatusLabels: Record<ApplicationStatus, string> = {
@@ -41,9 +42,9 @@ const applicationStatusLabels: Record<ApplicationStatus, string> = {
   submitted: "Đã nộp",
   under_review: "Đang xét duyệt",
   supplement_required: "Cần bổ sung",
-  resolution_needed: "Cần hội ý",
+  resolution_needed: "Cần hội đồng xử lý",
   completed: "Hoàn tất",
-  rejected: "Không đạt",
+  rejected: "Chưa đạt",
 };
 
 const evidenceStatusLabels: Record<EvidenceStatus, string> = {
@@ -51,10 +52,10 @@ const evidenceStatusLabels: Record<EvidenceStatus, string> = {
   pending_indexing: "Chờ xử lý",
   indexed: "Đã xử lý",
   needs_supplement: "Cần bổ sung",
-  under_review: "Đang xét",
+  under_review: "Đang xét duyệt",
   accepted: "Đạt",
   rejected: "Không đạt",
-  resolution_needed: "Cần hội ý",
+  resolution_needed: "Cần hội đồng xử lý",
 };
 
 export function getCriterionLabel(criterion?: Criterion | null) {
@@ -72,12 +73,7 @@ export function getTaskStatusLabel(
     return fallbackText;
   }
 
-  return (
-    taskStatusLabels[status as ReviewTaskStatus] ??
-    applicationStatusLabels[status as ApplicationStatus] ??
-    evidenceStatusLabels[status as EvidenceStatus] ??
-    fallbackText
-  );
+  return getWorkflowStatusLabel(status) ?? fallbackText;
 }
 
 export function formatDateTime(value?: string | Date | null) {

@@ -29,6 +29,7 @@ import { FinalizationDialog } from "@/features/manager/components/FinalizationDi
 import { useManagerResultDetail } from "@/features/manager/hooks/useManager";
 import type { ManagerResultDetail, ManagerResultEvidence, ManagerResultItem } from "@/features/manager/types";
 import type { Criterion, Level, Role } from "@/features/review/types";
+import { fallbackStatusLabel, getStatusTone, getWorkflowStatusLabel } from "@/lib/status-labels";
 
 export const Route = createFileRoute("/app/manager/results/$applicationId")({
   component: ManagerResultDetailRoute,
@@ -64,7 +65,7 @@ const statusLabel: Record<string, string> = {
   submitted: "Đã nộp",
   under_review: "Đang xét duyệt",
   supplement_required: "Cần bổ sung",
-  resolution_needed: "Cần hội ý",
+  resolution_needed: "Cần hội đồng xử lý",
   completed: "Hoàn tất",
   rejected: "Không đạt",
   waiting: "Chờ xét",
@@ -738,15 +739,12 @@ function level(value?: Level | null) {
 
 function label(value?: string | null) {
   if (!value) return "--";
-  return statusLabel[value] ?? value;
+  const workflowLabel = getWorkflowStatusLabel(value);
+  return workflowLabel === fallbackStatusLabel ? (statusLabel[value] ?? value) : workflowLabel;
 }
 
 function statusTone(value?: string | null): "brand" | "success" | "warning" | "error" | "muted" {
-  if (value === "accepted" || value === "passed" || value === "completed" || value === "indexed") return "success";
-  if (value === "rejected" || value === "failed") return "error";
-  if (value === "waiting" || value === "reviewing" || value === "pending") return "brand";
-  if (!value) return "muted";
-  return "warning";
+  return getStatusTone(value);
 }
 
 function formatDate(value?: string | null) {

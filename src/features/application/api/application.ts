@@ -160,7 +160,10 @@ export const applicationApi = {
     });
   },
 
-  submitApplication: async (applicationId: string, options: { allowSubmitWithWarnings: boolean }) => {
+  submitApplication: async (
+    applicationId: string,
+    options: { allowSubmitWithWarnings: boolean; studentNote?: string },
+  ) => {
     return apiClient(`/api/applications/${applicationId}/submit`, {
       method: "POST",
       body: options,
@@ -168,7 +171,10 @@ export const applicationApi = {
   },
 
   submit: async (id: string, options: { allowSubmitWithWarnings?: boolean; studentNote?: string }) => {
-    return applicationApi.submitApplication(id, { allowSubmitWithWarnings: !!options.allowSubmitWithWarnings });
+    return applicationApi.submitApplication(id, {
+      allowSubmitWithWarnings: !!options.allowSubmitWithWarnings,
+      studentNote: options.studentNote,
+    });
   },
 
   getMetrics: async (id: string) => {
