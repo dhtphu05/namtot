@@ -24,7 +24,15 @@ export type ManagerResultFilters = {
   faculty?: string;
   className?: string;
   search?: string;
-  resultView?: "ready" | "downgraded" | "not_eligible" | "resolution" | "supplement" | "unfinished";
+  resultView?:
+    | "ready"
+    | "downgraded"
+    | "not_eligible"
+    | "resolution"
+    | "supplement"
+    | "overdue"
+    | "recently_finalized"
+    | "unfinished";
   page?: number;
   pageSize?: number;
   sortBy?: "lastActivityAt" | "updatedAt" | "newest" | "oldest" | "readiness_desc" | "unfinalized_first" | "target_level_desc";
@@ -179,6 +187,80 @@ export type ManagerResultsResponse = {
   sort?: {
     sortBy: string;
     sortOrder: "asc" | "desc";
+  };
+};
+
+export type CommitteeInboxBucket =
+  | "all"
+  | "ready_to_finalize"
+  | "downgraded"
+  | "no_eligible_level"
+  | "needs_resolution"
+  | "supplement_required"
+  | "overdue"
+  | "recently_finalized";
+
+export type CommitteeInboxNextAction =
+  | "open_decision_console"
+  | "finalize_city"
+  | "finalize_university"
+  | "finalize_school"
+  | "finalize_failed"
+  | "open_resolution_case"
+  | "review_downgrade_reason"
+  | "wait_for_supplement"
+  | "send_reminder"
+  | "reopen_final_result";
+
+export type CommitteeInboxParams = {
+  bucket?: CommitteeInboxBucket;
+  page?: number;
+  limit?: number;
+  search?: string;
+  targetLevel?: Extract<Level, "school" | "university" | "city">;
+  suggestedLevel?: Extract<Level, "school" | "university" | "city"> | "none";
+  status?: ApplicationStatus;
+};
+
+export type CommitteeInboxSummary = {
+  readyToFinalize: number;
+  downgraded: number;
+  noEligibleLevel: number;
+  needsResolution: number;
+  supplementRequired: number;
+  overdue: number;
+  recentlyFinalized: number;
+};
+
+export type CommitteeInboxItem = {
+  id: string;
+  type: Exclude<CommitteeInboxBucket, "all">;
+  applicationId: string;
+  resolutionCaseId?: string | null;
+  studentName?: string | null;
+  studentCode?: string | null;
+  className?: string | null;
+  faculty?: string | null;
+  targetLevel?: Extract<Level, "school" | "university" | "city">;
+  suggestedLevel?: Extract<Level, "school" | "university" | "city"> | null;
+  finalLevel?: Level | null;
+  finalStatus?: FinalStatus;
+  mainReason: string;
+  blockers: string[];
+  nextAction: CommitteeInboxNextAction;
+  priority: "high" | "medium" | "low";
+  updatedAt: string;
+  dueAt?: string | null;
+};
+
+export type CommitteeInboxResponse = {
+  summary: CommitteeInboxSummary;
+  items: CommitteeInboxItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
   };
 };
 
@@ -389,6 +471,8 @@ export type ManagerDashboardSummary = {
     notEligible: number;
     resolution: number;
     supplement: number;
+    overdue: number;
+    recentlyFinalized: number;
     unfinished: number;
   };
   workloadByOfficer?: Array<{

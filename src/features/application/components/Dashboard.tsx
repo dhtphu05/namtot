@@ -462,12 +462,12 @@ function ManagerDashReal() {
   const recent = data?.recentApplications ?? [];
   const decisionSummary = data?.decisionSummary;
   const decisionCards = [
-    { label: "Có thể chốt ngay", value: decisionSummary?.ready ?? 0, filter: "ready", tint: "#22C55E" },
-    { label: "Bị hạ cấp", value: decisionSummary?.downgraded ?? 0, filter: "downgraded", tint: "#F59E0B" },
-    { label: "Không đạt cấp nào", value: decisionSummary?.notEligible ?? 0, filter: "not_eligible", tint: "#EF4444" },
-    { label: "Cần hội ý", value: decisionSummary?.resolution ?? 0, filter: "resolution", tint: "#7C3AED" },
-    { label: "Cần bổ sung", value: decisionSummary?.supplement ?? 0, filter: "supplement", tint: "#F97316" },
-    { label: "Chưa đủ task", value: decisionSummary?.unfinished ?? 0, filter: "unfinished", tint: "#64748B" },
+    { label: "Có thể chốt ngay", value: decisionSummary?.ready ?? 0, bucket: "ready_to_finalize", tint: "#22C55E" },
+    { label: "Cần hội ý", value: decisionSummary?.resolution ?? 0, bucket: "needs_resolution", tint: "#7C3AED" },
+    { label: "Bị hạ cấp", value: decisionSummary?.downgraded ?? 0, bucket: "downgraded", tint: "#F59E0B" },
+    { label: "Không đạt cấp nào", value: decisionSummary?.notEligible ?? 0, bucket: "no_eligible_level", tint: "#EF4444" },
+    { label: "Cần bổ sung", value: decisionSummary?.supplement ?? 0, bucket: "supplement_required", tint: "#F97316" },
+    { label: "Quá hạn", value: decisionSummary?.overdue ?? 0, bucket: "overdue", tint: "#DC2626" },
   ];
 
   if (isLoading) {
@@ -510,12 +510,18 @@ function ManagerDashReal() {
         <StatCard label="Mập mờ / Resolution" value={overview?.resolutionNeededCount ?? 0} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
       </div>
 
+      <div className="mb-3">
+        <h3 className="font-bold text-brand-deep">Việc cần xử lý hôm nay</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Bấm vào từng nhóm để mở hàng chờ đã lọc đúng việc cần làm.
+        </p>
+      </div>
       <div className="grid sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-7">
         {decisionCards.map((card) => (
           <Link
-            key={card.filter}
-            to="/app/manager/results"
-            search={{ filter: card.filter }}
+            key={card.bucket}
+            to="/app/committee/inbox"
+            search={{ bucket: card.bucket }}
             className="block"
           >
             <StatCard

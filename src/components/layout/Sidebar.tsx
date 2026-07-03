@@ -86,6 +86,7 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Dashboard thống kê", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "Core", tone: "core" },
+        { label: "Hàng chờ chốt kết quả", to: "/app/committee/inbox", icon: Inbox, badge: "Core", tone: "core" },
         { label: "Kết quả theo cấp", to: "/app/manager/results", icon: Trophy, badge: "Core", tone: "core" },
         { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound, badge: "Core", tone: "core" },
         { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog, badge: "Ops", tone: "ops" },
@@ -118,28 +119,6 @@ const NAV: Record<Role, NavGroup[]> = {
     },
   ],
 };
-
-const COMMITTEE_NAV: NavGroup[] = [
-  {
-    group: "Hội đồng",
-    items: [
-      { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
-      { label: "Kết quả theo cấp", to: "/app/manager/results", icon: Trophy, badge: "Core", tone: "core" },
-      { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound, badge: "Core", tone: "core" },
-      { label: "Theo dõi phân công", to: "/app/assignment", icon: UserCog, badge: "Read-only", tone: "beta" },
-      { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Ops", tone: "ops" },
-      { label: "Export Center", to: "/app/export", icon: Download, badge: "Ops", tone: "ops" },
-    ],
-  },
-  {
-    group: "Theo dõi",
-    items: [
-      { label: "Dashboard thống kê", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "Core", tone: "core" },
-      { label: "Audit Log", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },
-      { label: "Thông báo", to: "/app/notifications", icon: Bell },
-    ],
-  },
-];
 
 const badgeClass: Record<BadgeTone, string> = {
   core: "bg-emerald-50 text-emerald-700",
@@ -263,8 +242,7 @@ export function Sidebar() {
 }
 
 function getNavGroups(role: Role, backendRole?: ApiRole): NavGroup[] {
-  if (backendRole === "committee") return COMMITTEE_NAV;
-  if (backendRole === "admin") return NAV.manager;
+  if (backendRole === "committee" || backendRole === "admin") return NAV.manager;
   return NAV[role];
 }
 

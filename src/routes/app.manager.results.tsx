@@ -35,7 +35,7 @@ export const Route = createFileRoute("/app/manager/results")({
 
 const levels: Level[] = [...ACTIVE_LEVELS];
 const allowedRoles: Role[] = ["manager", "committee", "admin"];
-const finalizerRoles: Role[] = ["committee", "admin"];
+const finalizerRoles: Role[] = ["manager", "committee", "admin"];
 const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
 
 const criterionShortLabel: Record<Criterion, string> = {
@@ -58,6 +58,8 @@ type ActiveFilter =
   | "not_eligible"
   | "resolution"
   | "supplement"
+  | "overdue"
+  | "recently_finalized"
   | "unfinished";
 
 function ManagerResultsShell() {
@@ -126,6 +128,8 @@ function ManagerResultsContent({ role }: { role: Role }) {
       activeFilter === "not_eligible" ||
       activeFilter === "resolution" ||
       activeFilter === "supplement" ||
+      activeFilter === "overdue" ||
+      activeFilter === "recently_finalized" ||
       activeFilter === "unfinished"
     ) {
       next.resultView = activeFilter;
@@ -284,7 +288,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
                   const legacyCentral = isLegacyCentral(item.targetLevel);
                   const finalizeDisabled = !canFinalize || finalized || !item.canFinalize || legacyCentral;
                   const finalizeTitle = !canFinalize
-                    ? "Chỉ Hội đồng/Admin được chốt kết quả."
+                    ? "Chỉ Hội đồng/Cấp quản lý được chốt kết quả."
                     : finalized
                       ? "Hồ sơ đã có kết quả cuối."
                       : legacyCentral

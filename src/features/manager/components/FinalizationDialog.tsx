@@ -73,6 +73,12 @@ export function FinalizationDialog({
       },
       {
         onSuccess: () => onOpenChange(false),
+        onError: (error) => {
+          const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+          if (code === "FINAL_LEVEL_MISMATCH" || code === "FINAL_STATUS_MISMATCH") {
+            onOpenChange(false);
+          }
+        },
       },
     );
   };

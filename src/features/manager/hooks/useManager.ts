@@ -4,6 +4,7 @@ import { managerApi } from "../api/manager";
 import type {
   FinalizeApplicationInput,
   FinalizeCollectiveInput,
+  CommitteeInboxParams,
   ManagerApplicationsParams,
   ManagerCollectiveFilters,
   ManagerResultFilters,
@@ -16,6 +17,7 @@ export const managerKeys = {
     [...managerKeys.applications, params ?? {}] as const,
   workload: ["managerWorkload"] as const,
   dashboard: ["managerDashboard"] as const,
+  committeeInbox: (params?: CommitteeInboxParams) => ["committeeInbox", params ?? {}] as const,
   collectives: (params?: ManagerCollectiveFilters) => ["managerCollectives", params ?? {}] as const,
   collectiveAggregation: (collectiveId?: string) => ["managerCollectiveAggregation", collectiveId ?? ""] as const,
   results: (params?: ManagerResultFilters) => ["managerResults", params ?? {}] as const,
@@ -47,6 +49,16 @@ export function useManagerDashboardSummary() {
     queryKey: managerKeys.dashboard,
     queryFn: async () => {
       const response = await managerApi.getManagerDashboardSummary();
+      return response.data;
+    },
+  });
+}
+
+export function useCommitteeInbox(params?: CommitteeInboxParams) {
+  return useQuery({
+    queryKey: managerKeys.committeeInbox(params),
+    queryFn: async () => {
+      const response = await managerApi.getCommitteeInbox(params);
       return response.data;
     },
   });
@@ -107,6 +119,7 @@ export function useFinalizeManagerApplication() {
     }) => managerApi.finalizeApplication(applicationId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: managerKeys.dashboard });
+      queryClient.invalidateQueries({ queryKey: ["committeeInbox"] });
       queryClient.invalidateQueries({ queryKey: ["managerResults"] });
       queryClient.invalidateQueries({ queryKey: ["managerResultDetail"] });
       queryClient.invalidateQueries({ queryKey: managerKeys.applications });
@@ -116,10 +129,11 @@ export function useFinalizeManagerApplication() {
       const code = "code" in error ? String(error.code) : "";
       if (code === "FINAL_LEVEL_MISMATCH" || code === "FINAL_STATUS_MISMATCH") {
         queryClient.invalidateQueries({ queryKey: managerKeys.dashboard });
+        queryClient.invalidateQueries({ queryKey: ["committeeInbox"] });
         queryClient.invalidateQueries({ queryKey: ["managerResults"] });
         queryClient.invalidateQueries({ queryKey: ["managerResultDetail"] });
         toast.error(
-          "Đề xuất cấp đạt đã thay đổi sau khi hệ thống kiểm tra lại. Dữ liệu mới đang được tải lại, vui lòng kiểm tra trước khi chốt.",
+          "Đề xuất cấp đạt đã thay đổi sau recompute cuối. Snapshot mới đã được lưu và màn hình đang tải lại, vui lòng kiểm tra rồi chốt lại.",
         );
         return;
       }
@@ -141,6 +155,7 @@ export function useReopenFinalApplication() {
     }) => managerApi.reopenFinalApplication(applicationId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: managerKeys.dashboard });
+      queryClient.invalidateQueries({ queryKey: ["committeeInbox"] });
       queryClient.invalidateQueries({ queryKey: ["managerResults"] });
       queryClient.invalidateQueries({ queryKey: ["managerResultDetail"] });
       queryClient.invalidateQueries({ queryKey: managerKeys.applications });

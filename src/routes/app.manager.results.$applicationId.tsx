@@ -34,10 +34,14 @@ import { fallbackStatusLabel, getStatusTone, getWorkflowStatusLabel } from "@/li
 import { getFinalizeActionLabel } from "@/lib/levels";
 
 export const Route = createFileRoute("/app/manager/results/$applicationId")({
+  validateSearch: (search) => ({
+    focus: typeof search.focus === "string" ? search.focus : undefined,
+    resolutionCaseId: typeof search.resolutionCaseId === "string" ? search.resolutionCaseId : undefined,
+  }),
   component: ManagerResultDetailRoute,
 });
 
-const finalizerRoles: Role[] = ["committee", "admin"];
+const finalizerRoles: Role[] = ["manager", "committee", "admin"];
 const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
 
 const criterionLabel: Record<Criterion, string> = {
@@ -90,6 +94,7 @@ const statusLabel: Record<string, string> = {
 
 function ManagerResultDetailRoute() {
   const { applicationId } = Route.useParams();
+  const inboxFocus = Route.useSearch();
   const user = useAuth((state) => state.user);
   const role = user?.role as Role | undefined;
   const detailQuery = useManagerResultDetail(applicationId);
@@ -142,6 +147,7 @@ function ManagerResultDetailRoute() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
+          <InboxFocusBanner focus={inboxFocus.focus} resolutionCaseId={inboxFocus.resolutionCaseId} />
           <HeaderCard detail={detail} />
           <AnalysisSection detail={detail} />
           <CriterionDecisionBoard detail={detail} />
@@ -175,6 +181,56 @@ function ManagerResultDetailRoute() {
       />
     </>
   );
+}
+
+function InboxFocusBanner({
+  focus,
+  resolutionCaseId,
+}: {
+  focus?: string;
+  resolutionCaseId?: string;
+}) {
+  if (!focus) return null;
+  const content = getInboxFocusContent(focus);
+  return (
+    <Card className="border-[#BBD7FF] bg-[#F4F9FF]">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="text-sm font-bold text-brand-deep">{content.title}</div>
+          <div className="mt-1 text-sm text-muted-foreground">{content.desc}</div>
+        </div>
+        {focus === "needs_resolution" && resolutionCaseId ? (
+          <Button asChild>
+            <Link to="/app/resolution/$id" params={{ id: resolutionCaseId }}>
+              Mở Resolution Case
+            </Link>
+          </Button>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+function getInboxFocusContent(focus: string) {
+  if (focus === "ready_to_finalize") {
+    return { title: "Hồ sơ đủ điều kiện chốt", desc: "Kiểm tra Decision Panel bên phải và chốt theo đề xuất mới nhất." };
+  }
+  if (focus === "downgraded") {
+    return { title: "Hồ sơ bị hạ cấp", desc: "Ưu tiên xem phần phân tích cascade và lý do blocker trước khi chốt." };
+  }
+  if (focus === "no_eligible_level") {
+    return { title: "Không đạt cấp nào", desc: "Xem blocker chính và chốt chưa đạt nếu dữ liệu đã đầy đủ." };
+  }
+  if (focus === "needs_resolution") {
+    return { title: "Còn case hội ý đang mở", desc: "Cần xử lý Resolution Case trước khi chốt kết quả cuối." };
+  }
+  if (focus === "supplement_required") {
+    return { title: "Đang cần bổ sung", desc: "Kiểm tra tiêu chí cần bổ sung và trạng thái minh chứng của sinh viên." };
+  }
+  if (focus === "overdue") {
+    return { title: "Việc xử lý quá hạn", desc: "Ưu tiên kiểm tra task/case lâu chưa cập nhật và nhắc bên phụ trách." };
+  }
+  return { title: "Mở từ hàng chờ chốt kết quả", desc: "Hồ sơ này được mở theo bucket công việc của Hội đồng/Cấp quản lý." };
 }
 
 function ReopenFinalDialog({
@@ -292,7 +348,8 @@ function DecisionPanel({
   const blockerMessages = detail.aggregation.blockingIssues.map((issue) =>
     `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`,
   );
-  const canSubmitFinal = canFinalize && detail.aggregation.canFinalize && blockerMessages.length === 0;
+  const businessReady = detail.aggregation.canFinalize && blockerMessages.length === 0;
+  const canSubmitFinal = canFinalize && businessReady;
 
   if (isFinalized) {
     return (
@@ -343,7 +400,8 @@ function DecisionPanel({
         <Info label="Aim đăng ký" value={getLevelLabel(detail.application.targetLevel)} />
         <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
         <Info label="Kết quả sẽ lưu" value={getPendingFinalResultLabel(suggestedLevel)} />
-        <Info label="Có thể chốt" value={canSubmitFinal ? "Có" : "Không"} />
+        <Info label="Điều kiện nghiệp vụ" value={businessReady ? "Đủ để chốt" : "Chưa đủ"} />
+        <Info label="Quyền chốt của tài khoản" value={canFinalize ? "Có" : "Không"} />
       </div>
       <div className="mt-4 space-y-2 rounded-lg border bg-slate-50 p-3 text-sm">
         <DecisionCheck ok={processedCount >= 5} label={`${Math.min(processedCount, 5)}/5 tiêu chí đã xử lý`} />
@@ -367,7 +425,7 @@ function DecisionPanel({
           </Button>
         ) : (
           <div className="rounded-lg border bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
-            Chỉ Hội đồng/Admin được chốt kết quả. Quản lý xem tổng quan và theo dõi các tiêu chí còn vướng.
+            Cán bộ duyệt từng tiêu chí. Hội đồng/Cấp quản lý theo dõi, điều phối và chốt kết quả cuối.
           </div>
         )}
       </div>
@@ -440,7 +498,7 @@ function DecisionConsole({ detail }: { detail: ManagerResultDetail }) {
           </p>
         </div>
         <Chip tone={canFinalize ? "success" : "warning"}>
-          {canFinalize ? "Có thể chốt" : "Chưa thể chốt"}
+          {canFinalize ? "Đủ điều kiện nghiệp vụ" : "Chưa đủ điều kiện"}
         </Chip>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-4">
@@ -471,7 +529,7 @@ function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
             </p>
           </div>
           <Chip tone={detail.aggregation.canFinalize ? "success" : "warning"}>
-            {detail.aggregation.canFinalize ? "Có thể chốt" : "Chưa thể chốt"}
+            {detail.aggregation.canFinalize ? "Đủ điều kiện nghiệp vụ" : "Chưa đủ điều kiện"}
           </Chip>
         </div>
 
@@ -1056,7 +1114,7 @@ function AnalysisSection({ detail }: { detail: ManagerResultDetail }) {
         <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
       </div>
       <p className="mt-4 text-sm text-muted-foreground">
-        {reason} Kết quả cuối do Hội đồng/Admin chốt.
+            Cán bộ duyệt từng tiêu chí. Hội đồng/Cấp quản lý theo dõi, điều phối và chốt kết quả cuối.
       </p>
       {(isDowngraded || !suggestedLevel || reasons.length) ? (
         <div className="mt-4 space-y-2">

@@ -18,6 +18,8 @@ import type {
   ManagerWorkloadResponse,
   FinalizeApplicationInput,
   FinalizeCollectiveInput,
+  CommitteeInboxParams,
+  CommitteeInboxResponse,
   ReopenFinalInput,
 } from "../types";
 
@@ -57,6 +59,8 @@ const emptyDashboardSummary: ManagerDashboardSummary = {
     notEligible: 0,
     resolution: 0,
     supplement: 0,
+    overdue: 0,
+    recentlyFinalized: 0,
     unfinished: 0,
   },
   workloadByOfficer: [],
@@ -160,6 +164,33 @@ export const managerApi = {
     const response = await apiClient<ManagerDashboardSummary>("/api/manager/dashboard-summary");
 
     return withDataFallback(response, emptyDashboardSummary);
+  },
+
+  getCommitteeInbox: async (
+    params?: CommitteeInboxParams,
+  ): Promise<ApiResponse<CommitteeInboxResponse>> => {
+    const response = await apiClient<CommitteeInboxResponse>(
+      `/api/committee/inbox${buildQueryString(params)}`,
+    );
+
+    return withDataFallback(response, {
+      summary: {
+        readyToFinalize: 0,
+        downgraded: 0,
+        noEligibleLevel: 0,
+        needsResolution: 0,
+        supplementRequired: 0,
+        overdue: 0,
+        recentlyFinalized: 0,
+      },
+      items: [],
+      pagination: {
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 20,
+        total: 0,
+        totalPages: 0,
+      },
+    });
   },
 
   getManagerCollectives: async (
