@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { EventLibrary } from "@/features/event/components/EventLibrary";
+import { ApprovedEvidencePage } from "@/features/event/components/ApprovedEvidencePage";
 
 export const Route = createFileRoute("/app/event-library")({
-  component: EventLibrary,
+  component: ApprovedEvidencePage,
 });

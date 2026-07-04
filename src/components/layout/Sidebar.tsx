@@ -5,17 +5,23 @@ import {
   BookOpenCheck,
   CalendarCheck,
   ChartNoAxesCombined,
+  Cpu,
   Download,
   FileText,
+  FileUp,
   FolderUp,
+  GitBranch,
   History,
   Inbox,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
-  Settings,
+  ScanFace,
   ShieldQuestion,
+  SlidersHorizontal,
+  Sparkles,
   Trophy,
+  Upload,
   UserCog,
   UsersRound,
 } from "lucide-react";
@@ -32,7 +38,7 @@ import { useApp } from "@/lib/store";
 import { ROLES, type Role } from "@/lib/mock-data";
 import { type Role as ApiRole } from "@/lib/api/types";
 
-type BadgeTone = "core" | "assist" | "ops" | "beta";
+type BadgeTone = "core" | "ai" | "demo" | "ops" | "beta";
 type NavItem = {
   label: string;
   to: string;
@@ -47,12 +53,38 @@ const NAV: Record<Role, NavGroup[]> = {
     {
       group: "Hồ sơ sinh viên",
       items: [
-        { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
-        { label: "Hồ sơ của tôi", to: "/app/drafts", icon: FileText },
-        { label: "Thành tích & giấy xác nhận", to: "/app/evidence", icon: FolderUp },
-        { label: "Kho sự kiện", to: "/app/event-library", icon: CalendarCheck },
+        { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
+        { label: "Hồ sơ của tôi", to: "/app/drafts", icon: FileText, badge: "Core", tone: "core" },
+        {
+          label: "Thành tích & giấy xác nhận",
+          to: "/app/evidence",
+          icon: FolderUp,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Tải minh chứng",
+          to: "/app/upload",
+          icon: Upload,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Kho sự kiện",
+          to: "/app/event-library",
+          icon: CalendarCheck,
+          badge: "Data",
+          tone: "ops",
+        },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
         { label: "Trợ lý SV5T", to: "/app/chatbot", icon: LifeBuoy },
+      ],
+    },
+    {
+      group: "Hỗ trợ nâng cao",
+      items: [
+        { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
+        { label: "Cascade Review", to: "/app/cascade", icon: GitBranch, badge: "AI", tone: "ai" },
       ],
     },
   ],
@@ -62,9 +94,35 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Việc cần xử lý", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
-        { label: "Tài liệu liên quan", to: "/app/evidence-search", icon: BookOpenCheck, badge: "Ops", tone: "ops" },
-        { label: "Hội ý của tôi", to: "/app/resolution", icon: ShieldQuestion, badge: "Theo dõi", tone: "beta" },
-        { label: "Lịch sử xử lý", to: "/app/notifications", icon: History, badge: "Theo dõi", tone: "beta" },
+        {
+          label: "Nhập sự kiện",
+          to: "/app/event-registry",
+          icon: CalendarCheck,
+          badge: "Ops",
+          tone: "ops",
+        },
+        {
+          label: "Import quyết định",
+          to: "/app/decision-imports",
+          icon: FileUp,
+          badge: "Ops",
+          tone: "ops",
+        },
+        {
+          label: "Tài liệu liên quan",
+          to: "/app/evidence-search",
+          icon: BookOpenCheck,
+          badge: "Ops",
+          tone: "ops",
+        },
+        {
+          label: "Hội ý của tôi",
+          to: "/app/resolution",
+          icon: ShieldQuestion,
+          badge: "Theo dõi",
+          tone: "beta",
+        },
+        { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
@@ -85,9 +143,31 @@ const NAV: Record<Role, NavGroup[]> = {
       group: "Vận hành",
       items: [
         { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Data", tone: "ops" },
+        { label: "Import quyết định", to: "/app/decision-imports", icon: FileUp, badge: "Data", tone: "ops" },
+        {
+          label: "Phân tích trải nghiệm",
+          to: "/app/smartux",
+          icon: ChartNoAxesCombined,
+          badge: "Theo dõi",
+          tone: "ops",
+        },
+        {
+          label: "Trung tâm xử lý hồ sơ",
+          to: "/app/vnpt",
+          icon: Cpu,
+          badge: "Tích hợp",
+          tone: "ops",
+        },
+        {
+          label: "Xác thực sinh viên",
+          to: "/app/ekyc",
+          icon: ScanFace,
+          badge: "Tích hợp",
+          tone: "ops",
+        },
         { label: "Lịch sử hệ thống", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },
         { label: "Xuất dữ liệu", to: "/app/export", icon: Download, badge: "Ops", tone: "ops" },
-        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: Settings, badge: "Beta", tone: "beta" },
+        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal, badge: "Beta", tone: "beta" },
       ],
     },
   ],
@@ -97,7 +177,8 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Hồ sơ tập thể", to: "/app/collective", icon: UsersRound, badge: "Core", tone: "core" },
-        { label: "Thêm thành tích", to: "/app/upload", icon: FolderUp, badge: "Core", tone: "core" },
+        { label: "Thêm thành tích", to: "/app/upload", icon: Upload, badge: "Core", tone: "core" },
+        { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
@@ -106,7 +187,8 @@ const NAV: Record<Role, NavGroup[]> = {
 
 const badgeClass: Record<BadgeTone, string> = {
   core: "bg-emerald-50 text-emerald-700",
-  assist: "bg-sky-50 text-sky-700",
+  ai: "bg-sky-50 text-sky-700",
+  demo: "bg-amber-50 text-amber-700",
   ops: "bg-indigo-50 text-indigo-700",
   beta: "bg-slate-100 text-slate-700",
 };
@@ -183,7 +265,9 @@ export function Sidebar() {
                       >
                         <span
                           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
-                            active ? "bg-white text-[#0057C2]" : "bg-[#F8FAFC] text-[#64748B] group-hover:text-[#0057C2]"
+                            active
+                              ? "bg-white text-[#0057C2]"
+                              : "bg-[#F8FAFC] text-[#64748B] group-hover:text-[#0057C2]"
                           }`}
                         >
                           <Icon className="h-4 w-4" strokeWidth={1.9} />
@@ -236,12 +320,7 @@ function findActiveItem(groups: NavGroup[], pathname: string, role: Role): NavIt
 
 function normalizeStudentWorkspacePath(pathname: string, role: Role) {
   if (role !== "student") return pathname;
-  if (
-    pathname.startsWith("/app/ai-precheck") ||
-    pathname.startsWith("/app/cascade") ||
-    pathname.startsWith("/app/upload") ||
-    pathname.startsWith("/app/wizard")
-  ) {
+  if (pathname.startsWith("/app/wizard")) {
     return "/app/drafts";
   }
   return pathname;

@@ -1,7 +1,7 @@
 import { useAuth } from "@/features/auth/store/auth-store";
-import type { ApiResponse, ApiFailure } from "./types";
+import type { ApiFailure, ApiResponse } from "./types";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 const API_DEBUG = import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === "true";
 const HOT_ENDPOINTS = [
@@ -17,12 +17,7 @@ let isRefreshing = false;
 let refreshSubscribers: ((token: string | null) => void)[] = [];
 
 type JsonBody =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonBody[]
-  | { [key: string]: JsonBody | undefined };
+  string | number | boolean | null | JsonBody[] | { [key: string]: JsonBody | undefined };
 
 function subscribeTokenRefresh(cb: (token: string | null) => void) {
   refreshSubscribers.push(cb);
@@ -33,7 +28,7 @@ function onRefreshed(token: string | null) {
   refreshSubscribers = [];
 }
 
-interface ApiOptions extends Omit<RequestInit, "body"> {
+export interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: BodyInit | JsonBody;
   _retry?: boolean;
   _skipDedup?: boolean;
@@ -135,7 +130,7 @@ function toUserFriendlyMessage(message: string, code?: string, status?: number):
 
 export async function apiClient<T>(
   endpoint: string,
-  options: ApiOptions = {}
+  options: ApiOptions = {},
 ): Promise<ApiResponse<T>> {
   const requestKey = getRequestKey(endpoint, options);
   const canDedup = shouldDedupRequest(endpoint, options);
@@ -169,12 +164,12 @@ async function executeApiRequest<T>(
   options: ApiOptions = {},
   requestKey = getRequestKey(endpoint, options),
 ): Promise<ApiResponse<T>> {
-  const url = `${BASE_URL}${endpoint}`;
+  const url = `${API_BASE_URL}${endpoint}`;
   const { body, _retry, _skipDedup, ...requestOptions } = options;
   void _skipDedup;
-  
+
   const headers = new Headers(options.headers);
-  
+
   const token = useAuth.getState().accessToken;
   if (token && !isAuthEndpoint(endpoint)) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -197,24 +192,27 @@ async function executeApiRequest<T>(
   try {
     const response = await tracedFetch(endpoint, url, config, requestKey, false);
 
-    // Parse JSON
-    let data: any = null;
+    let data: unknown = null;
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       data = await response.json();
     }
 
-    if (data && data.success === false) {
+    const responseEnvelope = data as Partial<ApiResponse<T>> | null;
+    const requestId =
+      response.headers.get("x-request-id") ?? responseEnvelope?.meta?.requestId ?? undefined;
+
+    if (responseEnvelope?.success === false) {
       const status = response.status;
-      const code = data.error?.code || "API_ERROR";
+      const code = responseEnvelope.error?.code || "API_ERROR";
       if (status === 401 && !_retry && !isAuthEndpoint(endpoint)) {
         return handle401Error<T>(endpoint, options);
       }
       throw new ApiError(
-        toUserFriendlyMessage(data.error?.message || "API Error", code, status),
+        toUserFriendlyMessage(responseEnvelope.error?.message || "API Error", code, status),
         code,
-        data.error?.details,
-        data.meta,
+        responseEnvelope.error?.details,
+        { ...responseEnvelope.meta, requestId },
         status,
       );
     }
@@ -223,30 +221,34 @@ async function executeApiRequest<T>(
       if (response.status === 401 && !_retry && !isAuthEndpoint(endpoint)) {
         return handle401Error<T>(endpoint, options);
       }
-      
+
       throw new ApiError(
         toUserFriendlyMessage(response.statusText, response.status.toString(), response.status),
         response.status.toString(),
         undefined,
-        undefined,
+        { requestId },
         response.status,
       );
     }
 
     if (!data) {
-      // In case the response is not JSON (e.g. 204 No Content or blob)
-      return { success: true, data: null as unknown as T, error: null, meta: {} };
+      return { success: true, data: null as unknown as T, error: null, meta: { requestId } };
     }
 
-    return data as ApiResponse<T>;
+    return {
+      ...(responseEnvelope as ApiResponse<T>),
+      meta: {
+        ...(responseEnvelope as ApiResponse<T>).meta,
+        requestId,
+      },
+    };
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
     }
-    // Network errors or parsing errors
     throw new ApiError(
       toUserFriendlyMessage(error instanceof Error ? error.message : "Unknown error"),
-      "NETWORK_ERROR"
+      "NETWORK_ERROR",
     );
   }
 }
@@ -255,12 +257,12 @@ export async function apiBlob(
   endpoint: string,
   options: Omit<ApiOptions, "body"> & { body?: BodyInit | JsonBody } = {},
 ): Promise<{ blob: Blob; filename?: string }> {
-  const url = `${BASE_URL}${endpoint}`;
+  const url = `${API_BASE_URL}${endpoint}`;
   const { body, ...requestOptions } = options;
   const headers = new Headers(options.headers);
   const token = useAuth.getState().accessToken;
 
-  if (token) {
+  if (token && !isAuthEndpoint(endpoint)) {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
@@ -299,6 +301,23 @@ export async function apiBlob(
   };
 }
 
+export const api = {
+  get: <T>(endpoint: string, options?: Omit<ApiOptions, "method" | "body">) =>
+    apiClient<T>(endpoint, { ...options, method: "GET" }),
+  post: <T>(
+    endpoint: string,
+    body?: ApiOptions["body"],
+    options?: Omit<ApiOptions, "method" | "body">,
+  ) => apiClient<T>(endpoint, { ...options, method: "POST", body }),
+  patch: <T>(
+    endpoint: string,
+    body?: ApiOptions["body"],
+    options?: Omit<ApiOptions, "method" | "body">,
+  ) => apiClient<T>(endpoint, { ...options, method: "PATCH", body }),
+  delete: <T>(endpoint: string, options?: Omit<ApiOptions, "method" | "body">) =>
+    apiClient<T>(endpoint, { ...options, method: "DELETE" }),
+};
+
 function getFilename(contentDisposition: string | null): string | undefined {
   if (!contentDisposition) return undefined;
   const match = contentDisposition.match(/filename="?([^";]+)"?/i);
@@ -327,7 +346,9 @@ function getMethod(options: ApiOptions) {
 
 function shouldDedupRequest(endpoint: string, options: ApiOptions) {
   const method = getMethod(options);
-  return !options._skipDedup && !isAuthEndpoint(endpoint) && (method === "GET" || method === "HEAD");
+  return (
+    !options._skipDedup && !isAuthEndpoint(endpoint) && (method === "GET" || method === "HEAD")
+  );
 }
 
 function getRequestKey(endpoint: string, options: ApiOptions) {
@@ -398,7 +419,8 @@ function logApiTrace({
 }) {
   if (!API_DEBUG) return;
 
-  const durationMs = startedAt === undefined ? undefined : Math.round(performance.now() - startedAt);
+  const durationMs =
+    startedAt === undefined ? undefined : Math.round(performance.now() - startedAt);
   const payload = {
     method: method.toUpperCase(),
     url: endpoint,
@@ -416,10 +438,7 @@ function logApiTrace({
   console.debug("[api]", payload);
 }
 
-async function handle401Error<T>(
-  endpoint: string,
-  options: ApiOptions
-): Promise<ApiResponse<T>> {
+async function handle401Error<T>(endpoint: string, options: ApiOptions): Promise<ApiResponse<T>> {
   if (isRefreshing) {
     return new Promise((resolve, reject) => {
       subscribeTokenRefresh((token) => {
@@ -446,7 +465,7 @@ async function handle401Error<T>(
   isRefreshing = true;
 
   try {
-    const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
@@ -459,19 +478,18 @@ async function handle401Error<T>(
     const refreshData = await refreshRes.json();
     if (refreshData.success && refreshData.data) {
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } = refreshData.data;
-      
+
       useAuth.getState().setTokens(newAccessToken, newRefreshToken);
-      
+
       isRefreshing = false;
       onRefreshed(newAccessToken);
 
       options._retry = true;
       options._skipDedup = true;
       return apiClient<T>(endpoint, options);
-    } else {
-      throw new Error("Invalid refresh response");
     }
-  } catch (error) {
+    throw new Error("Invalid refresh response");
+  } catch {
     isRefreshing = false;
     onRefreshed(null);
     useAuth.getState().clearAuth();
