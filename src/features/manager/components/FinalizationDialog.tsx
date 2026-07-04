@@ -225,7 +225,7 @@ export function FinalizationDialog({
               placeholder="Nhập căn cứ và ghi chú chốt kết quả..."
               className="min-h-24 w-full rounded-lg border border-[#DCE7F2] px-3 py-2 outline-none focus:ring-2 focus:ring-[#0057C2]/20"
             />
-            {noteRequired ? <span className="text-xs text-red-600">Ghi chu la bat buoc.</span> : null}
+            {noteRequired ? <span className="text-xs text-red-600">Ghi chú là bắt buộc.</span> : null}
           </label>
         </div>
 

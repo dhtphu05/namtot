@@ -32,7 +32,6 @@ import type { ManagerResultDetail, ManagerResultEvidence, ManagerResultItem } fr
 import type { Criterion, Level, Role } from "@/features/review/types";
 import type { FinalStatus } from "@/lib/api/types";
 import { fallbackStatusLabel, getStatusTone, getWorkflowStatusLabel } from "@/lib/status-labels";
-import { getFinalizeActionLabel } from "@/lib/levels";
 
 export const Route = createFileRoute("/app/manager/results/$applicationId")({
   validateSearch: (search) => ({
@@ -400,7 +399,7 @@ function DecisionPanel({
       <div className="mt-4 space-y-2 text-sm">
         <Info label="Aim đăng ký" value={getLevelLabel(detail.application.targetLevel)} />
         <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
-        <Info label="Kết quả sẽ lưu" value={getPendingFinalResultLabel(detail.aggregation.suggestedFinalStatus, suggestedLevel)} />
+        <Info label="Gợi ý hệ thống" value={getPendingFinalResultLabel(detail.aggregation.suggestedFinalStatus, suggestedLevel)} />
         <Info label="Điều kiện nghiệp vụ" value={businessReady ? "Đủ để chốt" : "Chưa đủ"} />
         <Info label="Quyền chốt của tài khoản" value={canFinalize ? "Có" : "Không"} />
       </div>
@@ -422,7 +421,7 @@ function DecisionPanel({
         {canFinalize ? (
           <Button className="w-full" disabled={!canSubmitFinal} onClick={onFinalize}>
             <CheckCircle2 className="h-4 w-4" />
-            {getFinalizeActionLabel(suggestedLevel)}
+            Chọn kết quả chốt
           </Button>
         ) : (
           <div className="rounded-lg border bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
@@ -505,7 +504,7 @@ function DecisionConsole({ detail }: { detail: ManagerResultDetail }) {
       <div className="mt-4 grid gap-3 md:grid-cols-4">
         <Info label="Aim đăng ký" value={level(detail.application.targetLevel)} />
         <Info label="Đề xuất cấp đạt" value={level(suggestedLevel)} />
-        <Info label="Kết quả sẽ lưu" value={finalText} />
+        <Info label="Gợi ý hệ thống" value={finalText} />
         <Info label="Readiness" value={`${detail.application.readinessScore}%`} />
       </div>
       <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
