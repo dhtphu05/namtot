@@ -5,13 +5,15 @@ import type {
   EscalateResolutionRequest,
   RequestSupplementRequest,
   ReviewTaskListParams,
+  ReviewTaskDetail,
   SubmitReviewDecisionRequest,
 } from "../types";
 
 export const reviewKeys = {
   all: ["reviewTasks"] as const,
   lists: (userId?: string) => ["officerTasks", userId ?? "anonymous"] as const,
-  list: (userId?: string, params?: ReviewTaskListParams) => [...reviewKeys.lists(userId), params ?? {}] as const,
+  list: (userId?: string, params?: ReviewTaskListParams) =>
+    [...reviewKeys.lists(userId), params ?? {}] as const,
   detail: (taskId: string) => ["reviewTask", taskId] as const,
   dashboard: (userId?: string) => ["officerDashboard", userId ?? "anonymous"] as const,
   assessment: (taskId: string) => ["criterionLevelAssessment", taskId] as const,
@@ -66,10 +68,21 @@ export function useReviewTask(taskId?: string) {
       return response.data;
     },
     enabled: Boolean(taskId),
+    refetchInterval: (query) => (hasReadingEvidence(query.state.data) ? 5000 : false),
   });
 }
 
 export const useReviewTaskDetail = useReviewTask;
+
+function hasReadingEvidence(task?: ReviewTaskDetail | null) {
+  return Boolean(
+    task?.evidences.some((evidence) =>
+      ["pending_indexing", "ocr_processing", "extracting", "checking_registry"].includes(
+        evidence.indexingStatus ?? "",
+      ),
+    ),
+  );
+}
 
 export function useCriterionLevelAssessment(taskId?: string) {
   return useQuery({

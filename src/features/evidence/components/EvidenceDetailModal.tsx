@@ -25,15 +25,14 @@ import {
 } from "@/features/evidence/hooks/useEvidence";
 import {
   canRetryEvidence,
-  getEvidenceUxStatus,
   isTerminalEvidenceStatus,
   normalizeEvidenceCard,
   sourceTypeCopy,
 } from "./evidence-card-utils";
-import { EvidenceAuditButton } from "./EvidenceAuditButton";
 import { EvidenceCardPanel } from "./EvidenceCardPanel";
 import { EvidenceFilePreview } from "./EvidenceFilePreview";
 import { formatStudentDate, studentCriterionLabel } from "./student-evidence-utils";
+import { getStudentEvidenceStatus } from "../utils/studentEvidenceStatus";
 
 type EvidenceDetailModalProps = {
   evidence: EvidenceResponse | null;
@@ -65,12 +64,12 @@ export function EvidenceDetailModal({
       !isTerminalEvidenceStatus(activeEvidence?.indexingStatus),
     ),
     initialIntervalMs: 2000,
-    backoffAfterMs: 30000,
+    backoffAfterMs: 20000,
     backoffIntervalMs: 5000,
-    slowAfterMs: 120000,
-    slowIntervalMs: 10000,
     maxElapsedMs: 180000,
-    stopWhen: (card) => isTerminalEvidenceStatus(card?.uxStatus?.step),
+    stopWhen: (card) =>
+      isTerminalEvidenceStatus(card?.uxStatus?.step) ||
+      isTerminalStudentStatus(card?.studentStatus?.code),
   });
   const officialCardQuery = useEvidenceCard(isEventImport ? activeEvidence?.id : undefined);
   const cardQuery = isEventImport ? officialCardQuery : pollingCardQuery;
@@ -81,10 +80,8 @@ export function EvidenceDetailModal({
       jobId && !isEventImport && !isTerminalEvidenceStatus(activeEvidence?.indexingStatus),
     ),
     initialIntervalMs: 2000,
-    backoffAfterMs: 30000,
+    backoffAfterMs: 20000,
     backoffIntervalMs: 5000,
-    slowAfterMs: 120000,
-    slowIntervalMs: 10000,
     maxElapsedMs: 180000,
   });
   const uploadFile = useUploadEvidenceFile(applicationId);
@@ -108,7 +105,7 @@ export function EvidenceDetailModal({
       if (!uploaded.res?.jobId) {
         await startIndexing.mutateAsync({ evidenceId: activeEvidence.id });
       }
-      toast.success("Đã tải file bổ sung. Hệ thống đang chuẩn bị số hoá.");
+      toast.success("Đã nhận file bổ sung. Hệ thống đang đọc nhanh file.");
       onChanged?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể tải file bổ sung.");
@@ -137,17 +134,15 @@ export function EvidenceDetailModal({
                     </Badge>
                     <Badge variant="outline">{sourceTypeCopy[activeEvidence.sourceType]}</Badge>
                     <Badge variant="outline">
-                      {getEvidenceUxStatus(activeEvidence, card).label}
+                      {getStudentEvidenceStatus(activeEvidence, card).label}
                     </Badge>
                   </>
                 ) : null}
               </div>
               <DialogTitle className="truncate text-xl">
-                {activeEvidence?.evidenceName ?? "Evidence Card"}
+                {activeEvidence?.evidenceName ?? "Minh chứng"}
               </DialogTitle>
-              <DialogDescription>
-                Kết quả số hoá chỉ hỗ trợ kiểm tra. Cán bộ/Hội đồng sẽ xác nhận cuối cùng.
-              </DialogDescription>
+              <DialogDescription>Thông tin minh chứng trong hồ sơ của bạn.</DialogDescription>
             </div>
             <button
               type="button"
@@ -166,7 +161,7 @@ export function EvidenceDetailModal({
               size="sm"
               onClick={() => setTab("card")}
             >
-              Kết quả đọc
+              Minh chứng
             </Button>
             <Button
               type="button"
@@ -176,7 +171,6 @@ export function EvidenceDetailModal({
             >
               File
             </Button>
-            {activeEvidence ? <EvidenceAuditButton evidenceId={activeEvidence.id} /> : null}
             {retryable ? (
               <Button
                 type="button"
@@ -233,7 +227,6 @@ export function EvidenceDetailModal({
               />
             ) : activeEvidence ? (
               <>
-                <Info label="Trạng thái xử lý" value={activeEvidence.indexingStatus} />
                 <Info label="Cập nhật" value={formatStudentDate(activeEvidence.updatedAt)} />
                 <Info label="Tạo lúc" value={formatStudentDate(activeEvidence.createdAt)} />
                 <div className="hidden lg:block">
@@ -256,10 +249,10 @@ export function EvidenceDetailModal({
 
             {tab === "card" && activeEvidence ? (
               cardQuery.isLoading && !card ? (
-                <LoadingState label="Đang tải Evidence Card..." />
+                <LoadingState label="Đang tải minh chứng..." />
               ) : cardQuery.isError ? (
                 <ErrorState
-                  title="Không thể tải Evidence Card"
+                  title="Không thể tải minh chứng"
                   message={cardError?.message ?? "Vui lòng thử lại sau."}
                   requestId={cardError?.meta?.requestId}
                   onRetry={() => void cardQuery.refetch()}
@@ -272,6 +265,8 @@ export function EvidenceDetailModal({
                   requestId={cardError?.meta?.requestId}
                   onRetry={retryable ? () => void retry() : undefined}
                   retrying={retryJob.isPending}
+                  onUploadMore={canUploadMore ? () => fileInputRef.current?.click() : undefined}
+                  uploading={uploadFile.isPending || startIndexing.isPending}
                 />
               )
             ) : null}
@@ -280,6 +275,16 @@ export function EvidenceDetailModal({
       </DialogContent>
     </Dialog>
   );
+}
+
+function isTerminalStudentStatus(status?: string | null) {
+  return [
+    "evidence_read",
+    "needs_more_info",
+    "needs_human_verification",
+    "unreadable_file",
+    "recorded_waiting_review",
+  ].includes(status ?? "");
 }
 
 function Info({ label, value }: { label: string; value?: string | null }) {

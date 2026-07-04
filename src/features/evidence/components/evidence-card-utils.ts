@@ -12,7 +12,7 @@ export const studentEvidenceCriteria = [
 
 export const sourceTypeCopy: Record<string, string> = {
   manual_upload: "Upload thủ công",
-  event_import: "Từ kho minh chứng",
+  event_import: "Danh sách chính thức",
   metric_input: "Chỉ số",
   collective_import: "Từ hồ sơ tập thể",
 };
@@ -20,15 +20,15 @@ export const sourceTypeCopy: Record<string, string> = {
 export const indexingStatusCopy: Record<string, string> = {
   not_started: "Chưa xử lý",
   uploaded: "Đã nhận file",
-  pending_indexing: "Chờ số hoá",
-  ocr_processing: "Đang số hoá",
+  pending_indexing: "Chờ đọc file",
+  ocr_processing: "Đang đọc file",
   processing: "Đang xử lý",
-  extracting: "Đang tạo Evidence Card",
-  extracting_fields: "Đang tạo Evidence Card",
+  extracting: "Đang tạo tóm tắt",
+  extracting_fields: "Đang tạo tóm tắt",
   checking_registry: "Đang đối chiếu kho minh chứng",
-  indexed: "Đã tạo Evidence Card",
+  indexed: "Đã tạo tóm tắt",
   needs_manual_review: "Cần cán bộ kiểm tra",
-  failed: "Số hoá chưa thành công",
+  failed: "Chưa đọc được file",
 };
 
 export const warningCopy: Record<string, string> = {
@@ -74,12 +74,12 @@ export function getEvidenceUxStatus(
 
   if (status === "indexed") {
     return {
-      label: "Evidence Card đã sẵn sàng",
+      label: "Đã đọc minh chứng",
       message: "Hệ thống đã đọc xong minh chứng và rút trích thông tin chính.",
       nextAction: "Kiểm tra lại thông tin trước khi nộp hồ sơ.",
       severity: "success",
       progressPercent: 100,
-      badges: ["Evidence Card"],
+      badges: ["Đã đọc"],
     };
   }
 
@@ -95,7 +95,7 @@ export function getEvidenceUxStatus(
 
   if (status === "failed") {
     return {
-      label: "Số hoá chưa thành công",
+      label: "Không đọc rõ file",
       message: "Hệ thống chưa đọc được nội dung minh chứng.",
       nextAction: "Thử xử lý lại hoặc tải file rõ hơn.",
       severity: "error",
@@ -105,28 +105,27 @@ export function getEvidenceUxStatus(
 
   if (status === "ocr_processing" || status === "processing") {
     return {
-      label: "Đang số hoá minh chứng",
-      message: "SmartReader đang đọc nội dung trong file. Bạn có thể rời trang và quay lại sau.",
-      nextAction: "Hệ thống sẽ tự cập nhật khi Evidence Card sẵn sàng.",
+      label: "Đang đọc minh chứng",
+      message: "Hệ thống đang đọc nội dung trong file. Bạn có thể rời trang và quay lại sau.",
+      nextAction: "Hệ thống sẽ tự cập nhật khi tóm tắt sẵn sàng.",
       severity: "info",
-      badges: ["SmartReader", "Đang xử lý"],
+      badges: ["Đang xử lý"],
     };
   }
 
   if (status === "extracting" || status === "checking_registry") {
     return {
-      label:
-        status === "checking_registry" ? "Đang đối chiếu kho minh chứng" : "Đang tạo Evidence Card",
+      label: status === "checking_registry" ? "Đang đối chiếu Event Hub" : "Đang tạo tóm tắt",
       message: "Hệ thống đang rút trích thông tin chính từ minh chứng.",
       nextAction: "Bạn có thể tiếp tục hoàn thiện hồ sơ trong lúc chờ.",
       severity: "info",
-      badges: ["Evidence Card"],
+      badges: ["Tóm tắt"],
     };
   }
 
   return {
     label: "File đã được nhận",
-    message: "File đã được nhận. Hệ thống sẽ bắt đầu số hoá trong nền.",
+    message: "File đã được nhận. Hệ thống sẽ bắt đầu đọc file trong nền.",
     nextAction: "Bạn có thể rời trang và quay lại sau.",
     severity: "neutral",
     badges: ["Chờ xử lý"],

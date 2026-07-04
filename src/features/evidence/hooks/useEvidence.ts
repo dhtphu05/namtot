@@ -231,10 +231,10 @@ export function useStartEvidenceIndexing(applicationId?: string) {
         applicationId ?? data?.applicationId ?? undefined,
         variables.evidenceId,
       );
-      toast.success("Đã bắt đầu số hoá minh chứng.");
+      toast.success("Đã bắt đầu đọc minh chứng.");
     },
     onError: (err: Error) => {
-      toast.error(`Không thể bắt đầu số hoá: ${err.message}`);
+      toast.error(`Không thể bắt đầu đọc minh chứng: ${err.message}`);
     },
   });
 }

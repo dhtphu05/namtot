@@ -8,6 +8,57 @@ import type {
 import type { AuditLogEntry } from "./audit";
 import type { UxStatus } from "./api";
 
+export type EvidenceStudentStatusCode =
+  | "official_match_found"
+  | "official_match_not_found"
+  | "similar_name_found"
+  | "evidence_read"
+  | "needs_more_info"
+  | "needs_human_verification"
+  | "unreadable_file"
+  | "recorded_waiting_review";
+
+export type EvidenceStudentNextAction =
+  | "add_to_application"
+  | "upload_evidence"
+  | "upload_more"
+  | "add_note"
+  | "wait_for_review"
+  | "retry_upload"
+  | "view_evidence";
+
+export type EvidenceStudentStatus = {
+  code: EvidenceStudentStatusCode;
+  label?: string | null;
+  message?: string | null;
+  nextAction?: EvidenceStudentNextAction | null;
+  severity?: "success" | "info" | "warning" | "error" | string | null;
+  source?: "official_matching" | "smartreader" | "manual" | "review" | string | null;
+};
+
+export type EvidenceReadableSummary = {
+  eventName?: string | null;
+  organizer?: string | null;
+  organizerName?: string | null;
+  time?: string | null;
+  activityTime?: string | null;
+  convertedValue?: string | number | null;
+  convertedUnit?: string | null;
+  issueDate?: string | null;
+  studentName?: string | null;
+  studentCode?: string | null;
+  [key: string]: unknown;
+};
+
+export type EvidenceMatchingStatus = {
+  code?: "official_match_found" | "official_match_not_found" | "similar_name_found" | string | null;
+  label?: string | null;
+  message?: string | null;
+  matchedEventName?: string | null;
+  eventName?: string | null;
+  [key: string]: unknown;
+};
+
 export type EvidenceCreateInput = {
   evidenceName: string;
   criterion: Criterion;
@@ -31,11 +82,16 @@ export type EvidenceCard = {
   id?: string;
   evidenceId?: string;
   confidence?: number | null;
+  readableSummary?: EvidenceReadableSummary | null;
+  matchingStatus?: EvidenceMatchingStatus | null;
+  missingFields?: string[] | Array<{ label?: string; message?: string; field?: string }>;
+  studentStatus?: EvidenceStudentStatus | null;
   extractedFields?: Record<string, unknown> | null;
   extractedFieldsJson?: unknown;
   warnings?: string[] | unknown;
   warningsJson?: unknown;
   ocrText?: string | null;
+  ocrTextPreview?: string | null;
   uxStatus?: UxStatus | null;
   aiSummary?: string | null;
   createdAt?: string;
@@ -55,6 +111,7 @@ export type EvidenceAudit = {
 export type EvidenceResponse = BaseEvidenceResponse & {
   uxStatus?: UxStatus | null;
   card?: EvidenceCard | null;
+  studentStatus?: EvidenceStudentStatus | null;
 };
 
 export type ApprovedEvidenceSearchItem = {

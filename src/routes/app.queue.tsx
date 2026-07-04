@@ -19,7 +19,11 @@ import { ReviewErrorState } from "@/features/review/components/ReviewErrorState"
 import { ReviewFilters } from "@/features/review/components/ReviewFilters";
 import { ReviewDecisionPanel } from "@/features/review/components/ReviewDecisionPanel";
 import { ReviewTaskTable } from "@/features/review/components/ReviewTaskTable";
-import { useClaimReviewTask, useReviewTask, useReviewTasks } from "@/features/review/hooks/useReview";
+import {
+  useClaimReviewTask,
+  useReviewTask,
+  useReviewTasks,
+} from "@/features/review/hooks/useReview";
 import type {
   ReviewTaskListItem,
   ReviewTaskListParams,
@@ -29,6 +33,13 @@ import type {
   Role,
 } from "@/features/review/types";
 import { getErrorMessage } from "@/features/review/utils/errors";
+import {
+  buildEvidenceDisplayModel,
+  getFieldLabel,
+  getGpaThreshold,
+  getMetricValue,
+  getVisibleEvidenceFieldEntries,
+} from "@/features/review/utils/evidenceDisplay";
 import {
   formatDateTime,
   getCriterionLabel,
@@ -74,13 +85,31 @@ type OfficerApplicationGroup = {
   updatedAt: string;
 };
 
-const fiveGoodCriteria: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
+const fiveGoodCriteria: Criterion[] = [
+  "ethics",
+  "academic",
+  "physical",
+  "volunteer",
+  "integration",
+];
 
 const officerTabs: Array<{ value: QueueTab; label: string; description: string }> = [
-  { value: "actionable", label: "Cần xử lý", description: "Việc đang được giao và có thể quyết định." },
-  { value: "claimable", label: "Có thể nhận", description: "Việc chưa phân công, thuộc tiêu chí phụ trách." },
+  {
+    value: "actionable",
+    label: "Cần xử lý",
+    description: "Việc đang được giao và có thể quyết định.",
+  },
+  {
+    value: "claimable",
+    label: "Có thể nhận",
+    description: "Việc chưa phân công, thuộc tiêu chí phụ trách.",
+  },
   { value: "mine", label: "Của tôi", description: "Tất cả việc đã giao cho bạn." },
-  { value: "supplement", label: "Chờ bổ sung", description: "Việc đang chờ sinh viên bổ sung giấy xác nhận." },
+  {
+    value: "supplement",
+    label: "Chờ bổ sung",
+    description: "Việc đang chờ sinh viên bổ sung giấy xác nhận.",
+  },
   { value: "readonly", label: "Chỉ xem", description: "Việc có thể xem nhưng không được xử lý." },
   { value: "all", label: "Tất cả", description: "Tất cả việc được phép xem." },
 ];
@@ -247,7 +276,8 @@ function ReviewQueueContent({ role }: { role: Role }) {
               <div>
                 <h2 className="text-base font-bold text-brand-deep">Chế độ hiển thị</h2>
                 <p className="text-sm text-muted-foreground">
-                  Mặc định xem theo hồ sơ để tránh lặp sinh viên. Chỉ chuyển sang tiêu chí khi cần rà từng task rời.
+                  Mặc định xem theo hồ sơ để tránh lặp sinh viên. Chỉ chuyển sang tiêu chí khi cần
+                  rà từng task rời.
                 </p>
               </div>
               <div className="flex rounded-md border bg-muted/30 p-1">
@@ -366,34 +396,22 @@ function ReviewQueueContent({ role }: { role: Role }) {
               )}
               onRetry={() => void refetch()}
             />
-          ) : (
-            role === "officer" ? (
-              viewMode === "application" ? (
-                <OfficerMasterDetailQueue
-                  activeCriterion={selectedCriterion}
-                  groups={visibleGroups}
-                  isLoading={isLoading}
-                  selectedApplicationId={selectedGroup?.applicationId ?? null}
-                  onClaimTask={(task) => setClaimCandidate(task)}
-                  onOpenTask={openTask}
-                  onSelectCriterion={setSelectedCriterion}
-                  onSelectGroup={(group, criterion) => {
-                    setSelectedApplicationId(group.applicationId);
-                    setSelectedCriterion(criterion ?? getDefaultCriterionForGroup(group));
-                  }}
-                  selectedGroup={selectedGroup}
-                />
-              ) : (
-                <ReviewTaskTable
-                  isLoading={isLoading}
-                  items={visibleItems}
-                  onClaimTask={(taskId) => {
-                    const item = items.find((candidate) => candidate.id === taskId);
-                    if (item) setClaimCandidate(item);
-                  }}
-                  onOpenTask={openTask}
-                />
-              )
+          ) : role === "officer" ? (
+            viewMode === "application" ? (
+              <OfficerMasterDetailQueue
+                activeCriterion={selectedCriterion}
+                groups={visibleGroups}
+                isLoading={isLoading}
+                selectedApplicationId={selectedGroup?.applicationId ?? null}
+                onClaimTask={(task) => setClaimCandidate(task)}
+                onOpenTask={openTask}
+                onSelectCriterion={setSelectedCriterion}
+                onSelectGroup={(group, criterion) => {
+                  setSelectedApplicationId(group.applicationId);
+                  setSelectedCriterion(criterion ?? getDefaultCriterionForGroup(group));
+                }}
+                selectedGroup={selectedGroup}
+              />
             ) : (
               <ReviewTaskTable
                 isLoading={isLoading}
@@ -405,6 +423,16 @@ function ReviewQueueContent({ role }: { role: Role }) {
                 onOpenTask={openTask}
               />
             )
+          ) : (
+            <ReviewTaskTable
+              isLoading={isLoading}
+              items={visibleItems}
+              onClaimTask={(taskId) => {
+                const item = items.find((candidate) => candidate.id === taskId);
+                if (item) setClaimCandidate(item);
+              }}
+              onOpenTask={openTask}
+            />
           )}
         </Card>
       </div>
@@ -464,7 +492,10 @@ function ReviewQueueContent({ role }: { role: Role }) {
         </div>
       </div>
 
-      <Dialog open={Boolean(claimCandidate)} onOpenChange={(open) => !open && setClaimCandidate(null)}>
+      <Dialog
+        open={Boolean(claimCandidate)}
+        onOpenChange={(open) => !open && setClaimCandidate(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xác nhận nhận xử lý</DialogTitle>
@@ -476,7 +507,8 @@ function ReviewQueueContent({ role }: { role: Role }) {
             <div className="rounded-md border bg-muted/30 p-3 text-sm">
               <div className="font-semibold text-brand-deep">{claimCandidate.studentName}</div>
               <div className="mt-1 text-muted-foreground">
-                {claimCandidate.studentCode || "Chưa có MSSV"} • {getCriterionLabel(claimCandidate.criterion)} •{" "}
+                {claimCandidate.studentCode || "Chưa có MSSV"} •{" "}
+                {getCriterionLabel(claimCandidate.criterion)} •{" "}
                 {getLevelLabel(claimCandidate.targetLevel)}
               </div>
             </div>
@@ -541,7 +573,10 @@ function OfficerMasterDetailQueue({
         <div className="mb-3 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-brand-deep">Hồ sơ trong phạm vi</h2>
-            <p className="text-xs text-muted-foreground">{groups.length} hồ sơ, {groups.reduce((sum, group) => sum + group.tasks.length, 0)} task tiêu chí</p>
+            <p className="text-xs text-muted-foreground">
+              {groups.length} hồ sơ, {groups.reduce((sum, group) => sum + group.tasks.length, 0)}{" "}
+              task tiêu chí
+            </p>
           </div>
           <Badge variant="outline">Hồ sơ</Badge>
         </div>
@@ -577,7 +612,9 @@ function OfficerCaseCompactCard({
   isSelected: boolean;
   onSelect: (group: OfficerApplicationGroup, criterion?: Criterion) => void;
 }) {
-  const assignedCount = group.tasks.filter((task) => task.permissions?.reason === "assigned_to_you").length;
+  const assignedCount = group.tasks.filter(
+    (task) => task.permissions?.reason === "assigned_to_you",
+  ).length;
   const completedCount = group.tasks.filter((task) => isCompletedTask(task)).length;
   const priorityTask = group.primaryTask;
 
@@ -591,17 +628,26 @@ function OfficerCaseCompactCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-brand-deep">{group.studentName || "Chưa có tên sinh viên"}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{group.studentCode || "Chưa có MSSV"}</div>
+          <div className="truncate text-sm font-bold text-brand-deep">
+            {group.studentName || "Chưa có tên sinh viên"}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {group.studentCode || "Chưa có MSSV"}
+          </div>
         </div>
-        <Badge variant={isSelected ? "default" : "outline"}>{getLevelLabel(group.targetLevel)}</Badge>
+        <Badge variant={isSelected ? "default" : "outline"}>
+          {getLevelLabel(group.targetLevel)}
+        </Badge>
       </div>
       <div className="mt-2 truncate text-xs text-muted-foreground">
-        {[group.className, group.faculty].filter(Boolean).join(" • ") || "Chưa có lớp/khoa"} • {group.schoolYear}
+        {[group.className, group.faculty].filter(Boolean).join(" • ") || "Chưa có lớp/khoa"} •{" "}
+        {group.schoolYear}
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded bg-muted/50 px-2 py-1">Giao: {assignedCount}/5</div>
-        <div className="rounded bg-muted/50 px-2 py-1">Xong: {completedCount}/{group.tasks.length}</div>
+        <div className="rounded bg-muted/50 px-2 py-1">
+          Xong: {completedCount}/{group.tasks.length}
+        </div>
       </div>
       <div className="mt-2 flex flex-wrap gap-1">
         {fiveGoodCriteria.map((criterion) => {
@@ -643,7 +689,7 @@ function OfficerApplicationWorkspace({
 }) {
   const [evidenceMode, setEvidenceMode] = useState<EvidenceViewMode>("criterion");
   const activeTask = group
-    ? group.tasks.find((task) => task.criterion === activeCriterion) ?? group.primaryTask
+    ? (group.tasks.find((task) => task.criterion === activeCriterion) ?? group.primaryTask)
     : null;
   const { data: activeDetail = null, isLoading: isDetailLoading } = useReviewTask(activeTask?.id);
 
@@ -661,7 +707,9 @@ function OfficerApplicationWorkspace({
 
   const evidenceItems = activeDetail?.evidences ?? [];
   const completedCount = group.tasks.filter((task) => isCompletedTask(task)).length;
-  const assignedCount = group.tasks.filter((task) => task.permissions?.reason === "assigned_to_you").length;
+  const assignedCount = group.tasks.filter(
+    (task) => task.permissions?.reason === "assigned_to_you",
+  ).length;
   const nextCriterion = getNextActionableCriterion(group, activeTask.criterion);
 
   return (
@@ -669,9 +717,12 @@ function OfficerApplicationWorkspace({
       <div className="border-b p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 className="text-xl font-bold text-brand-deep">{group.studentName || "Chưa có tên sinh viên"}</h2>
+            <h2 className="text-xl font-bold text-brand-deep">
+              {group.studentName || "Chưa có tên sinh viên"}
+            </h2>
             <div className="mt-1 text-sm text-muted-foreground">
-              {[group.studentCode, group.className, group.faculty].filter(Boolean).join(" • ") || "Chưa có thông tin sinh viên"}
+              {[group.studentCode, group.className, group.faculty].filter(Boolean).join(" • ") ||
+                "Chưa có thông tin sinh viên"}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -681,14 +732,26 @@ function OfficerApplicationWorkspace({
           </div>
         </div>
         <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-md bg-muted/40 p-3">Bạn được giao: <span className="font-bold">{assignedCount}/5</span></div>
-          <div className="rounded-md bg-muted/40 p-3">Toàn hồ sơ đã xử lý: <span className="font-bold">{completedCount}/{group.tasks.length}</span></div>
-          <div className="rounded-md bg-muted/40 p-3">Deadline gần nhất: <span className="font-bold">{formatDateTime(group.dueDate)}</span></div>
-          <div className="rounded-md bg-muted/40 p-3">Trạng thái: <span className="font-bold">{getTaskStatusLabel(activeTask.status)}</span></div>
+          <div className="rounded-md bg-muted/40 p-3">
+            Bạn được giao: <span className="font-bold">{assignedCount}/5</span>
+          </div>
+          <div className="rounded-md bg-muted/40 p-3">
+            Toàn hồ sơ đã xử lý:{" "}
+            <span className="font-bold">
+              {completedCount}/{group.tasks.length}
+            </span>
+          </div>
+          <div className="rounded-md bg-muted/40 p-3">
+            Deadline gần nhất: <span className="font-bold">{formatDateTime(group.dueDate)}</span>
+          </div>
+          <div className="rounded-md bg-muted/40 p-3">
+            Trạng thái: <span className="font-bold">{getTaskStatusLabel(activeTask.status)}</span>
+          </div>
         </div>
         {completedCount === group.tasks.length && group.tasks.length > 0 ? (
           <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-            Đã xử lý {completedCount}/{group.tasks.length} tiêu chí, chờ cấp có thẩm quyền tổng hợp/chốt.
+            Đã xử lý {completedCount}/{group.tasks.length} tiêu chí, chờ cấp có thẩm quyền tổng
+            hợp/chốt.
           </div>
         ) : null}
       </div>
@@ -697,7 +760,8 @@ function OfficerApplicationWorkspace({
         <div className="flex gap-2 overflow-x-auto pb-3">
           {fiveGoodCriteria.map((criterion) => {
             const task = group.tasks.find((item) => item.criterion === criterion);
-            const selected = task?.criterion === activeTask.criterion || (!task && criterion === activeCriterion);
+            const selected =
+              task?.criterion === activeTask.criterion || (!task && criterion === activeCriterion);
             return (
               <button
                 className={`min-w-fit rounded-md border px-3 py-2 text-sm font-semibold transition ${
@@ -722,6 +786,7 @@ function OfficerApplicationWorkspace({
           <CriterionSummaryPanel task={activeTask} detail={activeDetail} />
           <EvidenceWorkspacePanel
             activeCriterion={activeTask.criterion}
+            detail={activeDetail}
             evidenceMode={evidenceMode}
             evidences={evidenceItems}
             isLoading={isDetailLoading}
@@ -735,7 +800,9 @@ function OfficerApplicationWorkspace({
           {activeTask.permissions?.canClaim ? (
             <Card>
               <div className="text-sm font-semibold text-brand-deep">Task chưa được giao</div>
-              <p className="mt-1 text-sm text-muted-foreground">{activeTask.permissions.reasonLabel}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {activeTask.permissions.reasonLabel}
+              </p>
               <Button className="mt-3 w-full" type="button" onClick={() => onClaimTask(activeTask)}>
                 Nhận xử lý
               </Button>
@@ -754,9 +821,15 @@ function OfficerApplicationWorkspace({
               <Card>
                 <div className="text-sm font-semibold text-brand-deep">Chỉ xem</div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {activeTask.permissions?.reasonLabel ?? "Bạn không có quyền gửi kết luận cho tiêu chí này."}
+                  {activeTask.permissions?.reasonLabel ??
+                    "Bạn không có quyền gửi kết luận cho tiêu chí này."}
                 </p>
-                <Button className="mt-3 w-full" variant="outline" type="button" onClick={() => onOpenTask(activeTask.id)}>
+                <Button
+                  className="mt-3 w-full"
+                  variant="outline"
+                  type="button"
+                  onClick={() => onOpenTask(activeTask.id)}
+                >
                   Mở task chi tiết
                 </Button>
               </Card>
@@ -825,7 +898,9 @@ function OfficerApplicationCard({
   onClaimTask: (task: ReviewTaskListItem) => void;
   onOpenTask: (taskId: string) => void;
 }) {
-  const assignedCount = group.tasks.filter((task) => task.permissions?.reason === "assigned_to_you").length;
+  const assignedCount = group.tasks.filter(
+    (task) => task.permissions?.reason === "assigned_to_you",
+  ).length;
   const completedCount = group.tasks.filter((task) => isCompletedTask(task)).length;
   const nextClaimableTask = group.claimableTasks[0];
 
@@ -834,7 +909,15 @@ function OfficerApplicationCard({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={group.actionableTasks.length ? "default" : group.claimableTasks.length ? "outline" : "secondary"}>
+            <Badge
+              variant={
+                group.actionableTasks.length
+                  ? "default"
+                  : group.claimableTasks.length
+                    ? "outline"
+                    : "secondary"
+              }
+            >
               {getApplicationWorkBadge(group)}
             </Badge>
             <Badge variant="outline">{getLevelLabel(group.targetLevel)}</Badge>
@@ -844,10 +927,12 @@ function OfficerApplicationCard({
             {group.studentName || "Chưa có tên sinh viên"}
           </h3>
           <div className="mt-1 text-sm text-muted-foreground">
-            {[group.studentCode, group.className, group.faculty].filter(Boolean).join(" • ") || "Chưa có thông tin lớp/khoa"}
+            {[group.studentCode, group.className, group.faculty].filter(Boolean).join(" • ") ||
+              "Chưa có thông tin lớp/khoa"}
           </div>
           <div className="mt-2 text-sm text-muted-foreground">
-            Bạn được giao {assignedCount}/{fiveGoodCriteria.length} tiêu chí trong hồ sơ này. Toàn hồ sơ đã xử lý {completedCount}/{group.tasks.length} tiêu chí.
+            Bạn được giao {assignedCount}/{fiveGoodCriteria.length} tiêu chí trong hồ sơ này. Toàn
+            hồ sơ đã xử lý {completedCount}/{group.tasks.length} tiêu chí.
           </div>
         </div>
 
@@ -873,13 +958,21 @@ function OfficerApplicationCard({
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>Cập nhật: {formatDateTime(group.updatedAt)}</span>
         <span>Deadline gần nhất: {formatDateTime(group.dueDate)}</span>
-        {group.readonlyTasks.length ? <span>{group.readonlyTasks.length} tiêu chí chỉ xem</span> : null}
+        {group.readonlyTasks.length ? (
+          <span>{group.readonlyTasks.length} tiêu chí chỉ xem</span>
+        ) : null}
       </div>
     </article>
   );
 }
 
-function CriterionTaskChip({ criterion, task }: { criterion: Criterion; task?: ReviewTaskListItem }) {
+function CriterionTaskChip({
+  criterion,
+  task,
+}: {
+  criterion: Criterion;
+  task?: ReviewTaskListItem;
+}) {
   if (!task) {
     return (
       <div className="rounded-md border border-dashed p-3">
@@ -893,8 +986,12 @@ function CriterionTaskChip({ criterion, task }: { criterion: Criterion; task?: R
     <div className="rounded-md border p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-brand-deep">{getCriterionLabel(criterion)}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{getCriterionPermissionLabel(task)}</div>
+          <div className="truncate text-sm font-semibold text-brand-deep">
+            {getCriterionLabel(criterion)}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {getCriterionPermissionLabel(task)}
+          </div>
         </div>
         <Badge variant={getTaskStatusBadgeVariant(task)}>{getTaskStatusLabel(task.status)}</Badge>
       </div>
@@ -912,18 +1009,17 @@ function CriterionSummaryPanel({
   detail: ReviewTaskDetail | null;
   task: ReviewTaskListItem;
 }) {
-  const checklist =
-    detail?.checklist?.length
-      ? detail.checklist
-      : detail?.criterionLevelAssessment?.levels
-          ?.find((level) => level.level === detail.application.targetLevel)
-          ?.requirements.map((requirement) => ({
-            id: requirement.key,
-            label: requirement.label,
-            passed: requirement.status === "passed",
-            required: true,
-            note: requirement.reason ?? requirement.actualValue ?? requirement.requiredValue,
-          })) ?? [];
+  const checklist = detail?.checklist?.length
+    ? detail.checklist
+    : (detail?.criterionLevelAssessment?.levels
+        ?.find((level) => level.level === detail.application.targetLevel)
+        ?.requirements.map((requirement) => ({
+          id: requirement.key,
+          label: requirement.label,
+          passed: requirement.status === "passed",
+          required: true,
+          note: requirement.reason ?? requirement.actualValue ?? requirement.requiredValue,
+        })) ?? []);
 
   return (
     <Card>
@@ -934,7 +1030,15 @@ function CriterionSummaryPanel({
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge variant={getTaskStatusBadgeVariant(task)}>{getTaskStatusLabel(task.status)}</Badge>
-          <Badge variant={task.permissions?.canAct ? "default" : task.permissions?.canClaim ? "outline" : "secondary"}>
+          <Badge
+            variant={
+              task.permissions?.canAct
+                ? "default"
+                : task.permissions?.canClaim
+                  ? "outline"
+                  : "secondary"
+            }
+          >
             {task.permissions?.badges?.[0] ?? getCriterionPermissionLabel(task)}
           </Badge>
           <Badge variant="outline">{task.evidenceCount ?? 0} minh chứng</Badge>
@@ -947,11 +1051,17 @@ function CriterionSummaryPanel({
             <div className="rounded-md border p-3" key={item.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="text-sm font-semibold text-brand-deep">{item.label}</div>
-                <Badge variant={item.passed ? "default" : item.passed === false ? "destructive" : "outline"}>
+                <Badge
+                  variant={
+                    item.passed ? "default" : item.passed === false ? "destructive" : "outline"
+                  }
+                >
                   {item.passed ? "Đạt" : item.passed === false ? "Chưa đạt" : "Cần rà"}
                 </Badge>
               </div>
-              {item.note ? <div className="mt-1 text-xs text-muted-foreground">{String(item.note)}</div> : null}
+              {item.note ? (
+                <div className="mt-1 text-xs text-muted-foreground">{String(item.note)}</div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -966,6 +1076,7 @@ function CriterionSummaryPanel({
 
 function EvidenceWorkspacePanel({
   activeCriterion,
+  detail,
   evidenceMode,
   evidences,
   isLoading,
@@ -973,6 +1084,7 @@ function EvidenceWorkspacePanel({
   totalEvidenceCount,
 }: {
   activeCriterion: Criterion;
+  detail: ReviewTaskDetail | null;
   evidenceMode: EvidenceViewMode;
   evidences: NonNullable<ReviewTaskDetail["evidences"]>;
   isLoading: boolean;
@@ -985,36 +1097,38 @@ function EvidenceWorkspacePanel({
         <div>
           <h3 className="font-bold text-brand-deep">Minh chứng</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {evidenceMode === "criterion" ? getCriterionLabel(activeCriterion) : `${totalEvidenceCount} minh chứng toàn hồ sơ`}
+            {evidenceMode === "criterion"
+              ? getCriterionLabel(activeCriterion)
+              : `${totalEvidenceCount} minh chứng toàn hồ sơ`}
           </p>
         </div>
         <div className="flex rounded-md border bg-muted/30 p-1">
-          <Button size="sm" type="button" variant={evidenceMode === "criterion" ? "default" : "ghost"} onClick={() => onModeChange("criterion")}>
+          <Button
+            size="sm"
+            type="button"
+            variant={evidenceMode === "criterion" ? "default" : "ghost"}
+            onClick={() => onModeChange("criterion")}
+          >
             Minh chứng tiêu chí này
           </Button>
-          <Button size="sm" type="button" variant={evidenceMode === "all" ? "default" : "ghost"} onClick={() => onModeChange("all")}>
+          <Button
+            size="sm"
+            type="button"
+            variant={evidenceMode === "all" ? "default" : "ghost"}
+            onClick={() => onModeChange("all")}
+          >
             Tất cả minh chứng hồ sơ
           </Button>
         </div>
       </div>
       {isLoading ? (
-        <div className="mt-4 rounded-md border border-dashed p-4 text-sm text-muted-foreground">Đang tải minh chứng...</div>
+        <div className="mt-4 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+          Đang tải minh chứng...
+        </div>
       ) : evidences.length ? (
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="mt-4 grid gap-3">
           {evidences.map((evidence) => (
-            <div className="rounded-md border p-3" key={evidence.id}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-brand-deep">{evidence.evidenceName || "Minh chứng"}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">{getCriterionLabel(evidence.criterion)} • {evidence.sourceType}</div>
-                </div>
-                <Badge variant="outline">{evidence.status}</Badge>
-              </div>
-              {evidence.card?.aiSummary ? <div className="mt-2 text-sm text-muted-foreground">{evidence.card.aiSummary}</div> : null}
-              <div className="mt-2 text-xs text-muted-foreground">
-                {evidence.files?.length ?? 0} file • Độ rõ {formatConfidence(evidence.confidence ?? evidence.card?.confidence)}
-              </div>
-            </div>
+            <QueueEvidenceCard detail={detail} evidence={evidence} key={evidence.id} />
           ))}
         </div>
       ) : (
@@ -1026,38 +1140,187 @@ function EvidenceWorkspacePanel({
   );
 }
 
+function QueueEvidenceCard({
+  detail,
+  evidence,
+}: {
+  detail: ReviewTaskDetail | null;
+  evidence: NonNullable<ReviewTaskDetail["evidences"]>[number];
+}) {
+  const model = buildEvidenceDisplayModel(evidence);
+  const metricGpa = detail ? getMetricValue(detail.metrics ?? [], "gpa") : null;
+  const threshold = detail ? getGpaThreshold(detail.application.targetLevel) : null;
+  const visibleFields = getVisibleEvidenceFieldEntries(model);
+
+  if (model.kind === "academic_transcript") {
+    return (
+      <div className="rounded-md border bg-white p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="text-base font-bold text-brand-deep">{model.title}</div>
+            <div className="mt-1 flex flex-wrap gap-2">
+              <Badge variant="secondary">{model.readerLabel}</Badge>
+              <Badge variant="outline">{model.sourceLabel}</Badge>
+              <Badge variant="outline">{getCriterionLabel(evidence.criterion)}</Badge>
+            </div>
+          </div>
+          <div className="text-sm font-semibold text-brand-deep">
+            {evidence.files?.length ?? 0} file
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <EvidenceFact label="GPA sinh viên nhập" value={formatEvidenceValue(metricGpa)} />
+          <EvidenceFact label="GPA SmartReader đọc" value={formatEvidenceValue(model.gpa)} />
+          <EvidenceFact
+            label="Ngưỡng cấp đang xét"
+            value={threshold ? `${threshold}/4` : "Chưa có ngưỡng"}
+          />
+        </div>
+
+        <div className="mt-3 rounded-md bg-muted/30 p-3 text-sm text-muted-foreground">
+          {getGpaConclusion(metricGpa, model.gpa, threshold)}
+        </div>
+
+        {visibleFields.length ? (
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {visibleFields.slice(0, 6).map(([key, value]) => (
+              <EvidenceFact
+                key={key}
+                label={getFieldLabel(key)}
+                value={formatEvidenceValue(value)}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (model.kind === "event_achievement") {
+    return (
+      <div className="rounded-md border bg-white p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="text-base font-bold text-brand-deep">
+              {model.eventName || model.title}
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {model.organizer || "Chưa rõ đơn vị tổ chức"}
+            </div>
+          </div>
+          <Badge variant={model.matchLabel.startsWith("Khớp") ? "secondary" : "outline"}>
+            {model.matchLabel}
+          </Badge>
+        </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-3">
+          <EvidenceFact label="Cấp tổ chức" value={formatOrganizerLevel(model.organizerLevel)} />
+          <EvidenceFact
+            label="Ngày hoạt động"
+            value={model.activityDate ? formatDateTime(model.activityDate) : undefined}
+          />
+          <EvidenceFact
+            label="Ngày cấp"
+            value={model.issueDate ? formatDateTime(model.issueDate) : undefined}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge variant="outline">{model.readerLabel}</Badge>
+          <Badge variant="outline">{model.sourceLabel}</Badge>
+          <Badge variant="outline">{evidence.files?.length ?? 0} file</Badge>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border bg-white p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="text-base font-bold text-brand-deep">{model.title}</div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            {getCriterionLabel(evidence.criterion)}
+          </div>
+        </div>
+        <Badge variant="outline">{model.readerLabel}</Badge>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Badge variant="outline">{model.sourceLabel}</Badge>
+        <Badge variant="outline">{model.matchLabel}</Badge>
+        <Badge variant="outline">{evidence.files?.length ?? 0} file</Badge>
+      </div>
+      {evidence.card?.aiSummary ? (
+        <div className="mt-3 text-sm text-muted-foreground">{evidence.card.aiSummary}</div>
+      ) : null}
+    </div>
+  );
+}
+
 function DataMatchPanel({ detail }: { detail: ReviewTaskDetail | null }) {
+  const relatedEvidences =
+    detail?.evidences?.filter((evidence) => evidence.criterion === detail.criterion) ?? [];
+  const displayModels = relatedEvidences.map(buildEvidenceDisplayModel);
+  const academicModel = displayModels.find((model) => model.kind === "academic_transcript");
+  const metricGpa = detail ? getMetricValue(detail.metrics ?? [], "gpa") : null;
+  const threshold = detail ? getGpaThreshold(detail.application.targetLevel) : null;
+  const matchedCount = displayModels.filter((model) => model.matchLabel.startsWith("Khớp")).length;
+
   return (
     <Card>
       <h3 className="font-bold text-brand-deep">Dữ liệu đối chiếu</h3>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="rounded-md border p-3">
-          <div className="text-sm font-semibold text-brand-deep">Dữ liệu sinh viên</div>
-          {detail?.metrics?.length ? (
-            <div className="mt-2 space-y-2">
-              {detail.metrics.map((metric) => (
-                <div className="flex justify-between gap-3 text-sm" key={metric.id}>
-                  <span className="text-muted-foreground">{getQueueMetricLabel(metric.metricType)}</span>
-                  <span className="font-semibold">{metric.value}{metric.unit ? ` ${metric.unit}` : ""}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-2 text-sm text-muted-foreground">Chưa có dữ liệu đối chiếu.</div>
-          )}
+          <div className="text-sm font-semibold text-brand-deep">GPA / dữ liệu học tập</div>
+          <div className="mt-3 grid gap-2">
+            <EvidenceFact label="Sinh viên nhập" value={formatEvidenceValue(metricGpa)} />
+            <EvidenceFact
+              label="SmartReader đọc được"
+              value={formatEvidenceValue(academicModel?.gpa)}
+            />
+            <EvidenceFact
+              label="Ngưỡng cấp đang xét"
+              value={threshold ? `${threshold}/4` : "Chưa có ngưỡng"}
+            />
+          </div>
         </div>
         <div className="rounded-md border p-3">
-          <div className="text-sm font-semibold text-brand-deep">Kiểm tra hồ sơ</div>
-          {detail?.criterionLevelAssessment ? (
-            <div className="mt-2 text-sm text-muted-foreground">
-              Gợi ý cấp tiêu chí: {getLevelLabel(detail.criterionLevelAssessment.suggestedCriterionLevel)}
-            </div>
-          ) : (
-            <div className="mt-2 text-sm text-muted-foreground">Chưa có dữ liệu kiểm tra cho tiêu chí này.</div>
-          )}
+          <div className="text-sm font-semibold text-brand-deep">
+            Minh chứng / đối chiếu chính thức
+          </div>
+          <div className="mt-3 grid gap-2">
+            <EvidenceFact
+              label="Minh chứng liên quan"
+              value={`${relatedEvidences.length} tài liệu`}
+            />
+            <EvidenceFact
+              label="Đối chiếu danh sách"
+              value={matchedCount ? `${matchedCount} khớp` : "Chưa khớp"}
+            />
+            <EvidenceFact
+              label="Kết luận tạm"
+              value={
+                academicModel
+                  ? getGpaConclusion(metricGpa, academicModel.gpa, threshold)
+                  : detail?.criterionLevelAssessment
+                    ? `Gợi ý cấp: ${getLevelLabel(detail.criterionLevelAssessment.suggestedCriterionLevel)}`
+                    : "Cần cán bộ xác nhận"
+              }
+            />
+          </div>
         </div>
       </div>
     </Card>
+  );
+}
+
+function EvidenceFact({ label, value }: { label: string; value?: React.ReactNode }) {
+  return (
+    <div className="rounded-md bg-muted/30 p-3">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-semibold text-brand-deep">{value || "Chưa có dữ liệu"}</div>
+    </div>
   );
 }
 
@@ -1084,7 +1347,8 @@ function PriorityTaskCard({
             {item.studentName || "Chưa có tên sinh viên"}
           </div>
           <div className="mt-1 text-sm text-muted-foreground">
-            {[item.studentCode, item.className, item.faculty].filter(Boolean).join(" • ") || "Chưa có thông tin lớp/khoa"}
+            {[item.studentCode, item.className, item.faculty].filter(Boolean).join(" • ") ||
+              "Chưa có thông tin lớp/khoa"}
           </div>
           <div className="mt-2 text-sm">
             {getCriterionLabel(item.criterion)} • {getLevelLabel(item.targetLevel)}
@@ -1127,7 +1391,9 @@ function filterOfficerTasks(items: ReviewTaskListItem[], tab: QueueTab) {
     return items.filter((item) => item.status === "supplement_required");
   }
   if (tab === "readonly") {
-    return items.filter((item) => item.permissions?.canView && !item.permissions.canAct && !item.permissions.canClaim);
+    return items.filter(
+      (item) => item.permissions?.canView && !item.permissions.canAct && !item.permissions.canClaim,
+    );
   }
   return items;
 }
@@ -1136,30 +1402,55 @@ function sortQueueItems(items: ReviewTaskListItem[], sortBy: QueueSort) {
   const list = [...items];
   const dateValue = (value?: string | null) => (value ? new Date(value).getTime() : 0);
   const text = (value?: string | null) => value ?? "";
-  if (sortBy === "oldest") return list.sort((a, b) => dateValue(a.createdAt ?? a.updatedAt) - dateValue(b.createdAt ?? b.updatedAt));
-  if (sortBy === "student_name") return list.sort((a, b) => text(a.studentName).localeCompare(text(b.studentName), "vi"));
-  if (sortBy === "student_code") return list.sort((a, b) => text(a.studentCode).localeCompare(text(b.studentCode), "vi"));
-  if (sortBy === "criterion") return list.sort((a, b) => text(a.criterion).localeCompare(text(b.criterion), "vi"));
-  if (sortBy === "status") return list.sort((a, b) => text(a.status).localeCompare(text(b.status), "vi"));
-  if (sortBy === "review_need") return list.sort((a, b) => getPriorityWeight(a) - getPriorityWeight(b));
-  if (sortBy === "deadline") return list.sort((a, b) => dateValue(a.dueDate) - dateValue(b.dueDate));
-  if (sortBy === "level") return list.sort((a, b) => text(a.targetLevel).localeCompare(text(b.targetLevel), "vi"));
-  if (sortBy === "evidence_count") return list.sort((a, b) => (b.evidenceCount ?? 0) - (a.evidenceCount ?? 0));
-  return list.sort((a, b) => dateValue(b.createdAt ?? b.updatedAt) - dateValue(a.createdAt ?? a.updatedAt));
+  if (sortBy === "oldest")
+    return list.sort(
+      (a, b) => dateValue(a.createdAt ?? a.updatedAt) - dateValue(b.createdAt ?? b.updatedAt),
+    );
+  if (sortBy === "student_name")
+    return list.sort((a, b) => text(a.studentName).localeCompare(text(b.studentName), "vi"));
+  if (sortBy === "student_code")
+    return list.sort((a, b) => text(a.studentCode).localeCompare(text(b.studentCode), "vi"));
+  if (sortBy === "criterion")
+    return list.sort((a, b) => text(a.criterion).localeCompare(text(b.criterion), "vi"));
+  if (sortBy === "status")
+    return list.sort((a, b) => text(a.status).localeCompare(text(b.status), "vi"));
+  if (sortBy === "review_need")
+    return list.sort((a, b) => getPriorityWeight(a) - getPriorityWeight(b));
+  if (sortBy === "deadline")
+    return list.sort((a, b) => dateValue(a.dueDate) - dateValue(b.dueDate));
+  if (sortBy === "level")
+    return list.sort((a, b) => text(a.targetLevel).localeCompare(text(b.targetLevel), "vi"));
+  if (sortBy === "evidence_count")
+    return list.sort((a, b) => (b.evidenceCount ?? 0) - (a.evidenceCount ?? 0));
+  return list.sort(
+    (a, b) => dateValue(b.createdAt ?? b.updatedAt) - dateValue(a.createdAt ?? a.updatedAt),
+  );
 }
 
 function sortQueueGroups(groups: OfficerApplicationGroup[], sortBy: QueueSort) {
   const list = [...groups];
   const dateValue = (value?: string | null) => (value ? new Date(value).getTime() : 0);
   const text = (value?: string | null) => value ?? "";
-  if (sortBy === "oldest") return list.sort((a, b) => dateValue(a.updatedAt) - dateValue(b.updatedAt));
-  if (sortBy === "student_name") return list.sort((a, b) => text(a.studentName).localeCompare(text(b.studentName), "vi"));
-  if (sortBy === "student_code") return list.sort((a, b) => text(a.studentCode).localeCompare(text(b.studentCode), "vi"));
-  if (sortBy === "criterion") return list.sort((a, b) => text(a.primaryTask.criterion).localeCompare(text(b.primaryTask.criterion), "vi"));
-  if (sortBy === "status") return list.sort((a, b) => text(a.applicationStatus).localeCompare(text(b.applicationStatus), "vi"));
-  if (sortBy === "review_need") return list.sort((a, b) => getPriorityWeight(a.primaryTask) - getPriorityWeight(b.primaryTask));
-  if (sortBy === "deadline") return list.sort((a, b) => dateValue(a.dueDate) - dateValue(b.dueDate));
-  if (sortBy === "level") return list.sort((a, b) => text(a.targetLevel).localeCompare(text(b.targetLevel), "vi"));
+  if (sortBy === "oldest")
+    return list.sort((a, b) => dateValue(a.updatedAt) - dateValue(b.updatedAt));
+  if (sortBy === "student_name")
+    return list.sort((a, b) => text(a.studentName).localeCompare(text(b.studentName), "vi"));
+  if (sortBy === "student_code")
+    return list.sort((a, b) => text(a.studentCode).localeCompare(text(b.studentCode), "vi"));
+  if (sortBy === "criterion")
+    return list.sort((a, b) =>
+      text(a.primaryTask.criterion).localeCompare(text(b.primaryTask.criterion), "vi"),
+    );
+  if (sortBy === "status")
+    return list.sort((a, b) =>
+      text(a.applicationStatus).localeCompare(text(b.applicationStatus), "vi"),
+    );
+  if (sortBy === "review_need")
+    return list.sort((a, b) => getPriorityWeight(a.primaryTask) - getPriorityWeight(b.primaryTask));
+  if (sortBy === "deadline")
+    return list.sort((a, b) => dateValue(a.dueDate) - dateValue(b.dueDate));
+  if (sortBy === "level")
+    return list.sort((a, b) => text(a.targetLevel).localeCompare(text(b.targetLevel), "vi"));
   if (sortBy === "evidence_count") {
     return list.sort(
       (a, b) =>
@@ -1187,16 +1478,19 @@ function groupOfficerApplications(items: ReviewTaskListItem[]): OfficerApplicati
       const actionableTasks = sortedTasks.filter((task) => task.permissions?.canAct);
       const claimableTasks = sortedTasks.filter((task) => task.permissions?.canClaim);
       const readonlyTasks = sortedTasks.filter(
-        (task) => task.permissions?.canView && !task.permissions.canAct && !task.permissions.canClaim,
+        (task) =>
+          task.permissions?.canView && !task.permissions.canAct && !task.permissions.canClaim,
       );
       const primaryTask = actionableTasks[0] ?? claimableTasks[0] ?? sortedTasks[0];
-      const dueDate = sortedTasks
-        .map((task) => task.dueDate)
-        .filter((value): value is string => Boolean(value))
-        .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null;
-      const updatedAt = sortedTasks
-        .map((task) => task.updatedAt)
-        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? first.updatedAt;
+      const dueDate =
+        sortedTasks
+          .map((task) => task.dueDate)
+          .filter((value): value is string => Boolean(value))
+          .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null;
+      const updatedAt =
+        sortedTasks
+          .map((task) => task.updatedAt)
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? first.updatedAt;
 
       return {
         applicationId,
@@ -1228,7 +1522,10 @@ function getDefaultCriterionForGroup(group: OfficerApplicationGroup | null): Cri
   return (actionable ?? claimable ?? visible ?? orderedTasks[0])?.criterion ?? null;
 }
 
-function getNextActionableCriterion(group: OfficerApplicationGroup, currentCriterion: Criterion): Criterion | null {
+function getNextActionableCriterion(
+  group: OfficerApplicationGroup,
+  currentCriterion: Criterion,
+): Criterion | null {
   const currentIndex = fiveGoodCriteria.indexOf(currentCriterion);
   const orderedCriteria =
     currentIndex >= 0
@@ -1315,7 +1612,8 @@ function getCriterionPermissionLabel(task: ReviewTaskListItem) {
 function getTaskStatusBadgeVariant(task: ReviewTaskListItem) {
   if (task.status === "accepted") return "default";
   if (task.status === "rejected") return "destructive";
-  if (task.status === "supplement_required" || task.status === "resolution_needed") return "outline";
+  if (task.status === "supplement_required" || task.status === "resolution_needed")
+    return "outline";
   return "secondary";
 }
 
@@ -1325,7 +1623,11 @@ function isCompletedTask(task: ReviewTaskListItem) {
 
 function getPriorityTasks(items: ReviewTaskListItem[]) {
   return [...items]
-    .filter((item) => isOpenTask(item) && (item.priorityReason || item.permissions?.canAct || item.permissions?.canClaim))
+    .filter(
+      (item) =>
+        isOpenTask(item) &&
+        (item.priorityReason || item.permissions?.canAct || item.permissions?.canClaim),
+    )
     .sort((a, b) => getPriorityWeight(a) - getPriorityWeight(b));
 }
 
@@ -1372,6 +1674,45 @@ function formatConfidence(value?: number | null) {
   return `${Math.round(value * 100)}%`;
 }
 
+function formatEvidenceValue(value?: unknown) {
+  if (value === null || value === undefined || value === "") return "Chưa có dữ liệu";
+  if (typeof value === "number")
+    return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, "");
+  return String(value);
+}
+
+function formatOrganizerLevel(value?: unknown) {
+  if (!value) return "Chưa có dữ liệu";
+  if (value === "school" || value === "university" || value === "city" || value === "central") {
+    return getLevelLabel(value);
+  }
+  return String(value);
+}
+
+function getGpaConclusion(
+  studentValue?: unknown,
+  readerValue?: number | null,
+  threshold?: number | null,
+) {
+  const studentGpa =
+    typeof studentValue === "number"
+      ? studentValue
+      : typeof studentValue === "string"
+        ? Number(studentValue)
+        : null;
+  if (readerValue !== null && readerValue !== undefined && threshold) {
+    if (readerValue >= threshold)
+      return `SmartReader đọc GPA ${formatEvidenceValue(readerValue)}, đạt ngưỡng ${threshold}/4.`;
+    return `SmartReader đọc GPA ${formatEvidenceValue(readerValue)}, chưa đạt ngưỡng ${threshold}/4.`;
+  }
+  if (studentGpa !== null && Number.isFinite(studentGpa) && threshold) {
+    if (studentGpa >= threshold)
+      return `Sinh viên nhập GPA ${formatEvidenceValue(studentGpa)}, đạt ngưỡng ${threshold}/4.`;
+    return `Sinh viên nhập GPA ${formatEvidenceValue(studentGpa)}, chưa đạt ngưỡng ${threshold}/4.`;
+  }
+  return "Chưa đủ dữ liệu để kết luận tự động, cán bộ cần đối chiếu tài liệu.";
+}
+
 function getQueueMetricLabel(metricType?: string | null) {
   const labels: Record<string, string> = {
     gpa: "GPA/ĐTB",
@@ -1380,7 +1721,7 @@ function getQueueMetricLabel(metricType?: string | null) {
     volunteer_days: "Ngày/giờ tình nguyện",
     foreign_language_score: "Chứng chỉ ngoại ngữ",
   };
-  return metricType ? labels[metricType] ?? metricType : "Chưa có dữ liệu";
+  return metricType ? (labels[metricType] ?? metricType) : "Chưa có dữ liệu";
 }
 
 function getTaskActionLabel(item: ReviewTaskListItem) {

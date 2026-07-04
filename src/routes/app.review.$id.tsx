@@ -46,6 +46,13 @@ import type {
 } from "@/features/review/types";
 import { getErrorMessage } from "@/features/review/utils/errors";
 import {
+  buildEvidenceDisplayModel,
+  getFieldLabel,
+  getGpaThreshold,
+  getMetricValue,
+  getVisibleEvidenceFieldEntries,
+} from "@/features/review/utils/evidenceDisplay";
+import {
   formatDateTime,
   formatFileSize,
   getCriterionLabel,
@@ -256,7 +263,9 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
           </div>
 
           <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
-            {canDecide ? <ReviewDecisionPanel task={task} onSuccess={() => void refetch()} /> : null}
+            {canDecide ? (
+              <ReviewDecisionPanel task={task} onSuccess={() => void refetch()} />
+            ) : null}
             {canRequestSupplement ? (
               <RequestSupplementPanel task={task} onSuccess={() => void refetch()} />
             ) : null}
@@ -420,7 +429,11 @@ function PermissionSummary({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-bold text-brand-deep">{title}</h2>
-            <Badge variant={permission?.canAct ? "default" : permission?.canClaim ? "outline" : "secondary"}>
+            <Badge
+              variant={
+                permission?.canAct ? "default" : permission?.canClaim ? "outline" : "secondary"
+              }
+            >
               {permission?.canAct ? "Được xử lý" : permission?.canClaim ? "Có thể nhận" : "Chỉ xem"}
             </Badge>
           </div>
@@ -473,8 +486,14 @@ function CriteriaOverviewSection({
   const rows = coreCriteria.map((criterion) => {
     const relatedMetrics = getCriterionMetrics(metrics, criterion.key);
     const relatedEvidences = getCriterionEvidences(evidences, criterion.key);
-    const assessment = evaluateCriterionAgainstMatrix(targetLevel, criterion.key, { metrics, evidences });
-    const fileCount = relatedEvidences.reduce((count, evidence) => count + (evidence.files?.length ?? 0), 0);
+    const assessment = evaluateCriterionAgainstMatrix(targetLevel, criterion.key, {
+      metrics,
+      evidences,
+    });
+    const fileCount = relatedEvidences.reduce(
+      (count, evidence) => count + (evidence.files?.length ?? 0),
+      0,
+    );
     return {
       criterion,
       relatedMetrics,
@@ -489,7 +508,11 @@ function CriteriaOverviewSection({
       <SectionHeader
         icon={<ListChecks className="h-5 w-5" />}
         title="Tổng quan 5 tiêu chí"
-        description={"Cán bộ kiểm tra dữ liệu chính và tài liệu theo " + getLevelLabel(targetLevel) + " trước khi ra quyết định."}
+        description={
+          "Cán bộ kiểm tra dữ liệu chính và tài liệu theo " +
+          getLevelLabel(targetLevel) +
+          " trước khi ra quyết định."
+        }
       />
       <div className="overflow-hidden rounded-md border">
         <table className="w-full text-left text-sm">
@@ -507,7 +530,9 @@ function CriteriaOverviewSection({
             {rows.map((row) => (
               <tr
                 key={row.criterion.key}
-                className={selectedCriterion === row.criterion.key ? "bg-[#F1F7FD]" : "hover:bg-muted/30"}
+                className={
+                  selectedCriterion === row.criterion.key ? "bg-[#F1F7FD]" : "hover:bg-muted/30"
+                }
               >
                 <td className="px-3 py-3">
                   <button
@@ -518,21 +543,33 @@ function CriteriaOverviewSection({
                     {row.criterion.label}
                   </button>
                 </td>
-                <td className="px-3 py-3 text-slate-700">{getPrimaryDataText(row.relatedMetrics, row.criterion.key)}</td>
+                <td className="px-3 py-3 text-slate-700">
+                  {getPrimaryDataText(row.relatedMetrics, row.criterion.key)}
+                </td>
                 <td className="px-3 py-3">
                   <span className="font-semibold text-brand-deep">{row.fileCount} tệp</span>
                   {row.relatedEvidences.length && !row.fileCount ? (
-                    <div className="mt-1 text-xs text-amber-700">Đã có mục ghi nhận, thiếu tệp xác nhận</div>
+                    <div className="mt-1 text-xs text-amber-700">
+                      Đã có mục ghi nhận, thiếu tệp xác nhận
+                    </div>
                   ) : null}
                 </td>
                 <td className="px-3 py-3">
                   <Badge variant={getCriterionStatusVariant(row.assessment.status)}>
-                    {getCriterionTaskStatusLabel(task, row.criterion.key, row.assessment.statusLabel)}
+                    {getCriterionTaskStatusLabel(
+                      task,
+                      row.criterion.key,
+                      row.assessment.statusLabel,
+                    )}
                   </Badge>
                 </td>
                 <td className="px-3 py-3">{getOfficerPermissionLabel(task)}</td>
                 <td className="px-3 py-3 text-slate-700">
-                  {getOfficerNextAction(row.assessment.status, row.fileCount, row.relatedMetrics.length)}
+                  {getOfficerNextAction(
+                    row.assessment.status,
+                    row.fileCount,
+                    row.relatedMetrics.length,
+                  )}
                 </td>
               </tr>
             ))}
@@ -572,14 +609,20 @@ function CriterionTabs({
     <Card>
       <div className="flex flex-wrap gap-2">
         {coreCriteria.map((criterion) => {
-          const assessment = evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion.key, { metrics, evidences });
+          const assessment = evaluateCriterionAgainstMatrix(
+            task.application.targetLevel,
+            criterion.key,
+            { metrics, evidences },
+          );
           const active = selectedCriterion === criterion.key;
           return (
             <button
               key={criterion.key}
               className={[
                 "flex min-w-[96px] items-center justify-between gap-2 rounded-full border px-3 py-2 text-sm transition",
-                active ? "border-brand-deep bg-brand-deep text-white" : "bg-white text-brand-deep hover:bg-muted/40",
+                active
+                  ? "border-brand-deep bg-brand-deep text-white"
+                  : "bg-white text-brand-deep hover:bg-muted/40",
               ].join(" ")}
               type="button"
               onClick={() => onSelectCriterion(criterion.key)}
@@ -616,18 +659,27 @@ function CriterionWorkspace({
   const matrixItem = getCriterionMatrixItem(task.application.targetLevel, criterion);
   const relatedMetrics = getCriterionMetrics(metrics, criterion);
   const relatedEvidences = getCriterionEvidences(evidences, criterion);
-  const assessment = evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion, { metrics, evidences });
+  const assessment = evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion, {
+    metrics,
+    evidences,
+  });
 
   return (
     <Card>
       <div className="space-y-5">
         <div className="flex flex-col gap-3 border-b pb-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tiêu chí đang xét</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Tiêu chí đang xét
+            </div>
             <h2 className="mt-1 text-xl font-bold text-brand-deep">{criterionMeta.label}</h2>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{criterionMeta.description}</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+              {criterionMeta.description}
+            </p>
           </div>
-          <Badge variant={getCriterionStatusVariant(assessment.status)}>{assessment.statusLabel}</Badge>
+          <Badge variant={getCriterionStatusVariant(assessment.status)}>
+            {assessment.statusLabel}
+          </Badge>
         </div>
 
         <CriterionDocumentsSection
@@ -635,9 +687,14 @@ function CriterionWorkspace({
           criterion={criterion}
           evidences={relatedEvidences}
           metrics={relatedMetrics}
+          targetLevel={task.application.targetLevel}
         />
 
-        <CriterionMetricsSection criterion={criterion} evidences={relatedEvidences} metrics={relatedMetrics} />
+        <CriterionMetricsSection
+          criterion={criterion}
+          evidences={relatedEvidences}
+          metrics={relatedMetrics}
+        />
 
         <CriterionChecklistSection
           assessmentStatus={assessment.status}
@@ -658,11 +715,13 @@ function CriterionDocumentsSection({
   criterion,
   evidences,
   metrics,
+  targetLevel,
   assessmentStatus,
 }: {
   criterion: CoreCriterion;
   evidences: ReviewTaskEvidence[];
   metrics: ReviewTaskDetail["metrics"];
+  targetLevel: ReviewTaskDetail["application"]["targetLevel"];
   assessmentStatus: ReturnType<typeof evaluateCriterionAgainstMatrix>["status"];
 }) {
   const criterionLabel = getCriterionLabel(criterion);
@@ -672,7 +731,9 @@ function CriterionDocumentsSection({
     return (
       <div className="rounded-md border border-dashed bg-muted/20 p-4">
         <div className="text-sm font-semibold text-brand-deep">
-          {metrics.length ? "Đã có dữ liệu, thiếu tệp xác nhận" : `Chưa có tệp xác nhận cho tiêu chí ${criterionLabel}.`}
+          {metrics.length
+            ? "Đã có dữ liệu, thiếu tệp xác nhận"
+            : `Chưa có tệp xác nhận cho tiêu chí ${criterionLabel}.`}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
           {metrics.length
@@ -681,7 +742,9 @@ function CriterionDocumentsSection({
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button type="button">Yêu cầu bổ sung tệp xác nhận</Button>
-          <Badge variant={getCriterionStatusVariant(assessmentStatus)}>{metrics.length ? "Thiếu tệp xác nhận" : "Chưa có dữ liệu"}</Badge>
+          <Badge variant={getCriterionStatusVariant(assessmentStatus)}>
+            {metrics.length ? "Thiếu tệp xác nhận" : "Chưa có dữ liệu"}
+          </Badge>
         </div>
       </div>
     );
@@ -696,16 +759,35 @@ function CriterionDocumentsSection({
       />
       <div className="space-y-4">
         {evidences.map((evidence) => (
-          <CriterionEvidenceCard key={evidence.id} criterion={criterion} evidence={evidence} />
+          <CriterionEvidenceCard
+            key={evidence.id}
+            criterion={criterion}
+            evidence={evidence}
+            metrics={metrics}
+            targetLevel={targetLevel}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function CriterionEvidenceCard({ evidence, criterion }: { evidence: ReviewTaskEvidence; criterion: CoreCriterion }) {
-  const fields = toFieldEntries(evidence.card?.extractedFieldsJson);
+function CriterionEvidenceCard({
+  evidence,
+  criterion,
+  metrics,
+  targetLevel,
+}: {
+  evidence: ReviewTaskEvidence;
+  criterion: CoreCriterion;
+  metrics: ReviewTaskDetail["metrics"];
+  targetLevel: ReviewTaskDetail["application"]["targetLevel"];
+}) {
+  const model = buildEvidenceDisplayModel(evidence);
+  const fields = getVisibleEvidenceFieldEntries(model);
   const warnings = toReadableList(evidence.card?.warningsJson);
+  const studentGpa = getMetricValue(metrics, "gpa");
+  const gpaThreshold = getGpaThreshold(targetLevel);
   return (
     <div className="rounded-md border p-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(260px,420px)_minmax(0,1fr)]">
@@ -713,30 +795,64 @@ function CriterionEvidenceCard({ evidence, criterion }: { evidence: ReviewTaskEv
           {evidence.files?.length ? (
             evidence.files.map((file) => <PreviewFileAttachment key={file.id} file={file} />)
           ) : (
-            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">Mục này chưa có tệp đính kèm.</div>
+            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+              Mục này chưa có tệp đính kèm.
+            </div>
           )}
         </div>
         <div className="space-y-3">
           <div>
-            <h3 className="text-base font-bold text-brand-deep">{evidence.evidenceName || getDefaultDocumentName(criterion)}</h3>
+            <h3 className="text-base font-bold text-brand-deep">
+              {model.title || getDefaultDocumentName(criterion)}
+            </h3>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Badge variant="outline">{getSourceTypeLabel(evidence.sourceType)}</Badge>
+              <Badge variant="outline">{model.sourceLabel}</Badge>
+              <Badge variant="secondary">{model.readerLabel}</Badge>
               <CriterionBadge criterion={criterion} />
               <ReviewStatusBadge status={evidence.status} />
-              {typeof evidence.confidence === "number" ? <Badge variant="secondary">Độ rõ {Math.round(evidence.confidence * 100)}%</Badge> : null}
+              <Badge variant={model.matchLabel.startsWith("Khớp") ? "secondary" : "outline"}>
+                {model.matchLabel}
+              </Badge>
             </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <InfoRow label="Ngày ghi nhận" value={formatDateTime(evidence.createdAt)} />
-            <InfoRow label="Đơn vị cấp" value={evidence.event?.organizer} />
-            <InfoRow label="Cấp tổ chức" value={evidence.event?.organizerLevel ? getLevelLabel(evidence.event.organizerLevel) : undefined} />
-            <InfoRow label="Loại tài liệu" value={getSourceTypeLabel(evidence.sourceType)} />
-          </div>
+          {model.kind === "academic_transcript" ? (
+            <div className="grid gap-2 sm:grid-cols-3">
+              <InfoRow label="GPA sinh viên nhập" value={formatEvidenceValue(studentGpa)} />
+              <InfoRow label="GPA SmartReader đọc" value={formatEvidenceValue(model.gpa)} />
+              <InfoRow
+                label="Ngưỡng cấp đang xét"
+                value={gpaThreshold ? `${gpaThreshold}/4` : undefined}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <InfoRow label="Sự kiện/thành tích" value={model.eventName} />
+              <InfoRow label="Đơn vị cấp/tổ chức" value={model.organizer} />
+              <InfoRow label="Cấp tổ chức" value={formatOrganizerLevel(model.organizerLevel)} />
+              <InfoRow
+                label="Ngày hoạt động"
+                value={model.activityDate ? formatDateTime(model.activityDate) : undefined}
+              />
+              <InfoRow
+                label="Ngày cấp"
+                value={model.issueDate ? formatDateTime(model.issueDate) : undefined}
+              />
+              <InfoRow label="Ngày ghi nhận" value={formatDateTime(evidence.createdAt)} />
+            </div>
+          )}
           {fields.length ? (
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Thông tin đọc được từ tài liệu</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Thông tin đọc được từ tài liệu
+              </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {fields.map(([key, value]) => <InfoRow key={key} label={key} value={String(value)} />)}
+                {fields.map(([key, value]) => (
+                  <InfoRow
+                    key={key}
+                    label={getFieldLabel(key)}
+                    value={formatEvidenceValue(value)}
+                  />
+                ))}
               </div>
             </div>
           ) : null}
@@ -744,11 +860,15 @@ function CriterionEvidenceCard({ evidence, criterion }: { evidence: ReviewTaskEv
             <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
               <div className="text-sm font-semibold text-amber-900">Cần kiểm tra thêm</div>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">
-                {warnings.map((warning, index) => <li key={`${warning}-${index}`}>{warning}</li>)}
+                {warnings.map((warning, index) => (
+                  <li key={`${warning}-${index}`}>{warning}</li>
+                ))}
               </ul>
             </div>
           ) : null}
-          <Button size="sm" type="button" variant="outline">So với tiêu chí</Button>
+          <Button size="sm" type="button" variant="outline">
+            So với tiêu chí
+          </Button>
         </div>
       </div>
     </div>
@@ -794,7 +914,11 @@ function PreviewFileAttachment({ file }: { file: ReviewTaskEvidenceFile }) {
     <div className="overflow-hidden rounded-md border bg-muted/20">
       <div className="flex min-h-[260px] items-center justify-center bg-white">
         {previewUrl && file.mimeType?.startsWith("image/") ? (
-          <img alt={file.originalName} className="max-h-[420px] w-full object-contain" src={previewUrl} />
+          <img
+            alt={file.originalName}
+            className="max-h-[420px] w-full object-contain"
+            src={previewUrl}
+          />
         ) : previewUrl && file.mimeType === "application/pdf" ? (
           <iframe className="h-[420px] w-full" src={previewUrl} title={file.originalName} />
         ) : (
@@ -805,20 +929,46 @@ function PreviewFileAttachment({ file }: { file: ReviewTaskEvidenceFile }) {
         )}
       </div>
       <div className="border-t bg-white p-3">
-        <div className="truncate text-sm font-semibold text-brand-deep">{file.originalName || fallbackText}</div>
+        <div className="truncate text-sm font-semibold text-brand-deep">
+          {file.originalName || fallbackText}
+        </div>
         <div className="mt-1 text-xs text-muted-foreground">
-          {[file.mimeType, formatFileSize(file.size), formatDateTime(file.uploadedAt ?? file.createdAt)].filter(Boolean).join(" • ")}
+          {[
+            file.mimeType,
+            formatFileSize(file.size),
+            formatDateTime(file.uploadedAt ?? file.createdAt),
+          ]
+            .filter(Boolean)
+            .join(" • ")}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" type="button" variant="outline" onClick={() => void runAction("preview")} disabled={Boolean(loadingAction)}>
+          <Button
+            size="sm"
+            type="button"
+            variant="outline"
+            onClick={() => void runAction("preview")}
+            disabled={Boolean(loadingAction)}
+          >
             <Eye className="h-4 w-4" />
             Xem lớn
           </Button>
-          <Button size="sm" type="button" variant="outline" onClick={() => void runAction("open")} disabled={Boolean(loadingAction)}>
+          <Button
+            size="sm"
+            type="button"
+            variant="outline"
+            onClick={() => void runAction("open")}
+            disabled={Boolean(loadingAction)}
+          >
             <ExternalLink className="h-4 w-4" />
             Mở tab mới
           </Button>
-          <Button size="sm" type="button" variant="outline" onClick={() => void runAction("download")} disabled={Boolean(loadingAction)}>
+          <Button
+            size="sm"
+            type="button"
+            variant="outline"
+            onClick={() => void runAction("download")}
+            disabled={Boolean(loadingAction)}
+          >
             <Download className="h-4 w-4" />
             Tải xuống
           </Button>
@@ -839,6 +989,9 @@ function CriterionMetricsSection({
   evidences: ReviewTaskEvidence[];
 }) {
   const hasFiles = evidences.some((evidence) => evidence.files?.length);
+  const academicModel = evidences
+    .map(buildEvidenceDisplayModel)
+    .find((model) => model.kind === "academic_transcript");
   return (
     <section>
       <SectionHeader icon={<ClipboardList className="h-5 w-5" />} title="Dữ liệu đối chiếu" />
@@ -847,7 +1000,16 @@ function CriterionMetricsSection({
           {metrics.map((metric) => (
             <div key={metric.id} className="space-y-2 rounded-md border p-3">
               <InfoRow label="Loại dữ liệu" value={getMetricLabel(metric.metricType)} />
-              <InfoRow label="Giá trị" value={`${metric.value ?? fallbackText}${metric.unit ? ` ${metric.unit}` : ""}`} />
+              <InfoRow
+                label="Giá trị"
+                value={`${metric.value ?? fallbackText}${metric.unit ? ` ${metric.unit}` : ""}`}
+              />
+              {metric.metricType === "gpa" ? (
+                <InfoRow
+                  label="SmartReader đọc được"
+                  value={formatEvidenceValue(academicModel?.gpa)}
+                />
+              ) : null}
               <InfoRow label="Nguồn" value="Sinh viên nhập" />
               <InfoRow label="Tệp xác nhận" value={hasFiles ? "Đã có" : "Chưa có"} />
             </div>
@@ -877,17 +1039,34 @@ function CriterionChecklistSection({
   evidences: ReviewTaskEvidence[];
   assessmentStatus: ReturnType<typeof evaluateCriterionAgainstMatrix>["status"];
 }) {
-  const currentRules = [...(matrixItem?.hardRequirements ?? []), ...(matrixItem?.additionalRequirements ?? [])];
+  const currentRules = [
+    ...(matrixItem?.hardRequirements ?? []),
+    ...(matrixItem?.additionalRequirements ?? []),
+  ];
   const otherLevels = levelOrder.filter((level) => level !== targetLevel);
   return (
     <section>
-      <SectionHeader icon={<CheckSquare className="h-5 w-5" />} title={`Checklist ${getLevelLabel(targetLevel)}`} />
+      <SectionHeader
+        icon={<CheckSquare className="h-5 w-5" />}
+        title={`Checklist ${getLevelLabel(targetLevel)}`}
+      />
       <div className="space-y-2">
         {currentRules.map((rule) => (
-          <RuleRow key={rule} label={rule} status={getRuleStatusLabel(assessmentStatus, evidences)} />
+          <RuleRow
+            key={rule}
+            label={rule}
+            status={getRuleStatusLabel(assessmentStatus, evidences)}
+          />
         ))}
         {checklist.map((item) => (
-          <RuleRow key={item.id} label={item.label || fallbackText} note={item.note ?? undefined} status={item.passed ? "Đạt" : item.passed === false ? "Cần bổ sung" : "Cần cán bộ xác nhận"} />
+          <RuleRow
+            key={item.id}
+            label={item.label || fallbackText}
+            note={item.note ?? undefined}
+            status={
+              item.passed ? "Đạt" : item.passed === false ? "Cần bổ sung" : "Cần cán bộ xác nhận"
+            }
+          />
         ))}
       </div>
       <div className="mt-3 space-y-2">
@@ -899,7 +1078,11 @@ function CriterionChecklistSection({
                 Xem điều kiện cấp {criteriaLevelSummaries[level].label}
               </summary>
               <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                {[...(item?.hardRequirements ?? []), ...(item?.additionalRequirements ?? [])].map((rule) => <li key={rule}>{rule}</li>)}
+                {[...(item?.hardRequirements ?? []), ...(item?.additionalRequirements ?? [])].map(
+                  (rule) => (
+                    <li key={rule}>{rule}</li>
+                  ),
+                )}
               </ul>
             </details>
           );
@@ -977,39 +1160,8 @@ function getApplicationTypeLabel(type: ReviewTaskDetail["application"]["applicat
   return type === "collective" ? "Tập thể" : "Cá nhân";
 }
 
-function getSourceTypeLabel(sourceType: ReviewTaskEvidence["sourceType"]) {
-  const labels: Record<ReviewTaskEvidence["sourceType"], string> = {
-    metric_input: "Nhập chỉ số",
-    manual_upload: "Tải lên thủ công",
-    event_import: "Nhập từ sự kiện",
-    collective_import: "Nhập tập thể",
-  };
-
-  return labels[sourceType] ?? fallbackText;
-}
-
 function getMetricLabel(metricType?: string | null) {
-  return metricType ? metricLabels[metricType] ?? metricType : fallbackText;
-}
-
-function getIndexingStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    not_started: "Chưa kiểm tra",
-    uploaded: "Đã tải lên",
-    pending_indexing: "Đang kiểm tra",
-    ocr_processing: "Đang đọc file",
-    extracting: "Đang đọc file",
-    checking_registry: "Đang đối chiếu",
-    indexed: "Đã kiểm tra xong",
-    needs_manual_review: "Cần cán bộ kiểm tra",
-    failed: "Cần kiểm tra thêm",
-  };
-  return labels[status] ?? status;
-}
-
-function toFieldEntries(value: unknown): Array<[string, unknown]> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
-  return Object.entries(value as Record<string, unknown>).filter(([, fieldValue]) => fieldValue !== null && fieldValue !== undefined && fieldValue !== "");
+  return metricType ? (metricLabels[metricType] ?? metricType) : fallbackText;
 }
 
 function toReadableList(value: unknown): string[] {
@@ -1028,9 +1180,26 @@ function isCoreCriterion(value: unknown): value is CoreCriterion {
   return coreCriteria.some((criterion) => criterion.key === value);
 }
 
+function formatEvidenceValue(value?: unknown) {
+  if (value === null || value === undefined || value === "") return fallbackText;
+  if (typeof value === "number")
+    return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, "");
+  return String(value);
+}
+
+function formatOrganizerLevel(value?: unknown) {
+  if (!value) return fallbackText;
+  if (value === "school" || value === "university" || value === "city" || value === "central") {
+    return getLevelLabel(value);
+  }
+  return String(value);
+}
+
 function getCriterionMetrics(metrics: ReviewTaskDetail["metrics"], criterion: CoreCriterion) {
   const fields = criterionInputFields[criterion].map((field) => field.metricType);
-  return metrics.filter((metric) => metric.criterion === criterion || fields.includes(metric.metricType as never));
+  return metrics.filter(
+    (metric) => metric.criterion === criterion || fields.includes(metric.metricType as never),
+  );
 }
 
 function getCriterionEvidences(evidences: ReviewTaskEvidence[], criterion: CoreCriterion) {
@@ -1041,7 +1210,7 @@ function getPrimaryDataText(metrics: ReviewTaskDetail["metrics"], criterion: Cor
   if (!metrics.length) return "Chưa có dữ liệu";
   const primaryMetric = getPrimaryMetricInput(criterion);
   const metric = primaryMetric
-    ? metrics.find((item) => item.metricType === primaryMetric.metricType) ?? metrics[0]
+    ? (metrics.find((item) => item.metricType === primaryMetric.metricType) ?? metrics[0])
     : metrics[0];
   const value = `${metric.value ?? fallbackText}${metric.unit ? ` ${metric.unit}` : ""}`;
   return `${getMetricLabel(metric.metricType)} ${value}`;
@@ -1063,7 +1232,9 @@ function getOfficerPermissionLabel(task: ReviewTaskDetail) {
   return "Chỉ xem";
 }
 
-function getCriterionStatusVariant(status: ReturnType<typeof evaluateCriterionAgainstMatrix>["status"]) {
+function getCriterionStatusVariant(
+  status: ReturnType<typeof evaluateCriterionAgainstMatrix>["status"],
+) {
   if (status === "met") return "secondary";
   if (status === "not_suitable") return "destructive";
   return "outline";

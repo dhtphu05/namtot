@@ -132,7 +132,9 @@ function normalizeListItem(item: RawRecord): ReviewTaskListItem {
     evidenceCount: asNumber(item.evidenceCount ?? count?.evidences),
     supplementCount: asNumber(item.supplementCount),
     aiConfidence:
-      item.aiConfidence === undefined || item.aiConfidence === null ? null : asNumber(item.aiConfidence),
+      item.aiConfidence === undefined || item.aiConfidence === null
+        ? null
+        : asNumber(item.aiConfidence),
     riskLevel: (item.riskLevel ?? "low") as ReviewTaskListItem["riskLevel"],
     dueDate: item.dueDate === undefined || item.dueDate === null ? null : asString(item.dueDate),
     officerSuggestedLevel: (item.officerSuggestedLevel ?? null) as Level | null,
@@ -287,6 +289,10 @@ function normalizeEvidences(items: RawRecord[]): ReviewTaskEvidence[] {
           eventName: asString(asRecord(item.event)?.eventName),
           organizer: asRecord(item.event)?.organizer as string | null,
           organizerLevel: (asRecord(item.event)?.organizerLevel ?? null) as Level | null,
+          startDate: asRecord(item.event)?.startDate
+            ? asString(asRecord(item.event)?.startDate)
+            : null,
+          endDate: asRecord(item.event)?.endDate ? asString(asRecord(item.event)?.endDate) : null,
         }
       : null,
   }));
@@ -297,18 +303,24 @@ function normalizeEvidenceCard(card: RawRecord | null) {
   return {
     id: asString(card.id),
     ocrText: (card.ocrText ?? null) as string | null,
+    readableSummary: (card.readableSummary ?? null) as Record<string, unknown> | null,
     extractedFieldsJson: card.extractedFieldsJson ?? null,
+    normalizedFieldsJson: card.normalizedFieldsJson ?? null,
+    matchingStatus: asRecord(card.matchingStatus) as ReviewTaskEvidenceCard["matchingStatus"],
     warningsJson: card.warningsJson ?? card.warnings ?? [],
     matchedEventId: (card.matchedEventId ?? null) as string | null,
     matchedKnowledgeItemIds: card.matchedKnowledgeItemIds ?? null,
-    confidence: card.confidence === undefined || card.confidence === null ? null : asNumber(card.confidence),
+    confidence:
+      card.confidence === undefined || card.confidence === null ? null : asNumber(card.confidence),
     aiSummary: (card.aiSummary ?? null) as string | null,
     createdAt: asString(card.createdAt),
     updatedAt: asString(card.updatedAt),
   };
 }
 
-function normalizeCriterionLevelAssessment(payload: RawRecord | null): CriterionLevelAssessment | null {
+function normalizeCriterionLevelAssessment(
+  payload: RawRecord | null,
+): CriterionLevelAssessment | null {
   if (!payload) return null;
   return {
     taskId: asString(payload.taskId),
@@ -316,17 +328,31 @@ function normalizeCriterionLevelAssessment(payload: RawRecord | null): Criterion
     targetLevel: (payload.targetLevel ?? null) as Level | null,
     levels: asRecordArray(payload.levels).map((level) => ({
       level: (level.level ?? "school") as Level,
-      status: (level.status ?? "needs_review") as CriterionLevelAssessment["levels"][number]["status"],
+      status: (level.status ??
+        "needs_review") as CriterionLevelAssessment["levels"][number]["status"],
       score: level.score === undefined || level.score === null ? null : asNumber(level.score),
       summary: asString(level.summary),
       requirements: asRecordArray(level.requirements).map((requirement) => ({
         key: asString(requirement.key),
         label: asString(requirement.label),
-        status: (requirement.status ?? "needs_review") as CriterionLevelAssessment["levels"][number]["requirements"][number]["status"],
-        actualValue: requirement.actualValue === undefined || requirement.actualValue === null ? null : asString(requirement.actualValue),
-        requiredValue: requirement.requiredValue === undefined || requirement.requiredValue === null ? null : asString(requirement.requiredValue),
-        source: requirement.source === undefined || requirement.source === null ? null : asString(requirement.source),
-        reason: requirement.reason === undefined || requirement.reason === null ? null : asString(requirement.reason),
+        status: (requirement.status ??
+          "needs_review") as CriterionLevelAssessment["levels"][number]["requirements"][number]["status"],
+        actualValue:
+          requirement.actualValue === undefined || requirement.actualValue === null
+            ? null
+            : asString(requirement.actualValue),
+        requiredValue:
+          requirement.requiredValue === undefined || requirement.requiredValue === null
+            ? null
+            : asString(requirement.requiredValue),
+        source:
+          requirement.source === undefined || requirement.source === null
+            ? null
+            : asString(requirement.source),
+        reason:
+          requirement.reason === undefined || requirement.reason === null
+            ? null
+            : asString(requirement.reason),
       })),
     })),
     suggestedCriterionLevel: (payload.suggestedCriterionLevel ?? null) as Level | null,
@@ -490,7 +516,9 @@ export const reviewApi = {
   getCriterionLevelAssessment: async (
     id: string,
   ): Promise<ApiResponse<CriterionLevelAssessment>> => {
-    const response = await apiClient<RawRecord>(`/api/review/tasks/${id}/criterion-level-assessment`);
+    const response = await apiClient<RawRecord>(
+      `/api/review/tasks/${id}/criterion-level-assessment`,
+    );
     return withDataFallback({
       ...response,
       data: normalizeCriterionLevelAssessment(response.data),
