@@ -157,6 +157,7 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
     asRecord(rawTask.student) ??
     null;
   const rawAssignedOfficer = asRecord(rawTask.assignedOfficer) ?? asRecord(payload.assignedOfficer);
+  const evidenceRecords = mergeReviewEvidenceRecords(payload, rawTask, rawApplication);
 
   const applicationType = (rawApplication?.applicationType ??
     (rawCollectiveProfile ? "collective" : "individual")) as "individual" | "collective";
@@ -193,7 +194,7 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
           email: asString(rawAssignedOfficer.email),
         }
       : null,
-    evidences: normalizeEvidences(asRecordArray(payload.evidences ?? rawTask.evidences)),
+    evidences: normalizeEvidences(evidenceRecords),
     metrics: normalizeMetrics(asRecordArray(payload.metrics ?? rawApplication?.metrics)),
     checklist: normalizeChecklist(
       asRecordArray(payload.criteriaChecklist ?? payload.checklist ?? rawTask.checklist),
@@ -214,10 +215,52 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
   };
 }
 
+function mergeReviewEvidenceRecords(
+  payload: RawRecord,
+  rawTask: RawRecord,
+  rawApplication: RawRecord | null,
+): RawRecord[] {
+  const evidenceSources = [
+    payload.evidences,
+    payload.reviewTaskEvidences,
+    rawTask.evidences,
+    rawTask.reviewTaskEvidences,
+    rawApplication?.evidences,
+    rawApplication?.evidenceCards,
+  ];
+  const byId = new Map<string, RawRecord>();
+
+  for (const source of evidenceSources) {
+    for (const item of asRecordArray(source)) {
+      const id = asString(item.id ?? item.evidenceId ?? item.cardId);
+      if (!id) continue;
+      byId.set(id, { ...(byId.get(id) ?? {}), ...item, id });
+    }
+  }
+
+  const fileSources = [
+    payload.evidenceFiles,
+    payload.files,
+    rawApplication?.evidenceFiles,
+    rawTask.evidenceFiles,
+  ];
+  for (const source of fileSources) {
+    for (const file of asRecordArray(source)) {
+      const evidenceId = asString(file.evidenceId ?? file.evidenceCardId ?? file.cardId);
+      if (!evidenceId) continue;
+      const current = byId.get(evidenceId) ?? { id: evidenceId };
+      const files = asRecordArray(current.files);
+      byId.set(evidenceId, { ...current, files: [...files, file] });
+    }
+  }
+
+  return Array.from(byId.values());
+}
+
 function normalizeEvidences(items: RawRecord[]): ReviewTaskEvidence[] {
   return (items ?? []).map((item) => ({
     id: asString(item.id),
-    evidenceName: asString(item.evidenceName),
+    evidenceName: asString(item.evidenceName ?? item.title ?? item.name ?? item.documentName),
     criterion: (item.criterion ?? "academic") as Criterion,
     sourceType: item.sourceType ?? "manual_upload",
     status: (item.status ?? "under_review") as EvidenceStatus,
@@ -237,7 +280,7 @@ function normalizeEvidences(items: RawRecord[]): ReviewTaskEvidence[] {
       createdAt: asString(file.createdAt ?? item.createdAt),
       uploadedAt: asString(file.uploadedAt ?? file.createdAt ?? item.createdAt),
     })),
-    card: normalizeEvidenceCard(asRecord(item.card)),
+    card: normalizeEvidenceCard(asRecord(item.card) ?? item),
     event: asRecord(item.event)
       ? {
           id: asString(asRecord(item.event)?.id),

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, BarChart3, FileText, Loader2, ShieldCheck, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/features/auth/api/auth";
+import { authKeys } from "@/features/auth/hooks/useMe";
 import { toUiRole } from "@/features/auth/role-map";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
@@ -94,6 +95,7 @@ function Login() {
       resetSessionState();
       persistAuthSession(res.data);
       setAuthData(res.data.user, res.data.accessToken, res.data.refreshToken);
+      queryClient.setQueryData(authKeys.me, res.data.user);
       setRole(toUiRole(res.data.user.role));
       toast.success("Đăng nhập thành công.");
       nav({ to: "/app" });

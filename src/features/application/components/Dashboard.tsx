@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, StatCard, Chip, Button, Progress } from "@/components/ui-kit";
@@ -17,6 +18,7 @@ import { StudentOverview } from "./StudentOverview";
 import { useOfficerDashboard } from "@/features/review/hooks/useReview";
 import { formatDateTime, getCriterionLabel, getLevelLabel, getTaskStatusLabel } from "@/features/review/utils/formatters";
 import { getStatusTone } from "@/lib/status-labels";
+import type { OfficerDashboardResponse } from "@/features/review/types";
 
 
 
@@ -259,6 +261,7 @@ function OfficerDashReal() {
     : "Chưa khai báo tiêu chí";
   const summary = data?.summary;
   const priorityTasks = data?.priorityTasks ?? [];
+  const priorityGroups = useMemo(() => groupOfficerPriorityTasks(priorityTasks), [priorityTasks]);
 
   if (isLoading) {
     return (
@@ -314,23 +317,30 @@ function OfficerDashReal() {
           <Link to="/app/queue"><Button size="sm" variant="ghost">Mở hàng đợi →</Button></Link>
         </div>
         <div className="space-y-2">
-          {priorityTasks.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Chưa có việc ưu tiên thuộc phạm vi phụ trách.</div>}
-          {priorityTasks.map((t) => (
-            <Link to="/app/review/$id" params={{ id: t.taskId }} key={t.taskId} className="block">
+          {priorityGroups.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Chưa có việc ưu tiên thuộc phạm vi phụ trách.</div>}
+          {priorityGroups.map((group) => (
+            <Link to="/app/review/$id" params={{ id: group.primaryTask.taskId }} key={group.applicationId} className="block">
               <div className="p-4 rounded-xl hover:bg-[#F4FBFF] transition-all flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-[#0057C2] text-white flex items-center justify-center text-xs font-bold shrink-0">{t.studentName.split(" ").slice(-1)[0]?.[0] ?? "?"}</div>
+                <div className="w-10 h-10 rounded-lg bg-[#0057C2] text-white flex items-center justify-center text-xs font-bold shrink-0">{group.studentName.split(" ").slice(-1)[0]?.[0] ?? "?"}</div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-brand-deep truncate">{t.studentName} <span className="text-xs text-muted-foreground font-normal">• {t.studentCode}</span></div>
-                  <div className="text-xs text-muted-foreground truncate">{getCriterionLabel(t.criterion)} • {getLevelLabel(t.targetLevel)} • {formatDateTime(t.dueDate)}</div>
+                  <div className="font-semibold text-brand-deep truncate">{group.studentName} <span className="text-xs text-muted-foreground font-normal">• {group.studentCode}</span></div>
+                  <div className="text-xs text-muted-foreground truncate">{group.tasks.length}/5 tiêu chí nổi bật • {getLevelLabel(group.targetLevel)} • {formatDateTime(group.dueDate)}</div>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {group.tasks.map((task) => (
+                      <Chip key={task.taskId} tone={task.status === "supplement_required" ? "warning" : task.status === "accepted" ? "success" : task.status === "rejected" ? "error" : task.status === "resolution_needed" ? "warning" : "brand"}>
+                        {getCriterionLabel(task.criterion)}
+                      </Chip>
+                    ))}
+                  </div>
                 </div>
-                <Chip tone={getPriorityTone(t.priorityReason)}>{getPriorityReasonLabel(t.priorityReason)}</Chip>
-                <Chip tone={t.riskLevel === "high" ? "error" : t.riskLevel === "medium" ? "warning" : "success"}>{t.riskLevel}</Chip>
-                <Chip tone={(t.aiConfidence ?? 1) < 0.7 ? "warning" : "brand"}>
-                  {t.aiConfidence === null || t.aiConfidence === undefined
+                <Chip tone={getPriorityTone(group.primaryTask.priorityReason)}>{getPriorityReasonLabel(group.primaryTask.priorityReason)}</Chip>
+                <Chip tone={group.primaryTask.riskLevel === "high" ? "error" : group.primaryTask.riskLevel === "medium" ? "warning" : "success"}>{group.primaryTask.riskLevel}</Chip>
+                <Chip tone={(group.primaryTask.aiConfidence ?? 1) < 0.7 ? "warning" : "brand"}>
+                  {group.primaryTask.aiConfidence === null || group.primaryTask.aiConfidence === undefined
                     ? "AI chưa có dữ liệu"
-                    : `AI ${Math.round(t.aiConfidence * 100)}%`}
+                    : `AI ${Math.round(group.primaryTask.aiConfidence * 100)}%`}
                 </Chip>
-                <Chip tone={t.status === "supplement_required" ? "warning" : t.status === "accepted" ? "success" : t.status === "rejected" ? "error" : t.status === "resolution_needed" ? "warning" : "brand"}>{getTaskStatusLabel(t.status)}</Chip>
+                <Chip tone="brand">Mở hồ sơ</Chip>
               </div>
             </Link>
           ))}
@@ -645,6 +655,59 @@ function getPriorityTone(reason?: string | null) {
   if (reason === "student_resubmitted" || reason === "due_soon") return "warning";
   if (reason === "assigned_to_you" || reason === "unassigned_claimable") return "brand";
   return "success";
+}
+
+type OfficerPriorityTask = OfficerDashboardResponse["priorityTasks"][number];
+
+function groupOfficerPriorityTasks(tasks: OfficerPriorityTask[]) {
+  const groups = new Map<string, OfficerPriorityTask[]>();
+
+  for (const task of tasks) {
+    const current = groups.get(task.applicationId) ?? [];
+    current.push(task);
+    groups.set(task.applicationId, current);
+  }
+
+  return Array.from(groups.entries())
+    .map(([applicationId, groupTasks]) => {
+      const sortedTasks = [...groupTasks].sort(compareOfficerPriorityTasks);
+      const primaryTask = sortedTasks[0];
+      const dueDate =
+        sortedTasks
+          .map((task) => task.dueDate)
+          .filter((value): value is string => Boolean(value))
+          .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null;
+
+      return {
+        applicationId,
+        studentName: primaryTask.studentName,
+        studentCode: primaryTask.studentCode,
+        targetLevel: primaryTask.targetLevel,
+        dueDate,
+        tasks: sortedTasks,
+        primaryTask,
+      };
+    })
+    .sort((a, b) => compareOfficerPriorityTasks(a.primaryTask, b.primaryTask));
+}
+
+function compareOfficerPriorityTasks(a: OfficerPriorityTask, b: OfficerPriorityTask) {
+  const reasonWeight: Record<string, number> = {
+    overdue: 0,
+    student_resubmitted: 1,
+    low_ai_confidence: 2,
+    due_soon: 3,
+    assigned_to_you: 4,
+    unassigned_claimable: 5,
+  };
+  const riskWeight: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const aReason = a.priorityReason ? reasonWeight[a.priorityReason] ?? 99 : 99;
+  const bReason = b.priorityReason ? reasonWeight[b.priorityReason] ?? 99 : 99;
+  if (aReason !== bReason) return aReason - bReason;
+  const aRisk = riskWeight[a.riskLevel] ?? 3;
+  const bRisk = riskWeight[b.riskLevel] ?? 3;
+  if (aRisk !== bRisk) return aRisk - bRisk;
+  return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
 }
 
 // ============== COLLECTIVE ==============

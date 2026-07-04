@@ -1,4 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   BookOpenCheck,
@@ -8,7 +9,6 @@ import {
   Download,
   FileText,
   FolderUp,
-  GitBranch,
   History,
   Inbox,
   LayoutDashboard,
@@ -17,7 +17,6 @@ import {
   ScanFace,
   ShieldQuestion,
   SlidersHorizontal,
-  Sparkles,
   Trophy,
   Upload,
   UserCog,
@@ -36,7 +35,7 @@ import { useApp } from "@/lib/store";
 import { ROLES, type Role } from "@/lib/mock-data";
 import { type Role as ApiRole } from "@/lib/api/types";
 
-type BadgeTone = "core" | "ai" | "demo" | "ops" | "beta";
+type BadgeTone = "core" | "assist" | "trial" | "ops" | "beta";
 type NavItem = {
   label: string;
   to: string;
@@ -51,20 +50,12 @@ const NAV: Record<Role, NavGroup[]> = {
     {
       group: "Chính",
       items: [
-        { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
-        { label: "Hồ sơ của tôi", to: "/app/drafts", icon: FileText, badge: "Core", tone: "core" },
-        { label: "Upload minh chứng", to: "/app/upload", icon: Upload, badge: "Core", tone: "core" },
-        { label: "Kho minh chứng", to: "/app/evidence", icon: FolderUp, badge: "Core", tone: "core" },
-      ],
-    },
-    {
-      group: "Hỗ trợ nâng cao",
-      items: [
-        { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
-        { label: "Cascade Review", to: "/app/cascade", icon: GitBranch, badge: "AI", tone: "ai" },
-        { label: "Thư viện sự kiện", to: "/app/event-library", icon: CalendarCheck, badge: "Data", tone: "ops" },
-        { label: "Chatbot hỗ trợ", to: "/app/chatbot", icon: LifeBuoy, badge: "Demo", tone: "demo" },
+        { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
+        { label: "Hồ sơ của tôi", to: "/app/drafts", icon: FileText },
+        { label: "Thành tích & giấy xác nhận", to: "/app/evidence", icon: FolderUp },
+        { label: "Kho sự kiện", to: "/app/event-library", icon: CalendarCheck },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
+        { label: "Trợ lý SV5T", to: "/app/chatbot", icon: LifeBuoy },
       ],
     },
   ],
@@ -74,7 +65,7 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Việc cần xử lý", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
-        { label: "Minh chứng liên quan", to: "/app/evidence-search", icon: BookOpenCheck, badge: "Ops", tone: "ops" },
+        { label: "Tài liệu liên quan", to: "/app/evidence-search", icon: BookOpenCheck, badge: "Ops", tone: "ops" },
         { label: "Hội ý của tôi", to: "/app/resolution", icon: ShieldQuestion, badge: "Theo dõi", tone: "beta" },
         { label: "Lịch sử xử lý", to: "/app/notifications", icon: History, badge: "Theo dõi", tone: "beta" },
       ],
@@ -97,9 +88,9 @@ const NAV: Record<Role, NavGroup[]> = {
       group: "Module nâng cao",
       items: [
         { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Data", tone: "ops" },
-        { label: "SmartUX Analytics", to: "/app/smartux", icon: ChartNoAxesCombined, badge: "AI", tone: "ai" },
-        { label: "VNPT AI Center", to: "/app/vnpt", icon: Cpu, badge: "Demo", tone: "demo" },
-        { label: "eKYC", to: "/app/ekyc", icon: ScanFace, badge: "Demo", tone: "demo" },
+        { label: "Phân tích trải nghiệm", to: "/app/smartux", icon: ChartNoAxesCombined, badge: "Theo dõi", tone: "ops" },
+        { label: "Trung tâm xử lý hồ sơ", to: "/app/vnpt", icon: Cpu, badge: "Tích hợp", tone: "ops" },
+        { label: "Xác thực sinh viên", to: "/app/ekyc", icon: ScanFace, badge: "Tích hợp", tone: "ops" },
         { label: "Audit Log", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },
         { label: "Export Center", to: "/app/export", icon: Download, badge: "Ops", tone: "ops" },
         { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal, badge: "Beta", tone: "beta" },
@@ -112,8 +103,7 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Hồ sơ tập thể", to: "/app/collective", icon: UsersRound, badge: "Core", tone: "core" },
-        { label: "Upload minh chứng", to: "/app/upload", icon: Upload, badge: "Core", tone: "core" },
-        { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
+        { label: "Thêm thành tích", to: "/app/upload", icon: Upload, badge: "Core", tone: "core" },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
@@ -122,8 +112,8 @@ const NAV: Record<Role, NavGroup[]> = {
 
 const badgeClass: Record<BadgeTone, string> = {
   core: "bg-emerald-50 text-emerald-700",
-  ai: "bg-sky-50 text-sky-700",
-  demo: "bg-amber-50 text-amber-700",
+  assist: "bg-sky-50 text-sky-700",
+  trial: "bg-amber-50 text-amber-700",
   ops: "bg-indigo-50 text-indigo-700",
   beta: "bg-slate-100 text-slate-700",
 };
@@ -134,6 +124,7 @@ export function Sidebar() {
   const clearAuth = useAuth((s) => s.clearAuth);
   const storedRole = useApp((s) => s.role);
   const setRole = useApp((s) => s.setRole);
+  const queryClient = useQueryClient();
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const groups = getNavGroups(role, user?.role);
@@ -150,6 +141,7 @@ export function Sidebar() {
         window.localStorage.removeItem("5tot-auth");
       }
       clearAuth();
+      queryClient.clear();
       setRole("student");
       nav({ to: "/login" });
     }

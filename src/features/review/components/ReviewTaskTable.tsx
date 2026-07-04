@@ -45,7 +45,7 @@ export function ReviewTaskTable({
     return (
       <EmptyReviewState
         title="Chưa có tác vụ xét duyệt"
-        description="Thử thay đổi bộ lọc hoặc chờ backend phân công hồ sơ mới cho cán bộ."
+        description="Thử thay đổi bộ lọc hoặc chờ hồ sơ mới được phân công cho cán bộ."
       />
     );
   }
@@ -61,7 +61,7 @@ export function ReviewTaskTable({
             <TableHead>Cấp xét</TableHead>
             <TableHead>Tiêu chí</TableHead>
             <TableHead>Ưu tiên</TableHead>
-            <TableHead>AI</TableHead>
+            <TableHead>Độ rõ</TableHead>
             <TableHead>Deadline</TableHead>
             <TableHead>Trạng thái</TableHead>
             <TableHead>Quyền</TableHead>
@@ -184,7 +184,7 @@ function getTaskActionLabel(item: ReviewTaskListItem) {
 function PriorityBadge({ item }: { item: ReviewTaskListItem }) {
   if (item.priorityReason === "overdue") return <Badge variant="destructive">Quá hạn</Badge>;
   if (item.priorityReason === "student_resubmitted") return <Badge variant="outline">Vừa bổ sung</Badge>;
-  if (item.priorityReason === "low_ai_confidence") return <Badge variant="destructive">AI thấp</Badge>;
+  if (item.priorityReason === "low_ai_confidence") return <Badge variant="destructive">Cần kiểm tra thêm</Badge>;
   if (item.priorityReason === "due_soon") return <Badge variant="outline">Sắp đến hạn</Badge>;
   if (item.priorityReason === "assigned_to_you") return <Badge variant="secondary">Được giao</Badge>;
   if (item.priorityReason === "unassigned_claimable") return <Badge variant="secondary">Có thể nhận</Badge>;
@@ -202,7 +202,7 @@ function RiskBadge({ risk }: { risk: "low" | "medium" | "high" }) {
 }
 
 function formatConfidence(value?: number | null) {
-  if (value === null || value === undefined) return "AI chưa có dữ liệu";
+  if (value === null || value === undefined) return "Chưa có dữ liệu";
   return `${Math.round(value * 100)}%`;
 }
 

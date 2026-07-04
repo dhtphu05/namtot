@@ -3,6 +3,16 @@ import type { ApiResponse, ApiFailure } from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
+const API_DEBUG = import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === "true";
+const HOT_ENDPOINTS = [
+  "/api/me",
+  "/api/notifications",
+  "/api/review/tasks",
+  "/api/manager/applications",
+  "/api/applications/current",
+];
+
+const inFlightRequests = new Map<string, Promise<ApiResponse<unknown>>>();
 let isRefreshing = false;
 let refreshSubscribers: ((token: string | null) => void)[] = [];
 
@@ -26,6 +36,7 @@ function onRefreshed(token: string | null) {
 interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: BodyInit | JsonBody;
   _retry?: boolean;
+  _skipDedup?: boolean;
 }
 
 export class ApiError extends Error {
@@ -126,8 +137,41 @@ export async function apiClient<T>(
   endpoint: string,
   options: ApiOptions = {}
 ): Promise<ApiResponse<T>> {
+  const requestKey = getRequestKey(endpoint, options);
+  const canDedup = shouldDedupRequest(endpoint, options);
+
+  if (canDedup) {
+    const inFlight = inFlightRequests.get(requestKey);
+    if (inFlight) {
+      logApiTrace({
+        endpoint,
+        method: getMethod(options),
+        requestKey,
+        deduped: true,
+      });
+      return inFlight as Promise<ApiResponse<T>>;
+    }
+  }
+
+  const promise = executeApiRequest<T>(endpoint, options, requestKey);
+  if (canDedup) {
+    inFlightRequests.set(requestKey, promise as Promise<ApiResponse<unknown>>);
+    promise.finally(() => {
+      inFlightRequests.delete(requestKey);
+    });
+  }
+
+  return promise;
+}
+
+async function executeApiRequest<T>(
+  endpoint: string,
+  options: ApiOptions = {},
+  requestKey = getRequestKey(endpoint, options),
+): Promise<ApiResponse<T>> {
   const url = `${BASE_URL}${endpoint}`;
-  const { body, _retry, ...requestOptions } = options;
+  const { body, _retry, _skipDedup, ...requestOptions } = options;
+  void _skipDedup;
   
   const headers = new Headers(options.headers);
   
@@ -151,7 +195,7 @@ export async function apiClient<T>(
   };
 
   try {
-    const response = await fetch(url, config);
+    const response = await tracedFetch(endpoint, url, config, requestKey, false);
 
     // Parse JSON
     let data: any = null;
@@ -163,6 +207,9 @@ export async function apiClient<T>(
     if (data && data.success === false) {
       const status = response.status;
       const code = data.error?.code || "API_ERROR";
+      if (status === 401 && !_retry && !isAuthEndpoint(endpoint)) {
+        return handle401Error<T>(endpoint, options);
+      }
       throw new ApiError(
         toUserFriendlyMessage(data.error?.message || "API Error", code, status),
         code,
@@ -274,6 +321,101 @@ function isAuthEndpoint(endpoint: string) {
   return endpoint === "/api/auth/login" || endpoint === "/api/auth/refresh";
 }
 
+function getMethod(options: ApiOptions) {
+  return (options.method ?? "GET").toUpperCase();
+}
+
+function shouldDedupRequest(endpoint: string, options: ApiOptions) {
+  const method = getMethod(options);
+  return !options._skipDedup && !isAuthEndpoint(endpoint) && (method === "GET" || method === "HEAD");
+}
+
+function getRequestKey(endpoint: string, options: ApiOptions) {
+  const method = getMethod(options);
+  const body = isJsonBody(options.body)
+    ? stableStringify(options.body)
+    : typeof options.body === "string"
+      ? options.body
+      : "";
+  return `${method} ${endpoint} ${body}`;
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  return `{${Object.entries(value as Record<string, unknown>)
+    .filter(([, item]) => item !== undefined)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`)
+    .join(",")}}`;
+}
+
+async function tracedFetch(
+  endpoint: string,
+  url: string,
+  config: RequestInit,
+  requestKey: string,
+  deduped: boolean,
+) {
+  const startedAt = performance.now();
+  try {
+    const response = await fetch(url, config);
+    logApiTrace({
+      endpoint,
+      method: config.method ?? "GET",
+      requestKey,
+      startedAt,
+      status: response.status,
+      deduped,
+    });
+    return response;
+  } catch (error) {
+    logApiTrace({
+      endpoint,
+      method: config.method ?? "GET",
+      requestKey,
+      startedAt,
+      deduped,
+    });
+    throw error;
+  }
+}
+
+function logApiTrace({
+  endpoint,
+  method,
+  requestKey,
+  startedAt,
+  status,
+  deduped,
+}: {
+  endpoint: string;
+  method: string;
+  requestKey: string;
+  startedAt?: number;
+  status?: number;
+  deduped: boolean;
+}) {
+  if (!API_DEBUG) return;
+
+  const durationMs = startedAt === undefined ? undefined : Math.round(performance.now() - startedAt);
+  const payload = {
+    method: method.toUpperCase(),
+    url: endpoint,
+    durationMs,
+    status,
+    requestKey,
+    deduped,
+  };
+
+  if (HOT_ENDPOINTS.some((hotEndpoint) => endpoint.startsWith(hotEndpoint))) {
+    console.trace("[api]", payload);
+    return;
+  }
+
+  console.debug("[api]", payload);
+}
+
 async function handle401Error<T>(
   endpoint: string,
   options: ApiOptions
@@ -283,6 +425,7 @@ async function handle401Error<T>(
       subscribeTokenRefresh((token) => {
         if (token) {
           options._retry = true;
+          options._skipDedup = true;
           resolve(apiClient<T>(endpoint, options));
         } else {
           reject(new ApiError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "401"));
@@ -323,6 +466,7 @@ async function handle401Error<T>(
       onRefreshed(newAccessToken);
 
       options._retry = true;
+      options._skipDedup = true;
       return apiClient<T>(endpoint, options);
     } else {
       throw new Error("Invalid refresh response");
