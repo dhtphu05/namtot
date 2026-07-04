@@ -30,6 +30,7 @@ import { FinalizationDialog } from "@/features/manager/components/FinalizationDi
 import { useManagerResultDetail, useReopenFinalApplication } from "@/features/manager/hooks/useManager";
 import type { ManagerResultDetail, ManagerResultEvidence, ManagerResultItem } from "@/features/manager/types";
 import type { Criterion, Level, Role } from "@/features/review/types";
+import type { FinalStatus } from "@/lib/api/types";
 import { fallbackStatusLabel, getStatusTone, getWorkflowStatusLabel } from "@/lib/status-labels";
 import { getFinalizeActionLabel } from "@/lib/levels";
 
@@ -141,7 +142,7 @@ function ManagerResultDetailRoute() {
     <>
       <TopBar
         title="Chi tiết kết quả hồ sơ"
-        subtitle={`${detail.student.fullName} - ${detail.student.studentCode ?? "--"}`}
+        subtitle={`${detail.student?.fullName ?? "Chưa có dữ liệu"} - ${detail.student?.studentCode ?? "--"}`}
         action={<BackButton />}
       />
 
@@ -399,7 +400,7 @@ function DecisionPanel({
       <div className="mt-4 space-y-2 text-sm">
         <Info label="Aim đăng ký" value={getLevelLabel(detail.application.targetLevel)} />
         <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
-        <Info label="Kết quả sẽ lưu" value={getPendingFinalResultLabel(suggestedLevel)} />
+        <Info label="Kết quả sẽ lưu" value={getPendingFinalResultLabel(detail.aggregation.suggestedFinalStatus, suggestedLevel)} />
         <Info label="Điều kiện nghiệp vụ" value={businessReady ? "Đủ để chốt" : "Chưa đủ"} />
         <Info label="Quyền chốt của tài khoản" value={canFinalize ? "Có" : "Không"} />
       </div>
@@ -449,20 +450,20 @@ function HeaderCard({ detail }: { detail: ManagerResultDetail }) {
             {photoUrl ? (
               <img
                 src={photoUrl}
-                alt={detail.student.fullName}
+                alt={detail.student?.fullName ?? "Ảnh hồ sơ"}
                 className="h-full w-full object-cover"
                 onError={() => setImageFailed(true)}
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-xl font-bold text-brand-deep">
-                {getInitials(detail.student.fullName)}
+                {getInitials(detail.student?.fullName ?? "")}
               </div>
             )}
           </div>
           <div className="min-w-0">
-            <h1 className="break-words text-2xl font-bold text-brand-deep">{detail.student.fullName}</h1>
+            <h1 className="break-words text-2xl font-bold text-brand-deep">{detail.student?.fullName ?? "Chưa có dữ liệu"}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {detail.student.studentCode ?? "--"} • {detail.student.className ?? "--"} • {detail.student.faculty ?? "--"}
+              {detail.student?.studentCode ?? "--"} • {detail.student?.className ?? "--"} • {detail.student?.faculty ?? "--"}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Chip tone="brand">Hồ sơ {detail.application.schoolYear}</Chip>
@@ -486,7 +487,7 @@ function DecisionConsole({ detail }: { detail: ManagerResultDetail }) {
   const suggestedLevel = detail.latestCascade?.suggestedLevel ?? detail.aggregation.suggestedFinalLevel ?? null;
   const canFinalize = detail.aggregation.canFinalize;
   const blocker = detail.aggregation.blockingIssues[0]?.message ?? "Không có blocker chính.";
-  const finalText = suggestedLevel ? `passed + ${level(suggestedLevel)}` : "failed + không có cấp đạt";
+  const finalText = getPendingFinalResultLabel(detail.aggregation.suggestedFinalStatus, suggestedLevel);
 
   return (
     <Card>
@@ -812,7 +813,7 @@ function EvidenceCard({
         <div className="min-w-0">
           <div className="break-words font-semibold text-brand-deep">{evidence.evidenceName}</div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {evidence.files.length} file • {typeof evidence.confidence === "number" ? `AI ${Math.round(evidence.confidence * 100)}%` : "Chưa có độ tin cậy AI"}
+            {evidence.files?.length ?? 0} file • {typeof evidence.confidence === "number" ? `AI ${Math.round(evidence.confidence * 100)}%` : "Chưa có độ tin cậy AI"}
           </div>
         </div>
         <Button size="sm" variant="secondary" onClick={() => onSelect(evidence)}>
@@ -831,7 +832,7 @@ function EvidenceCard({
         <p className="mt-3 text-sm text-muted-foreground">AI chưa có tóm tắt cho minh chứng này.</p>
       )}
       <div className="mt-3 space-y-2">
-        {evidence.files.length ? evidence.files.map((file) => (
+        {evidence.files?.length ? evidence.files.map((file) => (
           <div key={file.id} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm">
             <span className="truncate">{file.originalName}</span>
             <Button size="sm" variant="ghost" onClick={() => openFile(file.id)}>
@@ -905,7 +906,7 @@ function EvidenceDetailDialog({
             <DialogHeader className="pr-8">
               <DialogTitle className="pr-8">{evidence.evidenceName}</DialogTitle>
               <DialogDescription>
-                {criterionLabel[evidence.criterion]} • {label(evidence.status)} • {evidence.files.length} file
+                {criterionLabel[evidence.criterion]} • {label(evidence.status)} • {evidence.files?.length ?? 0} file
               </DialogDescription>
             </DialogHeader>
 
@@ -937,7 +938,7 @@ function EvidenceDetailDialog({
                   ) : null}
                 </div>
 
-                {evidence.files.length ? (
+                {evidence.files?.length ? (
                   <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                     {evidence.files.map((file) => {
                       const active = preview?.file.id === file.id;
@@ -1005,7 +1006,7 @@ function EvidenceDetailDialog({
                       label="Độ tin cậy"
                       value={typeof evidence.confidence === "number" ? `${Math.round(evidence.confidence * 100)}%` : "--"}
                     />
-                    <Info label="Số file" value={evidence.files.length} />
+                    <Info label="Số file" value={evidence.files?.length ?? 0} />
                   </div>
                 </section>
 
@@ -1252,14 +1253,15 @@ function toFinalizationItem(detail: ManagerResultDetail): ManagerResultItem {
 
   return {
     applicationId: detail.application.id,
-    studentId: detail.student.id,
-    studentName: detail.student.fullName,
-    studentCode: detail.student.studentCode,
-    className: detail.student.className,
-    faculty: detail.student.faculty,
+    studentId: detail.student?.id ?? "",
+    studentName: detail.student?.fullName ?? "Chưa có dữ liệu",
+    studentCode: detail.student?.studentCode ?? null,
+    className: detail.student?.className ?? null,
+    faculty: detail.student?.faculty ?? null,
     schoolYear: detail.application.schoolYear,
     targetLevel: detail.application.targetLevel,
     suggestedLevel: getSuggestedLevel(detail),
+    suggestedFinalStatus: getSuggestedFinalStatus(detail),
     finalStatus: detail.application.finalStatus,
     finalLevel: detail.application.finalLevel,
     finalNote: detail.application.finalNote,
@@ -1305,11 +1307,22 @@ function getSuggestedLevel(detail: ManagerResultDetail) {
   return detail.latestCascade?.suggestedLevel ?? detail.aggregation.suggestedFinalLevel ?? null;
 }
 
+function getSuggestedFinalStatus(detail: ManagerResultDetail): FinalStatus | "pending" {
+  const suggested = detail.aggregation.suggestedFinalStatus;
+  if (suggested && suggested !== "pending") return suggested;
+  const suggestedLevel = getSuggestedLevel(detail);
+  if (!suggestedLevel) return "failed";
+  return suggestedLevel === detail.application.targetLevel ? "passed" : "partially_passed";
+}
+
 function getSuggestedLevelLabel(detail: ManagerResultDetail) {
   return getLevelLabel(getSuggestedLevel(detail), "Chưa có đề xuất");
 }
 
-function getPendingFinalResultLabel(suggestedLevel?: Level | null) {
+function getPendingFinalResultLabel(status?: FinalStatus | "pending", suggestedLevel?: Level | null) {
+  if (status === "failed" || !suggestedLevel) return "Chưa đạt";
+  if (status === "partially_passed") return `Đạt cấp thấp hơn: ${getLevelLabel(suggestedLevel)}`;
+  if (status === "passed") return `Đạt ${getLevelLabel(suggestedLevel)}`;
   return suggestedLevel ? `Đạt ${getLevelLabel(suggestedLevel)}` : "Chưa đạt";
 }
 

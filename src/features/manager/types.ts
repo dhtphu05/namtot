@@ -144,6 +144,7 @@ export type ManagerResultItem = {
   schoolYear: string;
   targetLevel: Level;
   suggestedLevel?: Level | null;
+  suggestedFinalStatus?: FinalStatus | "pending";
   finalStatus: FinalStatus;
   finalLevel?: Level | null;
   finalNote?: string | null;

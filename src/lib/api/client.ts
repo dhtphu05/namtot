@@ -97,6 +97,14 @@ function toUserFriendlyMessage(message: string, code?: string, status?: number):
   if (normalized.includes("session expired") || normalized.includes("no refresh token")) {
     return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
   }
+  if (
+    normalized.includes("failed to fetch") ||
+    normalized.includes("fetch failed") ||
+    normalized.includes("networkerror") ||
+    normalized.includes("load failed")
+  ) {
+    return "Không thể kết nối tới hệ thống hồ sơ. Vui lòng kiểm tra kết nối hoặc thử tải lại.";
+  }
   if (normalized.includes("forbidden") || normalizedCode.includes("forbidden") || status === 403) {
     return "Bạn không có quyền thực hiện thao tác này.";
   }

@@ -73,9 +73,9 @@ function ResolutionRow({ item }: { item: ResolutionCaseListItem }) {
           <AlertTriangle className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-bold text-brand-deep">{item.student.fullName}</div>
+          <div className="font-bold text-brand-deep">{item.student?.fullName ?? "Chưa có dữ liệu"}</div>
           <div className="mt-0.5 text-xs text-muted-foreground">
-            {item.student.studentCode ?? "Chưa có MSSV"} - {item.evidence?.evidenceName ?? "Không có evidence"} - {item.reason}
+            {item.student?.studentCode ?? "Chưa có MSSV"} - {item.evidence?.evidenceName ?? "Không có evidence"} - {item.reason}
           </div>
         </div>
         {item.evidence && <Chip>{CRITERION_LABEL[item.evidence.criterion] ?? item.evidence.criterion}</Chip>}

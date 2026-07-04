@@ -405,7 +405,7 @@ function ResolutionEvidenceCard({ evidence }: { evidence: ResolutionEvidence }) 
         <p className="mt-2 text-sm text-muted-foreground">AI chưa xử lý minh chứng này.</p>
       )}
       <div className="mt-3 space-y-2">
-        {evidence.files.length ? evidence.files.map((file) => (
+        {evidence.files?.length ? evidence.files.map((file) => (
           <div key={file.id} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm">
             <span className="truncate">{file.originalName}</span>
             <Button size="sm" variant="ghost" onClick={() => openFile(file.id)}>

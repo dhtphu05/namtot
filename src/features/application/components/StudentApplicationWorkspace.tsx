@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   CheckCircle2,
@@ -163,7 +163,8 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const runPrecheck = usePrecheck();
   const submitApplication = useSubmitApplication();
 
-  const application = current.data?.application as ApplicationWithDetails | null | undefined;
+  const rawApplication = current.data?.application as ApplicationWithDetails | null | undefined;
+  const application = rawApplication ? normalizeApplicationLevels(rawApplication) : rawApplication;
   const appId = application?.id;
   const evidencesQuery = useEvidences(appId, { limit: 100 });
   const latestPrecheck = useLatestPrecheck(appId);
@@ -339,6 +340,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
 
   const readinessScore = precheck?.readinessScore ?? application.readinessScore ?? 0;
   const supplementCriteria = new Set(supplementRequests.map((item) => item.criterion));
+  const criteriaWithEvidence = criteria.filter((criterion) => (evidenceByCriterion[criterion.key]?.length ?? 0) > 0).length;
+  const primaryAction = getPrimaryWorkspaceAction({
+    status: application.status,
+    criteriaWithEvidence,
+    hasPrecheck: Boolean(precheck),
+    isSupplementMode,
+    readinessScore,
+  });
 
   const isCriterionLockedForSupplement = (criterion: Criterion) =>
     isSupplementMode && supplementCriteria.size > 0 && !supplementCriteria.has(criterion);
@@ -500,6 +509,26 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     }
   };
 
+  const handlePrimaryWorkspaceAction = () => {
+    if (primaryAction.action === "supplement") {
+      goToSupplementCriterion();
+      return;
+    }
+    if (primaryAction.action === "criteria") {
+      setTab("criteria");
+      return;
+    }
+    if (primaryAction.action === "precheck") {
+      precheckNow();
+      return;
+    }
+    if (primaryAction.action === "submit") {
+      submitNow();
+      return;
+    }
+    setTab("tracking");
+  };
+
   return (
     <>
       <TopBar
@@ -564,6 +593,34 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               <div className="mt-2 text-xs text-muted-foreground">
                 Cập nhật: {formatDate(application.lastUpdatedAt ?? application.updatedAt)}
               </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="mb-4 bg-[#F8FBFE]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Bước tiếp theo
+              </div>
+              <h3 className="mt-1 text-xl font-bold text-brand-deep">{primaryAction.label}</h3>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{primaryAction.description}</p>
+              <div className="mt-3 max-w-md">
+                <div className="mb-1 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">{criteriaWithEvidence}/5 tiêu chí có minh chứng</span>
+                  <b className="text-brand-deep">{readinessScore}% sẵn sàng</b>
+                </div>
+                <Progress value={(criteriaWithEvidence / 5) * 100} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
+              <Button onClick={handlePrimaryWorkspaceAction} disabled={runPrecheck.isPending || submitApplication.isPending}>
+                {runPrecheck.isPending || submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : primaryAction.icon}
+                {primaryAction.cta}
+              </Button>
+              <Button variant="secondary" onClick={() => setTab("criteria")}>
+                Xem điều kiện 5 tiêu chí
+              </Button>
             </div>
           </div>
         </Card>
@@ -675,141 +732,138 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
         </div>
 
         {tab === "info" && (
-          <div className="grid gap-4 xl:grid-cols-3">
-            <Card className="xl:col-span-2">
-              <h3 className="flex items-center gap-2 font-bold text-brand-deep">
-                <Target className="h-4 w-4" /> Chọn cấp aim
-              </h3>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                {levels.map((level) => {
-                  const active = level.key === application.targetLevel;
-                  const selected = level.key === selectedLevel;
-                  return (
-                    <button
-                      key={level.key}
-                      onClick={() => setSelectedLevel(level.key)}
-                      className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-                        selected ? "border-[#0057C2] bg-[#F1F7FD]" : "border-[#E3ECF6] hover:bg-[#F6F9FC]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-brand-deep">{level.label}</span>
-                        {active && <Chip tone="brand">Đang chọn</Chip>}
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{level.desc}</p>
-                    </button>
-                  );
-                })}
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <Card className="bg-white/90">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="flex items-center gap-2 font-bold text-brand-deep">
+                    <Target className="h-4 w-4" /> 5 tiêu chí cần hoàn thiện
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Đang xem điều kiện {levelLabel[selectedLevel]}. Chọn từng tiêu chí để nhập dữ liệu và tải minh chứng.
+                  </p>
+                </div>
+                <Chip tone={selectedLevelSuitability.status === "met" ? "success" : selectedLevelSuitability.status === "not_suitable" ? "error" : "warning"}>
+                  {selectedLevelSuitability.statusLabel}
+                </Chip>
               </div>
 
-              <div className="mt-5 rounded-xl border border-[#E3ECF6] bg-[#F8FBFE] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                      Bộ tiêu chí của cấp này
-                    </div>
-                    <h4 className="mt-1 text-lg font-bold text-brand-deep">
-                      {selectedLevel === application.targetLevel
-                        ? "Hồ sơ đang ở cấp này"
-                        : `Bạn đang xem điều kiện ${levelLabel[selectedLevel]}`}
-                    </h4>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {levels.find((level) => level.key === selectedLevel)?.difference}
-                    </p>
-                  </div>
-                  {canEditApplication ? (
-                    <Button
-                      disabled={selectedLevel === application.targetLevel || updateTargetLevel.isPending}
-                      onClick={() => updateTargetLevel.mutate({ id: application.id, targetLevel: selectedLevel })}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {criteriaLevelSummaries[selectedLevel].overallRequirements.map((item) => (
+                  <span key={item} className="rounded-full bg-[#F1F7FD] px-3 py-1 text-xs font-semibold text-brand-deep">
+                    {item}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {getLevelCriteria(selectedLevel).map((item, index) => {
+                  const criterion = criteria.find((entry) => entry.key === item.criterion);
+                  const assessment = selectedLevelSuitability.criteria.find((entry) => entry.criterion === item.criterion);
+                  const evidenceCount = evidenceByCriterion[item.criterion]?.length ?? 0;
+                  return (
+                    <button
+                      key={item.criterion}
+                      className="group w-full rounded-xl border border-[#E3ECF6] bg-[#F8FBFE] px-4 py-3 text-left transition-colors hover:border-[#B8CEE8] hover:bg-white"
+                      onClick={() => {
+                        setActiveCriterion(item.criterion);
+                        setTab("criteria");
+                      }}
                     >
-                      {updateTargetLevel.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
-                      Chọn cấp này
-                    </Button>
-                  ) : null}
-                </div>
-
-                <div className="mt-4 rounded-lg bg-white px-3 py-3">
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Điều kiện chung
-                  </div>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                    {criteriaLevelSummaries[selectedLevel].overallRequirements.map((item) => (
-                      <div key={item} className="rounded-lg bg-[#F8FBFE] px-3 py-2 text-sm font-semibold text-brand-deep">
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {getLevelCriteria(selectedLevel).map((item) => {
-                    const assessment = selectedLevelSuitability.criteria.find((entry) => entry.criterion === item.criterion);
-                    return (
-                      <div key={item.criterion} className="rounded-lg bg-white px-3 py-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="text-[11px] font-semibold uppercase text-muted-foreground">
-                            {criteria.find((criterion) => criterion.key === item.criterion)?.label}
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-[#0057C2]">
+                              {index + 1}
+                            </span>
+                            <div className="font-bold text-brand-deep">{criterion?.label}</div>
                           </div>
+                          <p className="mt-2 text-sm text-muted-foreground">{criterion?.description}</p>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {item.hardRequirements.slice(0, 3).map((requirement) => (
+                              <span key={requirement} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                {requirement}
+                              </span>
+                            ))}
+                          </div>
+                          {item.suggestedEvidenceTypes.length ? (
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              Minh chứng nên có: {item.suggestedEvidenceTypes.slice(0, 3).join(", ")}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-2">
                           {assessment ? (
                             <Chip tone={assessment.status === "met" ? "success" : assessment.status === "not_suitable" ? "error" : "warning"}>
                               {assessment.statusLabel}
                             </Chip>
                           ) : null}
-                        </div>
-                        <ul className="mt-2 space-y-1 text-sm font-semibold text-brand-deep">
-                          {item.hardRequirements.slice(0, 2).map((requirement) => (
-                            <li key={requirement}>{requirement}</li>
-                          ))}
-                        </ul>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Nên có: {item.suggestedEvidenceTypes.slice(0, 2).join(", ")}
+                          <span className="text-xs font-semibold text-muted-foreground">{evidenceCount} minh chứng</span>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  <div className="font-semibold">So với hồ sơ hiện tại: {selectedLevelSuitability.statusLabel}</div>
-                  <div className="mt-1">
-                    {getMissingSummaryForLevel(selectedLevel, selectedLevelSuitability)}
-                  </div>
-                </div>
-
-                <div className="mt-3 rounded-lg border border-[#E3ECF6] bg-white px-3 py-2 text-sm">
-                  <div className="font-semibold text-brand-deep">{priorityAchievementGroup.label}</div>
-                  <div className="mt-1 text-muted-foreground">
-                    Không nằm trong lộ trình cấp xét SV5T, nhưng được ghi nhận nếu sinh viên khai báo: {priorityAchievementGroup.examples.join(", ")}.
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="font-bold text-brand-deep">So sánh nhanh</h3>
-              <div className="mt-3 space-y-2">
-                {levels.map((level) => {
-                  const assessment = evaluateLevelAgainstMatrix(level.key, { metrics, evidences });
-                  return (
-                    <button
-                      key={level.key}
-                      className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${
-                        selectedLevel === level.key ? "border-[#0057C2] bg-[#F1F7FD]" : "border-[#E3ECF6] bg-white"
-                      }`}
-                      onClick={() => setSelectedLevel(level.key)}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="font-bold text-brand-deep">{level.label}</div>
-                        <Chip tone={assessment.status === "met" ? "success" : assessment.status === "not_suitable" ? "error" : "warning"}>
-                          {assessment.statusLabel}
-                        </Chip>
-                      </div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">{level.difference}</div>
                     </button>
                   );
                 })}
               </div>
             </Card>
+
+            <aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">
+              <Card className="bg-white/90">
+                <h3 className="flex items-center gap-2 font-bold text-brand-deep">
+                  <Target className="h-4 w-4" /> Cấp aim
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Chọn cấp để xem điều kiện, sau đó xác nhận nếu muốn đổi cấp đăng ký.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {levels.map((level) => {
+                    const active = level.key === application.targetLevel;
+                    const selected = level.key === selectedLevel;
+                    const assessment = evaluateLevelAgainstMatrix(level.key, { metrics, evidences });
+                    return (
+                      <button
+                        key={level.key}
+                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                          selected ? "border-[#0057C2] bg-[#F1F7FD]" : "border-[#E3ECF6] bg-white hover:bg-[#F6F9FC]"
+                        }`}
+                        onClick={() => setSelectedLevel(level.key)}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-bold text-brand-deep">{level.label}</div>
+                          <Chip tone={assessment.status === "met" ? "success" : assessment.status === "not_suitable" ? "error" : "warning"}>
+                            {assessment.statusLabel}
+                          </Chip>
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">{level.desc}</div>
+                        {active ? <div className="mt-1 text-xs font-bold text-[#0057C2]">Đang chọn trong hồ sơ</div> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                {canEditApplication ? (
+                  <Button
+                    className="mt-3 w-full"
+                    disabled={selectedLevel === application.targetLevel || updateTargetLevel.isPending}
+                    onClick={() => updateTargetLevel.mutate({ id: application.id, targetLevel: selectedLevel })}
+                  >
+                    {updateTargetLevel.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
+                    Chọn cấp này
+                  </Button>
+                ) : null}
+              </Card>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+                <div className="font-semibold">So với hồ sơ hiện tại</div>
+                <div className="mt-1">{getMissingSummaryForLevel(selectedLevel, selectedLevelSuitability)}</div>
+              </div>
+
+              <div className="rounded-xl border border-[#E3ECF6] bg-white/80 px-4 py-3 text-sm">
+                <div className="font-semibold text-brand-deep">{priorityAchievementGroup.label}</div>
+                <div className="mt-1 text-muted-foreground">
+                  Ghi nhận thêm nếu có: {priorityAchievementGroup.examples.join(", ")}.
+                </div>
+              </div>
+            </aside>
           </div>
         )}
 
@@ -838,7 +892,8 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               const supplementRequest = supplementRequests.find((item) => item.criterion === criterion.key);
               const isLockedForSupplement = isCriterionLockedForSupplement(criterion.key);
               const activeIndex = criteria.findIndex((item) => item.key === criterion.key);
-              const nextCriterion = criteria[(activeIndex + 1) % criteria.length];
+              const isLastCriterion = activeIndex >= criteria.length - 1;
+              const nextCriterion = criteria[Math.min(activeIndex + 1, criteria.length - 1)];
               const matrixItem = getCriterionMatrixItem(application.targetLevel, criterion.key);
               const criterionAssessment = targetLevelSuitability.criteria.find((item) => item.criterion === criterion.key);
 
@@ -1218,6 +1273,26 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
         )}
       </div>
 
+      {canEditApplication ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E3ECF6] bg-white/95 px-4 py-3 shadow-[0_-12px_36px_-28px_rgba(15,23,42,0.55)] backdrop-blur">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs text-muted-foreground">
+              Hồ sơ đã lưu trong hệ thống. Còn {Math.max(0, 5 - criteriaWithEvidence)} tiêu chí chưa có minh chứng.
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" disabled={runPrecheck.isPending} onClick={precheckNow}>
+                {runPrecheck.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
+                Kiểm tra hồ sơ
+              </Button>
+              <Button disabled={!canSubmitApplication || submitApplication.isPending} onClick={submitNow}>
+                {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {isSupplementMode ? "Gửi lại hồ sơ" : "Nộp hồ sơ"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {evidenceForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6">
           <div className="flex max-h-[calc(100vh-3rem)] w-full max-w-xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
@@ -1320,6 +1395,76 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
       <div className="mt-1 text-sm font-bold text-brand-deep">{value}</div>
     </div>
   );
+}
+
+type PrimaryWorkspaceAction = {
+  action: "criteria" | "precheck" | "submit" | "tracking" | "supplement";
+  cta: string;
+  description: string;
+  icon: ReactNode;
+  label: string;
+};
+
+function getPrimaryWorkspaceAction({
+  criteriaWithEvidence,
+  hasPrecheck,
+  isSupplementMode,
+  readinessScore,
+  status,
+}: {
+  criteriaWithEvidence: number;
+  hasPrecheck: boolean;
+  isSupplementMode: boolean;
+  readinessScore: number;
+  status: ApplicationStatus;
+}): PrimaryWorkspaceAction {
+  if (isSupplementMode) {
+    return {
+      action: "supplement",
+      cta: "Bổ sung minh chứng",
+      description: "Cán bộ đã yêu cầu bổ sung. Hãy đi thẳng tới tiêu chí cần cập nhật rồi gửi lại hồ sơ.",
+      icon: <Upload className="h-4 w-4" />,
+      label: "Bổ sung theo yêu cầu của cán bộ",
+    };
+  }
+
+  if (["submitted", "under_review", "resolution_needed", "completed", "rejected"].includes(status)) {
+    return {
+      action: "tracking",
+      cta: "Theo dõi xét duyệt",
+      description: "Hồ sơ đã gửi. Bạn có thể xem trạng thái từng tiêu chí và phản hồi nếu có yêu cầu bổ sung.",
+      icon: <CircleAlert className="h-4 w-4" />,
+      label: "Theo dõi hồ sơ sau khi nộp",
+    };
+  }
+
+  if (criteriaWithEvidence < 5) {
+    return {
+      action: "criteria",
+      cta: "Thêm minh chứng còn thiếu",
+      description: "Hoàn thiện 5 tiêu chí trước khi kiểm tra và nộp hồ sơ.",
+      icon: <Upload className="h-4 w-4" />,
+      label: "Hoàn thiện minh chứng cho 5 tiêu chí",
+    };
+  }
+
+  if (!hasPrecheck || readinessScore < 80) {
+    return {
+      action: "precheck",
+      cta: "Kiểm tra hồ sơ",
+      description: "Kiểm tra lại điều kiện, dữ liệu và minh chứng trước khi nộp chính thức.",
+      icon: <ClipboardCheck className="h-4 w-4" />,
+      label: "Kiểm tra trước khi nộp",
+    };
+  }
+
+  return {
+    action: "submit",
+    cta: "Nộp hồ sơ",
+    description: "Hồ sơ đã đủ dữ liệu cơ bản. Khi nộp, hồ sơ sẽ khóa cho tới khi cán bộ yêu cầu bổ sung.",
+    icon: <Send className="h-4 w-4" />,
+    label: "Sẵn sàng nộp hồ sơ",
+  };
 }
 
 type MetricInputConfig = {
@@ -1703,6 +1848,29 @@ function normalizeEvidences(value: unknown): EvidenceResponse[] {
     return (value as { evidences: EvidenceResponse[] }).evidences;
   }
   return [];
+}
+
+function normalizeApplicationLevels(application: ApplicationWithDetails): ApplicationWithDetails {
+  return {
+    ...application,
+    targetLevel: normalizeWorkspaceLevel(application.targetLevel),
+    finalLevel: application.finalLevel ? normalizeWorkspaceLevel(application.finalLevel) : application.finalLevel,
+  };
+}
+
+function normalizeWorkspaceLevel(value: unknown): Level {
+  const map: Record<string, Level> = {
+    truong: "school",
+    school: "school",
+    dhdn: "university",
+    university: "university",
+    "dai-hoc-da-nang": "university",
+    "thanh-pho": "city",
+    city: "city",
+    "trung-uong": "central",
+    central: "central",
+  };
+  return map[String(value ?? "").trim()] ?? "school";
 }
 
 function getFinalTone(status?: string | null) {

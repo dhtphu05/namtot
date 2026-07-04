@@ -1,6 +1,6 @@
-import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from "react";
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, ClipboardList, Clock3, Download, ExternalLink, Eye, FileText, FileWarning, Hourglass } from "lucide-react";
+import { CheckCircle2, ClipboardList, Clock3, Download, ExternalLink, Eye, FileText, FileWarning, Hourglass, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, StatCard } from "@/components/ui-kit";
@@ -17,15 +17,22 @@ import {
 import { useAuth } from "@/features/auth/store/auth-store";
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
 import { ReviewFilters } from "@/features/review/components/ReviewFilters";
-import { ReviewDecisionPanel } from "@/features/review/components/ReviewDecisionPanel";
 import { ReviewTaskTable } from "@/features/review/components/ReviewTaskTable";
 import { reviewApi } from "@/features/review/api/review";
-import { useClaimReviewTask, useReviewTask, useReviewTasks } from "@/features/review/hooks/useReview";
+import {
+  useClaimReviewTask,
+  useEscalateResolution,
+  useRequestSupplement,
+  useReviewTask,
+  useReviewTasks,
+  useSubmitReviewDecision,
+} from "@/features/review/hooks/useReview";
 import type {
   ReviewTaskListItem,
   ReviewTaskListParams,
   ReviewTaskStatus,
   Criterion,
+  Level,
   ReviewTaskDetail,
   Role,
 } from "@/features/review/types";
@@ -45,6 +52,8 @@ const allowedRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const defaultLimit = 10;
 type QueueTab = "actionable" | "claimable" | "mine" | "supplement" | "readonly" | "all";
 type QueueViewMode = "application" | "criterion";
+type QueueDecisionAction = "accepted" | "rejected" | "supplement_required" | "resolution_needed";
+type QueueEvidenceAssessmentValue = "valid" | "ambiguous" | "invalid";
 type QueueSort =
   | "newest"
   | "oldest"
@@ -84,6 +93,21 @@ const officerTabs: Array<{ value: QueueTab; label: string; description: string }
   { value: "supplement", label: "Chờ bổ sung", description: "Việc đang chờ sinh viên bổ sung giấy xác nhận." },
   { value: "readonly", label: "Chỉ xem", description: "Việc có thể xem nhưng không được xử lý." },
   { value: "all", label: "Tất cả", description: "Tất cả việc được phép xem." },
+];
+
+const queueLevels: Level[] = ["school", "university", "city", "central"];
+const queueRejectionReasons = [
+  "Không đạt điều kiện cứng của tiêu chí",
+  "Dữ liệu sinh viên không khớp với tài liệu",
+  "Tài liệu không hợp lệ cho tiêu chí này",
+  "Quá hạn bổ sung nhưng chưa đủ điều kiện",
+];
+const queueSupplementChecklist = ["Thiếu tệp xác nhận", "Thiếu dữ liệu", "Giấy xác nhận chưa rõ", "Khác"];
+const queueResolutionReasons = [
+  "Dữ liệu và tài liệu mâu thuẫn",
+  "Cần cấp có thẩm quyền hội ý",
+  "Tài liệu cần xác minh thêm",
+  "Trường hợp ngoài quy trình thông thường",
 ];
 
 function ReviewQueueRoute() {
@@ -594,6 +618,10 @@ function OfficerQueueWorkbench({
   onSetViewMode: (mode: QueueViewMode) => void;
 }) {
   const totalCriteria = groups.reduce((sum, group) => sum + group.tasks.length, 0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const updateAdvancedFilters = (nextFilters: ReviewTaskListParams) => {
+    onFiltersChange((current) => ({ ...current, ...nextFilters, page: 1 }));
+  };
 
   return (
     <div className="flex h-screen min-w-0 flex-col overflow-hidden bg-[#F6F8FB] text-[#0F172A]">
@@ -635,6 +663,18 @@ function OfficerQueueWorkbench({
           ))}
         </div>
 
+        <Button
+          className="h-9 rounded-full"
+          disabled={isFetching}
+          size="sm"
+          type="button"
+          variant={filtersOpen ? "default" : "outline"}
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Bộ lọc
+        </Button>
+
         <select
           className="h-9 rounded-full border border-[rgba(15,23,42,0.08)] bg-white px-3 text-sm outline-none"
           disabled={isFetching}
@@ -665,7 +705,20 @@ function OfficerQueueWorkbench({
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-rows-[minmax(220px,34vh)_minmax(0,1fr)] gap-3 p-3 xl:grid-cols-[minmax(300px,340px)_minmax(0,1fr)] xl:grid-rows-1">
+      {filtersOpen ? (
+        <div className="border-b border-[rgba(15,23,42,0.08)] bg-white px-4 py-3">
+          <ReviewFilters value={filters} disabled={isFetching} onChange={updateAdvancedFilters} />
+        </div>
+      ) : null}
+
+      <div
+        className={
+          viewMode === "application"
+            ? "grid min-h-0 flex-1 grid-rows-[minmax(220px,34vh)_minmax(0,1fr)] gap-3 p-3 xl:grid-cols-[minmax(300px,340px)_minmax(0,1fr)] xl:grid-rows-1"
+            : "min-h-0 flex-1 overflow-y-auto p-3"
+        }
+      >
+        {viewMode === "application" ? (
         <aside className="min-h-0 overflow-hidden rounded-lg bg-white">
           <div className="border-b border-[rgba(15,23,42,0.08)] p-4">
             <div className="flex items-start justify-between gap-3">
@@ -720,8 +773,9 @@ function OfficerQueueWorkbench({
             </Button>
           </div>
         </aside>
+        ) : null}
 
-        <main className="min-h-0 overflow-y-auto rounded-lg bg-white">
+        <main className={viewMode === "application" ? "min-h-0 overflow-y-auto rounded-lg bg-white" : "min-h-full rounded-lg bg-white"}>
           {isError ? (
             <div className="p-6">
               <ReviewErrorState description="Không thể tải hàng đợi xét duyệt. Vui lòng thử lại sau." onRetry={onRetry} />
@@ -940,10 +994,17 @@ function OfficerApplicationWorkspace({
   onOpenTask: (taskId: string) => void;
   onSelectCriterion: (criterion: Criterion) => void;
 }) {
+  const [activeDecisionAction, setActiveDecisionAction] = useState<QueueDecisionAction | null>(null);
+  const [evidenceAssessments, setEvidenceAssessments] = useState<Record<string, QueueEvidenceAssessmentValue>>({});
   const activeTask = group
     ? group.tasks.find((task) => task.criterion === activeCriterion) ?? group.primaryTask
     : null;
   const { data: activeDetail = null, isLoading: isDetailLoading } = useReviewTask(activeTask?.id);
+
+  useEffect(() => {
+    setActiveDecisionAction(null);
+    setEvidenceAssessments({});
+  }, [activeTask?.id]);
 
   if (!group || !activeTask) {
     return (
@@ -960,6 +1021,7 @@ function OfficerApplicationWorkspace({
   const criterionEvidences = evidenceItems.filter((evidence) => evidence.criterion === activeTask.criterion);
   const criterionMetrics = (activeDetail?.metrics ?? []).filter((metric) => metric.criterion === activeTask.criterion || getMetricTypesForCriterion(activeTask.criterion).includes(metric.metricType));
   const hasCriterionFile = criterionEvidences.some((evidence) => evidence.files?.length);
+  const canAct = Boolean(activeTask.permissions?.canAct && activeDetail);
 
   return (
     <section className="min-h-full bg-white">
@@ -1014,66 +1076,444 @@ function OfficerApplicationWorkspace({
           })}
         </div>
 
-        <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="space-y-4">
-            <CriterionSummaryPanel
-              detail={activeDetail}
-              hasFile={hasCriterionFile}
-              metrics={criterionMetrics}
-              task={activeTask}
-            />
-            <EvidenceWorkspacePanel
-              activeCriterion={activeTask.criterion}
-              evidences={criterionEvidences}
-              isLoading={isDetailLoading}
-              metrics={criterionMetrics}
-            />
-            <DataMatchPanel activeCriterion={activeTask.criterion} detail={activeDetail} evidences={criterionEvidences} />
-            <CriterionChecklistPanel detail={activeDetail} task={activeTask} />
-          </div>
+        <div className="space-y-4 pb-28">
+          <CriterionSummaryPanel
+            detail={activeDetail}
+            hasFile={hasCriterionFile}
+            metrics={criterionMetrics}
+            task={activeTask}
+          />
+          {!hasCriterionFile && criterionMetrics.length ? (
+            <div className="rounded-lg border border-amber-200 bg-[#FFF7E6] p-4 text-sm text-amber-900">
+              Gợi ý: Nên yêu cầu sinh viên bổ sung tệp xác nhận trước khi kết luận đạt.
+            </div>
+          ) : null}
+          <EvidenceWorkspacePanel
+            activeCriterion={activeTask.criterion}
+            allEvidences={evidenceItems}
+            evidences={criterionEvidences}
+            evidenceAssessments={evidenceAssessments}
+            isLoading={isDetailLoading}
+            metrics={criterionMetrics}
+            onEvidenceAssessmentChange={(evidenceId, assessment) =>
+              setEvidenceAssessments((current) => ({ ...current, [evidenceId]: assessment }))
+            }
+            onRequestSupplement={activeTask.permissions?.canAct ? () => setActiveDecisionAction("supplement_required") : undefined}
+            onSelectCriterion={onSelectCriterion}
+          />
+          <DataMatchPanel activeCriterion={activeTask.criterion} detail={activeDetail} evidences={criterionEvidences} />
+          <CriterionChecklistPanel detail={activeDetail} task={activeTask} />
 
-          <div className="space-y-4 2xl:sticky 2xl:top-4 2xl:self-start">
-            {!hasCriterionFile && criterionMetrics.length ? (
-              <div className="rounded-lg border border-amber-200 bg-[#FFF7E6] p-4 text-sm text-amber-900">
-                Gợi ý: Nên yêu cầu sinh viên bổ sung tệp xác nhận trước khi kết luận đạt.
-              </div>
-            ) : null}
-            {activeTask.permissions?.canClaim ? (
-              <div className="rounded-lg border border-[rgba(15,23,42,0.08)] bg-[#F8FAFC] p-4">
-                <div className="text-sm font-semibold text-[#0F172A]">Hồ sơ chưa được giao</div>
-                <p className="mt-1 text-sm text-[#475569]">{activeTask.permissions.reasonLabel}</p>
-                <Button className="mt-3 w-full" type="button" onClick={() => onClaimTask(activeTask)}>
-                  Nhận xử lý
-                </Button>
-              </div>
-            ) : null}
-            {activeDetail ? (
-              activeTask.permissions?.canAct ? (
-                <ReviewDecisionPanel
-                  task={activeDetail}
-                  submitLabel={nextCriterion ? "Lưu và sang tiêu chí tiếp theo" : "Lưu kết luận"}
-                  onSuccess={() => {
-                    if (nextCriterion) onSelectCriterion(nextCriterion);
-                  }}
-                />
-              ) : (
-                <div className="rounded-lg border border-[rgba(15,23,42,0.08)] bg-[#F8FAFC] p-4">
-                  <div className="text-sm font-semibold text-[#0F172A]">Chỉ xem</div>
-                  <p className="mt-1 text-sm text-[#475569]">
-                    {activeTask.permissions?.reasonLabel ?? "Bạn không có quyền gửi kết luận cho tiêu chí này."}
-                  </p>
-                  <Button className="mt-3 w-full" variant="outline" type="button" onClick={() => onOpenTask(activeTask.id)}>
-                    Mở chi tiết
-                  </Button>
-                </div>
-              )
-            ) : (
-              <div className="rounded-lg border border-[rgba(15,23,42,0.08)] p-4 text-sm text-[#475569]">Đang tải dữ liệu tiêu chí...</div>
-            )}
-          </div>
+          {activeTask.permissions?.canClaim ? (
+            <div className="rounded-lg border border-[rgba(15,23,42,0.08)] bg-[#F8FAFC] p-4">
+              <div className="text-sm font-semibold text-[#0F172A]">Hồ sơ chưa được giao</div>
+              <p className="mt-1 text-sm text-[#475569]">{activeTask.permissions.reasonLabel}</p>
+              <Button className="mt-3" type="button" onClick={() => onClaimTask(activeTask)}>
+                Nhận xử lý
+              </Button>
+            </div>
+          ) : null}
+
+          {!canAct && activeDetail ? (
+            <div className="rounded-lg border border-[rgba(15,23,42,0.08)] bg-[#F8FAFC] p-4">
+              <div className="text-sm font-semibold text-[#0F172A]">Chỉ xem</div>
+              <p className="mt-1 text-sm text-[#475569]">
+                {activeTask.permissions?.reasonLabel ?? "Bạn không có quyền gửi kết luận cho tiêu chí này."}
+              </p>
+              <Button className="mt-3" variant="outline" type="button" onClick={() => onOpenTask(activeTask.id)}>
+                Mở chi tiết
+              </Button>
+            </div>
+          ) : null}
+
+          {!activeDetail ? (
+            <div className="rounded-lg border border-[rgba(15,23,42,0.08)] p-4 text-sm text-[#475569]">Đang tải dữ liệu tiêu chí...</div>
+          ) : null}
         </div>
       </div>
+
+      {canAct ? (
+        <QueueDecisionActionBar
+          criterion={activeTask.criterion}
+          status={activeTask.status}
+          onAction={setActiveDecisionAction}
+        />
+      ) : null}
+      {activeDetail ? (
+        <QueueDecisionModal
+          action={activeDecisionAction}
+          evidenceAssessments={evidenceAssessments}
+          task={activeDetail}
+          onClose={() => setActiveDecisionAction(null)}
+          onSuccess={() => {
+            setActiveDecisionAction(null);
+            if (nextCriterion) onSelectCriterion(nextCriterion);
+          }}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function QueueDecisionActionBar({
+  criterion,
+  status,
+  onAction,
+}: {
+  criterion: Criterion;
+  status: ReviewTaskStatus;
+  onAction: (action: QueueDecisionAction) => void;
+}) {
+  return (
+    <div className="sticky bottom-0 z-20 border-t border-[rgba(15,23,42,0.08)] bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <div className="text-sm font-bold text-[#0F172A]">{getCriterionLabel(criterion)} · {getTaskStatusLabel(status)}</div>
+          <div className="text-xs text-[#475569]">Chọn kết luận để mở form xác nhận. Không có quyết định nào được chọn sẵn.</div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[560px]">
+          <Button className="bg-emerald-600 text-white hover:bg-emerald-700" type="button" onClick={() => onAction("accepted")}>
+            Đạt tiêu chí
+          </Button>
+          <Button className="bg-rose-600 text-white hover:bg-rose-700" type="button" onClick={() => onAction("rejected")}>
+            Không đạt
+          </Button>
+          <Button className="bg-sky-50 text-sky-700 hover:bg-sky-100" type="button" variant="secondary" onClick={() => onAction("supplement_required")}>
+            Yêu cầu bổ sung
+          </Button>
+          <Button className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100" type="button" variant="outline" onClick={() => onAction("resolution_needed")}>
+            Chuyển Resolution Hub
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QueueDecisionModal({
+  action,
+  evidenceAssessments,
+  task,
+  onClose,
+  onSuccess,
+}: {
+  action: QueueDecisionAction | null;
+  evidenceAssessments: Record<string, QueueEvidenceAssessmentValue>;
+  task: ReviewTaskDetail;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const submitDecision = useSubmitReviewDecision(task.id);
+  const requestSupplement = useRequestSupplement(task.id);
+  const escalateResolution = useEscalateResolution(task.id);
+  const relatedEvidences = task.evidences ?? [];
+  const [suggestedLevel, setSuggestedLevel] = useState<Level | "">(task.officerSuggestedLevel ?? task.application.targetLevel);
+  const [note, setNote] = useState("");
+  const [reasonTemplate, setReasonTemplate] = useState("");
+  const [supplementItems, setSupplementItems] = useState<string[]>([]);
+  const [supplementContent, setSupplementContent] = useState("");
+  const [supplementDeadline, setSupplementDeadline] = useState("");
+  const [resolutionReason, setResolutionReason] = useState("");
+  const [resolutionSummary, setResolutionSummary] = useState("");
+  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>(
+    relatedEvidences.filter((evidence) => evidence.files?.length).map((evidence) => evidence.id),
+  );
+
+  useEffect(() => {
+    setSuggestedLevel(task.officerSuggestedLevel ?? task.application.targetLevel);
+    setNote("");
+    setReasonTemplate("");
+    setSupplementItems([]);
+    setSupplementContent("");
+    setSupplementDeadline("");
+    setResolutionReason("");
+    setResolutionSummary("");
+    setSelectedEvidenceIds(relatedEvidences.filter((evidence) => evidence.files?.length).map((evidence) => evidence.id));
+  }, [action, task.id]);
+
+  const isPending = submitDecision.isPending || requestSupplement.isPending || escalateResolution.isPending;
+  const confirmDisabled = isPending || !isQueueDecisionReady(action, {
+    suggestedLevel,
+    note,
+    reasonTemplate,
+    supplementItems,
+    supplementContent,
+    supplementDeadline,
+    resolutionReason,
+    resolutionSummary,
+  });
+  const primaryData = getQueuePrimaryDataText(task.metrics, task.criterion);
+  const documentCount = relatedEvidences.reduce((sum, evidence) => sum + (evidence.files?.length ?? 0), 0);
+
+  const closeAfterSuccess = (message: string) => {
+    toast.success(message);
+    onSuccess();
+  };
+
+  const handleConfirm = () => {
+    if (!action) return;
+    const evidencePayload = toQueueEvidenceAssessmentsPayload(evidenceAssessments);
+
+    if (action === "accepted") {
+      submitDecision.mutate(
+        {
+          payload: {
+            decision: "accepted",
+            evidenceAssessments: evidencePayload,
+            officerSuggestedLevel: suggestedLevel as Level,
+            levelAssessmentJson: task.criterionLevelAssessment ? { assessment: task.criterionLevelAssessment } : undefined,
+            note: note.trim(),
+          },
+        },
+        { onSuccess: () => closeAfterSuccess("Đã xác nhận tiêu chí đạt.") },
+      );
+      return;
+    }
+
+    if (action === "rejected") {
+      submitDecision.mutate(
+        {
+          payload: {
+            decision: "rejected",
+            evidenceAssessments: evidencePayload,
+            officerSuggestedLevel: null,
+            note: `${reasonTemplate}. ${note.trim()}`,
+          },
+        },
+        { onSuccess: () => closeAfterSuccess("Đã xác nhận tiêu chí không đạt.") },
+      );
+      return;
+    }
+
+    if (action === "supplement_required") {
+      requestSupplement.mutate(
+        {
+          payload: {
+            note: buildQueueSupplementNote(supplementItems, supplementContent),
+            deadline: supplementDeadline,
+            evidenceIds: selectedEvidenceIds,
+          },
+        },
+        { onSuccess: () => closeAfterSuccess("Đã gửi yêu cầu bổ sung cho sinh viên.") },
+      );
+      return;
+    }
+
+    escalateResolution.mutate(
+      {
+        payload: {
+          reason: `${resolutionReason}. ${resolutionSummary.trim()}`,
+          evidenceIds: selectedEvidenceIds,
+        },
+      },
+      { onSuccess: () => closeAfterSuccess("Đã chuyển hồ sơ sang Resolution Hub.") },
+    );
+  };
+
+  return (
+    <Dialog open={Boolean(action)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{getQueueDecisionModalTitle(action)}</DialogTitle>
+          <DialogDescription>
+            Kiểm tra thông tin chính trước khi xác nhận. Nút xác nhận chỉ mở khi đã đủ dữ liệu bắt buộc.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-2 rounded-lg bg-[#F8FAFC] p-3 sm:grid-cols-2">
+          <QueueInfo label="Sinh viên" value={task.application.student.fullName} />
+          <QueueInfo label="Tiêu chí" value={getCriterionLabel(task.criterion)} />
+          <QueueInfo label="Dữ liệu chính" value={primaryData} />
+          <QueueInfo label="Số tài liệu" value={`${documentCount} tệp`} />
+        </div>
+
+        {action === "accepted" ? (
+          <div className="space-y-4">
+            <QueueField label="Cấp đạt tối đa">
+              <select
+                className="mt-2 h-10 w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 text-sm"
+                value={suggestedLevel}
+                onChange={(event) => setSuggestedLevel(event.target.value as Level | "")}
+              >
+                <option value="">Chọn cấp đạt tối đa</option>
+                {queueLevels.map((level) => <option key={level} value={level}>{getLevelLabel(level)}</option>)}
+              </select>
+            </QueueField>
+            <QueueField label="Ghi chú">
+              <textarea
+                className="mt-2 min-h-[88px] w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 py-2 text-sm"
+                placeholder="Có thể ghi thêm căn cứ xác nhận nếu cần."
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </QueueField>
+          </div>
+        ) : null}
+
+        {action === "rejected" ? (
+          <div className="space-y-4">
+            <QueueField label="Mẫu lý do">
+              <select
+                className="mt-2 h-10 w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 text-sm"
+                value={reasonTemplate}
+                onChange={(event) => setReasonTemplate(event.target.value)}
+              >
+                <option value="">Chọn lý do không đạt</option>
+                {queueRejectionReasons.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+              </select>
+            </QueueField>
+            <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              Nếu tiêu chí này không đạt, hồ sơ có thể không đủ điều kiện cho {getLevelLabel(task.application.targetLevel)}.
+            </div>
+            <QueueField label="Ghi chú bắt buộc">
+              <textarea
+                className="mt-2 min-h-[96px] w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 py-2 text-sm"
+                placeholder="Ghi rõ căn cứ không đạt để sinh viên và cấp xét theo dõi."
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </QueueField>
+          </div>
+        ) : null}
+
+        {action === "supplement_required" ? (
+          <div className="space-y-4">
+            <QueueChecklistField selected={supplementItems} onChange={setSupplementItems} />
+            <QueueField label="Nội dung gửi sinh viên">
+              <textarea
+                className="mt-2 min-h-[96px] w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 py-2 text-sm"
+                placeholder="Ví dụ: Sinh viên đã nhập dữ liệu nhưng chưa tải chứng chỉ hoặc giấy xác nhận."
+                value={supplementContent}
+                onChange={(event) => setSupplementContent(event.target.value)}
+              />
+            </QueueField>
+            <QueueField label="Deadline bổ sung">
+              <input
+                className="mt-2 h-10 w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 text-sm"
+                type="date"
+                value={supplementDeadline}
+                onChange={(event) => setSupplementDeadline(event.target.value)}
+              />
+            </QueueField>
+            <QueueEvidenceSelection evidences={relatedEvidences} selectedIds={selectedEvidenceIds} onChange={setSelectedEvidenceIds} />
+            <div className="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-800">
+              Khi xác nhận, hệ thống chuyển tác vụ sang Cần bổ sung, gửi thông báo cho sinh viên và ghi lịch sử xử lý.
+            </div>
+          </div>
+        ) : null}
+
+        {action === "resolution_needed" ? (
+          <div className="space-y-4">
+            <QueueField label="Lý do chuyển">
+              <select
+                className="mt-2 h-10 w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 text-sm"
+                value={resolutionReason}
+                onChange={(event) => setResolutionReason(event.target.value)}
+              >
+                <option value="">Chọn lý do chuyển Resolution Hub</option>
+                {queueResolutionReasons.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+              </select>
+            </QueueField>
+            <QueueField label="Tóm tắt vấn đề">
+              <textarea
+                className="mt-2 min-h-[96px] w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 py-2 text-sm"
+                placeholder="Tóm tắt điểm cần hội ý, dữ liệu đang mâu thuẫn hoặc tài liệu cần xác minh."
+                value={resolutionSummary}
+                onChange={(event) => setResolutionSummary(event.target.value)}
+              />
+            </QueueField>
+            <QueueEvidenceSelection evidences={relatedEvidences} selectedIds={selectedEvidenceIds} onChange={setSelectedEvidenceIds} />
+            <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Khi xác nhận, tác vụ được chuyển sang Resolution Hub và ghi lịch sử xử lý.
+            </div>
+          </div>
+        ) : null}
+
+        <DialogFooter>
+          <Button disabled={isPending} type="button" variant="outline" onClick={onClose}>Hủy</Button>
+          <Button className={getQueueDecisionConfirmButtonClass(action)} disabled={confirmDisabled} type="button" onClick={handleConfirm}>
+            {isPending ? "Đang xử lý..." : getQueueDecisionConfirmLabel(action)}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function QueueField({ children, label }: { children: ReactNode; label: string }) {
+  return (
+    <label className="block text-sm font-semibold text-[#0F172A]">
+      {label}
+      {children}
+    </label>
+  );
+}
+
+function QueueChecklistField({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (items: string[]) => void;
+}) {
+  return (
+    <div>
+      <div className="text-sm font-semibold text-[#0F172A]">Nội dung cần bổ sung</div>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        {queueSupplementChecklist.map((item) => {
+          const checked = selected.includes(item);
+          return (
+            <label className="flex items-center gap-2 rounded-lg bg-[#F8FAFC] px-3 py-2 text-sm" key={item}>
+              <input
+                checked={checked}
+                type="checkbox"
+                onChange={() =>
+                  onChange(checked ? selected.filter((value) => value !== item) : [...selected, item])
+                }
+              />
+              {item}
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function QueueEvidenceSelection({
+  evidences,
+  selectedIds,
+  onChange,
+}: {
+  evidences: NonNullable<ReviewTaskDetail["evidences"]>;
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  if (!evidences.length) return null;
+  return (
+    <div>
+      <div className="text-sm font-semibold text-[#0F172A]">Tài liệu liên quan</div>
+      <div className="mt-2 space-y-2">
+        {evidences.map((evidence) => {
+          const checked = selectedIds.includes(evidence.id);
+          return (
+            <label className="flex items-start gap-2 rounded-lg bg-[#F8FAFC] px-3 py-2 text-sm" key={evidence.id}>
+              <input
+                checked={checked}
+                type="checkbox"
+                onChange={() =>
+                  onChange(checked ? selectedIds.filter((id) => id !== evidence.id) : [...selectedIds, evidence.id])
+                }
+              />
+              <span>
+                <span className="font-semibold text-[#0F172A]">{evidence.evidenceName || "Tài liệu hồ sơ"}</span>
+                <span className="block text-xs text-[#475569]">{getCriterionLabel(evidence.criterion)} · {evidence.files?.length ?? 0} tệp</span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -1302,17 +1742,30 @@ function CriterionSummaryPanel({
 
 function EvidenceWorkspacePanel({
   activeCriterion,
+  allEvidences,
   evidences,
+  evidenceAssessments,
   isLoading,
   metrics,
+  onEvidenceAssessmentChange,
+  onRequestSupplement,
+  onSelectCriterion,
 }: {
   activeCriterion: Criterion;
+  allEvidences: NonNullable<ReviewTaskDetail["evidences"]>;
   evidences: NonNullable<ReviewTaskDetail["evidences"]>;
+  evidenceAssessments: Record<string, QueueEvidenceAssessmentValue>;
   isLoading: boolean;
   metrics: ReviewTaskDetail["metrics"];
+  onEvidenceAssessmentChange: (evidenceId: string, assessment: QueueEvidenceAssessmentValue) => void;
+  onRequestSupplement?: () => void;
+  onSelectCriterion: (criterion: Criterion) => void;
 }) {
   const hasFiles = evidences.some((evidence) => evidence.files?.length);
   const criterionLabel = getCriterionLabel(activeCriterion);
+  const otherEvidencesWithFiles = allEvidences.filter(
+    (evidence) => evidence.criterion !== activeCriterion && evidence.files?.length,
+  );
 
   return (
     <section className="rounded-lg border border-[rgba(15,23,42,0.08)] p-4">
@@ -1327,30 +1780,113 @@ function EvidenceWorkspacePanel({
         <div className="rounded-lg border border-dashed p-4 text-sm text-[#475569]">Đang tải tài liệu...</div>
       ) : hasFiles ? (
         <div className="space-y-4">
-          {evidences.map((evidence) => <QueueEvidenceCard evidence={evidence} key={evidence.id} />)}
+          {evidences.map((evidence) => (
+            <QueueEvidenceCard
+              assessment={evidenceAssessments[evidence.id] ?? null}
+              evidence={evidence}
+              key={evidence.id}
+              onAssessmentChange={onEvidenceAssessmentChange}
+            />
+          ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed bg-[#F8FAFC] p-4">
-          <div className="font-semibold text-[#0F172A]">
-            {metrics.length ? "Chưa có tệp xác nhận cho " + criterionLabel + "." : "Sinh viên chưa cung cấp dữ liệu hoặc tài liệu cho tiêu chí này."}
+        <div className="space-y-4">
+          <div className="rounded-lg border border-dashed bg-[#F8FAFC] p-4">
+            <div className="font-semibold text-[#0F172A]">
+              {metrics.length ? "Chưa có tệp xác nhận cho " + criterionLabel + "." : "Sinh viên chưa cung cấp dữ liệu hoặc tài liệu cho tiêu chí này."}
+            </div>
+            <p className="mt-1 text-sm text-[#475569]">
+              {metrics.length
+                ? "Sinh viên đã nhập " + getQueuePrimaryDataText(metrics, activeCriterion) + " nhưng chưa tải chứng chỉ hoặc giấy xác nhận."
+                : "Cán bộ có thể yêu cầu sinh viên bổ sung thông tin và tài liệu liên quan."}
+            </p>
+            {onRequestSupplement ? (
+              <Button className="mt-3" type="button" onClick={onRequestSupplement}>
+                {metrics.length ? "Yêu cầu bổ sung tệp xác nhận" : "Yêu cầu bổ sung thông tin"}
+              </Button>
+            ) : null}
           </div>
-          <p className="mt-1 text-sm text-[#475569]">
-            {metrics.length
-              ? "Sinh viên đã nhập " + getQueuePrimaryDataText(metrics, activeCriterion) + " nhưng chưa tải chứng chỉ hoặc giấy xác nhận."
-              : "Cán bộ có thể yêu cầu sinh viên bổ sung thông tin và tài liệu liên quan."}
-          </p>
-          <Button className="mt-3" type="button">{metrics.length ? "Yêu cầu bổ sung tệp xác nhận" : "Yêu cầu bổ sung thông tin"}</Button>
+
+          {otherEvidencesWithFiles.length ? (
+            <div className="rounded-lg border border-[rgba(15,23,42,0.08)] bg-white p-4">
+              <div className="font-semibold text-[#0F172A]">Tài liệu khác trong hồ sơ</div>
+              <p className="mt-1 text-sm text-[#475569]">
+                Tiêu chí {criterionLabel} chưa có tệp riêng. Các tài liệu dưới đây thuộc tiêu chí khác trong cùng hồ sơ.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {otherEvidencesWithFiles.map((evidence) => (
+                  <button
+                    className="rounded-lg border border-[rgba(15,23,42,0.08)] bg-[#F8FAFC] p-3 text-left text-sm transition hover:bg-[#EAF3FF]"
+                    key={evidence.id}
+                    type="button"
+                    onClick={() => onSelectCriterion(evidence.criterion)}
+                  >
+                    <div className="font-semibold text-[#0F172A]">{evidence.evidenceName || "Tài liệu hồ sơ"}</div>
+                    <div className="mt-1 text-xs text-[#475569]">
+                      {getCriterionLabel(evidence.criterion)} · {evidence.files?.length ?? 0} tệp
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
     </section>
   );
 }
 
-function QueueEvidenceCard({ evidence }: { evidence: NonNullable<ReviewTaskDetail["evidences"]>[number] }) {
+function QueueEvidenceCard({
+  assessment,
+  evidence,
+  onAssessmentChange,
+}: {
+  assessment: QueueEvidenceAssessmentValue | null;
+  evidence: NonNullable<ReviewTaskDetail["evidences"]>[number];
+  onAssessmentChange: (evidenceId: string, assessment: QueueEvidenceAssessmentValue) => void;
+}) {
   const fields = toQueueFieldEntries(evidence.card?.extractedFieldsJson);
   const warnings = toQueueReadableList(evidence.card?.warningsJson);
+  const markDocument = (nextMark: QueueEvidenceAssessmentValue) => {
+    onAssessmentChange(evidence.id, nextMark);
+    const labels = {
+      valid: "Đã đánh dấu tài liệu phù hợp.",
+      ambiguous: "Đã đánh dấu tài liệu cần xem lại.",
+      invalid: "Đã đánh dấu không dùng tài liệu này cho tiêu chí.",
+    };
+    toast.success(labels[nextMark]);
+  };
+
   return (
     <div className="rounded-lg border border-[rgba(15,23,42,0.08)] p-3">
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-[#F8FAFC] p-2">
+        <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-[#475569]">Đánh dấu tài liệu</span>
+        <Button
+          size="sm"
+          type="button"
+          variant={assessment === "valid" ? "default" : "outline"}
+          onClick={() => markDocument("valid")}
+        >
+          Phù hợp
+        </Button>
+        <Button
+          size="sm"
+          type="button"
+          variant={assessment === "ambiguous" ? "secondary" : "outline"}
+          onClick={() => markDocument("ambiguous")}
+        >
+          Cần xem lại
+        </Button>
+        <Button
+          size="sm"
+          type="button"
+          variant={assessment === "invalid" ? "destructive" : "outline"}
+          onClick={() => markDocument("invalid")}
+        >
+          Không dùng cho tiêu chí này
+        </Button>
+        <Button size="sm" variant="outline" type="button">So với tiêu chí</Button>
+      </div>
       <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(min(100%,240px),360px)_minmax(0,1fr)]">
         <div className="space-y-2">
           {evidence.files?.length ? evidence.files.map((file) => <QueueFilePreview file={file} key={file.id} />) : (
@@ -1388,7 +1924,6 @@ function QueueEvidenceCard({ evidence }: { evidence: NonNullable<ReviewTaskDetai
               </ul>
             </div>
           ) : null}
-          <Button size="sm" variant="outline" type="button">So với tiêu chí</Button>
         </div>
       </div>
     </div>
@@ -1398,6 +1933,7 @@ function QueueEvidenceCard({ evidence }: { evidence: NonNullable<ReviewTaskDetai
 function QueueFilePreview({ file }: { file: NonNullable<NonNullable<ReviewTaskDetail["evidences"]>[number]["files"]>[number] }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(file.url ?? null);
   const [loadingAction, setLoadingAction] = useState<"preview" | "open" | "download" | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (previewUrl || !file.id) return;
@@ -1419,36 +1955,77 @@ function QueueFilePreview({ file }: { file: NonNullable<NonNullable<ReviewTaskDe
       const url = response.data?.url ?? previewUrl;
       if (url) {
         setPreviewUrl(url);
-        if (action !== "preview") window.open(url, "_blank", "noopener,noreferrer");
+        if (action === "preview") {
+          setPreviewOpen(true);
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
       }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể mở tài liệu.");
     } finally {
       setLoadingAction(null);
     }
   };
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-[rgba(15,23,42,0.08)] bg-white">
-      <div className="flex min-h-[220px] items-center justify-center bg-[#F8FAFC]">
-        {previewUrl && file.mimeType?.startsWith("image/") ? (
-          <img alt={file.originalName} className="max-h-[340px] w-full object-contain" src={previewUrl} />
-        ) : previewUrl && file.mimeType === "application/pdf" ? (
-          <iframe className="h-[340px] w-full" src={previewUrl} title={file.originalName} />
-        ) : (
-          <div className="p-4 text-center text-sm text-[#475569]">
-            <FileText className="mx-auto mb-2 h-8 w-8" />
-            Chưa tải được preview.
+    <>
+      <div className="overflow-hidden rounded-[14px] border border-[rgba(15,23,42,0.08)] bg-white">
+        <div className="flex min-h-[220px] items-center justify-center bg-[#F8FAFC]">
+          {previewUrl && file.mimeType?.startsWith("image/") ? (
+            <img alt={file.originalName} className="max-h-[340px] w-full object-contain" src={previewUrl} />
+          ) : previewUrl && file.mimeType === "application/pdf" ? (
+            <iframe className="h-[340px] w-full" src={previewUrl} title={file.originalName} />
+          ) : (
+            <div className="p-4 text-center text-sm text-[#475569]">
+              <FileText className="mx-auto mb-2 h-8 w-8" />
+              Chưa tải được preview.
+            </div>
+          )}
+        </div>
+        <div className="border-t border-[rgba(15,23,42,0.08)] p-3">
+          <div className="truncate text-sm font-semibold text-[#0F172A]">{file.originalName || "Tệp đính kèm"}</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" type="button" disabled={Boolean(loadingAction)} onClick={() => void openFile("preview")}><Eye className="h-4 w-4" /> Xem lớn</Button>
+            <Button size="sm" variant="outline" type="button" disabled={Boolean(loadingAction)} onClick={() => void openFile("open")}><ExternalLink className="h-4 w-4" /> Mở</Button>
+            <Button size="sm" variant="outline" type="button" disabled={Boolean(loadingAction)} onClick={() => void openFile("download")}><Download className="h-4 w-4" /> Tải xuống</Button>
           </div>
-        )}
-      </div>
-      <div className="border-t border-[rgba(15,23,42,0.08)] p-3">
-        <div className="truncate text-sm font-semibold text-[#0F172A]">{file.originalName || "Tệp đính kèm"}</div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" type="button" disabled={Boolean(loadingAction)} onClick={() => void openFile("preview")}><Eye className="h-4 w-4" /> Xem lớn</Button>
-          <Button size="sm" variant="outline" type="button" disabled={Boolean(loadingAction)} onClick={() => void openFile("open")}><ExternalLink className="h-4 w-4" /> Mở</Button>
-          <Button size="sm" variant="outline" type="button" disabled={Boolean(loadingAction)} onClick={() => void openFile("download")}><Download className="h-4 w-4" /> Tải xuống</Button>
         </div>
       </div>
-    </div>
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-h-[94vh] max-w-[min(96vw,1280px)] overflow-hidden p-0">
+          <div className="grid max-h-[94vh] min-h-[72vh] lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="min-h-0 bg-[#0F172A] p-3">
+              {previewUrl && file.mimeType?.startsWith("image/") ? (
+                <img alt={file.originalName} className="h-full max-h-[88vh] w-full object-contain" src={previewUrl} />
+              ) : previewUrl && file.mimeType === "application/pdf" ? (
+                <iframe className="h-[88vh] w-full rounded-lg bg-white" src={previewUrl} title={file.originalName} />
+              ) : (
+                <div className="flex h-full min-h-[420px] items-center justify-center rounded-lg bg-white text-sm text-[#475569]">
+                  Chưa tải được preview tài liệu.
+                </div>
+              )}
+            </div>
+            <aside className="space-y-4 overflow-y-auto border-l border-[rgba(15,23,42,0.08)] bg-white p-4">
+              <DialogHeader>
+                <DialogTitle className="text-base">{file.originalName || "Tệp đính kèm"}</DialogTitle>
+                <DialogDescription>Đọc nhanh tài liệu mà không rời khỏi màn xét duyệt.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <QueueInfo label="Loại tệp" value={file.mimeType} />
+                <QueueInfo label="Ngày tải lên" value={formatDateTime(file.createdAt)} />
+              </div>
+              <div className="grid gap-2">
+                <Button type="button" variant="outline" onClick={() => toast.success("Đã đánh dấu tài liệu phù hợp.")}>Phù hợp</Button>
+                <Button type="button" variant="outline" onClick={() => toast.success("Đã đánh dấu tài liệu cần xem lại.")}>Cần xem lại</Button>
+                <Button type="button" variant="outline" onClick={() => toast.success("Đã đánh dấu không dùng tài liệu này cho tiêu chí.")}>Không dùng cho tiêu chí này</Button>
+                <Button type="button" variant="outline" onClick={() => void openFile("download")}><Download className="h-4 w-4" /> Tải xuống</Button>
+              </div>
+            </aside>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -1728,6 +2305,64 @@ function getNextActionableCriterion(group: OfficerApplicationGroup, currentCrite
       return task?.permissions?.canAct && isOpenTask(task);
     }) ?? null
   );
+}
+
+function isQueueDecisionReady(
+  action: QueueDecisionAction | null,
+  values: {
+    suggestedLevel: Level | "";
+    note: string;
+    reasonTemplate: string;
+    supplementItems: string[];
+    supplementContent: string;
+    supplementDeadline: string;
+    resolutionReason: string;
+    resolutionSummary: string;
+  },
+) {
+  if (!action) return false;
+  if (action === "accepted") return Boolean(values.suggestedLevel);
+  if (action === "rejected") return Boolean(values.reasonTemplate && values.note.trim());
+  if (action === "supplement_required") {
+    return Boolean(values.supplementItems.length && values.supplementContent.trim() && values.supplementDeadline);
+  }
+  return Boolean(values.resolutionReason && values.resolutionSummary.trim());
+}
+
+function toQueueEvidenceAssessmentsPayload(assessments: Record<string, QueueEvidenceAssessmentValue>) {
+  return Object.entries(assessments).map(([evidenceId, assessment]) => ({
+    evidenceId,
+    assessment,
+    tags: assessment === "invalid" ? ["not_for_this_criterion"] : undefined,
+  }));
+}
+
+function buildQueueSupplementNote(items: string[], content: string) {
+  return [items.length ? `Cần bổ sung: ${items.join(", ")}` : "", content.trim()].filter(Boolean).join(". ");
+}
+
+function getQueueDecisionModalTitle(action: QueueDecisionAction | null) {
+  if (action === "accepted") return "Đạt tiêu chí";
+  if (action === "rejected") return "Không đạt";
+  if (action === "supplement_required") return "Yêu cầu bổ sung";
+  if (action === "resolution_needed") return "Chuyển Resolution Hub";
+  return "Kết luận xét duyệt";
+}
+
+function getQueueDecisionConfirmLabel(action: QueueDecisionAction | null) {
+  if (action === "accepted") return "Xác nhận đạt";
+  if (action === "rejected") return "Xác nhận không đạt";
+  if (action === "supplement_required") return "Gửi yêu cầu bổ sung";
+  if (action === "resolution_needed") return "Chuyển Resolution Hub";
+  return "Xác nhận";
+}
+
+function getQueueDecisionConfirmButtonClass(action: QueueDecisionAction | null) {
+  if (action === "accepted") return "bg-emerald-600 text-white hover:bg-emerald-700";
+  if (action === "rejected") return "bg-rose-600 text-white hover:bg-rose-700";
+  if (action === "supplement_required") return "bg-sky-600 text-white hover:bg-sky-700";
+  if (action === "resolution_needed") return "bg-amber-600 text-white hover:bg-amber-700";
+  return "";
 }
 
 function getCriterionAbbreviation(criterion: Criterion) {

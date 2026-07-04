@@ -116,9 +116,9 @@ export function Analytics() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="font-semibold text-brand-deep">{item.student.fullName}</div>
+                      <div className="font-semibold text-brand-deep">{item.student?.fullName ?? "Chưa có dữ liệu"}</div>
                       <div className="text-xs text-muted-foreground">
-                        {item.student.studentCode ?? "Chưa có MSSV"} - {item.student.className ?? item.student.faculty ?? "-"}
+                        {item.student?.studentCode ?? "Chưa có MSSV"} - {item.student?.className ?? item.student?.faculty ?? "-"}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -141,18 +141,18 @@ export function Analytics() {
           {aggregation.isError && <Error label={(aggregation.error as Error)?.message || "Không thể tải aggregation."} />}
           {!aggregation.isLoading && !aggregation.isError && aggregation.data && (
             <div className="space-y-3 text-sm">
-              <Info label="Sinh viên" value={aggregation.data.student.fullName} />
-              <Info label="Readiness" value={`${aggregation.data.application.readinessScore}`} />
-              <Info label="Gợi ý trạng thái" value={aggregation.data.suggestedFinalStatus} />
+              <Info label="Sinh viên" value={aggregation.data.student?.fullName ?? "Chưa có dữ liệu"} />
+              <Info label="Readiness" value={`${aggregation.data.application?.readinessScore ?? 0}`} />
+              <Info label="Gợi ý trạng thái" value={aggregation.data.suggestedFinalStatus ?? "pending"} />
               <Info label="Gợi ý cấp đạt" value={aggregation.data.suggestedFinalLevel ? LEVEL_LABEL[aggregation.data.suggestedFinalLevel] ?? aggregation.data.suggestedFinalLevel : "-"} />
-              <Info label="Resolution mở" value={`${aggregation.data.resolutionSummary.open}`} />
+              <Info label="Resolution mở" value={`${aggregation.data.resolutionSummary?.open ?? 0}`} />
               <div className="rounded-lg bg-[#F6F9FC] p-3">
                 <div className="mb-2 font-semibold text-brand-deep">Lý do chưa chốt</div>
                 <ul className="space-y-1 text-xs text-muted-foreground">
-                  {aggregation.data.blockingReasons.map((reason) => (
+                  {(aggregation.data.blockingReasons ?? []).map((reason) => (
                     <li key={reason}>{reason}</li>
                   ))}
-                  {aggregation.data.blockingReasons.length === 0 && <li>Không có blocking reason.</li>}
+                  {(aggregation.data.blockingReasons ?? []).length === 0 && <li>Không có blocking reason.</li>}
                 </ul>
               </div>
               <Button

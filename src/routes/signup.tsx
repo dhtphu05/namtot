@@ -2,7 +2,7 @@ import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-ro
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Loader2, UserPlus } from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/features/auth/api/auth";
 import { authKeys } from "@/features/auth/hooks/useMe";
@@ -41,11 +41,14 @@ function Signup() {
   const [fullName, setFullName] = useState("");
   const [studentCode, setStudentCode] = useState("");
   const [email, setEmail] = useState("");
+  const [school, setSchool] = useState("");
   const [className, setClassName] = useState("");
   const [faculty, setFaculty] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignup = async (e: FormEvent) => {
@@ -68,6 +71,7 @@ function Signup() {
         studentCode: studentCode.trim(),
         email: email.trim(),
         password,
+        school: school.trim() || undefined,
         className: className.trim() || undefined,
         faculty: faculty.trim() || undefined,
         phone: phone.trim() || undefined,
@@ -121,7 +125,7 @@ function Signup() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <form onSubmit={handleSignup} className="rounded-xl bg-white p-7 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]">
+          <form onSubmit={handleSignup} autoComplete="off" className="rounded-xl bg-white p-7 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]">
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">Thông tin sinh viên</div>
@@ -162,10 +166,24 @@ function Signup() {
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   className="field"
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </Field>
+
+              <Field label="Trường" required className="md:col-span-2">
+                <input
+                  type="text"
+                  required
+                  autoComplete="organization"
+                  className="field"
+                  placeholder="Trường Đại học Bách khoa - ĐHĐN"
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
                   disabled={isLoading}
                 />
               </Field>
@@ -204,29 +222,53 @@ function Signup() {
               </Field>
 
               <Field label="Mật khẩu" required>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  className="field"
-                  placeholder="Tối thiểu 8 ký tự"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    className="field pr-11"
+                    placeholder="Tối thiểu 8 ký tự"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-2 inline-flex w-8 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#EAF3FF] hover:text-[#0057C2]"
+                    onClick={() => setShowPassword((current) => !current)}
+                    disabled={isLoading}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </Field>
 
               <Field label="Xác nhận mật khẩu" required>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  className="field"
-                  placeholder="Nhập lại mật khẩu"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    className="field pr-11"
+                    placeholder="Nhập lại mật khẩu"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-2 inline-flex w-8 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#EAF3FF] hover:text-[#0057C2]"
+                    onClick={() => setShowConfirmPassword((current) => !current)}
+                    disabled={isLoading}
+                    aria-label={showConfirmPassword ? "Ẩn mật khẩu xác nhận" : "Hiện mật khẩu xác nhận"}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </Field>
             </div>
 

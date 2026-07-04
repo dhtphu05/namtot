@@ -44,7 +44,9 @@ const resolutionRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const reviewRoles: Role[] = ["officer", "manager", "committee", "admin"];
 
 export async function requireAuthenticatedAppRoute(pathname: string, queryClient: QueryClient) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {
+    throw redirect({ to: "/login" });
+  }
 
   const { accessToken, user } = useAuth.getState();
   if (!accessToken) {

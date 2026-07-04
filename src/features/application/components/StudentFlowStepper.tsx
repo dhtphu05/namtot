@@ -99,11 +99,11 @@ export function StudentFlowStepper({
   const active = steps.find((step) => step.status === "Đang làm" || step.status === "Cần bổ sung") ?? steps.find((step) => step.status === "Chờ cán bộ");
 
   return (
-    <div className="rounded-xl border border-[#E3ECF6] bg-white px-4 py-3">
+    <div className="rounded-xl border border-[#E3ECF6] bg-white/85 px-3 py-2.5 backdrop-blur">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="font-bold text-brand-deep">Lộ trình hồ sơ SV5T</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Hoàn thiện từng bước để hồ sơ sẵn sàng nộp.</p>
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-brand-deep">Lộ trình hồ sơ</h3>
+          {active ? <p className="mt-0.5 truncate text-xs text-muted-foreground">Bước hiện tại: {active.label}</p> : null}
         </div>
         {active?.action && (
           <Button size="sm" onClick={active.action} disabled={busy || active.status === "Bị khóa"}>
@@ -111,21 +111,21 @@ export function StudentFlowStepper({
           </Button>
         )}
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
         {steps.map((step, index) => {
           const Icon = step.icon;
           return (
             <button
               key={step.label}
-              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#E3ECF6] bg-[#F8FBFE] px-3 py-1.5 text-left transition-colors hover:bg-[#F1F7FD] disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex min-h-8 shrink-0 items-center gap-2 rounded-full border border-[#E3ECF6] bg-[#F8FBFE] px-2.5 py-1 text-left transition-colors hover:bg-[#F1F7FD] disabled:cursor-not-allowed disabled:opacity-70"
               onClick={step.action}
               disabled={!step.action || busy || step.status === "Bị khóa"}
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-[#0057C2]">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[#0057C2]">
                 {step.status === "Hoàn thành" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
               </span>
               <span className="text-[11px] font-bold text-muted-foreground">{index + 1}</span>
-              <span className="text-sm font-bold text-brand-deep">{step.label}</span>
+              <span className="text-xs font-bold text-brand-deep">{step.label}</span>
               <StatusChip status={step.status} />
             </button>
           );

@@ -6,6 +6,7 @@ type RegisterPayload = {
   email: string;
   password: string;
   studentCode: string;
+  school?: string;
   className?: string;
   faculty?: string;
   phone?: string;

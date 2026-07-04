@@ -143,6 +143,7 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
   const [selectedCriterion, setSelectedCriterion] = useState<CoreCriterion>("academic");
   const [evidenceAssessments, setEvidenceAssessments] = useState<Record<string, EvidenceAssessmentValue>>({});
+  const [activeDecisionAction, setActiveDecisionAction] = useState<DetailDecisionAction | null>(null);
 
   useEffect(() => {
     if (isCoreCriterion(task?.criterion)) {
@@ -263,6 +264,9 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
             evidences={evidences}
             metrics={metrics}
             task={task}
+            onRequestSupplement={
+              canRequestSupplement ? () => setActiveDecisionAction("supplement_required") : undefined
+            }
             onEvidenceAssessmentChange={(evidenceId, assessment) =>
               setEvidenceAssessments((current) => ({ ...current, [evidenceId]: assessment }))
             }
@@ -270,8 +274,10 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
           <AuditTimeline applicationId={task.application.id} limit={10} taskId={task.id} />
           {canDecide || canRequestSupplement || hasTaskAction(task, "escalate_resolution") ? (
             <ReviewDecisionActionBar
+              activeAction={activeDecisionAction}
               evidenceAssessments={evidenceAssessments}
               task={task}
+              onActionChange={setActiveDecisionAction}
               onSuccess={() => void refetch()}
             />
           ) : (
@@ -424,15 +430,18 @@ const resolutionReasons = [
 ];
 
 function ReviewDecisionActionBar({
+  activeAction,
   evidenceAssessments,
   task,
+  onActionChange,
   onSuccess,
 }: {
+  activeAction: DetailDecisionAction | null;
   evidenceAssessments: Record<string, EvidenceAssessmentValue>;
   task: ReviewTaskDetail;
+  onActionChange: (action: DetailDecisionAction | null) => void;
   onSuccess: () => void;
 }) {
-  const [activeAction, setActiveAction] = useState<DetailDecisionAction | null>(null);
   const canDecide = hasTaskAction(task, "decide");
   const canRequestSupplement = hasTaskAction(task, "request_supplement");
   const canEscalateResolution = hasTaskAction(task, "escalate_resolution");
@@ -484,7 +493,7 @@ function ReviewDecisionActionBar({
   return (
     <>
       <Card className="sticky bottom-4 z-20 border border-white/80 bg-white/95 !p-3 shadow-[0_18px_48px_-28px_rgba(15,23,42,0.55)] backdrop-blur">
-        <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
+        <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
             <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Kết luận xét duyệt</div>
             <div className="mt-1 text-sm font-semibold text-brand-deep">
@@ -496,23 +505,21 @@ function ReviewDecisionActionBar({
               </div>
             ) : null}
           </div>
-          <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:min-w-[720px]">
+          <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {actions.map((action) => (
               <button
                 key={action.value}
                 className={[
-                  "rounded-xl px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45",
+                  "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-45",
                   action.className,
                 ].join(" ")}
                 disabled={!action.enabled}
                 type="button"
-                onClick={() => setActiveAction(action.value)}
+                title={action.description}
+                onClick={() => onActionChange(action.value)}
               >
-                <span className="flex items-center gap-2 text-sm font-bold">
-                  {action.icon}
-                  {action.label}
-                </span>
-                <span className="mt-1 block text-xs opacity-80">{action.description}</span>
+                {action.icon}
+                {action.label}
               </button>
             ))}
           </div>
@@ -523,7 +530,7 @@ function ReviewDecisionActionBar({
         action={activeAction}
         evidenceAssessments={evidenceAssessments}
         task={task}
-        onClose={() => setActiveAction(null)}
+        onClose={() => onActionChange(null)}
         onSuccess={onSuccess}
       />
     </>
@@ -1123,6 +1130,7 @@ function CriterionWorkspace({
   decisionHistory,
   evidenceAssessments,
   onEvidenceAssessmentChange,
+  onRequestSupplement,
 }: {
   task: ReviewTaskDetail;
   criterion: CoreCriterion;
@@ -1132,6 +1140,7 @@ function CriterionWorkspace({
   decisionHistory: NonNullable<ReviewTaskDetail["decisionHistory"]>;
   evidenceAssessments: Record<string, EvidenceAssessmentValue>;
   onEvidenceAssessmentChange: (evidenceId: string, assessment: EvidenceAssessmentValue) => void;
+  onRequestSupplement?: () => void;
 }) {
   const criterionMeta = coreCriteria.find((item) => item.key === criterion) ?? coreCriteria[0];
   const matrixItem = getCriterionMatrixItem(task.application.targetLevel, criterion);
@@ -1157,6 +1166,7 @@ function CriterionWorkspace({
           evidenceAssessments={evidenceAssessments}
           evidences={relatedEvidences}
           metrics={relatedMetrics}
+          onRequestSupplement={onRequestSupplement}
           onEvidenceAssessmentChange={onEvidenceAssessmentChange}
         />
 
@@ -1184,6 +1194,7 @@ function CriterionDocumentsSection({
   assessmentStatus,
   evidenceAssessments,
   onEvidenceAssessmentChange,
+  onRequestSupplement,
 }: {
   criterion: CoreCriterion;
   evidences: ReviewTaskEvidence[];
@@ -1191,6 +1202,7 @@ function CriterionDocumentsSection({
   assessmentStatus: ReturnType<typeof evaluateCriterionAgainstMatrix>["status"];
   evidenceAssessments: Record<string, EvidenceAssessmentValue>;
   onEvidenceAssessmentChange: (evidenceId: string, assessment: EvidenceAssessmentValue) => void;
+  onRequestSupplement?: () => void;
 }) {
   const criterionLabel = getCriterionLabel(criterion);
   const hasFiles = evidences.some((evidence) => evidence.files?.length);
@@ -1207,7 +1219,9 @@ function CriterionDocumentsSection({
             : "Sinh viên chưa nhập dữ liệu hoặc chưa tải tài liệu cho tiêu chí này."}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button type="button">Yêu cầu bổ sung tệp xác nhận</Button>
+          <Button disabled={!onRequestSupplement} type="button" onClick={onRequestSupplement}>
+            Yêu cầu bổ sung tệp xác nhận
+          </Button>
           <Badge variant={getCriterionStatusVariant(assessmentStatus)}>{metrics.length ? "Thiếu tệp xác nhận" : "Chưa có dữ liệu"}</Badge>
         </div>
       </div>
@@ -1716,7 +1730,7 @@ function getDecisionContext(task: ReviewTaskDetail) {
     : task.metrics;
   const relatedEvidences = getDecisionRelatedEvidences(task);
   return {
-    student: `${task.application.student.fullName || fallbackText} • ${task.application.student.studentCode || fallbackText}`,
+    student: `${task.application.student?.fullName || fallbackText} • ${task.application.student?.studentCode || fallbackText}`,
     criterion: getCriterionLabel(task.criterion),
     primaryData: relatedMetrics.length ? getPrimaryDataText(relatedMetrics, criterion) : fallbackText,
     documentCount: relatedEvidences.reduce((sum, evidence) => sum + (evidence.files?.length ?? 0), 0),
