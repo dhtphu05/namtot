@@ -28,10 +28,10 @@ export interface KnowledgeBaseFilters {
 }
 
 type KnowledgeBaseSearchPayload =
-  | KnowledgeBaseItem[]
+  | unknown[]
   | {
-      items?: KnowledgeBaseItem[];
-      data?: KnowledgeBaseItem[];
+      items?: unknown[];
+      data?: unknown[];
       pagination?: Pagination;
     }
   | null
@@ -54,20 +54,64 @@ function normalizeItems(payload: KnowledgeBaseSearchPayload): KnowledgeBaseItem[
 }
 
 function normalizeStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
-function normalizeItem(item: KnowledgeBaseItem): KnowledgeBaseItem {
+function normalizeItem(raw: unknown): KnowledgeBaseItem {
+  const item = asRecord(raw) ?? {};
   return {
-    ...item,
-    requiredFieldsJson: normalizeStringArray(item.requiredFieldsJson),
-    commonErrorsJson: normalizeStringArray(item.commonErrorsJson),
+    id: stringValue(item.id),
+    evidenceName: nullableString(item.evidenceName ?? item.evidence_name),
+    eventName: nullableString(item.eventName ?? item.event_name),
+    criterion: stringValue(item.criterion || "volunteer") as Criterion,
+    level: nullableString(item.level) as Level | null,
+    decision: stringValue(item.decision || "reference_only") as KnowledgeDecision,
+    reason: stringValue(item.reason ?? item.acceptedReasonSummary ?? item.accepted_reason_summary),
+    requiredFieldsJson: normalizeStringArray(
+      item.requiredFieldsJson ??
+        item.required_fields_json ??
+        item.requiredFields ??
+        item.required_fields,
+    ),
+    commonErrorsJson: normalizeStringArray(
+      item.commonErrorsJson ?? item.common_errors_json ?? item.commonErrors ?? item.common_errors,
+    ),
+    usageCount: numberValue(item.usageCount ?? item.usage_count),
+    createdAt: stringValue(item.createdAt ?? item.created_at),
+    updatedAt: stringValue(item.updatedAt ?? item.updated_at),
   };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+function nullableString(value: unknown) {
+  return typeof value === "string" || typeof value === "number" ? String(value) : null;
+}
+
+function numberValue(value: unknown) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
 }
 
 export const knowledgeBaseApi = {
   search: async (filters: KnowledgeBaseFilters) => {
-    const res = await apiClient<KnowledgeBaseSearchPayload>(`/api/knowledge-base/search${buildQuery(filters)}`);
+    const res = await apiClient<KnowledgeBaseSearchPayload>(
+      `/api/knowledge-base/search${buildQuery(filters)}`,
+    );
     const payloadPagination = !Array.isArray(res.data) ? res.data?.pagination : undefined;
     return {
       items: normalizeItems(res.data),
@@ -76,7 +120,9 @@ export const knowledgeBaseApi = {
   },
 
   useItem: async (id: string) => {
-    const res = await apiClient<KnowledgeBaseItem>(`/api/knowledge-base/${id}/use`, { method: "POST" });
+    const res = await apiClient<KnowledgeBaseItem>(`/api/knowledge-base/${id}/use`, {
+      method: "POST",
+    });
     return res.data;
   },
 };

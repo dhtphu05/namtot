@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { Criterion } from "@/lib/api/types";
+import { ApiError } from "@/lib/api/client";
 import { eventsApi } from "@/features/event/api/events";
 import { evidenceKeys } from "@/features/evidence/hooks/useEvidence";
 
@@ -38,7 +39,7 @@ export function useApprovedEvidenceSearch(filters: ApprovedEvidenceFilters, enab
 
       return items;
     },
-    enabled: enabled && Boolean(filters.studentCode),
+    enabled,
   });
 }
 
@@ -61,10 +62,28 @@ export function useImportApprovedEvidence(applicationId?: string) {
         queryClient.invalidateQueries({ queryKey: evidenceKeys.card(data.evidence.id) });
         queryClient.invalidateQueries({ queryKey: evidenceKeys.audit(data.evidence.id) });
       }
-      toast.success("Đã import minh chứng vào hồ sơ.");
+      toast.success("Đã thêm minh chứng vào hồ sơ.");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Không thể import minh chứng.");
+      toast.error(getImportErrorMessage(error));
     },
   });
+}
+
+function getImportErrorMessage(error: Error) {
+  if (error instanceof ApiError) {
+    const normalized = `${error.message} ${error.code}`.toLowerCase();
+    if (error.status === 403) return "Bạn không có quyền thực hiện thao tác này.";
+    if (
+      error.status === 409 ||
+      normalized.includes("already") ||
+      normalized.includes("duplicate")
+    ) {
+      return "Minh chứng này đã có trong hồ sơ.";
+    }
+    if (normalized.includes("participant") || normalized.includes("mismatch")) {
+      return "Bạn chỉ có thể thêm minh chứng của chính mình.";
+    }
+  }
+  return "Chưa thêm được minh chứng. Vui lòng thử lại.";
 }

@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { FileUp, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle2, FileUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,13 +12,6 @@ import {
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Criterion, EvidenceResponse } from "@/lib/api/types";
 import {
@@ -33,6 +26,7 @@ type AddEvidenceDrawerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialCriterion?: Criterion;
+  initialEvidenceName?: string;
   onCreated: (evidence: EvidenceResponse) => void;
 };
 
@@ -44,13 +38,15 @@ export function AddEvidenceDrawer({
   open,
   onOpenChange,
   initialCriterion = "academic",
+  initialEvidenceName = "",
   onCreated,
 }: AddEvidenceDrawerProps) {
   const [evidenceName, setEvidenceName] = useState("");
   const [criterion, setCriterion] = useState<Criterion>(initialCriterion);
-  const [description, setDescription] = useState("");
+  const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [nameError, setNameError] = useState("");
+  const [fileError, setFileError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createEvidence = useCreateEvidence(applicationId);
@@ -63,11 +59,18 @@ export function AddEvidenceDrawer({
     return `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`;
   }, [file]);
 
+  useEffect(() => {
+    if (!open) return;
+    setCriterion(initialCriterion);
+    setEvidenceName(initialEvidenceName);
+  }, [initialCriterion, initialEvidenceName, open]);
+
   const resetForm = () => {
     setEvidenceName("");
-    setDescription("");
+    setNote("");
     setFile(null);
     setNameError("");
+    setFileError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -89,6 +92,7 @@ export function AddEvidenceDrawer({
     }
 
     setFile(selectedFile);
+    setFileError("");
   };
 
   const submit = async () => {
@@ -98,7 +102,13 @@ export function AddEvidenceDrawer({
       return;
     }
 
+    if (!file) {
+      setFileError("File minh chứng là bắt buộc.");
+      return;
+    }
+
     setNameError("");
+    setFileError("");
 
     try {
       const created = await createEvidence.mutateAsync({
@@ -107,7 +117,7 @@ export function AddEvidenceDrawer({
           evidenceName: trimmedName,
           criterion,
           sourceType: "manual_upload",
-          description: description.trim() || undefined,
+          note: note.trim() || undefined,
         },
       });
 
@@ -126,7 +136,7 @@ export function AddEvidenceDrawer({
         latest = indexed ?? latest;
       }
 
-      toast.success("Đã nhận minh chứng. Hệ thống đang chuẩn bị số hoá.");
+      toast.success("Đã ghi nhận minh chứng. Hệ thống đang đọc nhanh file để tạo bản tóm tắt.");
       resetForm();
       onOpenChange(false);
       onCreated(latest);
@@ -141,7 +151,7 @@ export function AddEvidenceDrawer({
         <DrawerHeader>
           <DrawerTitle>Thêm minh chứng</DrawerTitle>
           <DrawerDescription>
-            Tải lên minh chứng để hệ thống hỗ trợ số hoá và tạo Evidence Card.
+            Upload khi chưa tìm thấy trong danh sách chính thức.
           </DrawerDescription>
         </DrawerHeader>
 
@@ -160,31 +170,18 @@ export function AddEvidenceDrawer({
 
           <div className="space-y-2">
             <Label>Tiêu chí</Label>
-            <Select
-              value={criterion}
-              onValueChange={(value) => setCriterion(value as Criterion)}
-              disabled={isSubmitting}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn tiêu chí" />
-              </SelectTrigger>
-              <SelectContent>
-                {studentEvidenceCriteria.map((item) => (
-                  <SelectItem key={item.key} value={item.key}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm font-medium text-foreground">
+              {studentEvidenceCriteria.find((item) => item.key === criterion)?.label}
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="evidence-description">Mô tả</Label>
+            <Label htmlFor="evidence-note">Ghi chú cho cán bộ</Label>
             <Textarea
-              id="evidence-description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Thông tin ngắn gọn để cán bộ dễ kiểm tra"
+              id="evidence-note"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Không bắt buộc"
               disabled={isSubmitting}
             />
           </div>
@@ -211,13 +208,16 @@ export function AddEvidenceDrawer({
             <p className="text-xs text-muted-foreground">
               Hỗ trợ PDF, JPG, JPEG, PNG. Tối đa 10MB.
             </p>
+            {fileError ? <p className="text-sm text-destructive">{fileError}</p> : null}
           </div>
+
+          {isSubmitting ? <UploadProgress /> : null}
         </div>
 
         <DrawerFooter>
           <Button type="button" onClick={() => void submit()} disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isSubmitting ? "Đang tải lên..." : "Tải lên minh chứng"}
+            {isSubmitting ? "Đang ghi nhận..." : "Upload minh chứng"}
           </Button>
           <Button
             type="button"
@@ -230,5 +230,27 @@ export function AddEvidenceDrawer({
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
+  );
+}
+
+function UploadProgress() {
+  const steps = ["Đã nhận file", "Đang đọc file", "Đã tạo tóm tắt", "Chờ cán bộ xét duyệt"];
+
+  return (
+    <div className="rounded-md border bg-muted/20 p-3">
+      <div className="text-sm font-semibold text-foreground">Đã ghi nhận minh chứng</div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {steps.map((step, index) => (
+          <div key={step} className="flex items-center gap-2 text-sm text-muted-foreground">
+            {index === 1 ? (
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            )}
+            {step}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -6,11 +6,18 @@ import type {
   IndexingStatus,
   Evidence,
 } from "@/lib/api/types";
-import type { EvidenceAudit, EvidenceCard, EvidenceDetail } from "@/types/evidence";
+import type {
+  EvidenceAudit,
+  EvidenceCard,
+  EvidenceDetail,
+  EvidenceStudentStatus,
+  EvidenceStudentStatusCode,
+} from "@/types/evidence";
 
 export interface EvidenceResponse extends Evidence {
   fileId?: string;
   jobId?: string;
+  studentStatus?: EvidenceStudentStatus | null;
 }
 
 type EvidenceListPayload =
@@ -43,7 +50,7 @@ function normalizeEvidences(payload: EvidenceListPayload | null): EvidenceRespon
   return rows.map(normalizeEvidence).filter((item): item is EvidenceResponse => Boolean(item?.id));
 }
 
-function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
+export function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
   if (!payload) return payload as EvidenceResponse;
   const wrapper = asRecord(payload);
   const row = asRecord(wrapper?.evidence) ?? wrapper ?? {};
@@ -68,6 +75,7 @@ function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
     description: nullableString(row.description),
     note: nullableString(row.note),
     confidence: nullableNumber(row.confidence),
+    studentStatus: normalizeStudentStatus(row.studentStatus ?? row.student_status),
     files: Array.isArray(row.files) ? row.files : [],
     fileId: nullableString(row.fileId ?? row.file_id ?? file?.id) ?? undefined,
     fileName:
@@ -76,10 +84,120 @@ function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
     jobId:
       nullableString(row.jobId ?? row.job_id ?? wrapper?.jobId ?? wrapper?.job_id) ?? undefined,
     uxStatus: asRecord(row.uxStatus ?? row.ux_status),
-    card: row.card,
+    card: normalizeEvidenceCard(row.card),
     createdAt: nullableString(row.createdAt ?? row.created_at) ?? "",
     updatedAt: nullableString(row.updatedAt ?? row.updated_at) ?? "",
   } as EvidenceResponse;
+}
+
+function normalizeEvidenceCard(payload: unknown): EvidenceCard | null {
+  if (!payload) return null;
+  const wrapper = asRecord(payload);
+  const row = asRecord(wrapper?.card) ?? wrapper;
+  if (!row) return null;
+  const readableSummary =
+    asRecord(row.readableSummary ?? row.readable_summary) ??
+    asRecord(row.summary) ??
+    normalizeReadableSummary(
+      row.extractedFields ?? row.extracted_fields ?? row.extractedFieldsJson,
+    );
+  const missingFields = normalizeStringOrObjectArray(
+    row.missingFields ?? row.missing_fields ?? row.missingInfo ?? row.missing_info,
+  );
+
+  return {
+    ...row,
+    id: nullableString(row.id) ?? undefined,
+    evidenceId: nullableString(row.evidenceId ?? row.evidence_id) ?? undefined,
+    readableSummary,
+    matchingStatus: normalizeMatchingStatus(row.matchingStatus ?? row.matching_status),
+    missingFields,
+    studentStatus: normalizeStudentStatus(row.studentStatus ?? row.student_status),
+    extractedFields: asRecord(row.extractedFields ?? row.extracted_fields) ?? null,
+    extractedFieldsJson: row.extractedFieldsJson ?? row.extracted_fields_json,
+    warnings: normalizeStringOrObjectArray(row.warnings ?? row.warningsJson ?? row.warnings_json),
+    warningsJson: row.warningsJson ?? row.warnings_json,
+    ocrText: nullableString(row.ocrText ?? row.ocr_text),
+    ocrTextPreview: nullableString(row.ocrTextPreview ?? row.ocr_text_preview),
+    uxStatus: asRecord(row.uxStatus ?? row.ux_status),
+    createdAt: nullableString(row.createdAt ?? row.created_at) ?? undefined,
+    updatedAt: nullableString(row.updatedAt ?? row.updated_at) ?? undefined,
+  } as EvidenceCard;
+}
+
+function normalizeReadableSummary(value: unknown) {
+  const record = asRecord(value);
+  if (!record) return null;
+
+  return {
+    ...record,
+    eventName: nullableString(record.eventName ?? record.event_name ?? record.certificateName),
+    organizer: nullableString(record.organizer ?? record.organizerName ?? record.organizer_name),
+    activityTime: nullableString(record.activityTime ?? record.activity_time ?? record.time),
+    convertedValue: nullableString(record.convertedValue ?? record.converted_value),
+    convertedUnit: nullableString(record.convertedUnit ?? record.converted_unit),
+    issueDate: nullableString(record.issueDate ?? record.issue_date),
+    studentName: nullableString(record.studentName ?? record.student_name ?? record.fullName),
+    studentCode: nullableString(record.studentCode ?? record.student_code),
+  };
+}
+
+function normalizeMatchingStatus(value: unknown) {
+  const record = asRecord(value);
+  if (!record && typeof value !== "string") return null;
+
+  return {
+    ...(record ?? {}),
+    code: nullableString(record?.code ?? record?.status ?? value),
+    label: nullableString(record?.label),
+    message: nullableString(record?.message),
+    matchedEventName: nullableString(
+      record?.matchedEventName ??
+        record?.matched_event_name ??
+        record?.eventName ??
+        record?.event_name,
+    ),
+  };
+}
+
+function normalizeStudentStatus(value: unknown): EvidenceStudentStatus | null {
+  const record = asRecord(value);
+  const code = nullableString(record?.code ?? record?.status ?? value);
+  if (!code) return null;
+
+  return {
+    ...(record ?? {}),
+    code: code as EvidenceStudentStatusCode,
+    label: nullableString(record?.label),
+    message: nullableString(record?.message),
+    nextAction: nullableString(
+      record?.nextAction ?? record?.next_action,
+    ) as EvidenceStudentStatus["nextAction"],
+    severity: nullableString(record?.severity) as EvidenceStudentStatus["severity"],
+    source: nullableString(record?.source) as EvidenceStudentStatus["source"],
+  };
+}
+
+function normalizeStringOrObjectArray(
+  value: unknown,
+): string[] | Array<{ label?: string; message?: string; field?: string }> {
+  if (!value) return [];
+  if (!Array.isArray(value)) {
+    if (typeof value === "string") return [value];
+    return [];
+  }
+  return value
+    .map((item) => {
+      if (typeof item === "string") return item;
+      const record = asRecord(item);
+      if (!record) return "";
+      return {
+        label: nullableString(record.label) ?? undefined,
+        message: nullableString(record.message) ?? undefined,
+        field: nullableString(record.field ?? record.code ?? record.key) ?? undefined,
+      };
+    })
+    .filter(Boolean) as string[] | Array<{ label?: string; message?: string; field?: string }>;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -221,9 +339,22 @@ export const evidenceApi = {
   },
 
   getEvidenceCard: async (evidenceId: string) => {
-    return apiClient<EvidenceCard>(`/api/evidences/${evidenceId}/card`, {
+    const res = await apiClient<unknown>(`/api/evidences/${evidenceId}/card`, {
       method: "GET",
     });
+    const wrapper = asRecord(res.data);
+    const normalizedCard = normalizeEvidenceCard(wrapper?.card ?? res.data);
+    const normalizedEvidence = wrapper?.evidence ? normalizeEvidence(wrapper.evidence) : null;
+    return {
+      ...res,
+      data: normalizedCard
+        ? {
+            ...normalizedCard,
+            evidence: normalizedEvidence ?? undefined,
+            auditSummary: wrapper?.auditSummary ?? wrapper?.audit_summary,
+          }
+        : null,
+    };
   },
 
   getEvidenceAudit: async (evidenceId: string) => {

@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api/client";
+import { ApiError, apiClient } from "@/lib/api/client";
 import type {
   Criterion,
   EventParticipantCheck,
@@ -6,7 +6,7 @@ import type {
   EventStatus,
   Level,
 } from "@/lib/api/types";
-import type { EvidenceResponse } from "@/features/evidence/api/evidence";
+import { normalizeEvidence, type EvidenceResponse } from "@/features/evidence/api/evidence";
 import type { ApprovedEvidenceSearchItem, ImportEvidenceResponse } from "@/types/evidence";
 
 export interface EventFilters {
@@ -249,6 +249,18 @@ function normalizeApprovedEvidenceSearchItem(raw: unknown): ApprovedEvidenceSear
   };
 }
 
+function normalizeImportEvidenceResponse(
+  payload: ImportEvidenceResponse | null,
+): ImportEvidenceResponse | null {
+  if (!payload || typeof payload !== "object") return payload;
+  const row = payload as Record<string, unknown>;
+  const evidence = row.evidence ? normalizeEvidence(row.evidence) : null;
+  return {
+    ...payload,
+    evidence: (evidence ?? payload.evidence) as ImportEvidenceResponse["evidence"],
+  };
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -357,6 +369,21 @@ export const eventsApi = {
   searchApprovedEvidence: async (
     filters?: Pick<EventFilters, "studentCode" | "criterion" | "q" | "page" | "limit">,
   ) => {
+    try {
+      const response = await apiClient<ApprovedEvidenceSearchPayload>(
+        `/api/evidence-matching/search${toQuery(filters)}`,
+        {
+          method: "GET",
+        },
+      );
+
+      return { ...response, data: normalizeApprovedEvidenceSearch(response.data) };
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 404) {
+        throw error;
+      }
+    }
+
     const response = await apiClient<ApprovedEvidenceSearchPayload>(
       `/api/events/search${toQuery(filters)}`,
       {
@@ -408,9 +435,28 @@ export const eventsApi = {
     eventId: string,
     input: { applicationId: string; participantId?: string },
   ) => {
-    return apiClient<ImportEvidenceResponse>(`/api/events/${eventId}/import-as-evidence`, {
-      method: "POST",
-      body: input,
-    });
+    try {
+      const response = await apiClient<ImportEvidenceResponse>(
+        `/api/evidence-matching/${eventId}/import`,
+        {
+          method: "POST",
+          body: input,
+        },
+      );
+      return { ...response, data: normalizeImportEvidenceResponse(response.data) };
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 404) {
+        throw error;
+      }
+    }
+
+    const response = await apiClient<ImportEvidenceResponse>(
+      `/api/events/${eventId}/import-as-evidence`,
+      {
+        method: "POST",
+        body: input,
+      },
+    );
+    return { ...response, data: normalizeImportEvidenceResponse(response.data) };
   },
 };

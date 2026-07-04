@@ -35,12 +35,7 @@ export interface ApiFailure {
 }
 
 export type Role =
-  | "student"
-  | "class_representative"
-  | "officer"
-  | "manager"
-  | "committee"
-  | "admin";
+  "student" | "class_representative" | "officer" | "manager" | "committee" | "admin";
 
 export interface SafeUser {
   id: string;
@@ -72,43 +67,45 @@ export interface LoginData {
 }
 
 // Phase 2 Shared Types
-export type Criterion = 'ethics' | 'academic' | 'physical' | 'volunteer' | 'integration' | 'priority' | 'collective';
-export type Level = 'school' | 'university' | 'city' | 'central';
-export type FinalStatus = 'pending' | 'passed' | 'failed' | 'partially_passed';
+export type Criterion =
+  "ethics" | "academic" | "physical" | "volunteer" | "integration" | "priority" | "collective";
+export type Level = "school" | "university" | "city" | "central";
+export type FinalStatus = "pending" | "passed" | "failed" | "partially_passed";
 
 export type ApplicationStatus =
-  | 'draft'
-  | 'prechecked'
-  | 'ready_to_submit'
-  | 'submitted'
-  | 'under_review'
-  | 'supplement_required'
-  | 'resolution_needed'
-  | 'completed'
-  | 'rejected';
+  | "draft"
+  | "prechecked"
+  | "ready_to_submit"
+  | "submitted"
+  | "under_review"
+  | "supplement_required"
+  | "resolution_needed"
+  | "completed"
+  | "rejected";
 
-export type EvidenceSourceType = 'metric_input' | 'event_import' | 'manual_upload' | 'collective_import';
+export type EvidenceSourceType =
+  "metric_input" | "event_import" | "manual_upload" | "collective_import";
 
 export type IndexingStatus =
-  | 'not_started'
-  | 'uploaded'
-  | 'pending_indexing'
-  | 'ocr_processing'
-  | 'extracting'
-  | 'checking_registry'
-  | 'indexed'
-  | 'failed'
-  | 'needs_manual_review';
+  | "not_started"
+  | "uploaded"
+  | "pending_indexing"
+  | "ocr_processing"
+  | "extracting"
+  | "checking_registry"
+  | "indexed"
+  | "failed"
+  | "needs_manual_review";
 
 export type EvidenceStatus =
-  | 'draft'
-  | 'pending_indexing'
-  | 'indexed'
-  | 'needs_supplement'
-  | 'under_review'
-  | 'accepted'
-  | 'rejected'
-  | 'resolution_needed';
+  | "draft"
+  | "pending_indexing"
+  | "indexed"
+  | "needs_supplement"
+  | "under_review"
+  | "accepted"
+  | "rejected"
+  | "resolution_needed";
 
 export const levelLabel: Record<Level, string> = {
   school: "Cấp Trường",
@@ -150,15 +147,11 @@ export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
   resolution_needed: "Cần hội đồng xử lý",
 };
 
-export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
-export type EventStatus = 'draft' | 'active' | 'archived';
+export type JobStatus = "queued" | "processing" | "completed" | "failed";
+export type EventStatus = "draft" | "active" | "archived";
 export type MetricType =
-  | 'gpa'
-  | 'conduct_score'
-  | 'physical_score'
-  | 'volunteer_days'
-  | 'foreign_language_score';
-export type VerificationStatus = 'pending' | 'verified' | 'rejected';
+  "gpa" | "conduct_score" | "physical_score" | "volunteer_days" | "foreign_language_score";
+export type VerificationStatus = "pending" | "verified" | "rejected";
 
 export interface ApplicationMetric {
   id: string;
@@ -186,7 +179,7 @@ export interface PrecheckMissingItem {
   criterion?: Criterion;
   code?: string;
   message?: string;
-  severity?: 'info' | 'warning' | 'error' | string;
+  severity?: "info" | "warning" | "error" | string;
   [key: string]: unknown;
 }
 
@@ -248,6 +241,7 @@ export interface EvidenceResponse {
   sourceType: EvidenceSourceType;
   status: EvidenceStatus;
   indexingStatus: IndexingStatus;
+  studentStatus?: unknown;
   collectiveCriterion?: string;
   fileId?: string;
   jobId?: string;
@@ -313,7 +307,7 @@ export interface ApplicationReviewTaskSummary {
 
 export interface CurrentApplicationEmpty {
   application: null;
-  state: 'not_started';
+  state: "not_started";
   schoolYear: string;
 }
 
@@ -369,6 +363,7 @@ export interface Evidence {
   description?: string | null;
   note?: string | null;
   confidence?: number | null;
+  studentStatus?: unknown;
   createdAt: string;
   updatedAt: string;
   files?: EvidenceFile[];
@@ -387,9 +382,9 @@ export interface CollectiveMemberInput {
   studentName: string;
   className?: string;
   faculty?: string;
-  participationStatus?: 'participated' | 'not_participated' | 'unknown';
-  individualSv5tLevel?: 'none' | 'school' | 'university' | 'city' | 'central' | 'unknown';
-  violationStatus?: 'none' | 'violated' | 'unknown';
+  participationStatus?: "participated" | "not_participated" | "unknown";
+  individualSv5tLevel?: "none" | "school" | "university" | "city" | "central" | "unknown";
+  violationStatus?: "none" | "violated" | "unknown";
   note?: string;
 }
 
@@ -484,7 +479,7 @@ export interface CollectiveState {
 
 export interface CurrentCollectiveEmpty {
   collective: null;
-  state: 'not_started';
+  state: "not_started";
   schoolYear: string;
 }
 
