@@ -1,301 +1,292 @@
-import { useMemo, useState } from "react";
-import { Download, ExternalLink, FileText, Loader2, RefreshCw, Sparkles, TriangleAlert, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { FilePlus2, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
-import { Button, Chip } from "@/components/ui-kit";
-import { evidenceApi } from "@/features/evidence/api/evidence";
-import { useEvidenceCard } from "@/features/evidence/hooks/useEvidence";
-import type { EvidenceResponse } from "@/lib/api/types";
+import { Button } from "@/components/ui/button";
 import {
-  evidenceStatusLabel,
-  formatFileSize,
-  formatStudentDate,
-  getFileName,
-  getFileSize,
-  getPrimaryFile,
-  indexingStatusLabel,
-  isImageFile,
-  isPdfFile,
-  sourceTypeLabel,
-  studentCriterionLabel,
-} from "./student-evidence-utils";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { ErrorState } from "@/components/feedback/ErrorState";
+import { LoadingState } from "@/components/feedback/LoadingState";
+import { useEvidenceCardPolling } from "@/hooks/useEvidenceCardPolling";
+import { useJobPolling } from "@/hooks/useJobPolling";
+import type { EvidenceResponse } from "@/lib/api/types";
+import { ApiError } from "@/lib/api/client";
+import {
+  useEvidenceCard,
+  useEvidenceDetail,
+  useRetryEvidenceJob,
+  useStartEvidenceIndexing,
+  useUploadEvidenceFile,
+} from "@/features/evidence/hooks/useEvidence";
+import {
+  canRetryEvidence,
+  getEvidenceUxStatus,
+  isTerminalEvidenceStatus,
+  normalizeEvidenceCard,
+  sourceTypeCopy,
+} from "./evidence-card-utils";
+import { EvidenceAuditButton } from "./EvidenceAuditButton";
+import { EvidenceCardPanel } from "./EvidenceCardPanel";
+import { EvidenceFilePreview } from "./EvidenceFilePreview";
+import { formatStudentDate, studentCriterionLabel } from "./student-evidence-utils";
 
-type EvidenceCardPayload = {
-  card?: {
-    ocrText?: string | null;
-    extractedFieldsJson?: unknown;
-    warningsJson?: unknown;
-    warnings?: unknown;
-    matchedEventId?: string | null;
-    matchedKnowledgeItemIds?: unknown;
-    confidence?: number | null;
-    aiSummary?: string | null;
-    createdAt?: string | Date | null;
-    updatedAt?: string | Date | null;
-  } | null;
-  indexingStatus?: string;
+type EvidenceDetailModalProps = {
+  evidence: EvidenceResponse | null;
+  applicationId?: string;
+  canEdit?: boolean;
+  onClose: () => void;
+  onChanged?: () => void;
 };
+
+type DetailTab = "card" | "files";
 
 export function EvidenceDetailModal({
   evidence,
+  applicationId,
+  canEdit = false,
   onClose,
-  onReplace,
-}: {
-  evidence: EvidenceResponse | null;
-  onClose: () => void;
-  onReplace?: (evidence: EvidenceResponse) => void;
-}) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [signedUrlLoading, setSignedUrlLoading] = useState(false);
-  const cardQuery = useEvidenceCard(evidence?.id);
-
-  const file = evidence ? getPrimaryFile(evidence) : null;
-  const cardPayload = (cardQuery.data ?? null) as EvidenceCardPayload | null;
-  const card = cardPayload?.card ?? null;
-  const extractedFields = useReadableFields(card?.extractedFieldsJson);
-  const warnings = useWarnings(card?.warningsJson ?? card?.warnings);
+  onChanged,
+}: EvidenceDetailModalProps) {
+  const [tab, setTab] = useState<DetailTab>("card");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const detailQuery = useEvidenceDetail(evidence?.id);
+  const detail = (detailQuery.data ?? evidence) as EvidenceResponse | null;
+  const activeEvidence = detail ?? evidence;
+  const isEventImport = activeEvidence?.sourceType === "event_import";
+  const pollingCardQuery = useEvidenceCardPolling(activeEvidence?.id, {
+    enabled: Boolean(
+      activeEvidence?.id &&
+      !isEventImport &&
+      !isTerminalEvidenceStatus(activeEvidence?.indexingStatus),
+    ),
+    initialIntervalMs: 2000,
+    backoffAfterMs: 30000,
+    backoffIntervalMs: 5000,
+    slowAfterMs: 120000,
+    slowIntervalMs: 10000,
+    maxElapsedMs: 180000,
+    stopWhen: (card) => isTerminalEvidenceStatus(card?.uxStatus?.step),
+  });
+  const officialCardQuery = useEvidenceCard(isEventImport ? activeEvidence?.id : undefined);
+  const cardQuery = isEventImport ? officialCardQuery : pollingCardQuery;
+  const card = useMemo(() => normalizeEvidenceCard(cardQuery.data), [cardQuery.data]);
+  const jobId = activeEvidence?.jobId;
+  const jobQuery = useJobPolling(jobId, {
+    enabled: Boolean(
+      jobId && !isEventImport && !isTerminalEvidenceStatus(activeEvidence?.indexingStatus),
+    ),
+    initialIntervalMs: 2000,
+    backoffAfterMs: 30000,
+    backoffIntervalMs: 5000,
+    slowAfterMs: 120000,
+    slowIntervalMs: 10000,
+    maxElapsedMs: 180000,
+  });
+  const uploadFile = useUploadEvidenceFile(applicationId);
+  const startIndexing = useStartEvidenceIndexing(applicationId);
+  const retryJob = useRetryEvidenceJob(applicationId);
 
   if (!evidence) return null;
 
-  const previewFile = async (openInNewTab = false) => {
-    if (!file?.id) {
-      toast.error("Minh chứng này chưa có file để xem.");
-      return;
-    }
+  const cardError = cardQuery.error instanceof ApiError ? cardQuery.error : null;
+  const canUploadMore = Boolean(canEdit && activeEvidence);
+  const retryable = canRetryEvidence(activeEvidence);
 
+  const uploadMore = async (file?: File) => {
+    if (!file || !activeEvidence) return;
     try {
-      setSignedUrlLoading(true);
-      const res = await evidenceApi.getSignedFileUrl(file.id);
-      const url = res.data?.url;
-      if (!url) throw new Error("Không lấy được đường dẫn xem file.");
-      setSignedUrl(url);
-      if (openInNewTab) {
-        window.open(url, "_blank", "noopener,noreferrer");
+      const uploaded = await uploadFile.mutateAsync({
+        evidenceId: activeEvidence.id,
+        applicationId,
+        file,
+      });
+      if (!uploaded.res?.jobId) {
+        await startIndexing.mutateAsync({ evidenceId: activeEvidence.id });
       }
+      toast.success("Đã tải file bổ sung. Hệ thống đang chuẩn bị số hoá.");
+      onChanged?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể mở file minh chứng.");
+      toast.error(error instanceof Error ? error.message : "Không thể tải file bổ sung.");
     } finally {
-      setSignedUrlLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  const nextAction = getNextAction(evidence.indexingStatus, warnings);
+  const retry = async () => {
+    if (!activeEvidence?.jobId) return;
+    await retryJob.mutateAsync({ evidenceId: activeEvidence.id, jobId: activeEvidence.jobId });
+    onChanged?.();
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6">
-      <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-[#E3ECF6] px-5 py-4">
-          <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap gap-2">
-              <Chip tone="brand">{studentCriterionLabel[evidence.criterion]}</Chip>
-              <Chip tone="muted">{sourceTypeLabel[evidence.sourceType]}</Chip>
-              <Chip tone={evidence.status === "accepted" ? "success" : evidence.status === "rejected" ? "error" : "warning"}>
-                {evidenceStatusLabel[evidence.status]}
-              </Chip>
-              <Chip tone={evidence.indexingStatus === "indexed" ? "success" : evidence.indexingStatus === "failed" ? "error" : "brand"}>
-                {indexingStatusLabel[evidence.indexingStatus]}
-              </Chip>
-            </div>
-            <h3 className="truncate text-xl font-bold text-brand-deep">{evidence.evidenceName}</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              AI gợi ý, cán bộ xác nhận kết quả cuối cùng.
-              {typeof (card?.confidence ?? evidence.confidence) === "number"
-                ? ` Độ tin cậy AI: ${Math.round(Number(card?.confidence ?? evidence.confidence) * 100)}%.`
-                : ""}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-brand-deep"
-            aria-label="Đóng"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="grid max-h-[calc(92vh-88px)] gap-0 overflow-y-auto lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="space-y-4 border-r border-[#E3ECF6] px-5 py-5">
-            <section className="rounded-lg border border-[#E3ECF6] p-4">
-              <h4 className="font-bold text-brand-deep">File minh chứng</h4>
-              {file ? (
-                <div className="mt-3 space-y-3">
-                  <InfoRow label="Tên file" value={getFileName(file)} />
-                  <InfoRow label="Loại file" value={file.mimeType ?? "--"} />
-                  <InfoRow label="Dung lượng" value={formatFileSize(getFileSize(file))} />
-                  <InfoRow label="Tải lên" value={formatStudentDate(file.uploadedAt ?? file.createdAt ?? evidence.createdAt)} />
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" onClick={() => previewFile(false)} disabled={signedUrlLoading}>
-                      {signedUrlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                      Xem file
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => previewFile(true)} disabled={signedUrlLoading}>
-                      <ExternalLink className="h-4 w-4" /> Mở trong tab mới
-                    </Button>
-                    {signedUrl && (
-                      <a href={signedUrl} download={getFileName(file)}>
-                        <Button size="sm" variant="outline">
-                          <Download className="h-4 w-4" /> Tải xuống
-                        </Button>
-                      </a>
-                    )}
-                    {onReplace && (
-                      <Button size="sm" variant="ghost" onClick={() => onReplace(evidence)}>
-                        <RefreshCw className="h-4 w-4" /> Thay file
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-                  Chưa có file tài liệu. Hãy tải file lên để cán bộ và AI có dữ liệu kiểm tra.
-                </div>
-              )}
-            </section>
-
-            {signedUrl && file && (
-              <section className="rounded-lg border border-[#E3ECF6] p-4">
-                <h4 className="font-bold text-brand-deep">Preview</h4>
-                <div className="mt-3 overflow-hidden rounded-lg border border-[#E3ECF6] bg-slate-50">
-                  {isImageFile(file) ? (
-                    <img src={signedUrl} alt={getFileName(file)} className="max-h-[420px] w-full object-contain" />
-                  ) : isPdfFile(file) ? (
-                    <iframe title={getFileName(file)} src={signedUrl} className="h-[420px] w-full" />
-                  ) : (
-                    <div className="p-4 text-sm text-muted-foreground">
-                      Trình duyệt không hỗ trợ preview loại file này. Hãy mở trong tab mới hoặc tải xuống.
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
-
-            <section className="rounded-lg border border-[#E3ECF6] p-4">
-              <h4 className="font-bold text-brand-deep">Lịch sử</h4>
-              <div className="mt-3 space-y-2 text-sm">
-                <InfoRow label="Tạo minh chứng" value={formatStudentDate(evidence.createdAt)} />
-                <InfoRow label="Cập nhật gần nhất" value={formatStudentDate(evidence.updatedAt)} />
-                <InfoRow label="AI cập nhật" value={formatStudentDate(String(card?.updatedAt ?? ""))} />
+    <Dialog open={Boolean(evidence)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto p-0">
+        <DialogHeader className="border-b px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="mb-2 flex flex-wrap gap-2">
+                {activeEvidence ? (
+                  <>
+                    <Badge variant="outline">
+                      {studentCriterionLabel[activeEvidence.criterion]}
+                    </Badge>
+                    <Badge variant="outline">{sourceTypeCopy[activeEvidence.sourceType]}</Badge>
+                    <Badge variant="outline">
+                      {getEvidenceUxStatus(activeEvidence, card).label}
+                    </Badge>
+                  </>
+                ) : null}
               </div>
-            </section>
+              <DialogTitle className="truncate text-xl">
+                {activeEvidence?.evidenceName ?? "Evidence Card"}
+              </DialogTitle>
+              <DialogDescription>
+                Kết quả số hoá chỉ hỗ trợ kiểm tra. Cán bộ/Hội đồng sẽ xác nhận cuối cùng.
+              </DialogDescription>
+            </div>
+            <button
+              type="button"
+              className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Đóng"
+              onClick={onClose}
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          <div className="space-y-4 px-5 py-5">
-            <section className="rounded-lg border border-[#E3ECF6] p-4">
-              <h4 className="flex items-center gap-2 font-bold text-brand-deep">
-                <Sparkles className="h-4 w-4 text-[#0057C2]" /> AI đã đọc gì?
-              </h4>
-              {cardQuery.isLoading ? (
-                <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Đang tải thông tin AI...
-                </div>
-              ) : (
-                <div className="mt-3 space-y-4">
-                  <TextBlock label="Tóm tắt AI" value={card?.aiSummary} empty="Chưa có tóm tắt AI cho minh chứng này." />
-                  <TextBlock label="OCR preview" value={card?.ocrText} empty="Chưa có nội dung OCR." clamp />
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">Trường đã trích xuất</div>
-                    {extractedFields.length ? (
-                      <div className="mt-2 grid gap-2">
-                        {extractedFields.map((field) => (
-                          <InfoRow key={field.label} label={field.label} value={field.value} />
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-sm text-muted-foreground">AI chưa trích xuất được trường dữ liệu rõ ràng.</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-lg border border-[#E3ECF6] p-4">
-              <h4 className="flex items-center gap-2 font-bold text-brand-deep">
-                <TriangleAlert className="h-4 w-4 text-amber-500" /> Cảnh báo
-              </h4>
-              {warnings.length ? (
-                <div className="mt-3 space-y-2">
-                  {warnings.map((warning, index) => (
-                    <div key={`${warning}-${index}`} className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                      {friendlyWarning(warning)}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-3 text-sm text-muted-foreground">Chưa có cảnh báo từ AI cho minh chứng này.</p>
-              )}
-            </section>
-
-            <section className="rounded-lg bg-[#F1F7FD] p-4">
-              <h4 className="font-bold text-brand-deep">Việc nên làm tiếp theo</h4>
-              <p className="mt-2 text-sm text-slate-700">{nextAction}</p>
-            </section>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={tab === "card" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTab("card")}
+            >
+              Kết quả đọc
+            </Button>
+            <Button
+              type="button"
+              variant={tab === "files" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTab("files")}
+            >
+              File
+            </Button>
+            {activeEvidence ? <EvidenceAuditButton evidenceId={activeEvidence.id} /> : null}
+            {retryable ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void retry()}
+                disabled={retryJob.isPending}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Thử xử lý lại
+              </Button>
+            ) : null}
+            {canUploadMore ? (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(event) => void uploadMore(event.target.files?.[0])}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadFile.isPending || startIndexing.isPending}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploadFile.isPending || startIndexing.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FilePlus2 className="h-4 w-4" />
+                  )}
+                  Tải file bổ sung
+                </Button>
+              </>
+            ) : null}
           </div>
+        </DialogHeader>
+
+        <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
+          <aside className="space-y-3 border-b p-5 lg:border-b-0 lg:border-r">
+            {detailQuery.isLoading ? (
+              <LoadingState label="Đang tải minh chứng..." />
+            ) : detailQuery.isError ? (
+              <ErrorState
+                title="Không thể tải minh chứng"
+                message={
+                  detailQuery.error instanceof Error
+                    ? detailQuery.error.message
+                    : "Vui lòng thử lại."
+                }
+                onRetry={() => void detailQuery.refetch()}
+              />
+            ) : activeEvidence ? (
+              <>
+                <Info label="Trạng thái xử lý" value={activeEvidence.indexingStatus} />
+                <Info label="Cập nhật" value={formatStudentDate(activeEvidence.updatedAt)} />
+                <Info label="Tạo lúc" value={formatStudentDate(activeEvidence.createdAt)} />
+                <div className="hidden lg:block">
+                  <EvidenceFilePreview
+                    evidence={activeEvidence}
+                    onUploadMore={canUploadMore ? () => fileInputRef.current?.click() : undefined}
+                  />
+                </div>
+              </>
+            ) : null}
+          </aside>
+
+          <main className="p-5">
+            {tab === "files" && activeEvidence ? (
+              <EvidenceFilePreview
+                evidence={activeEvidence}
+                onUploadMore={canUploadMore ? () => fileInputRef.current?.click() : undefined}
+              />
+            ) : null}
+
+            {tab === "card" && activeEvidence ? (
+              cardQuery.isLoading && !card ? (
+                <LoadingState label="Đang tải Evidence Card..." />
+              ) : cardQuery.isError ? (
+                <ErrorState
+                  title="Không thể tải Evidence Card"
+                  message={cardError?.message ?? "Vui lòng thử lại sau."}
+                  requestId={cardError?.meta?.requestId}
+                  onRetry={() => void cardQuery.refetch()}
+                />
+              ) : (
+                <EvidenceCardPanel
+                  evidence={activeEvidence}
+                  card={card}
+                  job={jobQuery.data}
+                  requestId={cardError?.meta?.requestId}
+                  onRetry={retryable ? () => void retry() : undefined}
+                  retrying={retryJob.isPending}
+                />
+              )
+            ) : null}
+          </main>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function Info({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid grid-cols-[120px_1fr] gap-3 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="min-w-0 break-words font-semibold text-brand-deep">{value || "--"}</span>
+    <div className="rounded-md border bg-background p-3 text-sm">
+      <div className="text-xs font-medium uppercase text-muted-foreground">{label}</div>
+      <div className="mt-1 break-words font-semibold text-foreground">{value || "--"}</div>
     </div>
   );
 }
-
-function TextBlock({ label, value, empty, clamp }: { label: string; value?: string | null; empty: string; clamp?: boolean }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold uppercase text-muted-foreground">{label}</div>
-      <p className={`mt-2 whitespace-pre-wrap text-sm text-slate-700 ${clamp ? "max-h-32 overflow-auto rounded-lg bg-slate-50 p-3" : ""}`}>
-        {value?.trim() || empty}
-      </p>
-    </div>
-  );
-}
-
-function useReadableFields(value: unknown) {
-  return useMemo(() => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
-    return Object.entries(value as Record<string, unknown>)
-      .filter(([, fieldValue]) => fieldValue !== undefined && fieldValue !== null && fieldValue !== "")
-      .map(([key, fieldValue]) => ({
-        label: key.replace(/_/g, " "),
-        value: Array.isArray(fieldValue) ? fieldValue.join(", ") : String(fieldValue),
-      }));
-  }, [value]);
-}
-
-function useWarnings(value: unknown) {
-  return useMemo(() => {
-    if (!value) return [];
-    if (Array.isArray(value)) return value.map((item) => String(item)).filter(Boolean);
-    if (typeof value === "string") return [value];
-    return [];
-  }, [value]);
-}
-
-function friendlyWarning(value: string) {
-  const normalized = value.toLowerCase();
-  if (normalized.includes("date") || normalized.includes("ngày")) return "Thiếu hoặc chưa rõ ngày cấp.";
-  if (normalized.includes("unit") || normalized.includes("đơn vị")) return "Thiếu đơn vị xác nhận.";
-  if (normalized.includes("blur") || normalized.includes("mờ")) return "Ảnh có thể bị mờ, hãy tải lại file rõ hơn.";
-  if (normalized.includes("name") || normalized.includes("họ tên")) return "Không tìm thấy họ tên rõ ràng.";
-  if (normalized.includes("volunteer") || normalized.includes("tình nguyện")) return "Không xác định được số ngày tình nguyện.";
-  return value || "Cần cán bộ kiểm tra.";
-}
-
-function getNextAction(indexingStatus: string, warnings: string[]) {
-  if (warnings.some((warning) => warning.toLowerCase().includes("blur") || warning.toLowerCase().includes("mờ"))) {
-    return "Ảnh có thể bị mờ. Hãy tải lại file rõ hơn trước khi nộp hồ sơ.";
-  }
-  if (indexingStatus === "indexed") {
-    return "Minh chứng đã được AI đọc xong. Bạn có thể chạy tiền kiểm để biết hồ sơ còn thiếu gì.";
-  }
-  if (indexingStatus === "failed") {
-    return "AI không đọc được file này. Bạn có thể thay file hoặc vẫn nộp để cán bộ kiểm tra thủ công.";
-  }
-  return "AI chưa chắc chắn. Cán bộ sẽ kiểm tra khi bạn nộp hồ sơ.";
-}
-

@@ -1,18 +1,13 @@
 import { useAuth } from "@/features/auth/store/auth-store";
 import type { ApiResponse, ApiFailure } from "./types";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 let isRefreshing = false;
 let refreshSubscribers: ((token: string | null) => void)[] = [];
 
 type JsonBody =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonBody[]
-  | { [key: string]: JsonBody | undefined };
+  string | number | boolean | null | JsonBody[] | { [key: string]: JsonBody | undefined };
 
 function subscribeTokenRefresh(cb: (token: string | null) => void) {
   refreshSubscribers.push(cb);
@@ -23,7 +18,7 @@ function onRefreshed(token: string | null) {
   refreshSubscribers = [];
 }
 
-interface ApiOptions extends Omit<RequestInit, "body"> {
+export interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: BodyInit | JsonBody;
   _retry?: boolean;
 }
@@ -52,13 +47,13 @@ export class ApiError extends Error {
 
 export async function apiClient<T>(
   endpoint: string,
-  options: ApiOptions = {}
+  options: ApiOptions = {},
 ): Promise<ApiResponse<T>> {
-  const url = `${BASE_URL}${endpoint}`;
+  const url = `${API_BASE_URL}${endpoint}`;
   const { body, _retry, ...requestOptions } = options;
-  
+
   const headers = new Headers(options.headers);
-  
+
   const token = useAuth.getState().accessToken;
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -82,18 +77,23 @@ export async function apiClient<T>(
     const response = await fetch(url, config);
 
     // Parse JSON
-    let data: any = null;
+    let data: unknown = null;
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       data = await response.json();
     }
 
-    if (data && data.success === false) {
+    const responseEnvelope = data as Partial<ApiResponse<T>> | null;
+    const requestId =
+      response.headers.get("x-request-id") ?? responseEnvelope?.meta?.requestId ?? undefined;
+
+    if (responseEnvelope?.success === false) {
       throw new ApiError(
-        data.error?.message || "API Error",
-        data.error?.code || "API_ERROR",
-        data.error?.details,
-        data.meta
+        responseEnvelope.error?.message || "API Error",
+        responseEnvelope.error?.code || "API_ERROR",
+        responseEnvelope.error?.details,
+        { ...responseEnvelope.meta, requestId },
+        response.status,
       );
     }
 
@@ -101,25 +101,34 @@ export async function apiClient<T>(
       if (response.status === 401 && !_retry && !isAuthEndpoint(endpoint)) {
         return handle401Error<T>(endpoint, options);
       }
-      
-      throw new ApiError(response.statusText, response.status.toString());
+
+      throw new ApiError(
+        response.statusText || "API Error",
+        response.status.toString(),
+        undefined,
+        { requestId },
+        response.status,
+      );
     }
 
     if (!data) {
       // In case the response is not JSON (e.g. 204 No Content or blob)
-      return { success: true, data: null as unknown as T, error: null, meta: {} };
+      return { success: true, data: null as unknown as T, error: null, meta: { requestId } };
     }
 
-    return data as ApiResponse<T>;
+    return {
+      ...(responseEnvelope as ApiResponse<T>),
+      meta: {
+        ...(responseEnvelope as ApiResponse<T>).meta,
+        requestId,
+      },
+    };
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
     }
     // Network errors or parsing errors
-    throw new ApiError(
-      error instanceof Error ? error.message : "Unknown error",
-      "NETWORK_ERROR"
-    );
+    throw new ApiError(error instanceof Error ? error.message : "Unknown error", "NETWORK_ERROR");
   }
 }
 
@@ -127,7 +136,7 @@ export async function apiBlob(
   endpoint: string,
   options: Omit<ApiOptions, "body"> & { body?: BodyInit | JsonBody } = {},
 ): Promise<{ blob: Blob; filename?: string }> {
-  const url = `${BASE_URL}${endpoint}`;
+  const url = `${API_BASE_URL}${endpoint}`;
   const { body, ...requestOptions } = options;
   const headers = new Headers(options.headers);
   const token = useAuth.getState().accessToken;
@@ -171,6 +180,23 @@ export async function apiBlob(
   };
 }
 
+export const api = {
+  get: <T>(endpoint: string, options?: Omit<ApiOptions, "method" | "body">) =>
+    apiClient<T>(endpoint, { ...options, method: "GET" }),
+  post: <T>(
+    endpoint: string,
+    body?: ApiOptions["body"],
+    options?: Omit<ApiOptions, "method" | "body">,
+  ) => apiClient<T>(endpoint, { ...options, method: "POST", body }),
+  patch: <T>(
+    endpoint: string,
+    body?: ApiOptions["body"],
+    options?: Omit<ApiOptions, "method" | "body">,
+  ) => apiClient<T>(endpoint, { ...options, method: "PATCH", body }),
+  delete: <T>(endpoint: string, options?: Omit<ApiOptions, "method" | "body">) =>
+    apiClient<T>(endpoint, { ...options, method: "DELETE" }),
+};
+
 function getFilename(contentDisposition: string | null): string | undefined {
   if (!contentDisposition) return undefined;
   const match = contentDisposition.match(/filename="?([^";]+)"?/i);
@@ -193,10 +219,7 @@ function isAuthEndpoint(endpoint: string) {
   return endpoint === "/api/auth/login" || endpoint === "/api/auth/refresh";
 }
 
-async function handle401Error<T>(
-  endpoint: string,
-  options: ApiOptions
-): Promise<ApiResponse<T>> {
+async function handle401Error<T>(endpoint: string, options: ApiOptions): Promise<ApiResponse<T>> {
   if (isRefreshing) {
     return new Promise((resolve, reject) => {
       subscribeTokenRefresh((token) => {
@@ -222,7 +245,7 @@ async function handle401Error<T>(
   isRefreshing = true;
 
   try {
-    const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
@@ -235,9 +258,9 @@ async function handle401Error<T>(
     const refreshData = await refreshRes.json();
     if (refreshData.success && refreshData.data) {
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } = refreshData.data;
-      
+
       useAuth.getState().setTokens(newAccessToken, newRefreshToken);
-      
+
       isRefreshing = false;
       onRefreshed(newAccessToken);
 

@@ -15,7 +15,12 @@ const studentRoutes = [
   "/app/wizard",
 ];
 
-const officerRoutes = ["/app/queue", "/app/evidence-search", "/app/review"];
+const officerRoutes = [
+  "/app/queue",
+  "/app/evidence-search",
+  "/app/review",
+  "/app/decision-imports",
+];
 const studentOrCollectiveRoutes = ["/app/upload", "/app/ai-precheck"];
 const managerRoutes = [
   "/app/assignment",
@@ -72,8 +77,10 @@ export function canAccessPath(role: Role, pathname: string): boolean {
   if (matchesAny(pathname, studentRoutes)) return role === "student";
   if (matchesAny(pathname, collectiveRoutes)) return role === "class_representative";
   if (matchesAny(pathname, officerRoutes)) return reviewRoles.includes(role);
-  if (matchesAny(pathname, managerRoutes)) return role === "manager" || role === "committee" || role === "admin";
+  if (matchesAny(pathname, managerRoutes))
+    return role === "manager" || role === "committee" || role === "admin";
   if (pathname.startsWith("/app/event-registry")) return eventRegistryRoles.includes(role);
+  if (pathname.startsWith("/app/decision-imports")) return eventRegistryRoles.includes(role);
   if (pathname.startsWith("/app/resolution")) return resolutionRoles.includes(role);
 
   return false;

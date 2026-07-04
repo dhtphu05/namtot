@@ -28,6 +28,7 @@ export interface CheckParticipantResult {
 
 export interface GetEventsParams {
   search?: string;
+  studentCode?: string;
   criterion?: string;
   page?: number;
   limit?: number;
@@ -63,6 +64,46 @@ export const eventApi = {
     return { ...res, data: normalizeEvents(res.data) };
   },
 
+  searchEvents: async (params?: GetEventsParams) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key === "search" ? "q" : key, String(value));
+        }
+      });
+    }
+    const qString = query.toString();
+    const res = await apiClient<EventListPayload>(
+      `/api/events/search${qString ? `?${qString}` : ""}`,
+      {
+        method: "GET",
+      },
+    );
+    return { ...res, data: normalizeEvents(res.data) };
+  },
+
+  getParticipants: async (
+    eventId: string,
+    params?: { page?: number; limit?: number; q?: string },
+  ) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key, String(value));
+        }
+      });
+    }
+    const qString = query.toString();
+    return apiClient<unknown[]>(
+      `/api/events/${eventId}/participants${qString ? `?${qString}` : ""}`,
+      {
+        method: "GET",
+      },
+    );
+  },
+
   getEvent: async (eventId: string) => {
     return apiClient<EventRegistryItem>(`/api/events/${eventId}`, {
       method: "GET",
@@ -76,7 +117,7 @@ export const eventApi = {
 
   checkEventParticipant: async (
     eventId: string,
-    input: { studentCode?: string; applicationId?: string }
+    input: { studentCode?: string; applicationId?: string },
   ) => {
     return apiClient<CheckParticipantResult>(`/api/events/${eventId}/check-participant`, {
       method: "POST",
@@ -90,9 +131,19 @@ export const eventApi = {
   },
 
   importEventToApplication: async (eventId: string, applicationId: string) => {
-    return apiClient<any>(`/api/events/${eventId}/import-to-application`, {
+    return apiClient<unknown>(`/api/events/${eventId}/import-to-application`, {
       method: "POST",
       body: { applicationId },
+    });
+  },
+
+  importAsEvidence: async (
+    eventId: string,
+    input: { applicationId: string; participantId?: string },
+  ) => {
+    return apiClient<unknown>(`/api/events/${eventId}/import-as-evidence`, {
+      method: "POST",
+      body: input,
     });
   },
 

@@ -6,6 +6,7 @@ import {
   ChartNoAxesCombined,
   Cpu,
   Download,
+  FileUp,
   FileText,
   FolderUp,
   GitBranch,
@@ -52,8 +53,20 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Hồ sơ của tôi", to: "/app/drafts", icon: FileText, badge: "Core", tone: "core" },
-        { label: "Upload minh chứng", to: "/app/upload", icon: Upload, badge: "Core", tone: "core" },
-        { label: "Kho minh chứng", to: "/app/evidence", icon: FolderUp, badge: "Core", tone: "core" },
+        {
+          label: "Upload minh chứng",
+          to: "/app/upload",
+          icon: Upload,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Kho minh chứng",
+          to: "/app/evidence",
+          icon: FolderUp,
+          badge: "Core",
+          tone: "core",
+        },
       ],
     },
     {
@@ -61,8 +74,20 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
         { label: "Cascade Review", to: "/app/cascade", icon: GitBranch, badge: "AI", tone: "ai" },
-        { label: "Thư viện sự kiện", to: "/app/event-library", icon: CalendarCheck, badge: "Data", tone: "ops" },
-        { label: "Chatbot hỗ trợ", to: "/app/chatbot", icon: LifeBuoy, badge: "Demo", tone: "demo" },
+        {
+          label: "Thư viện sự kiện",
+          to: "/app/event-library",
+          icon: CalendarCheck,
+          badge: "Data",
+          tone: "ops",
+        },
+        {
+          label: "Chatbot hỗ trợ",
+          to: "/app/chatbot",
+          icon: LifeBuoy,
+          badge: "Demo",
+          tone: "demo",
+        },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
@@ -71,11 +96,42 @@ const NAV: Record<Role, NavGroup[]> = {
     {
       group: "Xét duyệt",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
+        {
+          label: "Bảng điều khiển",
+          to: "/app",
+          icon: LayoutDashboard,
+          badge: "Core",
+          tone: "core",
+        },
         { label: "Hàng chờ xét duyệt", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
-        { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Ops", tone: "ops" },
-        { label: "Kho tri thức", to: "/app/evidence-search", icon: BookOpenCheck, badge: "Ops", tone: "ops" },
-        { label: "Hồ sơ đã chuyển hội ý", to: "/app/resolution", icon: ShieldQuestion, badge: "Theo dõi", tone: "beta" },
+        {
+          label: "Nhập sự kiện",
+          to: "/app/event-registry",
+          icon: CalendarCheck,
+          badge: "Ops",
+          tone: "ops",
+        },
+        {
+          label: "Import quyết định",
+          to: "/app/decision-imports",
+          icon: FileUp,
+          badge: "Ops",
+          tone: "ops",
+        },
+        {
+          label: "Kho tri thức",
+          to: "/app/evidence-search",
+          icon: BookOpenCheck,
+          badge: "Ops",
+          tone: "ops",
+        },
+        {
+          label: "Hồ sơ đã chuyển hội ý",
+          to: "/app/resolution",
+          icon: ShieldQuestion,
+          badge: "Theo dõi",
+          tone: "beta",
+        },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
@@ -84,25 +140,92 @@ const NAV: Record<Role, NavGroup[]> = {
     {
       group: "Quản lý hồ sơ",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
-        { label: "Dashboard thống kê", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "Core", tone: "core" },
-        { label: "Hàng chờ chốt kết quả", to: "/app/committee/inbox", icon: Inbox, badge: "Core", tone: "core" },
-        { label: "Kết quả theo cấp", to: "/app/manager/results", icon: Trophy, badge: "Core", tone: "core" },
-        { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound, badge: "Core", tone: "core" },
-        { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog, badge: "Ops", tone: "ops" },
-        { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion, badge: "Ops", tone: "ops" },
+        {
+          label: "Bảng điều khiển",
+          to: "/app",
+          icon: LayoutDashboard,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Dashboard thống kê",
+          to: "/app/analytics",
+          icon: ChartNoAxesCombined,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Hàng chờ chốt kết quả",
+          to: "/app/committee/inbox",
+          icon: Inbox,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Kết quả theo cấp",
+          to: "/app/manager/results",
+          icon: Trophy,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Hồ sơ tập thể",
+          to: "/app/manager/collective",
+          icon: UsersRound,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Phân công cán bộ",
+          to: "/app/assignment",
+          icon: UserCog,
+          badge: "Ops",
+          tone: "ops",
+        },
+        {
+          label: "Resolution Hub",
+          to: "/app/resolution",
+          icon: ShieldQuestion,
+          badge: "Ops",
+          tone: "ops",
+        },
       ],
     },
     {
       group: "Module nâng cao",
       items: [
-        { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Data", tone: "ops" },
-        { label: "SmartUX Analytics", to: "/app/smartux", icon: ChartNoAxesCombined, badge: "AI", tone: "ai" },
+        {
+          label: "Nhập sự kiện",
+          to: "/app/event-registry",
+          icon: CalendarCheck,
+          badge: "Data",
+          tone: "ops",
+        },
+        {
+          label: "Import quyết định",
+          to: "/app/decision-imports",
+          icon: FileUp,
+          badge: "Data",
+          tone: "ops",
+        },
+        {
+          label: "SmartUX Analytics",
+          to: "/app/smartux",
+          icon: ChartNoAxesCombined,
+          badge: "AI",
+          tone: "ai",
+        },
         { label: "VNPT AI Center", to: "/app/vnpt", icon: Cpu, badge: "Demo", tone: "demo" },
         { label: "eKYC", to: "/app/ekyc", icon: ScanFace, badge: "Demo", tone: "demo" },
         { label: "Audit Log", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },
         { label: "Export Center", to: "/app/export", icon: Download, badge: "Ops", tone: "ops" },
-        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal, badge: "Beta", tone: "beta" },
+        {
+          label: "Cấu hình tiêu chí",
+          to: "/app/settings",
+          icon: SlidersHorizontal,
+          badge: "Beta",
+          tone: "beta",
+        },
       ],
     },
   ],
@@ -110,9 +233,27 @@ const NAV: Record<Role, NavGroup[]> = {
     {
       group: "Tập thể",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
-        { label: "Hồ sơ tập thể", to: "/app/collective", icon: UsersRound, badge: "Core", tone: "core" },
-        { label: "Upload minh chứng", to: "/app/upload", icon: Upload, badge: "Core", tone: "core" },
+        {
+          label: "Bảng điều khiển",
+          to: "/app",
+          icon: LayoutDashboard,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Hồ sơ tập thể",
+          to: "/app/collective",
+          icon: UsersRound,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Upload minh chứng",
+          to: "/app/upload",
+          icon: Upload,
+          badge: "Core",
+          tone: "core",
+        },
         { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
@@ -182,49 +323,51 @@ export function Sidebar() {
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-4 pr-3">
         <div className="flex flex-col gap-5 pb-4">
-        {groups.map((group) => (
-          <div key={group.group}>
-            <div className="mb-2 px-3 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-              {group.group}
-            </div>
-            <ul className="flex flex-col gap-0.5">
-              {group.items.map((item) => {
-                const active = isActive(item.to);
-                const Icon = item.icon;
-                return (
-                  <li key={`${group.group}-${item.to}-${item.label}`}>
-                    <Link
-                      to={item.to}
-                      className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
-                        active
-                          ? "bg-[#0057C2] text-white"
-                          : "text-foreground/80 hover:bg-[#F1F7FD] hover:text-brand-deep"
-                      }`}
-                    >
-                      <span
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
-                          active ? "bg-white/15" : "bg-[#F1F7FD] text-[#0057C2] group-hover:bg-white"
+          {groups.map((group) => (
+            <div key={group.group}>
+              <div className="mb-2 px-3 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                {group.group}
+              </div>
+              <ul className="flex flex-col gap-0.5">
+                {group.items.map((item) => {
+                  const active = isActive(item.to);
+                  const Icon = item.icon;
+                  return (
+                    <li key={`${group.group}-${item.to}-${item.label}`}>
+                      <Link
+                        to={item.to}
+                        className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
+                          active
+                            ? "bg-[#0057C2] text-white"
+                            : "text-foreground/80 hover:bg-[#F1F7FD] hover:text-brand-deep"
                         }`}
                       >
-                        <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                      {item.badge && (
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                            active ? "bg-white/15 text-white" : badgeClass[item.tone ?? "beta"]
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
+                            active
+                              ? "bg-white/15"
+                              : "bg-[#F1F7FD] text-[#0057C2] group-hover:bg-white"
                           }`}
                         >
-                          {item.badge}
+                          <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
                         </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                        {item.badge && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              active ? "bg-white/15 text-white" : badgeClass[item.tone ?? "beta"]
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
         </div>
       </nav>
 
@@ -296,7 +439,11 @@ function RolePanel() {
         </>
       ) : (
         <div className="rounded-lg bg-[#F1F7FD] px-3 py-2 text-[12px] font-medium text-brand-deep">
-          {officerSpecializationText ? `Phụ trách: ${officerSpecializationText}` : user ? getRoleLabel(user.role) : roleMeta.label}
+          {officerSpecializationText
+            ? `Phụ trách: ${officerSpecializationText}`
+            : user
+              ? getRoleLabel(user.role)
+              : roleMeta.label}
         </div>
       )}
     </div>
