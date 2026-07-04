@@ -1,13 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StudentApplicationWorkspace } from "@/features/application/components/StudentApplicationWorkspace";
 import { EvidenceWorkspaceSafe } from "@/features/evidence/components/EvidenceWorkspace";
 import { StudentRoleSurface } from "@/features/core/components/StudentRoleSurface";
 
 export const Route = createFileRoute("/app/evidence")({
   component: () => (
-    <StudentRoleSurface
-      student={<StudentApplicationWorkspace initialTab="criteria" />}
-      fallback={<EvidenceWorkspaceSafe />}
-    />
+    <StudentRoleSurface student={<EvidenceWorkspaceSafe />} fallback={<EvidenceWorkspaceSafe />} />
   ),
 });

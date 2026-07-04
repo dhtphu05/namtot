@@ -29,6 +29,7 @@ import { Route as AppEventRegistryRouteImport } from './routes/app.event-registr
 import { Route as AppEventLibraryRouteImport } from './routes/app.event-library'
 import { Route as AppEkycRouteImport } from './routes/app.ekyc'
 import { Route as AppDraftsRouteImport } from './routes/app.drafts'
+import { Route as AppDecisionImportsRouteImport } from './routes/app.decision-imports'
 import { Route as AppCollectiveRouteImport } from './routes/app.collective'
 import { Route as AppChatbotRouteImport } from './routes/app.chatbot'
 import { Route as AppCascadeRouteImport } from './routes/app.cascade'
@@ -41,6 +42,7 @@ import { Route as AppResolutionIdRouteImport } from './routes/app.resolution.$id
 import { Route as AppManagerResultsRouteImport } from './routes/app.manager.results'
 import { Route as AppManagerResultRouteImport } from './routes/app.manager.result'
 import { Route as AppManagerCollectiveRouteImport } from './routes/app.manager.collective'
+import { Route as AppDecisionImportsDecisionImportIdRouteImport } from './routes/app.decision-imports.$decisionImportId'
 import { Route as AppCommitteeInboxRouteImport } from './routes/app.committee.inbox'
 import { Route as AppCollectiveIdRouteImport } from './routes/app.collective.$id'
 import { Route as AppManagerResultsApplicationIdRouteImport } from './routes/app.manager.results.$applicationId'
@@ -145,6 +147,11 @@ const AppDraftsRoute = AppDraftsRouteImport.update({
   path: '/drafts',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDecisionImportsRoute = AppDecisionImportsRouteImport.update({
+  id: '/decision-imports',
+  path: '/decision-imports',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCollectiveRoute = AppCollectiveRouteImport.update({
   id: '/collective',
   path: '/collective',
@@ -205,6 +212,12 @@ const AppManagerCollectiveRoute = AppManagerCollectiveRouteImport.update({
   path: '/manager/collective',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDecisionImportsDecisionImportIdRoute =
+  AppDecisionImportsDecisionImportIdRouteImport.update({
+    id: '/$decisionImportId',
+    path: '/$decisionImportId',
+    getParentRoute: () => AppDecisionImportsRoute,
+  } as any)
 const AppCommitteeInboxRoute = AppCommitteeInboxRouteImport.update({
   id: '/committee/inbox',
   path: '/committee/inbox',
@@ -234,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
   '/app/collective': typeof AppCollectiveRouteWithChildren
+  '/app/decision-imports': typeof AppDecisionImportsRouteWithChildren
   '/app/drafts': typeof AppDraftsRoute
   '/app/ekyc': typeof AppEkycRoute
   '/app/event-library': typeof AppEventLibraryRoute
@@ -252,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
+  '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
   '/app/manager/collective': typeof AppManagerCollectiveRoute
   '/app/manager/result': typeof AppManagerResultRoute
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
@@ -270,6 +285,7 @@ export interface FileRoutesByTo {
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
   '/app/collective': typeof AppCollectiveRouteWithChildren
+  '/app/decision-imports': typeof AppDecisionImportsRouteWithChildren
   '/app/drafts': typeof AppDraftsRoute
   '/app/ekyc': typeof AppEkycRoute
   '/app/event-library': typeof AppEventLibraryRoute
@@ -288,6 +304,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
+  '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
   '/app/manager/collective': typeof AppManagerCollectiveRoute
   '/app/manager/result': typeof AppManagerResultRoute
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
@@ -308,6 +325,7 @@ export interface FileRoutesById {
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
   '/app/collective': typeof AppCollectiveRouteWithChildren
+  '/app/decision-imports': typeof AppDecisionImportsRouteWithChildren
   '/app/drafts': typeof AppDraftsRoute
   '/app/ekyc': typeof AppEkycRoute
   '/app/event-library': typeof AppEventLibraryRoute
@@ -326,6 +344,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
+  '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
   '/app/manager/collective': typeof AppManagerCollectiveRoute
   '/app/manager/result': typeof AppManagerResultRoute
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
@@ -347,6 +366,7 @@ export interface FileRouteTypes {
     | '/app/cascade'
     | '/app/chatbot'
     | '/app/collective'
+    | '/app/decision-imports'
     | '/app/drafts'
     | '/app/ekyc'
     | '/app/event-library'
@@ -365,6 +385,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/collective/$id'
     | '/app/committee/inbox'
+    | '/app/decision-imports/$decisionImportId'
     | '/app/manager/collective'
     | '/app/manager/result'
     | '/app/manager/results'
@@ -383,6 +404,7 @@ export interface FileRouteTypes {
     | '/app/cascade'
     | '/app/chatbot'
     | '/app/collective'
+    | '/app/decision-imports'
     | '/app/drafts'
     | '/app/ekyc'
     | '/app/event-library'
@@ -401,6 +423,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/collective/$id'
     | '/app/committee/inbox'
+    | '/app/decision-imports/$decisionImportId'
     | '/app/manager/collective'
     | '/app/manager/result'
     | '/app/manager/results'
@@ -420,6 +443,7 @@ export interface FileRouteTypes {
     | '/app/cascade'
     | '/app/chatbot'
     | '/app/collective'
+    | '/app/decision-imports'
     | '/app/drafts'
     | '/app/ekyc'
     | '/app/event-library'
@@ -438,6 +462,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/collective/$id'
     | '/app/committee/inbox'
+    | '/app/decision-imports/$decisionImportId'
     | '/app/manager/collective'
     | '/app/manager/result'
     | '/app/manager/results'
@@ -595,6 +620,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDraftsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/decision-imports': {
+      id: '/app/decision-imports'
+      path: '/decision-imports'
+      fullPath: '/app/decision-imports'
+      preLoaderRoute: typeof AppDecisionImportsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/collective': {
       id: '/app/collective'
       path: '/collective'
@@ -679,6 +711,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppManagerCollectiveRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/decision-imports/$decisionImportId': {
+      id: '/app/decision-imports/$decisionImportId'
+      path: '/$decisionImportId'
+      fullPath: '/app/decision-imports/$decisionImportId'
+      preLoaderRoute: typeof AppDecisionImportsDecisionImportIdRouteImport
+      parentRoute: typeof AppDecisionImportsRoute
+    }
     '/app/committee/inbox': {
       id: '/app/committee/inbox'
       path: '/committee/inbox'
@@ -715,6 +754,18 @@ const AppCollectiveRouteWithChildren = AppCollectiveRoute._addFileChildren(
   AppCollectiveRouteChildren,
 )
 
+interface AppDecisionImportsRouteChildren {
+  AppDecisionImportsDecisionImportIdRoute: typeof AppDecisionImportsDecisionImportIdRoute
+}
+
+const AppDecisionImportsRouteChildren: AppDecisionImportsRouteChildren = {
+  AppDecisionImportsDecisionImportIdRoute:
+    AppDecisionImportsDecisionImportIdRoute,
+}
+
+const AppDecisionImportsRouteWithChildren =
+  AppDecisionImportsRoute._addFileChildren(AppDecisionImportsRouteChildren)
+
 interface AppResolutionRouteChildren {
   AppResolutionIdRoute: typeof AppResolutionIdRoute
 }
@@ -746,6 +797,7 @@ interface AppRouteChildren {
   AppCascadeRoute: typeof AppCascadeRoute
   AppChatbotRoute: typeof AppChatbotRoute
   AppCollectiveRoute: typeof AppCollectiveRouteWithChildren
+  AppDecisionImportsRoute: typeof AppDecisionImportsRouteWithChildren
   AppDraftsRoute: typeof AppDraftsRoute
   AppEkycRoute: typeof AppEkycRoute
   AppEventLibraryRoute: typeof AppEventLibraryRoute
@@ -777,6 +829,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCascadeRoute: AppCascadeRoute,
   AppChatbotRoute: AppChatbotRoute,
   AppCollectiveRoute: AppCollectiveRouteWithChildren,
+  AppDecisionImportsRoute: AppDecisionImportsRouteWithChildren,
   AppDraftsRoute: AppDraftsRoute,
   AppEkycRoute: AppEkycRoute,
   AppEventLibraryRoute: AppEventLibraryRoute,
