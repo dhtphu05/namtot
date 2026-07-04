@@ -8,19 +8,20 @@ export const ENABLE_DEMO_ROLE_SWITCH =
 export function toUiRole(role: ApiRole): UiRole {
   if (role === "class_representative") return "collective";
   if (role === "officer") return "officer";
-  if (role === "manager" || role === "committee" || role === "admin") {
-    return "manager";
-  }
+  if (role === "manager" || role === "committee" || role === "admin") return "manager";
   return "student";
 }
 
+export function getDefaultAppPathForRole(role: ApiRole): string {
+  if (role === "student") return "/app/drafts";
+  if (role === "class_representative") return "/app/collective";
+  if (role === "officer") return "/app/queue";
+  if (role === "manager" || role === "committee" || role === "admin") return "/app/analytics";
+  return "/app/drafts";
+}
+
 export function isUiRole(role: string): role is UiRole {
-  return (
-    role === "student" ||
-    role === "officer" ||
-    role === "manager" ||
-    role === "collective"
-  );
+  return role === "student" || role === "officer" || role === "manager" || role === "collective";
 }
 
 export function getRoleLabel(role: ApiRole): string {

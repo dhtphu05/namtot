@@ -18,25 +18,40 @@ function normalizeCurrentApplication(
   }
 
   if ("application" in data) {
-    if (data.application?.metrics) {
-      return {
-        ...data,
-        application: {
-          ...data.application,
-          metrics: data.application.metrics.map(normalizeMetric),
-        },
-      };
-    }
-    return data;
+    return {
+      ...data,
+      application: data.application ? normalizeApplication(data.application) : data.application,
+    };
   }
 
   return {
-    application: {
-      ...data,
-      metrics: data.metrics?.map(normalizeMetric),
-    },
+    application: normalizeApplication(data),
     state: data.state ?? data.status,
   };
+}
+
+function normalizeApplication<T extends Record<string, any>>(application: T): T {
+  return {
+    ...application,
+    targetLevel: normalizeLevel(application.targetLevel),
+    finalLevel: application.finalLevel ? normalizeLevel(application.finalLevel) : application.finalLevel,
+    metrics: application.metrics?.map(normalizeMetric),
+  };
+}
+
+function normalizeLevel(value: unknown): Level {
+  const map: Record<string, Level> = {
+    truong: "school",
+    school: "school",
+    dhdn: "university",
+    university: "university",
+    "dai-hoc-da-nang": "university",
+    "thanh-pho": "city",
+    city: "city",
+    "trung-uong": "central",
+    central: "central",
+  };
+  return map[String(value ?? "").trim()] ?? "school";
 }
 
 const metricTypeMap: Record<string, string> = {

@@ -79,7 +79,7 @@ export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps)
   };
 
   return (
-    <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_180px_160px_auto]">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_minmax(150px,180px)_minmax(150px,180px)_minmax(150px,180px)_minmax(140px,160px)_auto]">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input

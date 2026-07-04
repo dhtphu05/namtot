@@ -22,7 +22,13 @@ export function EventLibrary() {
   };
   
   const { data: appRes } = useCurrentApplication();
-  const applicationId = appRes?.application?.id;
+  const application = appRes?.application;
+  const applicationId = application?.id;
+  const canImportEvent =
+    !!application &&
+    ["draft", "prechecked", "ready_to_submit", "supplement_required", "draft_supplement"].includes(
+      String(application.status),
+    );
 
   const [q, setQ] = useState("");
   const [criterion, setCriterion] = useState("all");
@@ -77,7 +83,11 @@ export function EventLibrary() {
 
   const importEv = async (id: string) => {
     if (!applicationId) {
-      toast.error("Vui lòng khởi tạo hồ sơ trước khi import!");
+      toast.error("Vui lòng tạo hồ sơ trước khi import sự kiện.");
+      return;
+    }
+    if (!canImportEvent) {
+      toast.error("Hồ sơ đang được xét duyệt nên chưa thể thêm sự kiện mới.");
       return;
     }
     importToAppMutation.mutate(
@@ -98,9 +108,9 @@ export function EventLibrary() {
   if (!appRes || appRes.state === "not_started" || !appRes.application) {
     return (
       <>
-        <TopBar title="Kho minh chứng & sự kiện hợp lệ" subtitle="Vui lòng tạo hồ sơ xét duyệt trước" />
+        <TopBar title="Kho sự kiện" subtitle="Vui lòng tạo hồ sơ trước khi thêm sự kiện vào minh chứng." />
         <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
-          <div className="text-muted-foreground font-semibold">Vui lòng tạo hồ sơ trước khi tham chiếu kho sự kiện.</div>
+          <div className="text-muted-foreground font-semibold">Bạn cần tạo hồ sơ trước khi tham chiếu kho sự kiện.</div>
           <Link to="/app/wizard">
             <Button>Tạo hồ sơ ngay <ArrowRight className="w-4 h-4 ml-2" /></Button>
           </Link>
@@ -116,15 +126,27 @@ export function EventLibrary() {
         subtitle="Tìm các sự kiện đã được xác nhận roster trước khi import vào hồ sơ"
       />
 
-      <Card className="!p-3 mb-4">
+      {!canImportEvent ? (
+        <Card className="mb-4 bg-[#FFF7E6]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="font-bold text-amber-950">Hồ sơ đang được xét duyệt</div>
+              <p className="mt-1 text-sm text-amber-900">Bạn vẫn có thể tra cứu sự kiện, nhưng chưa thể thêm mới vào hồ sơ cho đến khi cán bộ yêu cầu bổ sung.</p>
+            </div>
+            <Button variant="secondary" onClick={() => nav({ to: "/app/cascade" })}>Theo dõi xét duyệt</Button>
+          </div>
+        </Card>
+      ) : null}
+
+            <Card className="!p-3 mb-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 bg-[#F6F9FC] rounded-lg px-3 py-2 flex-1 min-w-[260px]">
+          <div className="flex min-w-[min(100%,260px)] flex-1 items-center gap-2 rounded-lg bg-[#F6F9FC] px-3 py-2">
             <Search className="w-4 h-4 text-muted-foreground" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Tìm tên minh chứng, tên sự kiện, đơn vị tổ chức…"
-              className="bg-transparent flex-1 text-[13px] focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-[13px] focus:outline-none"
             />
           </div>
           <select
@@ -147,7 +169,7 @@ export function EventLibrary() {
       ) : eventsList.length === 0 ? (
         <div className="p-8 text-center text-muted-foreground">Không tìm thấy sự kiện nào phù hợp.</div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid min-w-0 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {eventsList.map((e) => {
             const cr = CRITERIA.find(c => c.key === e.criterion);
             const c = check[e.id];
@@ -210,11 +232,11 @@ export function EventLibrary() {
                   <Button
                     size="sm"
                     onClick={() => importEv(e.id)}
-                    disabled={!c?.ok || importToAppMutation.isPending}
+                    disabled={!canImportEvent || !c?.ok || importToAppMutation.isPending}
                     className="flex-1 text-xs"
                   >
                     {importToAppMutation.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-                    Import vào hồ sơ
+                    Thêm vào hồ sơ
                   </Button>
                 </div>
               </Card>

@@ -250,36 +250,28 @@ export function StudentOverview() {
         </div>
       </Card>
 
-      <Card className="mb-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Kết quả cuối
+      {hasFinalResult || application.finalNote ? (
+        <div className="mb-5 rounded-xl border border-[#E3ECF6] bg-white/85 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Kết quả cuối</span>
+                <Chip tone={getFinalTone(finalStatus)}>{getFinalStatusLabel(finalStatus)}</Chip>
+                {application.finalLevel ? <Chip tone="brand">{levelLabel[application.finalLevel]}</Chip> : null}
+              </div>
+              {application.finalNote ? (
+                <p className="mt-1 max-w-3xl text-sm text-slate-700">{application.finalNote}</p>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">Kết quả đã được hội đồng xác nhận và ghi nhận trong hệ thống.</p>
+              )}
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Chip tone={getFinalTone(finalStatus)}>{getFinalStatusLabel(finalStatus)}</Chip>
-              {application.finalLevel ? (
-                <Chip tone="brand">{levelLabel[application.finalLevel]}</Chip>
-              ) : null}
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span>Chốt: {formatFinalDate(application.finalizedAt)}</span>
+              <span>Người chốt: {application.finalizedBy?.fullName ?? "--"}</span>
             </div>
-            <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-              {hasFinalResult
-                ? "Kết quả này đã được hội đồng xác nhận và ghi nhận trong hệ thống."
-                : "Hồ sơ chưa có kết quả cuối. Sinh viên tiếp tục theo dõi trạng thái xét duyệt và phản hồi yêu cầu bổ sung nếu có."}
-            </p>
-            {application.finalNote ? (
-              <p className="mt-3 max-w-2xl rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-                {application.finalNote}
-              </p>
-            ) : null}
-          </div>
-          <div className="grid min-w-64 gap-2 text-sm">
-            <ResultMeta label="Thời điểm chốt" value={formatFinalDate(application.finalizedAt)} />
-            <ResultMeta label="Người chốt" value={application.finalizedBy?.fullName ?? "--"} />
-            <ResultMeta label="Cấp đăng ký" value={levelLabel[application.targetLevel]} />
           </div>
         </div>
-      </Card>
+      ) : null}
 
       <div className="mb-5">
         <StudentFlowStepper
