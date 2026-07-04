@@ -64,13 +64,13 @@ export function EvidenceSearch() {
 
       <Card className="mb-4 !p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-lg bg-[#F6F9FC] px-3 py-2">
+          <div className="flex min-w-[min(100%,260px)] flex-1 items-center gap-2 rounded-lg bg-[#F6F9FC] px-3 py-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
               value={q}
               onChange={(event) => setQ(event.target.value)}
               placeholder="Tìm tên minh chứng, sự kiện, lý do..."
-              className="flex-1 bg-transparent text-[13px] focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-[13px] focus:outline-none"
             />
           </div>
           <select
@@ -100,7 +100,7 @@ export function EvidenceSearch() {
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-12">
         <aside className="lg:col-span-4">
           <Card className="!p-2">
             {isLoading && <Loading label="Đang tải Knowledge Base..." />}

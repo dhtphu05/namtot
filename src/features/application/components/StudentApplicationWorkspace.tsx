@@ -87,7 +87,7 @@ type EvidenceSort = "newest" | "oldest" | "name" | "criterion" | "status" | "rev
 const SCHOOL_YEAR = "2025-2026";
 
 const tabLabels: Record<WorkspaceTab, string> = {
-  info: "Thông tin & cấp aim",
+  info: "Thông tin & cấp xét",
   criteria: "5 tiêu chí",
   precheck: "Kiểm tra hồ sơ",
   tracking: "Theo dõi sau khi nộp",
@@ -184,7 +184,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const avatarSrc = useResolvedAvatarUrl(user?.avatarUrl);
   const nextBestAction = getUserFacingText(
     precheck?.nextBestAction,
-    "Bạn có thỒ kiỒm tra lại h sơ sau khi cập nhật thông tin hoặc thêm thành tích.",
+    "Bạn có thể kiểm tra lại hồ sơ sau khi cập nhật thông tin hoặc thêm thành tích.",
   );
   const firstName = user?.fullName?.trim().split(/\s+/).slice(-1)[0] ?? "bạn";
 
@@ -272,19 +272,19 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     return (
       <>
         <TopBar
-          title={`H sơ của ${firstName}`}
-          subtitle="Hi!n chưa thỒ tải dữ li!u h sơ của bạn."
+          title={`Hồ sơ của ${firstName}`}
+          subtitle="Hiện chưa thể tải dữ liệu hồ sơ của bạn."
         />
         <Card className="border-amber-200 bg-amber-50">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3">
               <CircleAlert className="mt-1 h-6 w-6 shrink-0 text-amber-700" />
               <div>
-                <h2 className="text-xl font-bold text-amber-950">Không thỒ tải h sơ</h2>
+                <h2 className="text-xl font-bold text-amber-950">Không thể tải hồ sơ</h2>
                 <p className="mt-2 text-sm text-amber-900">
                   {current.error instanceof Error
                     ? current.error.message
-                    : "Vui lòng Ēng nhập lại hoặc thử tải lại dữ li!u."}
+                    : "Vui lòng đăng nhập lại hoặc thử tải lại dữ liệu."}
                 </p>
               </div>
             </div>
@@ -301,16 +301,16 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     return (
       <>
         <TopBar
-          title={`H sơ của ${firstName}`}
-          subtitle="Tài khoản này chưa có h sơ trong nĒm học hi!n tại."
+          title={`Hồ sơ của ${firstName}`}
+          subtitle="Tài khoản này chưa có hồ sơ trong năm học hiện tại."
         />
         <Card className="text-center">
           <FileText className="mx-auto h-12 w-12 text-[#0057C2]" />
           <h2 className="mt-4 text-2xl font-bold text-brand-deep">
-            Chưa có h sơ Sinh viên 5 tt nĒm học {SCHOOL_YEAR}
+            Chưa có hồ sơ Sinh viên 5 tốt năm học {SCHOOL_YEAR}
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
-            Đây là trạng thái úng cho account m:i. Bấm tạo h sơ Ồ bắt ầu nhập dữ li!u thật.
+            Đây là trạng thái đúng cho sinh viên mới. Bấm tạo hồ sơ để bắt đầu nhập dữ liệu thật.
           </p>
           <Button
             className="mt-6"
@@ -318,7 +318,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
             onClick={() => startApplication.mutate({ schoolYear: SCHOOL_YEAR, targetLevel: "school" })}
           >
             {startApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Bắt ầu tạo h sơ
+            Bắt đầu tạo hồ sơ
           </Button>
         </Card>
         <div className="mt-4">
@@ -442,10 +442,10 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
         });
       }
 
-      toast.success(evidenceForm.file ? "Đã thêm thành tích và h! thng ang kiỒm tra lại h sơ." : "Đã lưu thành tích.");
+      toast.success(evidenceForm.file ? "Đã thêm thành tích và hệ thống đang kiểm tra lại hồ sơ." : "Đã lưu thành tích.");
       setEvidenceForm(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thỒ thêm thành tích.");
+      toast.error(error instanceof Error ? error.message : "Không thể thêm thành tích.");
     }
   };
 
@@ -477,11 +477,11 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const handleAvatarSelected = async (file?: File | null) => {
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast.error("Ảnh h sơ ch0 h trợ JPG, PNG hoặc WEBP.");
+      toast.error("Ảnh hồ sơ chỉ hỗ trợ JPG, PNG hoặc WEBP.");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Ảnh h sơ ti a 5MB.");
+      toast.error("Ảnh hồ sơ tối đa 5MB.");
       return;
     }
 
@@ -491,9 +491,9 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
       if (response.data) {
         setUser(response.data);
       }
-      toast.success("Đã cập nhật ảnh h sơ.");
+      toast.success("Đã cập nhật ảnh hồ sơ.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thỒ cập nhật ảnh h sơ.");
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật ảnh hồ sơ.");
     } finally {
       setAvatarUploading(false);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
@@ -503,8 +503,8 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   return (
     <>
       <TopBar
-        title="H sơ của tôi"
-        subtitle="Hoàn thi!n thông tin, thêm thành tích và theo dõi trạng thái h sơ SV5T."
+        title="Hồ sơ của tôi"
+        subtitle="Hoàn thiện thông tin, thêm thành tích và theo dõi trạng thái hồ sơ Sinh viên 5 tốt."
       />
 
       <div className="pb-24">
@@ -513,7 +513,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
             <div className="flex min-w-0 gap-4">
               <div className="h-20 w-20 flex-none overflow-hidden rounded-2xl border bg-slate-100">
                 {avatarSrc ? (
-                  <img src={avatarSrc} alt={user?.fullName ?? "Ảnh h sơ"} className="h-full w-full object-cover" />
+                  <img src={avatarSrc} alt={user?.fullName ?? "Ảnh hồ sơ"} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xl font-bold text-brand-deep">
                     {getInitials(user?.fullName)}
@@ -523,18 +523,18 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <Chip tone="brand">
-                    <FileText className="h-3 w-3" /> H sơ {application.schoolYear}
+                    <FileText className="h-3 w-3" /> Hồ sơ {application.schoolYear}
                   </Chip>
                   <Chip tone={application.status === "completed" ? "success" : "warning"}>
                     {statusLabel[application.status]}
                   </Chip>
-                  {!avatarSrc ? <Chip tone="muted">Chưa có ảnh h sơ</Chip> : null}
+                  {!avatarSrc ? <Chip tone="muted">Chưa có ảnh hồ sơ</Chip> : null}
                 </div>
                 <h2 className="mt-3 break-words text-2xl font-bold text-brand-deep">
                   {user?.fullName ?? "Sinh viên"} - {user?.studentCode ?? "chưa có MSSV"}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {user?.faculty ?? "Chưa có khoa"} ⬢ {user?.className ?? "Chưa có l:p"} ⬢ Aim{" "}
+                  {user?.faculty ?? "Chưa có khoa"} • {user?.className ?? "Chưa có lớp"} • Cấp xét{" "}
                   {levelLabel[application.targetLevel]}
                 </p>
                 {canEditApplication ? (
@@ -550,14 +550,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                     {avatarUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                     Cập nhật ảnh
                   </Button>
-                  <span className="text-xs text-muted-foreground">JPG, PNG, WEBP ti a 5MB.</span>
+                  <span className="text-xs text-muted-foreground">JPG, PNG, WEBP tối đa 5MB.</span>
                 </div>
                 ) : null}
               </div>
             </div>
             <div className="w-full max-w-xs">
               <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Tiến " h sơ</span>
+                <span className="text-muted-foreground">Tiến độ hồ sơ</span>
                 <b className="text-brand-deep">{readinessScore}%</b>
               </div>
               <Progress value={readinessScore} />
@@ -573,22 +573,22 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <Chip tone="warning">
-                  <CircleAlert className="h-3 w-3" /> Cần b" sung
+                  <CircleAlert className="h-3 w-3" /> Cần bổ sung
                 </Chip>
                 <h3 className="mt-3 text-lg font-bold text-amber-950">
-                  Cán b" ã gửi feedback, vui lòng b" sung ri gửi lại h sơ.
+                  Cán bộ đã gửi yêu cầu bổ sung, vui lòng bổ sung rồi gửi lại hồ sơ.
                 </h3>
                 <p className="mt-1 text-sm text-amber-900">
-                  Sau khi gửi lại, cán b" sẽ tiếp tục kiỒm tra các tiêu chí ược yêu cầu b" sung.
+                  Sau khi gửi lại, cán bộ sẽ tiếp tục kiểm tra các tiêu chí được yêu cầu bổ sung.
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
                 <Button variant="secondary" onClick={goToSupplementCriterion}>
-                  <Upload className="h-4 w-4" /> Đi t:i tiêu chí cần b" sung
+                  <Upload className="h-4 w-4" /> Đi tới tiêu chí cần bổ sung
                 </Button>
                 <Button disabled={!canSubmitApplication || submitApplication.isPending} onClick={submitNow}>
                   {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  Gửi lại h sơ
+                  Gửi lại hồ sơ
                 </Button>
               </div>
             </div>
@@ -606,14 +606,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                     <p className="mt-2 text-sm text-slate-700">{item.reason}</p>
                     {item.requestedFields.length ? (
                       <div className="mt-2 text-xs text-muted-foreground">
-                        Mục cần b" sung: {item.requestedFields.join(", ")}
+                        Mục cần bổ sung: {item.requestedFields.join(", ")}
                       </div>
                     ) : null}
                   </div>
                 ))
               ) : (
                 <div className="rounded-lg border border-amber-200 bg-white px-4 py-3 text-sm text-amber-900">
-                  Bạn có thỒ b" sung thành tích hoặc giấy xác nhận liên quan ri gửi lại h sơ.
+                  Bạn có thể bổ sung thành tích hoặc giấy xác nhận liên quan rồi gửi lại hồ sơ.
                 </div>
               )}
             </div>
@@ -644,14 +644,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                 <Chip tone={application.status === "completed" ? "success" : "brand"}>
                   {statusLabel[application.status]}
                 </Chip>
-                <h3 className="mt-3 text-lg font-bold text-brand-deep">H sơ ã ược gửi, bạn ang x chế " ch0 xem.</h3>
+                <h3 className="mt-3 text-lg font-bold text-brand-deep">Hồ sơ đã được gửi, bạn đang ở chế độ chỉ xem.</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Bạn có thỒ theo dõi quá trình xét duy!t, xem lại h sơ ã n"p hoặc kiỒm tra thông báo m:i.
+                  Bạn có thể theo dõi quá trình xét duyệt, xem lại hồ sơ đã nộp hoặc kiểm tra thông báo mới.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setTab("tracking")}>Theo dõi xét duy!t</Button>
-                <Button variant="secondary" onClick={() => setTab("criteria")}>Xem h sơ ã n"p</Button>
+                <Button onClick={() => setTab("tracking")}>Theo dõi xét duyệt</Button>
+                <Button variant="secondary" onClick={() => setTab("criteria")}>Xem hồ sơ đã nộp</Button>
                 <Link to="/app/notifications">
                   <Button variant="outline">Xem thông báo</Button>
                 </Link>
@@ -660,12 +660,12 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
           </Card>
         )}
 
-        <div className="mb-5 flex gap-2 overflow-x-auto rounded-lg border border-[#E3ECF6] bg-white p-1">
+        <div className="mb-5 flex min-w-0 flex-wrap gap-2 rounded-lg border border-[#E3ECF6] bg-white p-1">
           {(Object.keys(tabLabels) as WorkspaceTab[]).map((key) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`shrink-0 rounded-md px-3 py-2 text-[13px] font-semibold transition-colors ${
+              className={`min-w-[min(100%,7rem)] rounded-md px-3 py-2 text-[13px] font-semibold transition-colors ${
                 tab === key ? "bg-[#0057C2] text-white" : "text-slate-600 hover:bg-[#F1F7FD] hover:text-brand-deep"
               }`}
             >
@@ -710,7 +710,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                     </div>
                     <h4 className="mt-1 text-lg font-bold text-brand-deep">
                       {selectedLevel === application.targetLevel
-                        ? "Hồ sơ đang aim cấp này"
+                        ? "Hồ sơ đang ở cấp này"
                         : `Bạn đang xem điều kiện ${levelLabel[selectedLevel]}`}
                     </h4>
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -779,7 +779,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                 <div className="mt-3 rounded-lg border border-[#E3ECF6] bg-white px-3 py-2 text-sm">
                   <div className="font-semibold text-brand-deep">{priorityAchievementGroup.label}</div>
                   <div className="mt-1 text-muted-foreground">
-                    Không nằm trong ladder cấp xét SV5T, nhưng được ghi nhận nếu sinh viên khai báo: {priorityAchievementGroup.examples.join(", ")}.
+                    Không nằm trong lộ trình cấp xét SV5T, nhưng được ghi nhận nếu sinh viên khai báo: {priorityAchievementGroup.examples.join(", ")}.
                   </div>
                 </div>
               </div>
@@ -815,12 +815,12 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
 
         {tab === "criteria" && (
           <div className="space-y-3">
-            <div className="flex gap-2 overflow-x-auto rounded-xl border border-[#E3ECF6] bg-white p-1">
+            <div className="flex min-w-0 flex-wrap gap-2 rounded-xl border border-[#E3ECF6] bg-white p-1">
               {criteria.map((criterion) => (
                 <button
                   key={criterion.key}
                   onClick={() => setActiveCriterion(criterion.key)}
-                  className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${
+                  className={`min-w-[min(100%,7rem)] rounded-lg px-3 py-2 text-sm font-bold transition-colors ${
                     activeCriterion === criterion.key ? "bg-[#0057C2] text-white" : "text-slate-600 hover:bg-[#F1F7FD]"
                   }`}
                 >
@@ -863,7 +863,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="h-8 w-8 rounded-lg" style={{ background: criterion.color }} />
                           <h3 className="text-xl font-bold text-brand-deep">{criterion.label}</h3>
-                          {supplementRequest ? <Chip tone="warning">Cần b" sung</Chip> : null}
+                          {supplementRequest ? <Chip tone="warning">Cần bổ sung</Chip> : null}
                           <Chip tone={items.length > 0 ? "success" : "warning"}>
                             {items.length > 0 ? `${items.length} thành tích` : "Chưa có thành tích"}
                           </Chip>
@@ -954,7 +954,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                         <div>
                           <h4 className="font-bold text-brand-deep">Thành tích/giấy xác nhận liên quan</h4>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Tài li!u ược xem ngay trong card, không cần mx chi tiết Ồ kiỒm tra nhanh.
+                            Tài liệu được xem ngay trong card, không cần mở chi tiết để kiểm tra nhanh.
                           </p>
                         </div>
                         <select
@@ -967,7 +967,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                           <option value="name">Theo tên A-Z</option>
                           <option value="criterion">Theo tiêu chí</option>
                           <option value="status">Theo trạng thái</option>
-                          <option value="review">Theo mức cần kiỒm tra</option>
+                          <option value="review">Theo mức cần kiểm tra</option>
                         </select>
                       </div>
 
@@ -1055,8 +1055,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                         {runPrecheck.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
                         Kiểm tra lại
                       </Button>
-                      <Button onClick={() => setActiveCriterion(nextCriterion.key)}>
-                        Sang tiêu chí tiếp theo
+                      <Button onClick={() => {
+                        if (isLastCriterion) {
+                          precheckNow();
+                        } else {
+                          setActiveCriterion(nextCriterion.key);
+                        }
+                      }}>
+                        {isLastCriterion ? "Tiếp tục đến bước kiểm tra" : "Sang tiêu chí tiếp theo"}
                       </Button>
                     </div>
                     ) : null}
@@ -1239,7 +1245,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">T!p ính kèm</label>
+                <label className="text-xs font-semibold text-muted-foreground">Tệp đính kèm</label>
                 <input
                   type="file"
                   accept=".pdf,.png,.jpg,.jpeg,.webp"
@@ -1251,7 +1257,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                   }
                 />
                 <p className="mt-2 text-xs text-muted-foreground">
-                  H trợ PDF, PNG, JPG, JPEG, WEBP. Nếu chưa có t!p, bạn vẫn có thỒ lưu thành tích trư:c.
+                  Hỗ trợ PDF, PNG, JPG, JPEG, WEBP. Nếu chưa có tệp, bạn vẫn có thể lưu thành tích trước.
                 </p>
               </div>
 
@@ -1667,25 +1673,25 @@ function formatRelativeCheckTime(value?: string | null) {
 function validateMetricValue(metricType: MetricType, value: number, scale?: number) {
   if (metricType === "gpa") {
     const gpaScale = scale ?? 4;
-    if (value < 0) return "GPA không ược nhỏ hơn 0.";
-    if (gpaScale === 10 && value > 10) return "GPA không ược vượt quá 10.0.";
-    if (value > 4) return "GPA không ược vượt quá 4.0.";
+    if (value < 0) return "GPA không được nhỏ hơn 0.";
+    if (gpaScale === 10 && value > 10) return "GPA không được vượt quá 10.0.";
+    if (value > 4) return "GPA không được vượt quá 4.0.";
   }
 
   if (metricType === "conduct_score" && (value < 0 || value > 100)) {
-    return "ĐiỒm rèn luy!n phải nằm trong khoảng 0-100.";
+    return "Điểm rèn luyện phải nằm trong khoảng 0-100.";
   }
 
   if (metricType === "volunteer_days" && value < 0) {
-    return "S ngày tình nguy!n không ược nhỏ hơn 0.";
+    return "Số ngày tình nguyện không được nhỏ hơn 0.";
   }
 
   if (metricType === "physical_score" && (value < 0 || value > 10)) {
-    return "ĐiỒm thỒ lực phải nằm trong khoảng 0-10.";
+    return "Điểm thể lực phải nằm trong khoảng 0-10.";
   }
 
   if (metricType === "foreign_language_score" && value < 0) {
-    return "ĐiỒm ngoại ngữ không ược nhỏ hơn 0.";
+    return "Điểm ngoại ngữ không được nhỏ hơn 0.";
   }
 
   return null;
@@ -1755,7 +1761,7 @@ function getInitials(name?: string | null) {
 }
 
 function formatFinalDate(value?: string | null) {
-  if (!value) return "Chưa cht";
+  if (!value) return "Chưa chốt";
   return formatDate(value);
 }
 

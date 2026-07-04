@@ -4,11 +4,11 @@ import { motion } from "framer-motion";
 
 export function AppLayout() {
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F6F9FC]">
+    <div className="flex h-screen min-w-0 overflow-hidden bg-[#F6F8FB]">
       <Sidebar />
-      <main className="h-screen min-w-0 flex-1 overflow-y-auto px-5 py-6 md:px-8 md:py-8">
+      <main className="h-screen min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-6 pt-2 sm:px-5 md:px-8">
         <motion.div
-          className="w-full max-w-[1500px]"
+          className="mx-auto min-w-0 max-w-[1500px]"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
