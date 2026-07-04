@@ -1,4 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   BookOpenCheck,
@@ -6,8 +7,8 @@ import {
   ChartNoAxesCombined,
   Cpu,
   Download,
-  FileUp,
   FileText,
+  FileUp,
   FolderUp,
   GitBranch,
   History,
@@ -27,14 +28,15 @@ import {
 import { authApi } from "@/features/auth/api/auth";
 import {
   ENABLE_DEMO_ROLE_SWITCH,
-  getRoleLabel,
+  getUserAssignmentLabel,
+  getUserRoleLabel,
   isUiRole,
   toUiRole,
 } from "@/features/auth/role-map";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useApp } from "@/lib/store";
 import { ROLES, type Role } from "@/lib/mock-data";
-import { criterionLabel, type Role as ApiRole } from "@/lib/api/types";
+import { type Role as ApiRole } from "@/lib/api/types";
 
 type BadgeTone = "core" | "ai" | "demo" | "ops" | "beta";
 type NavItem = {
@@ -54,19 +56,28 @@ const NAV: Record<Role, NavGroup[]> = {
         { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
         { label: "Hồ sơ của tôi", to: "/app/drafts", icon: FileText, badge: "Core", tone: "core" },
         {
-          label: "Upload minh chứng",
+          label: "Thành tích & giấy xác nhận",
+          to: "/app/evidence",
+          icon: FolderUp,
+          badge: "Core",
+          tone: "core",
+        },
+        {
+          label: "Tải minh chứng",
           to: "/app/upload",
           icon: Upload,
           badge: "Core",
           tone: "core",
         },
         {
-          label: "Kho minh chứng",
-          to: "/app/evidence",
-          icon: FolderUp,
-          badge: "Core",
-          tone: "core",
+          label: "Kho sự kiện",
+          to: "/app/event-library",
+          icon: CalendarCheck,
+          badge: "Data",
+          tone: "ops",
         },
+        { label: "Thông báo", to: "/app/notifications", icon: Bell },
+        { label: "Trợ lý SV5T", to: "/app/chatbot", icon: LifeBuoy },
       ],
     },
     {
@@ -74,21 +85,6 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
         { label: "Cascade Review", to: "/app/cascade", icon: GitBranch, badge: "AI", tone: "ai" },
-        {
-          label: "Thư viện sự kiện",
-          to: "/app/event-library",
-          icon: CalendarCheck,
-          badge: "Data",
-          tone: "ops",
-        },
-        {
-          label: "Chatbot hỗ trợ",
-          to: "/app/chatbot",
-          icon: LifeBuoy,
-          badge: "Demo",
-          tone: "demo",
-        },
-        { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
   ],
@@ -96,14 +92,8 @@ const NAV: Record<Role, NavGroup[]> = {
     {
       group: "Xét duyệt",
       items: [
-        {
-          label: "Bảng điều khiển",
-          to: "/app",
-          icon: LayoutDashboard,
-          badge: "Core",
-          tone: "core",
-        },
-        { label: "Hàng chờ xét duyệt", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
+        { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
+        { label: "Việc cần xử lý", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
         {
           label: "Nhập sự kiện",
           to: "/app/event-registry",
@@ -119,14 +109,14 @@ const NAV: Record<Role, NavGroup[]> = {
           tone: "ops",
         },
         {
-          label: "Kho tri thức",
+          label: "Tài liệu liên quan",
           to: "/app/evidence-search",
           icon: BookOpenCheck,
           badge: "Ops",
           tone: "ops",
         },
         {
-          label: "Hồ sơ đã chuyển hội ý",
+          label: "Hội ý của tôi",
           to: "/app/resolution",
           icon: ShieldQuestion,
           badge: "Theo dõi",
@@ -209,14 +199,26 @@ const NAV: Record<Role, NavGroup[]> = {
           tone: "ops",
         },
         {
-          label: "SmartUX Analytics",
+          label: "Phân tích trải nghiệm",
           to: "/app/smartux",
           icon: ChartNoAxesCombined,
-          badge: "AI",
-          tone: "ai",
+          badge: "Theo dõi",
+          tone: "ops",
         },
-        { label: "VNPT AI Center", to: "/app/vnpt", icon: Cpu, badge: "Demo", tone: "demo" },
-        { label: "eKYC", to: "/app/ekyc", icon: ScanFace, badge: "Demo", tone: "demo" },
+        {
+          label: "Trung tâm xử lý hồ sơ",
+          to: "/app/vnpt",
+          icon: Cpu,
+          badge: "Tích hợp",
+          tone: "ops",
+        },
+        {
+          label: "Xác thực sinh viên",
+          to: "/app/ekyc",
+          icon: ScanFace,
+          badge: "Tích hợp",
+          tone: "ops",
+        },
         { label: "Audit Log", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },
         { label: "Export Center", to: "/app/export", icon: Download, badge: "Ops", tone: "ops" },
         {
@@ -248,7 +250,7 @@ const NAV: Record<Role, NavGroup[]> = {
           tone: "core",
         },
         {
-          label: "Upload minh chứng",
+          label: "Thêm thành tích",
           to: "/app/upload",
           icon: Upload,
           badge: "Core",
@@ -275,6 +277,7 @@ export function Sidebar() {
   const clearAuth = useAuth((s) => s.clearAuth);
   const storedRole = useApp((s) => s.role);
   const setRole = useApp((s) => s.setRole);
+  const queryClient = useQueryClient();
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const groups = getNavGroups(role, user?.role);
@@ -291,6 +294,7 @@ export function Sidebar() {
         window.localStorage.removeItem("5tot-auth");
       }
       clearAuth();
+      queryClient.clear();
       setRole("student");
       nav({ to: "/login" });
     }
@@ -396,10 +400,6 @@ function RolePanel() {
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const roleMeta = ROLES[role];
-  const officerSpecializationText =
-    user?.role === "officer" && user.officerSpecializations?.length
-      ? user.officerSpecializations.map((item) => criterionLabel[item.criterion]).join(", ")
-      : null;
 
   return (
     <div className="mx-1 rounded-xl border border-[#EEF2F7] p-3">
@@ -415,7 +415,7 @@ function RolePanel() {
             {user?.fullName ?? roleMeta.label}
           </div>
           <div className="truncate text-[11px] text-muted-foreground">
-            {user ? getRoleLabel(user.role) : roleMeta.desc}
+            {user ? getUserRoleLabel(user) : roleMeta.desc}
           </div>
         </div>
       </div>
@@ -439,11 +439,7 @@ function RolePanel() {
         </>
       ) : (
         <div className="rounded-lg bg-[#F1F7FD] px-3 py-2 text-[12px] font-medium text-brand-deep">
-          {officerSpecializationText
-            ? `Phụ trách: ${officerSpecializationText}`
-            : user
-              ? getRoleLabel(user.role)
-              : roleMeta.label}
+          {user ? `Phụ trách: ${getUserAssignmentLabel(user)}` : roleMeta.label}
         </div>
       )}
     </div>

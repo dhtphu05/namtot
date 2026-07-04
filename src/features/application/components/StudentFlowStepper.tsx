@@ -1,13 +1,14 @@
-import { CheckCircle2, CircleAlert, FileText, Lock, Send, Sparkles, Upload } from "lucide-react";
+import { CheckCircle2, CircleAlert, ClipboardCheck, FileText, Send, Upload } from "lucide-react";
 import { Button, Chip } from "@/components/ui-kit";
 import type { ApplicationStatus, PrecheckResult } from "@/lib/api/types";
 
-type StepStatus = "Hoàn thành" | "Đang làm" | "Cần bổ sung" | "Bị khóa" | "Chờ cán bộ";
+type StepStatus = "Hoàn thành" | "Đang làm" | "Đang xét duyệt" | "Cần bổ sung" | "Bị khóa" | "Chờ cán bộ";
 
 type StudentFlowState = {
   applicationExists: boolean;
   applicationStatus?: ApplicationStatus | "not_started";
   evidenceCount: number;
+  criteriaTouched?: boolean;
   latestPrecheck?: PrecheckResult | null;
 };
 
@@ -28,8 +29,9 @@ export function StudentFlowStepper({
   onTrack?: () => void;
   busy?: boolean;
 }) {
-  const submitted = isSubmitted(state.applicationStatus);
-  const needsSupplement = state.applicationStatus === "supplement_required";
+  const needsSupplement = state.applicationStatus === "supplement_required" || String(state.applicationStatus) === "draft_supplement";
+  const finalDone = hasFinalResult(state.applicationStatus);
+  const inReview = isInReview(state.applicationStatus);
   const steps = [
     {
       label: "Tạo hồ sơ",
@@ -39,7 +41,14 @@ export function StudentFlowStepper({
       action: onCreate,
     },
     {
-      label: "Upload minh chứng",
+      label: "Điền 5 tiêu chí",
+      icon: ClipboardCheck,
+      status: !state.applicationExists ? "Bị khóa" : state.criteriaTouched ? "Hoàn thành" : "Đang làm",
+      actionLabel: "Điền 5 tiêu chí",
+      action: onUpload,
+    },
+    {
+      label: "Thêm thành tích",
       icon: Upload,
       status: !state.applicationExists
         ? "Bị khóa"
@@ -48,39 +57,36 @@ export function StudentFlowStepper({
             ? "Cần bổ sung"
             : "Hoàn thành"
           : "Đang làm",
-      actionLabel: "Upload minh chứng",
+      actionLabel: "Thêm thành tích",
       action: onUpload,
     },
     {
-      label: "Chạy tiền kiểm",
-      icon: Sparkles,
-      status: !state.applicationExists || state.evidenceCount === 0
+      label: "Kiểm tra hồ sơ",
+      icon: ClipboardCheck,
+      status: !state.applicationExists
         ? "Bị khóa"
         : state.latestPrecheck
           ? "Hoàn thành"
           : "Đang làm",
-      actionLabel: "Chạy tiền kiểm",
+      actionLabel: "Kiểm tra lại",
       action: onPrecheck,
     },
     {
-      label: "Nộp hồ sơ",
+      label: finalDone ? "Hoàn thành" : needsSupplement ? "Cần bổ sung" : inReview ? "Đang xét duyệt" : "Nộp / Theo dõi",
       icon: Send,
-      status: !state.applicationExists || submitted
-        ? submitted
+      status: !state.applicationExists || finalDone || inReview || needsSupplement
+        ? finalDone
           ? "Hoàn thành"
+          : needsSupplement
+            ? "Cần bổ sung"
+            : inReview
+              ? "Đang xét duyệt"
           : "Bị khóa"
         : state.latestPrecheck
           ? "Đang làm"
           : "Bị khóa",
-      actionLabel: "Nộp hồ sơ",
-      action: onSubmit,
-    },
-    {
-      label: "Theo dõi xét duyệt",
-      icon: CheckCircle2,
-      status: submitted ? "Chờ cán bộ" : "Bị khóa",
-      actionLabel: "Theo dõi xét duyệt",
-      action: onTrack,
+      actionLabel: finalDone || inReview || needsSupplement ? "Theo dõi xét duyệt" : "Nộp hồ sơ",
+      action: finalDone || inReview || needsSupplement ? onTrack : onSubmit,
     },
   ] satisfies Array<{
     label: string;
@@ -93,11 +99,11 @@ export function StudentFlowStepper({
   const active = steps.find((step) => step.status === "Đang làm" || step.status === "Cần bổ sung") ?? steps.find((step) => step.status === "Chờ cán bộ");
 
   return (
-    <div className="rounded-xl border border-[#E3ECF6] bg-white p-4">
+    <div className="rounded-xl border border-[#E3ECF6] bg-white px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="font-bold text-brand-deep">Lộ trình hồ sơ SV5T</h3>
-          <p className="mt-1 text-xs text-muted-foreground">AI gợi ý, cán bộ xác nhận kết quả cuối cùng.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Hoàn thiện từng bước để hồ sơ sẵn sàng nộp.</p>
         </div>
         {active?.action && (
           <Button size="sm" onClick={active.action} disabled={busy || active.status === "Bị khóa"}>
@@ -105,26 +111,22 @@ export function StudentFlowStepper({
           </Button>
         )}
       </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-5">
+      <div className="mt-3 flex flex-wrap gap-2">
         {steps.map((step, index) => {
           const Icon = step.icon;
           return (
             <button
               key={step.label}
-              className="min-h-[112px] rounded-lg border border-[#E3ECF6] bg-[#F8FBFE] p-3 text-left transition-colors hover:bg-[#F1F7FD] disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#E3ECF6] bg-[#F8FBFE] px-3 py-1.5 text-left transition-colors hover:bg-[#F1F7FD] disabled:cursor-not-allowed disabled:opacity-70"
               onClick={step.action}
               disabled={!step.action || busy || step.status === "Bị khóa"}
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-[#0057C2]">
-                  {step.status === "Bị khóa" ? <Lock className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
-                </span>
-                <span className="text-xs font-bold text-muted-foreground">{index + 1}</span>
-              </div>
-              <div className="mt-3 text-sm font-bold text-brand-deep">{step.label}</div>
-              <div className="mt-2">
-                <StatusChip status={step.status} />
-              </div>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-[#0057C2]">
+                {step.status === "Hoàn thành" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+              </span>
+              <span className="text-[11px] font-bold text-muted-foreground">{index + 1}</span>
+              <span className="text-sm font-bold text-brand-deep">{step.label}</span>
+              <StatusChip status={step.status} />
             </button>
           );
         })}
@@ -136,6 +138,7 @@ export function StudentFlowStepper({
 function StatusChip({ status }: { status: StepStatus }) {
   if (status === "Hoàn thành") return <Chip tone="success">Hoàn thành</Chip>;
   if (status === "Đang làm") return <Chip tone="brand">Đang làm</Chip>;
+  if (status === "Đang xét duyệt") return <Chip tone="brand">Đang xét duyệt</Chip>;
   if (status === "Cần bổ sung") return <Chip tone="warning">Cần bổ sung</Chip>;
   if (status === "Chờ cán bộ") return <Chip tone="warning">Chờ cán bộ</Chip>;
   return (
@@ -145,7 +148,10 @@ function StatusChip({ status }: { status: StepStatus }) {
   );
 }
 
-function isSubmitted(status?: ApplicationStatus | "not_started") {
-  return status === "submitted" || status === "under_review" || status === "completed" || status === "rejected" || status === "resolution_needed";
+function isInReview(status?: ApplicationStatus | "not_started") {
+  return status === "submitted" || status === "under_review" || status === "resolution_needed";
 }
 
+function hasFinalResult(status?: ApplicationStatus | "not_started") {
+  return status === "completed" || status === "rejected";
+}

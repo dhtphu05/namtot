@@ -59,7 +59,11 @@ export function RequestSupplementPanel({ task, onSuccess }: RequestSupplementPan
 
   const evidences = useMemo(() => task.evidences ?? [], [task.evidences]);
   const taskClosed = disabledStatuses.includes(task.status as (typeof disabledStatuses)[number]);
-  const canSubmit = role === "officer" && !taskClosed;
+  const canSubmit = task.permissions?.availableActions
+    ? task.permissions.availableActions.includes("request_supplement")
+    : task.permissions
+      ? task.permissions.canAct
+      : role === "officer" && !taskClosed;
   const validationMessage = validateSupplementRequest(note, deadline);
   const apiError =
     requestSupplement.error instanceof Error
@@ -122,9 +126,10 @@ export function RequestSupplementPanel({ task, onSuccess }: RequestSupplementPan
           </p>
           {!canSubmit ? (
             <div className="mt-3 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
-              {taskClosed
-                ? "Tác vụ đã được kết luận, không thể yêu cầu bổ sung thêm."
-                : "Vai trò hiện tại chỉ được xem yêu cầu bổ sung."}
+              {task.permissions?.reasonLabel ??
+                (taskClosed
+                  ? "Tác vụ đã được kết luận, không thể yêu cầu bổ sung thêm."
+                  : "Vai trò hiện tại chỉ được xem yêu cầu bổ sung.")}
             </div>
           ) : null}
         </div>

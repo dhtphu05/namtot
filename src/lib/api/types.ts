@@ -67,6 +67,8 @@ export interface LoginData {
   user: SafeUser;
   accessToken: string;
   refreshToken: string;
+  expiresIn?: number;
+  accessTokenExpiresAt?: string;
 }
 
 // Phase 2 Shared Types

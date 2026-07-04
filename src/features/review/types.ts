@@ -68,21 +68,59 @@ export type ReviewTaskListParams = {
   q?: string;
 };
 
+export type ReviewTaskPermissionReason =
+  | "manager_full_access"
+  | "committee_resolution_view"
+  | "assigned_to_you"
+  | "claimable_by_specialization"
+  | "assigned_to_other"
+  | "finalized"
+  | "out_of_scope"
+  | "role_not_allowed";
+
+export type ReviewTaskPermissions = {
+  canView: boolean;
+  canAct: boolean;
+  canClaim: boolean;
+  canRequestSupport: boolean;
+  reason: ReviewTaskPermissionReason;
+  reasonLabel: string;
+  badges?: string[];
+  availableActions?: ReviewTaskAvailableAction[];
+};
+
+export type ReviewTaskAvailableAction =
+  | "view"
+  | "decide"
+  | "request_supplement"
+  | "escalate_resolution"
+  | "claim"
+  | "request_support";
+
+export type ReviewTaskPriorityReason =
+  | "overdue"
+  | "student_resubmitted"
+  | "low_ai_confidence"
+  | "due_soon"
+  | "assigned_to_you"
+  | "unassigned_claimable"
+  | null;
+
 export const criterionLabels: Record<Criterion, string> = {
-  ethics: "Dao duc tot",
-  academic: "Hoc tap tot",
-  physical: "The luc tot",
-  volunteer: "Tinh nguyen tot",
-  integration: "Hoi nhap tot",
-  priority: "Uu tien / bo sung",
-  collective: "Tap the",
+  ethics: "Đạo đức tốt",
+  academic: "Học tập tốt",
+  physical: "Thể lực tốt",
+  volunteer: "Tình nguyện tốt",
+  integration: "Hội nhập tốt",
+  priority: "Ưu tiên / bổ sung",
+  collective: "Tập thể",
 };
 
 export const levelLabels: Record<Level, string> = {
-  school: "Cap Truong",
-  university: "Cap Dai hoc",
-  city: "Cap Thanh pho",
-  central: "Cap Trung uong",
+  school: "Cấp Trường",
+  university: "Cấp Đại học",
+  city: "Cấp Thành phố",
+  central: "Cấp Trung ương",
 };
 
 export const taskStatusLabels: Record<ReviewTaskStatus, string> = {
@@ -116,6 +154,8 @@ export type ReviewTaskListItem = {
   riskLevel?: "low" | "medium" | "high";
   dueDate?: string | null;
   officerSuggestedLevel?: Level | null;
+  permissions?: ReviewTaskPermissions;
+  priorityReason?: ReviewTaskPriorityReason;
   createdAt: string;
   updatedAt: string;
 };
@@ -256,6 +296,7 @@ export type ReviewTaskDetail = {
   levelAssessmentJson?: unknown;
   decisionReason?: string | null;
   supplementRequestJson?: unknown;
+  permissions?: ReviewTaskPermissions;
   decisionHistory?: ReviewDecisionHistoryItem[];
   createdAt?: string;
   updatedAt?: string;
@@ -310,6 +351,8 @@ export type OfficerDashboardResponse = {
     riskLevel: "low" | "medium" | "high";
     dueDate?: string | null;
     updatedAt: string;
+    permissions?: ReviewTaskPermissions;
+    priorityReason?: ReviewTaskPriorityReason;
   }>;
   bottleneckByCriterion: Array<{ criterion: Criterion; total: number; waiting: number }>;
   recentActivity: unknown[];
@@ -347,4 +390,8 @@ export type EscalateResolutionResponse = {
   resolutionCaseId?: string;
   applicationId: string;
   applicationStatus: "resolution_needed";
+};
+
+export type ClaimReviewTaskResponse = {
+  task?: ReviewTaskListItem;
 };

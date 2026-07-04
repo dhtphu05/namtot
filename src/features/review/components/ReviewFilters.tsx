@@ -179,7 +179,7 @@ export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps)
       </Button>
       <div className="md:col-span-full flex flex-wrap gap-2">
         <QuickToggle active={value.aiConfidenceMax === 0.7} disabled={disabled} onClick={() => updateFilter("aiConfidenceMax", value.aiConfidenceMax === 0.7 ? undefined : 0.7)}>
-          AI thấp
+          Cần kiểm tra thêm
         </QuickToggle>
         <QuickToggle active={Boolean(value.dueSoon)} disabled={disabled} onClick={() => updateFilter("dueSoon", value.dueSoon ? undefined : true)}>
           Sắp quá hạn

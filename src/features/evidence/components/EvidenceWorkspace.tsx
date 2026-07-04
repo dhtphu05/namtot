@@ -1,14 +1,6 @@
 import * as React from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  CalendarClock,
-  FilePlus2,
-  FileText,
-  Loader2,
-  Plus,
-  RefreshCw,
-} from "lucide-react";
+import { CalendarClock, FilePlus2, FileText, Loader2, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TopBar } from "@/components/layout/TopBar";

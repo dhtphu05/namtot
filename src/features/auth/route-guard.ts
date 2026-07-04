@@ -1,9 +1,10 @@
 import { redirect } from "@tanstack/react-router";
-import { authApi } from "@/features/auth/api/auth";
+import type { QueryClient } from "@tanstack/react-query";
+import { authKeys, meQueryOptions } from "@/features/auth/hooks/useMe";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { toUiRole } from "@/features/auth/role-map";
 import { useApp } from "@/lib/store";
-import type { Role } from "@/lib/api/types";
+import type { Role, SafeUser } from "@/lib/api/types";
 
 const studentRoutes = [
   "/app/drafts",
@@ -42,22 +43,24 @@ const eventRegistryRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const resolutionRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const reviewRoles: Role[] = ["officer", "manager", "committee", "admin"];
 
-export async function requireAuthenticatedAppRoute(pathname: string) {
+export async function requireAuthenticatedAppRoute(pathname: string, queryClient: QueryClient) {
   if (typeof window === "undefined") return;
 
-  const { accessToken } = useAuth.getState();
+  const { accessToken, user } = useAuth.getState();
   if (!accessToken) {
     throw redirect({ to: "/login" });
   }
 
   let role: Role;
   try {
-    const me = await authApi.getMe();
-    useAuth.getState().setUser(me.data);
-    useApp.getState().setRole(toUiRole(me.data.role));
-    role = me.data.role;
+    const cachedUser = queryClient.getQueryData<SafeUser>(authKeys.me);
+    const me = cachedUser ?? (await queryClient.fetchQuery(meQueryOptions));
+    useAuth.getState().setUser(me);
+    useApp.getState().setRole(toUiRole(me.role));
+    role = me.role;
   } catch (error) {
     useAuth.getState().clearAuth();
+    queryClient.removeQueries({ queryKey: authKeys.me });
     useApp.getState().setRole("student");
     throw redirect({ to: "/login" });
   }
