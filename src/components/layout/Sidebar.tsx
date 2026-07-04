@@ -26,14 +26,15 @@ import {
 import { authApi } from "@/features/auth/api/auth";
 import {
   ENABLE_DEMO_ROLE_SWITCH,
-  getRoleLabel,
+  getUserAssignmentLabel,
+  getUserRoleLabel,
   isUiRole,
   toUiRole,
 } from "@/features/auth/role-map";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useApp } from "@/lib/store";
 import { ROLES, type Role } from "@/lib/mock-data";
-import { criterionLabel, type Role as ApiRole } from "@/lib/api/types";
+import { type Role as ApiRole } from "@/lib/api/types";
 
 type BadgeTone = "core" | "ai" | "demo" | "ops" | "beta";
 type NavItem = {
@@ -71,12 +72,11 @@ const NAV: Record<Role, NavGroup[]> = {
     {
       group: "Xét duyệt",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
-        { label: "Hàng chờ xét duyệt", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
-        { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Ops", tone: "ops" },
-        { label: "Kho tri thức", to: "/app/evidence-search", icon: BookOpenCheck, badge: "Ops", tone: "ops" },
-        { label: "Hồ sơ đã chuyển hội ý", to: "/app/resolution", icon: ShieldQuestion, badge: "Theo dõi", tone: "beta" },
-        { label: "Thông báo", to: "/app/notifications", icon: Bell },
+        { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
+        { label: "Việc cần xử lý", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
+        { label: "Minh chứng liên quan", to: "/app/evidence-search", icon: BookOpenCheck, badge: "Ops", tone: "ops" },
+        { label: "Hội ý của tôi", to: "/app/resolution", icon: ShieldQuestion, badge: "Theo dõi", tone: "beta" },
+        { label: "Lịch sử xử lý", to: "/app/notifications", icon: History, badge: "Theo dõi", tone: "beta" },
       ],
     },
   ],
@@ -253,11 +253,6 @@ function RolePanel() {
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const roleMeta = ROLES[role];
-  const officerSpecializationText =
-    user?.role === "officer" && user.officerSpecializations?.length
-      ? user.officerSpecializations.map((item) => criterionLabel[item.criterion]).join(", ")
-      : null;
-
   return (
     <div className="mx-1 rounded-xl border border-[#EEF2F7] p-3">
       <div className="mb-2 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -272,7 +267,7 @@ function RolePanel() {
             {user?.fullName ?? roleMeta.label}
           </div>
           <div className="truncate text-[11px] text-muted-foreground">
-            {user ? getRoleLabel(user.role) : roleMeta.desc}
+            {user ? getUserRoleLabel(user) : roleMeta.desc}
           </div>
         </div>
       </div>
@@ -296,7 +291,7 @@ function RolePanel() {
         </>
       ) : (
         <div className="rounded-lg bg-[#F1F7FD] px-3 py-2 text-[12px] font-medium text-brand-deep">
-          {officerSpecializationText ? `Phụ trách: ${officerSpecializationText}` : user ? getRoleLabel(user.role) : roleMeta.label}
+          {user ? `Phụ trách: ${getUserAssignmentLabel(user)}` : roleMeta.label}
         </div>
       )}
     </div>

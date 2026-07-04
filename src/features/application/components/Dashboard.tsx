@@ -293,7 +293,7 @@ function OfficerDashReal() {
   return (
     <>
       <TopBar
-        title="Không gian xét duyệt chuyên trách"
+        title="Tổng quan cán bộ xét duyệt"
         subtitle={`${user?.fullName ?? data?.officer.fullName ?? "Cán bộ"} • Phụ trách: ${specializationText}. AI gợi ý, cán bộ quyết định theo từng tiêu chí.`}
       />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
@@ -305,11 +305,16 @@ function OfficerDashReal() {
 
       <Card className="mb-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-brand-deep">Task ưu tiên hôm nay</h3>
-          <Link to="/app/queue"><Button size="sm" variant="ghost">Xem tất cả →</Button></Link>
+          <div>
+            <h3 className="font-bold text-brand-deep">Việc ưu tiên</h3>
+            <div className="mt-1 text-sm text-muted-foreground">
+              Quá hạn, AI thấp, deadline gần, việc được giao và việc có thể nhận.
+            </div>
+          </div>
+          <Link to="/app/queue"><Button size="sm" variant="ghost">Mở hàng đợi →</Button></Link>
         </div>
         <div className="space-y-2">
-          {priorityTasks.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Chưa có task thuộc tiêu chí phụ trách.</div>}
+          {priorityTasks.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Chưa có việc ưu tiên thuộc phạm vi phụ trách.</div>}
           {priorityTasks.map((t) => (
             <Link to="/app/review/$id" params={{ id: t.taskId }} key={t.taskId} className="block">
               <div className="p-4 rounded-xl hover:bg-[#F4FBFF] transition-all flex items-center gap-4">
@@ -318,8 +323,13 @@ function OfficerDashReal() {
                   <div className="font-semibold text-brand-deep truncate">{t.studentName} <span className="text-xs text-muted-foreground font-normal">• {t.studentCode}</span></div>
                   <div className="text-xs text-muted-foreground truncate">{getCriterionLabel(t.criterion)} • {getLevelLabel(t.targetLevel)} • {formatDateTime(t.dueDate)}</div>
                 </div>
+                <Chip tone={getPriorityTone(t.priorityReason)}>{getPriorityReasonLabel(t.priorityReason)}</Chip>
                 <Chip tone={t.riskLevel === "high" ? "error" : t.riskLevel === "medium" ? "warning" : "success"}>{t.riskLevel}</Chip>
-                <Chip tone={(t.aiConfidence ?? 1) < 0.7 ? "warning" : "brand"}>AI {t.aiConfidence === null || t.aiConfidence === undefined ? "--" : `${Math.round(t.aiConfidence * 100)}%`}</Chip>
+                <Chip tone={(t.aiConfidence ?? 1) < 0.7 ? "warning" : "brand"}>
+                  {t.aiConfidence === null || t.aiConfidence === undefined
+                    ? "AI chưa có dữ liệu"
+                    : `AI ${Math.round(t.aiConfidence * 100)}%`}
+                </Chip>
                 <Chip tone={t.status === "supplement_required" ? "warning" : t.status === "accepted" ? "success" : t.status === "rejected" ? "error" : t.status === "resolution_needed" ? "warning" : "brand"}>{getTaskStatusLabel(t.status)}</Chip>
               </div>
             </Link>
@@ -329,7 +339,7 @@ function OfficerDashReal() {
 
       <div className="grid lg:grid-cols-2 gap-5">
         <Card>
-          <h3 className="font-bold text-brand-deep mb-3 flex items-center gap-2"><ShieldQuestion className="w-4 h-4" /> Cần hội đồng xử lý</h3>
+          <h3 className="font-bold text-brand-deep mb-3 flex items-center gap-2"><ShieldQuestion className="w-4 h-4" /> Hội ý của tôi</h3>
           {(summary?.resolutionNeeded ?? 0) === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">Chưa có task cần hội ý.</div>
           ) : (
@@ -618,6 +628,23 @@ function ManagerDashReal() {
       </Card>
     </>
   );
+}
+
+function getPriorityReasonLabel(reason?: string | null) {
+  if (reason === "overdue") return "Quá hạn";
+  if (reason === "student_resubmitted") return "Vừa bổ sung";
+  if (reason === "low_ai_confidence") return "AI thấp";
+  if (reason === "due_soon") return "Sắp đến hạn";
+  if (reason === "assigned_to_you") return "Được giao";
+  if (reason === "unassigned_claimable") return "Có thể nhận";
+  return "Theo dõi";
+}
+
+function getPriorityTone(reason?: string | null) {
+  if (reason === "overdue" || reason === "low_ai_confidence") return "error";
+  if (reason === "student_resubmitted" || reason === "due_soon") return "warning";
+  if (reason === "assigned_to_you" || reason === "unassigned_claimable") return "brand";
+  return "success";
 }
 
 // ============== COLLECTIVE ==============

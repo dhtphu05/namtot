@@ -152,6 +152,39 @@ export function useSubmitReviewDecision(taskId?: string) {
 
 export const useSubmitDecision = useSubmitReviewDecision;
 
+export function useClaimReviewTask(taskId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id?: string) => {
+      const targetTaskId = id ?? taskId;
+
+      if (!targetTaskId) {
+        throw new Error("Review task id is required.");
+      }
+
+      const response = await reviewApi.claimReviewTask(targetTaskId);
+      return response.data;
+    },
+    onSuccess: (_, id) => {
+      const targetTaskId = id ?? taskId;
+
+      if (targetTaskId) {
+        queryClient.invalidateQueries({
+          queryKey: reviewKeys.detail(targetTaskId),
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: reviewKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["officerTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["officerDashboard"] });
+      queryClient.invalidateQueries({
+        queryKey: managerInvalidationKeys.workload,
+      });
+    },
+  });
+}
+
 export function useRequestSupplement(taskId?: string) {
   const queryClient = useQueryClient();
 

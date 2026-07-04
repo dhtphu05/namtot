@@ -4,6 +4,7 @@ import type {
   Criterion,
   EvidenceStatus,
   ApiResponse,
+  ClaimReviewTaskResponse,
   CriterionLevelAssessment,
   EscalateResolutionRequest,
   EscalateResolutionResponse,
@@ -19,6 +20,7 @@ import type {
   ReviewTaskListParams,
   ReviewTaskListResponse,
   ReviewTaskMetric,
+  ReviewTaskPermissions,
   ReviewTaskStatus,
   Role,
   SubmitReviewDecisionRequest,
@@ -57,6 +59,12 @@ function asRecordArray(value: unknown): RawRecord[] {
     : [];
 }
 
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 function asString(value: unknown, fallback = "") {
   return value === undefined || value === null ? fallback : String(value);
 }
@@ -64,6 +72,24 @@ function asString(value: unknown, fallback = "") {
 function asNumber(value: unknown, fallback = 0) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function normalizePermissions(value: unknown): ReviewTaskPermissions | undefined {
+  const permissions = asRecord(value);
+  if (!permissions) return undefined;
+
+  return {
+    canView: Boolean(permissions.canView),
+    canAct: Boolean(permissions.canAct),
+    canClaim: Boolean(permissions.canClaim),
+    canRequestSupport: Boolean(permissions.canRequestSupport),
+    reason: asString(permissions.reason) as ReviewTaskPermissions["reason"],
+    reasonLabel: asString(permissions.reasonLabel),
+    badges: asStringArray(permissions.badges),
+    availableActions: asStringArray(
+      permissions.availableActions,
+    ) as ReviewTaskPermissions["availableActions"],
+  };
 }
 
 function normalizeListItem(item: RawRecord): ReviewTaskListItem {
@@ -110,6 +136,8 @@ function normalizeListItem(item: RawRecord): ReviewTaskListItem {
     riskLevel: (item.riskLevel ?? "low") as ReviewTaskListItem["riskLevel"],
     dueDate: item.dueDate === undefined || item.dueDate === null ? null : asString(item.dueDate),
     officerSuggestedLevel: (item.officerSuggestedLevel ?? null) as Level | null,
+    permissions: normalizePermissions(item.permissions),
+    priorityReason: (item.priorityReason ?? null) as ReviewTaskListItem["priorityReason"],
     createdAt: asString(item.createdAt),
     updatedAt: asString(item.updatedAt ?? item.createdAt),
   };
@@ -177,6 +205,7 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
     levelAssessmentJson: rawTask.levelAssessmentJson ?? null,
     decisionReason: asString(rawTask.decisionReason) || null,
     supplementRequestJson: rawTask.supplementRequestJson ?? null,
+    permissions: normalizePermissions(rawTask.permissions ?? payload.permissions),
     decisionHistory: normalizeDecisionHistory(
       asRecordArray(payload.audit ?? payload.decisionHistory),
     ),
@@ -398,6 +427,20 @@ export const reviewApi = {
     return withDataFallback({
       ...response,
       data: normalizeReviewTaskDetail(response.data),
+    });
+  },
+
+  claimReviewTask: async (taskId: string): Promise<ApiResponse<ClaimReviewTaskResponse>> => {
+    const response = await apiClient<RawRecord>(`/api/review/tasks/${taskId}/claim`, {
+      method: "POST",
+    });
+    const rawTask = asRecord(response.data?.task);
+
+    return withDataFallback({
+      ...response,
+      data: {
+        task: rawTask ? normalizeListItem(rawTask) : undefined,
+      },
     });
   },
 

@@ -90,7 +90,20 @@ function EvidenceWorkspace() {
 
   const profile = appRes.application;
   const targetLevel = profile.targetLevel ?? "school";
-  const isEditable = ["draft", "prechecked", "ready_to_submit", "supplement_required"].includes(profile.status);
+  const isEditable = ["draft", "prechecked", "ready_to_submit", "supplement_required", "draft_supplement"].includes(profile.status);
+  const isSupplementMode = profile.status === "supplement_required" || String(profile.status) === "draft_supplement";
+  const supplementRequests = (profile.reviewTasks ?? []).filter((task) => task.status === "supplement_required");
+  const supplementCriteria = new Set(supplementRequests.map((task) => task.criterion));
+  const isCriterionLockedForSupplement = (criterion: string) =>
+    isSupplementMode && supplementCriteria.size > 0 && !supplementCriteria.has(criterion as Criterion);
+  const activeLocked = isCriterionLockedForSupplement(backendActive);
+  const openAddModal = () => {
+    if (activeLocked) {
+      toast.error("Tiêu chí này không được mở bổ sung trong đợt này.");
+      return;
+    }
+    setModal(true);
+  };
 
   const cards = (evidenceList || []).filter((e) => e.criterion === backendActive);
   const criterion = CRITERIA_PLUS.find((c) => (keyMap[c.key] || c.key) === backendActive) ?? CRITERIA_PLUS[0];
@@ -106,7 +119,7 @@ function EvidenceWorkspace() {
         subtitle={`Hồ sơ SV5T ${profile.schoolYear} • ${profile.basicInfo?.fullName || CURRENT_STUDENT.name}`}
         action={
           isEditable ? (
-            <Button onClick={() => setModal(true)} disabled={!applicationId}>
+            <Button onClick={openAddModal} disabled={!applicationId || activeLocked}>
               <Plus className="w-4 h-4 mr-2" /> Thêm minh chứng
             </Button>
           ) : undefined
@@ -149,12 +162,15 @@ function EvidenceWorkspace() {
         <section className="lg:col-span-6 space-y-3">
           <Card>
             <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Minh chứng — {criterion.label}</div>
-                <h3 className="font-bold text-brand-deep text-[17px] mt-0.5">{cards.length} minh chứng trong hồ sơ</h3>
-              </div>
-              {isEditable && (
-                <Button size="sm" variant="secondary" onClick={() => setModal(true)} disabled={!applicationId}>
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Minh chứng — {criterion.label}</div>
+                  <h3 className="font-bold text-brand-deep text-[17px] mt-0.5">{cards.length} minh chứng trong hồ sơ</h3>
+                  {activeLocked ? (
+                    <p className="mt-1 text-xs text-muted-foreground">Tiêu chí này không được mở bổ sung trong đợt này.</p>
+                  ) : null}
+                </div>
+                {isEditable && (
+                <Button size="sm" variant="secondary" onClick={openAddModal} disabled={!applicationId || activeLocked}>
                   <Plus className="w-3.5 h-3.5 mr-1" /> Thêm
                 </Button>
               )}
@@ -171,9 +187,9 @@ function EvidenceWorkspace() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {cards.map((ev) => (
-                  <EvidenceCard key={ev.id} ev={ev} isEditable={isEditable} />
+                <div className="space-y-3">
+                  {cards.map((ev) => (
+                  <EvidenceCard key={ev.id} ev={ev} isEditable={isEditable && !isCriterionLockedForSupplement(ev.criterion)} />
                 ))}
               </div>
             )}
@@ -299,8 +315,8 @@ function EvidenceCard({ ev, isEditable }: { ev: any; isEditable: boolean }) {
 function AddEvidenceModal({ criterion, applicationId, onClose }: { criterion: Criterion; applicationId: string; onClose: () => void }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <motion.div initial={{ scale: 0.96, y: 8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96 }} className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between p-5 border-b border-[#EEF2F7]">
+      <motion.div initial={{ scale: 0.96, y: 8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96 }} className="flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between p-5 border-b border-[#EEF2F7]">
           <div>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Thêm minh chứng mới</div>
             <h3 className="text-lg font-extrabold text-brand-deep mt-0.5">Tiêu chí: {criterion === "academic" ? "Học tập tốt" : criterion === "ethics" ? "Đạo đức tốt" : criterion === "physical" ? "Thể lực tốt" : criterion === "volunteer" ? "Tình nguyện tốt" : "Hội nhập tốt"}</h3>
@@ -308,7 +324,7 @@ function AddEvidenceModal({ criterion, applicationId, onClose }: { criterion: Cr
           <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><X className="w-4 h-4" /></button>
         </div>
 
-        <div className="p-5">
+        <div className="min-h-0 overflow-y-auto p-5">
           <UploadForm criterion={criterion} applicationId={applicationId} onDone={onClose} />
         </div>
       </motion.div>

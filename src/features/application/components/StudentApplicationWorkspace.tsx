@@ -42,6 +42,7 @@ import type {
   Level,
   MetricType,
   PrecheckCriterionResult,
+  PrecheckResult,
 } from "@/lib/api/types";
 
 type WorkspaceTab = "info" | "criteria" | "precheck" | "tracking";
@@ -155,6 +156,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const user = useAuth((s) => s.user);
   const setUser = useAuth((s) => s.setUser);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const criterionRefs = useRef<Partial<Record<Criterion, HTMLDivElement | null>>>({});
   const [tab, setTab] = useState<WorkspaceTab>(initialTab);
   const [metricValues, setMetricValues] = useState<Record<MetricType, string>>({
     gpa: "",
@@ -163,10 +165,13 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     volunteer_days: "",
     foreign_language_score: "",
   });
+  const [metricErrors, setMetricErrors] = useState<Partial<Record<MetricType, string>>>({});
+  const [savingMetrics, setSavingMetrics] = useState<Partial<Record<MetricType, boolean>>>({});
   const [evidenceForm, setEvidenceForm] = useState<EvidenceUploadForm | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceResponse | null>(null);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [highlightedCriterion, setHighlightedCriterion] = useState<Criterion | null>(null);
 
   const current = useCurrentApplication(SCHOOL_YEAR);
   const startApplication = useStartApplication();
@@ -184,7 +189,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const latestPrecheck = useLatestPrecheck(appId);
 
   const evidences = normalizeEvidences(evidencesQuery.data);
-  const precheck = latestPrecheck.data ?? null;
+  const precheck = (latestPrecheck.data ?? null) as PrecheckResult | null;
   const avatarSrc = useResolvedAvatarUrl(user?.avatarUrl);
   const nextBestAction = getUserFacingText(
     precheck?.nextBestAction,
@@ -311,15 +316,42 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
 
   const readinessScore = precheck?.readinessScore ?? application.readinessScore ?? 0;
   const metrics = application.metrics ?? [];
-  const canEditApplication = ["draft", "prechecked", "ready_to_submit", "supplement_required"].includes(
+  const canEditApplication = ["draft", "prechecked", "ready_to_submit", "supplement_required", "draft_supplement"].includes(
     application.status,
   );
   const canSubmitApplication = !["submitted", "under_review", "completed", "rejected", "resolution_needed"].includes(
     application.status,
   );
-  const isSupplementMode = application.status === "supplement_required";
+  const isSupplementMode = application.status === "supplement_required" || String(application.status) === "draft_supplement";
+  const supplementCriteria = new Set(supplementRequests.map((item) => item.criterion));
 
-  const saveMetric = (metricType: MetricType, scale?: number) => {
+  const isCriterionLockedForSupplement = (criterion: Criterion) =>
+    isSupplementMode && supplementCriteria.size > 0 && !supplementCriteria.has(criterion);
+
+  const openEvidenceForm = (criterion: Criterion, evidenceName: string) => {
+    if (isCriterionLockedForSupplement(criterion)) {
+      toast.error("Tiêu chí này không được mở bổ sung trong đợt này.");
+      return;
+    }
+    setEvidenceForm({ criterion, evidenceName, file: null });
+  };
+
+  const goToSupplementCriterion = () => {
+    const target =
+      supplementRequests[0]?.criterion ??
+      criteria.find((criterion) => !isCriterionLockedForSupplement(criterion.key))?.key ??
+      criteria[0].key;
+
+    setTab("criteria");
+    setHighlightedCriterion(target);
+    window.setTimeout(() => {
+      criterionRefs.current[target]?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector<HTMLButtonElement>(`[data-add-evidence="${target}"]`)?.focus();
+    }, 80);
+    window.setTimeout(() => setHighlightedCriterion((current) => (current === target ? null : current)), 2800);
+  };
+
+  const saveMetric = async (metricType: MetricType, scale?: number) => {
     if (!canEditApplication) {
       toast.error("Hồ sơ đã khóa, không thể sửa chỉ số.");
       return;
@@ -327,18 +359,30 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
 
     const value = Number(metricValues[metricType]);
     if (!Number.isFinite(value)) {
-      toast.error("Vui lòng nhập giá trị hợp lệ.");
+      const message = "Vui lòng nhập giá trị hợp lệ.";
+      setMetricErrors((current) => ({ ...current, [metricType]: message }));
+      toast.error(message);
       return;
     }
 
-    upsertMetric.mutate(
-      { id: application.id, metricType, value, scale },
-      {
-        onSuccess: () => {
-          toast.success("Đã lưu chỉ số.");
-        },
-      },
-    );
+    const validationError = validateMetricValue(metricType, value, scale);
+    if (validationError) {
+      setMetricErrors((current) => ({ ...current, [metricType]: validationError }));
+      toast.error(validationError);
+      return;
+    }
+
+    setMetricErrors((current) => ({ ...current, [metricType]: undefined }));
+    setSavingMetrics((current) => ({ ...current, [metricType]: true }));
+    try {
+      await upsertMetric.mutateAsync({ id: application.id, metricType, value, scale });
+      toast.success("Đã lưu chỉ số.");
+      setMetricValues((current) => ({ ...current, [metricType]: "" }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể lưu chỉ số.");
+    } finally {
+      setSavingMetrics((current) => ({ ...current, [metricType]: false }));
+    }
   };
   const precheckNow = () => {
     runPrecheck.mutate({ id: application.id, level: application.targetLevel });
@@ -349,6 +393,11 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     if (!evidenceForm) return;
     if (!canEditApplication) {
       toast.error("Hồ sơ đã khóa, không thể thêm minh chứng.");
+      setEvidenceForm(null);
+      return;
+    }
+    if (isCriterionLockedForSupplement(evidenceForm.criterion)) {
+      toast.error("Tiêu chí này không được mở bổ sung trong đợt này.");
       setEvidenceForm(null);
       return;
     }
@@ -423,7 +472,9 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     try {
       setAvatarUploading(true);
       const response = await authApi.uploadAvatar(file);
-      setUser(response.data);
+      if (response.data) {
+        setUser(response.data);
+      }
       toast.success("Đã cập nhật ảnh hồ sơ.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể cập nhật ảnh hồ sơ.");
@@ -514,8 +565,8 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
-                <Button variant="secondary" onClick={() => setTab("criteria")}>
-                  <Upload className="h-4 w-4" /> Bổ sung minh chứng
+                <Button variant="secondary" onClick={goToSupplementCriterion}>
+                  <Upload className="h-4 w-4" /> Đi tới tiêu chí cần bổ sung
                 </Button>
                 <Button disabled={!canSubmitApplication || submitApplication.isPending} onClick={submitNow}>
                   {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -622,27 +673,48 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               <div className="mt-3 space-y-3">
                 {metricInputs.map((metric) => {
                   const saved = metrics.find((item) => item.metricType === metric.key);
+                  const error = metricErrors[metric.key];
+                  const isSavingMetric = Boolean(savingMetrics[metric.key]);
                   return (
                     <div key={metric.key}>
                       <label className="text-xs font-semibold text-muted-foreground">{metric.label}</label>
                       <div className="mt-1 flex gap-2">
                         <input
-                          className="min-w-0 flex-1 rounded-lg border border-[#DCE7F2] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0057C2]/20"
+                          className={`min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${
+                            error
+                              ? "border-rose-300 bg-rose-50 focus:ring-rose-200"
+                              : "border-[#DCE7F2] focus:ring-[#0057C2]/20"
+                          }`}
+                          type="number"
+                          min={0}
+                          max={metric.key === "gpa" ? metric.scale ?? 4 : metric.key === "conduct_score" ? 100 : undefined}
+                          step={metric.key === "volunteer_days" ? 1 : 0.01}
                           placeholder={saved ? String(saved.value) : metric.placeholder}
                           value={metricValues[metric.key]}
-                          onChange={(event) =>
-                            setMetricValues((prev) => ({ ...prev, [metric.key]: event.target.value }))
-                          }
+                          onChange={(event) => {
+                            const nextValue = event.target.value;
+                            setMetricValues((prev) => ({ ...prev, [metric.key]: nextValue }));
+                            const numericValue = Number(nextValue);
+                            setMetricErrors((prev) => ({
+                              ...prev,
+                              [metric.key]:
+                                nextValue && Number.isFinite(numericValue)
+                                  ? validateMetricValue(metric.key, numericValue, metric.scale) ?? undefined
+                                  : undefined,
+                            }));
+                          }}
                         />
                         <Button
                           size="sm"
                           variant="secondary"
-                          disabled={!canEditApplication || upsertMetric.isPending}
+                          disabled={!canEditApplication || isSavingMetric || Boolean(error)}
                           onClick={() => saveMetric(metric.key, metric.scale)}
                         >
-                          Lưu
+                          {isSavingMetric ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                          {isSavingMetric ? "Đang lưu" : "Lưu"}
                         </Button>
                       </div>
+                      {error ? <div className="mt-1 text-xs text-rose-600">{error}</div> : null}
                     </div>
                   );
                 })}
@@ -657,33 +729,61 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               const items = evidenceByCriterion[criterion.key] ?? [];
               const result = precheck?.criteriaResults?.find((item) => item.criterion === criterion.key);
               const score = typeof result?.score === "number" ? result.score : 0;
+              const supplementRequest = supplementRequests.find((item) => item.criterion === criterion.key);
+              const isLockedForSupplement = isCriterionLockedForSupplement(criterion.key);
               return (
-                <Card key={criterion.key}>
+                <div
+                  key={criterion.key}
+                  ref={(node) => {
+                    criterionRefs.current[criterion.key] = node;
+                  }}
+                  className="scroll-mt-24"
+                >
+                <Card
+                  className={`scroll-mt-24 transition-colors ${
+                    highlightedCriterion === criterion.key
+                      ? "border-amber-300 bg-amber-50/70 ring-2 ring-amber-200"
+                      : isLockedForSupplement
+                        ? "bg-slate-50 opacity-75"
+                        : ""
+                  }`}
+                >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="h-8 w-8 rounded-lg" style={{ background: criterion.color }} />
                         <h3 className="font-bold text-brand-deep">{criterion.label}</h3>
+                        {supplementRequest ? <Chip tone="warning">Cần bổ sung</Chip> : null}
+                        {isLockedForSupplement ? <Chip tone="muted">Không mở bổ sung</Chip> : null}
                         <Chip tone={items.length > 0 ? "success" : "warning"}>
                           {items.length > 0 ? "Đã có minh chứng" : "Chưa có minh chứng"}
                         </Chip>
                       </div>
                       <p className="mt-2 text-sm text-muted-foreground">{criterion.requirement}</p>
+                      {supplementRequest ? (
+                        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                          <div className="font-semibold">Lý do bổ sung</div>
+                          <div className="mt-1">{supplementRequest.reason}</div>
+                          {supplementRequest.deadline ? (
+                            <div className="mt-1 text-xs">Hạn bổ sung: {formatDate(supplementRequest.deadline)}</div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {isLockedForSupplement ? (
+                        <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-muted-foreground">
+                          Tiêu chí này không được mở bổ sung trong đợt này.
+                        </div>
+                      ) : null}
                       <div className="mt-3">
                         <Progress value={score} tint={criterion.color} />
                       </div>
                     </div>
-                    {items.length > 0 && (
+                      {items.length > 0 && (
                       <Button
+                        data-add-evidence={criterion.key}
                         variant="secondary"
-                        disabled={!canEditApplication || createEvidence.isPending || uploadAndIndex.isPending}
-                        onClick={() =>
-                          setEvidenceForm({
-                            criterion: criterion.key,
-                            evidenceName: `Minh chứng ${criterion.label}`,
-                            file: null,
-                          })
-                        }
+                        disabled={!canEditApplication || isLockedForSupplement || createEvidence.isPending || uploadAndIndex.isPending}
+                        onClick={() => openEvidenceForm(criterion.key, `Minh chứng ${criterion.label}`)}
                       >
                         <Upload className="h-4 w-4" /> Thêm minh chứng
                       </Button>
@@ -695,16 +795,11 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                         Bạn chưa có minh chứng cho tiêu chí này.
                         <div className="mt-2">
                           <Button
+                            data-add-evidence={criterion.key}
                             size="sm"
                             variant="secondary"
-                            disabled={!canEditApplication || createEvidence.isPending || uploadAndIndex.isPending}
-                            onClick={() =>
-                              setEvidenceForm({
-                                criterion: criterion.key,
-                                evidenceName: `${criterion.label} - minh chứng mới`,
-                                file: null,
-                              })
-                            }
+                            disabled={!canEditApplication || isLockedForSupplement || createEvidence.isPending || uploadAndIndex.isPending}
+                            onClick={() => openEvidenceForm(criterion.key, `${criterion.label} - minh chứng mới`)}
                           >
                             <Upload className="h-4 w-4" /> Upload minh chứng
                           </Button>
@@ -716,9 +811,15 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                           key={item.id}
                           evidence={item}
                           applicationId={application.id}
-                          canEdit={canEditApplication}
+                          canEdit={canEditApplication && !isLockedForSupplement}
                           onViewDetails={setSelectedEvidence}
-                          onDelete={(target) => deleteEvidence.mutate({ id: target.id, applicationId: application.id })}
+                          onDelete={(target) => {
+                            if (isLockedForSupplement) {
+                              toast.error("Tiêu chí này không được mở bổ sung trong đợt này.");
+                              return;
+                            }
+                            deleteEvidence.mutate({ id: target.id, applicationId: application.id });
+                          }}
                         />
                       ))
                     )}
@@ -729,6 +830,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                     result={result}
                   />
                 </Card>
+                </div>
               );
             })}
           </div>
@@ -875,9 +977,9 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
       </div>
 
       {evidenceForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
-          <div className="w-full max-w-xl rounded-xl bg-white shadow-2xl">
-            <div className="border-b border-[#E3ECF6] px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6">
+          <div className="flex max-h-[calc(100vh-3rem)] w-full max-w-xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="shrink-0 border-b border-[#E3ECF6] px-5 py-4">
               <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 Thêm minh chứng
               </div>
@@ -886,7 +988,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               </h3>
             </div>
 
-            <div className="space-y-4 px-5 py-5">
+            <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-5">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">Tên minh chứng</label>
                 <input
@@ -924,7 +1026,7 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
               )}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-[#E3ECF6] px-5 py-4">
+            <div className="shrink-0 flex justify-end gap-2 border-t border-[#E3ECF6] px-5 py-4">
               <Button
                 variant="ghost"
                 onClick={() => setEvidenceForm(null)}
@@ -1044,6 +1146,33 @@ function getCriterionStatus(evidenceCount: number, result?: PrecheckCriterionRes
   return { label: "Đã có minh chứng", tone: "brand" as const };
 }
 
+function validateMetricValue(metricType: MetricType, value: number, scale?: number) {
+  if (metricType === "gpa") {
+    const gpaScale = scale ?? 4;
+    if (value < 0) return "GPA không được nhỏ hơn 0.";
+    if (gpaScale === 10 && value > 10) return "GPA không được vượt quá 10.0.";
+    if (value > 4) return "GPA không được vượt quá 4.0.";
+  }
+
+  if (metricType === "conduct_score" && (value < 0 || value > 100)) {
+    return "Điểm rèn luyện phải nằm trong khoảng 0-100.";
+  }
+
+  if (metricType === "volunteer_days" && value < 0) {
+    return "Số ngày tình nguyện không được nhỏ hơn 0.";
+  }
+
+  if (metricType === "physical_score" && (value < 0 || value > 10)) {
+    return "Điểm thể lực phải nằm trong khoảng 0-10.";
+  }
+
+  if (metricType === "foreign_language_score" && value < 0) {
+    return "Điểm ngoại ngữ không được nhỏ hơn 0.";
+  }
+
+  return null;
+}
+
 function normalizeEvidences(value: unknown): EvidenceResponse[] {
   if (Array.isArray(value)) return value as EvidenceResponse[];
   if (value && typeof value === "object" && Array.isArray((value as { evidences?: unknown }).evidences)) {
@@ -1080,7 +1209,7 @@ function useResolvedAvatarUrl(avatarUrl?: string | null) {
 
       try {
         const response = await evidenceApi.getSignedFileUrl(fileId);
-        if (!cancelled) setResolvedUrl(response.data.url);
+        if (!cancelled) setResolvedUrl(response.data?.url ?? null);
       } catch {
         if (!cancelled) setResolvedUrl(null);
       }

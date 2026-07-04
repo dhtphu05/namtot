@@ -46,7 +46,7 @@ export const Route = createFileRoute("/app/resolution/$id")({
   component: ResolutionCaseDetailRoute,
 });
 
-const managerRoles: Role[] = ["manager", "committee", "admin"];
+const managerRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const fallbackText = "Chưa có dữ liệu";
 const resolveDecisionOptions: Array<{
   value: ResolutionFinalDecision;
@@ -101,10 +101,10 @@ function ResolutionCaseDetailRoute() {
     );
   }
 
-  return <ResolutionCaseDetailContent caseId={id} />;
+  return <ResolutionCaseDetailContent caseId={id} role={role} />;
 }
 
-function ResolutionCaseDetailContent({ caseId }: { caseId: string }) {
+function ResolutionCaseDetailContent({ caseId, role }: { caseId: string; role: Role }) {
   const { data: resolutionCase, error, isError, isLoading, refetch } = useResolutionCase(caseId);
 
   if (isLoading) {
@@ -199,12 +199,16 @@ function ResolutionCaseDetailContent({ caseId }: { caseId: string }) {
           </div>
 
           <div className="space-y-5">
-            <ResolveResolutionPanel
-              caseId={resolutionCase.id}
-              evidences={resolutionEvidences}
-              status={resolutionCase.status}
-              onSuccess={() => void refetch()}
-            />
+            {role === "officer" ? (
+              <OfficerResolutionReadonlyCard />
+            ) : (
+              <ResolveResolutionPanel
+                caseId={resolutionCase.id}
+                evidences={resolutionEvidences}
+                status={resolutionCase.status}
+                onSuccess={() => void refetch()}
+              />
+            )}
             <TimelineSection timeline={resolutionCase.auditTimeline ?? []} />
             <AuditTimeline
               applicationId={resolutionCase.applicationId}
@@ -227,6 +231,24 @@ function BackToResolutionButton() {
         Quay lại
       </Link>
     </Button>
+  );
+}
+
+function OfficerResolutionReadonlyCard() {
+  return (
+    <Card>
+      <div className="flex items-start gap-3">
+        <div className="rounded-lg bg-blue-50 p-2 text-brand-deep">
+          <MessageSquareText className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="font-bold text-brand-deep">Theo dõi hội ý</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Cán bộ xem lại lý do chuyển hội ý, minh chứng liên quan và lịch sử xử lý. Chỉ Hội đồng/Cấp quản lý được kết luận case này.
+          </p>
+        </div>
+      </div>
+    </Card>
   );
 }
 

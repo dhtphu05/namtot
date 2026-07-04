@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   CalendarDays,
   CheckSquare,
@@ -17,6 +18,14 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui-kit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AuditTimeline } from "@/features/audit/components/AuditTimeline";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { CriterionBadge } from "@/features/review/components/CriterionBadge";
@@ -28,9 +37,10 @@ import { ReviewErrorState } from "@/features/review/components/ReviewErrorState"
 import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingState";
 import { ReviewStatusBadge } from "@/features/review/components/ReviewStatusBadge";
 import { reviewApi } from "@/features/review/api/review";
-import { useReviewTask } from "@/features/review/hooks/useReview";
+import { useClaimReviewTask, useReviewTask } from "@/features/review/hooks/useReview";
 import type {
   ReviewDecision,
+  ReviewTaskAvailableAction,
   ReviewTaskDetail,
   ReviewTaskEvidence,
   ReviewTaskEvidenceFile,
@@ -41,6 +51,7 @@ import {
   formatDateTime,
   formatFileSize,
   getCriterionLabel,
+  getLevelLabel,
   getTaskStatusLabel,
 } from "@/features/review/utils/formatters";
 import { getFinalStatusLabel } from "@/lib/status-labels";
@@ -95,6 +106,8 @@ function ReviewTaskDetailRoute() {
 
 function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
   const { data: task, error, isError, isLoading, refetch } = useReviewTask(taskId);
+  const claimTask = useClaimReviewTask(taskId);
+  const [claimDialogOpen, setClaimDialogOpen] = useState(false);
 
   if (isLoading) {
     return <ReviewLoadingState label="Đang tải chi tiết hồ sơ xét duyệt..." />;
@@ -142,6 +155,8 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
   const student = task.application.student;
   const facultyClass =
     [student.faculty, student.className].filter(Boolean).join(" / ") || fallbackText;
+  const canDecide = hasTaskAction(task, "decide");
+  const canRequestSupplement = hasTaskAction(task, "request_supplement");
 
   return (
     <>
@@ -177,6 +192,12 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
           </div>
         </Card>
 
+        <PermissionSummary
+          isClaiming={claimTask.isPending}
+          task={task}
+          onClaim={() => setClaimDialogOpen(true)}
+        />
+
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
           <div className="space-y-5">
             <ApplicationSummary task={task} />
@@ -185,8 +206,11 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
           </div>
 
           <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
-            <ReviewDecisionPanel task={task} onSuccess={() => void refetch()} />
-            <RequestSupplementPanel task={task} onSuccess={() => void refetch()} />
+            {canDecide ? <ReviewDecisionPanel task={task} onSuccess={() => void refetch()} /> : null}
+            {canRequestSupplement ? (
+              <RequestSupplementPanel task={task} onSuccess={() => void refetch()} />
+            ) : null}
+            {!canDecide && !canRequestSupplement ? <ReadOnlyActionPanel task={task} /> : null}
           </div>
         </section>
 
@@ -197,6 +221,31 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
 
         <AuditTimeline applicationId={task.application.id} limit={10} taskId={task.id} />
       </div>
+
+      <ConfirmClaimDialog
+        isLoading={claimTask.isPending}
+        open={claimDialogOpen}
+        task={task}
+        onOpenChange={setClaimDialogOpen}
+        onConfirm={() =>
+          claimTask.mutate(undefined, {
+            onSuccess: () => {
+              setClaimDialogOpen(false);
+              void refetch();
+            },
+            onError: (error) => {
+              toast.error(
+                getErrorMessage(
+                  error,
+                  "Task này vừa được giao cho cán bộ khác. Bạn đang ở chế độ chỉ xem.",
+                ),
+              );
+              setClaimDialogOpen(false);
+              void refetch();
+            },
+          })
+        }
+      />
     </>
   );
 }
@@ -209,6 +258,89 @@ function BackToQueueButton() {
   );
 }
 
+function hasTaskAction(task: ReviewTaskDetail, action: ReviewTaskAvailableAction) {
+  if (task.permissions?.availableActions) {
+    return task.permissions.availableActions.includes(action);
+  }
+
+  if (action === "view") return task.permissions?.canView ?? true;
+  if (action === "claim") return task.permissions?.canClaim ?? false;
+  if (action === "request_support") return task.permissions?.canRequestSupport ?? false;
+  return task.permissions?.canAct ?? false;
+}
+
+function ConfirmClaimDialog({
+  isLoading,
+  open,
+  task,
+  onConfirm,
+  onOpenChange,
+}: {
+  isLoading: boolean;
+  open: boolean;
+  task: ReviewTaskDetail;
+  onConfirm: () => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const student = task.application.student;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Xác nhận nhận xử lý</DialogTitle>
+          <DialogDescription>
+            Sau khi nhận, task sẽ được giao cho bạn và bạn chịu trách nhiệm đưa quyết định.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+          <div className="font-semibold text-brand-deep">
+            {student.fullName || "Chưa có tên sinh viên"}
+          </div>
+          <div className="mt-1 text-muted-foreground">
+            {student.studentCode || "Chưa có MSSV"} • {getCriterionLabel(task.criterion)} •{" "}
+            {getLevelLabel(task.application.targetLevel)}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+            Hủy
+          </Button>
+          <Button disabled={isLoading} type="button" onClick={onConfirm}>
+            {isLoading ? "Đang nhận..." : "Xác nhận nhận xử lý"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ReadOnlyActionPanel({ task }: { task: ReviewTaskDetail }) {
+  return (
+    <Card>
+      <div className="flex items-start gap-3">
+        <Eye className="mt-0.5 h-5 w-5 text-muted-foreground" />
+        <div>
+          <h2 className="text-base font-bold text-brand-deep">Chế độ chỉ xem</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {task.permissions?.reasonLabel ??
+              "Backend không trả action xử lý cho task này, nên hệ thống chỉ hiển thị dữ liệu để theo dõi."}
+          </p>
+          {task.permissions?.badges?.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {task.permissions.badges.map((badge) => (
+                <Badge key={badge} variant="secondary">
+                  {badge}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function HeaderField({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
     <div>
@@ -217,6 +349,47 @@ function HeaderField({ label, value }: { label: string; value?: React.ReactNode 
       </div>
       <div className="mt-1 text-sm font-semibold text-brand-deep">{value || fallbackText}</div>
     </div>
+  );
+}
+
+function PermissionSummary({
+  isClaiming,
+  task,
+  onClaim,
+}: {
+  isClaiming: boolean;
+  task: ReviewTaskDetail;
+  onClaim: () => void;
+}) {
+  const permission = task.permissions;
+  const title = permission?.canAct
+    ? "Bạn được xử lý task này"
+    : permission?.canClaim
+      ? "Bạn có thể nhận xử lý task này"
+      : "Bạn đang ở chế độ chỉ xem";
+  const description =
+    permission?.reasonLabel ??
+    "Backend chưa trả quyền chi tiết cho task này, hệ thống đang dùng quyền mặc định.";
+
+  return (
+    <Card>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-bold text-brand-deep">{title}</h2>
+            <Badge variant={permission?.canAct ? "default" : permission?.canClaim ? "outline" : "secondary"}>
+              {permission?.canAct ? "Được xử lý" : permission?.canClaim ? "Có thể nhận" : "Chỉ xem"}
+            </Badge>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        </div>
+        {permission?.canClaim ? (
+          <Button disabled={isClaiming} type="button" onClick={onClaim}>
+            {isClaiming ? "Đang nhận..." : "Nhận xử lý"}
+          </Button>
+        ) : null}
+      </div>
+    </Card>
   );
 }
 

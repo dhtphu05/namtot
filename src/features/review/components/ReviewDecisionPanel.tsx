@@ -67,8 +67,27 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const submitDecision = useSubmitReviewDecision(task.id);
 
   const isFinal = finalStatuses.includes(task.status as (typeof finalStatuses)[number]);
-  const canSubmit = role === "officer" && !isFinal;
+  const canSubmit = task.permissions?.availableActions
+    ? task.permissions.availableActions.includes("decide")
+    : task.permissions
+      ? task.permissions.canAct
+      : role === "officer" && !isFinal;
+  const canRequestSupplement = task.permissions?.availableActions
+    ? task.permissions.availableActions.includes("request_supplement")
+    : canSubmit;
+  const canEscalateResolution = task.permissions?.availableActions
+    ? task.permissions.availableActions.includes("escalate_resolution")
+    : canSubmit;
   const evidenceOptions = useMemo(() => task.evidences ?? [], [task.evidences]);
+  const visibleDecisionOptions = useMemo(
+    () =>
+      decisionOptions.filter((option) => {
+        if (option.value === "supplement_required") return canRequestSupplement;
+        if (option.value === "resolution_needed") return canEscalateResolution;
+        return canSubmit;
+      }),
+    [canEscalateResolution, canRequestSupplement, canSubmit],
+  );
   const aimImpactText =
     decision === "accepted"
       ? suggestedLevel
@@ -154,9 +173,10 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
 
           {!canSubmit ? (
             <div className="mt-3 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
-              {isFinal
-                ? "Tác vụ đã có kết luận cuối cùng, không thể gửi quyết định mới."
-                : "Vai trò hiện tại chỉ được xem kết luận, không thể gửi quyết định."}
+              {task.permissions?.reasonLabel ??
+                (isFinal
+                  ? "Tác vụ đã có kết luận cuối cùng, không thể gửi quyết định mới."
+                  : "Vai trò hiện tại chỉ được xem kết luận, không thể gửi quyết định.")}
             </div>
           ) : null}
         </div>
@@ -170,7 +190,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
             setFormError(null);
           }}
         >
-          {decisionOptions.map((option) => (
+          {visibleDecisionOptions.map((option) => (
             <label
               key={option.value}
               className="flex cursor-pointer gap-3 rounded-md border p-3 transition-colors hover:bg-muted/40 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
