@@ -19,6 +19,7 @@ export function useCurrentApplication(schoolYear?: string) {
       const res = await applicationApi.getCurrentApplication(schoolYear);
       return res.data;
     },
+    retry: false,
   });
 }
 

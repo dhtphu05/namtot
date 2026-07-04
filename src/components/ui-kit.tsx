@@ -11,7 +11,7 @@ export function Card({
     <div
       className={cn(
         glow ? "card-glow" : "card-soft",
-        "p-5",
+        "min-w-0 max-w-full p-5",
         className,
       )}
       {...rest}
@@ -35,7 +35,7 @@ export function StatCard({
   tint?: string;
 }) {
   return (
-    <div className="card-soft p-4">
+    <div className="card-soft min-w-0 max-w-full p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">{label}</div>
@@ -44,7 +44,7 @@ export function StatCard({
         </div>
         {icon && (
           <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0"
+            className="w-9 h-9 rounded-2xl flex items-center justify-center text-white shrink-0"
             style={{ background: tint }}
           >
             {icon}
@@ -57,11 +57,11 @@ export function StatCard({
 
 export function Chip({ children, tone = "brand" }: { children: React.ReactNode; tone?: "brand" | "success" | "warning" | "error" | "muted" }) {
   const map = {
-    brand: "bg-[#F1F7FD] text-[#0057C2]",
-    success: "bg-emerald-50 text-emerald-700",
-    warning: "bg-amber-50 text-amber-700",
-    error: "bg-rose-50 text-rose-700",
-    muted: "bg-slate-100 text-slate-700",
+    brand: "bg-[#EAF3FF] text-[#0057C2]",
+    success: "bg-[#ECFDF3] text-emerald-700",
+    warning: "bg-[#FFF7E6] text-amber-700",
+    error: "bg-[#FEF2F2] text-rose-700",
+    muted: "bg-[#F1F5F9] text-slate-700",
   };
   return (
     <span className={cn("inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold", map[tone])}>
@@ -84,10 +84,10 @@ export function Button({
 }) {
   const Comp = asChild ? Slot : "button";
   const variants = {
-    primary: "bg-[#0057C2] text-white hover:bg-[#004ba8]",
-    secondary: "bg-[#F1F7FD] text-[#0057C2] hover:bg-[#E5EFFA]",
-    ghost: "text-brand-deep hover:bg-[#F1F7FD]",
-    outline: "bg-white text-[#0057C2] border border-[#DCE7F2] hover:bg-[#F1F7FD]",
+    primary: "bg-[#0057C2] text-white hover:bg-[#004ba8] shadow-[0_12px_24px_-18px_rgba(0,87,194,0.65)]",
+    secondary: "bg-[#EAF3FF] text-[#0057C2] hover:bg-[#DCEBFF]",
+    ghost: "text-[#0057C2] hover:bg-[#EAF3FF]",
+    outline: "bg-white text-[#0057C2] shadow-[0_0_0_1px_rgba(15,23,42,0.08)] hover:bg-[#EAF3FF]",
     danger: "bg-rose-500 text-white hover:bg-rose-600",
     success: "bg-emerald-600 text-white hover:bg-emerald-700",
   };
@@ -99,7 +99,7 @@ export function Button({
   return (
     <Comp
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none",
+        "inline-flex max-w-full items-center justify-center gap-2 rounded-2xl font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none",
         variants[variant],
         sizes[size],
         className,
@@ -113,7 +113,7 @@ export function Button({
 
 export function Progress({ value, tint = "#0057C2" }: { value: number; tint?: string }) {
   return (
-    <div className="w-full h-1.5 rounded-full bg-[#EEF2F7] overflow-hidden">
+    <div className="w-full h-2 rounded-full bg-[#E2E8F0] overflow-hidden">
       <div
         className="h-full rounded-full transition-all"
         style={{ width: `${Math.min(100, Math.max(0, value))}%`, background: tint }}

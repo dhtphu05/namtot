@@ -2,21 +2,31 @@ import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-ro
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Loader2, UserPlus } from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/features/auth/api/auth";
 import { authKeys } from "@/features/auth/hooks/useMe";
-import { toUiRole } from "@/features/auth/role-map";
+import { getDefaultAppPathForRole, toUiRole } from "@/features/auth/role-map";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
 import { useApp } from "@/lib/store";
 
+const onboardingSteps = [
+  "Tạo tài khoản sinh viên",
+  "Vào workspace hồ sơ 2025-2026",
+  "Hoàn thiện 5 tiêu chí",
+  "Kiểm tra và nộp chính thức",
+];
+
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Đăng ký - 5TOT Platform" }] }),
   beforeLoad: () => {
-    const { accessToken } = useAuth.getState();
+    const { accessToken, user } = useAuth.getState();
+    if (accessToken && user) {
+      throw redirect({ to: getDefaultAppPathForRole(user.role) });
+    }
     if (accessToken) {
-      throw redirect({ to: "/app" });
+      throw redirect({ to: "/app/drafts" });
     }
   },
   component: Signup,
@@ -31,11 +41,14 @@ function Signup() {
   const [fullName, setFullName] = useState("");
   const [studentCode, setStudentCode] = useState("");
   const [email, setEmail] = useState("");
+  const [school, setSchool] = useState("");
   const [className, setClassName] = useState("");
   const [faculty, setFaculty] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignup = async (e: FormEvent) => {
@@ -58,6 +71,7 @@ function Signup() {
         studentCode: studentCode.trim(),
         email: email.trim(),
         password,
+        school: school.trim() || undefined,
         className: className.trim() || undefined,
         faculty: faculty.trim() || undefined,
         phone: phone.trim() || undefined,
@@ -68,8 +82,8 @@ function Signup() {
       setAuthData(res.data.user, res.data.accessToken, res.data.refreshToken);
       queryClient.setQueryData(authKeys.me, res.data.user);
       setRole(toUiRole(res.data.user.role));
-      toast.success("Đăng ký thành công!");
-      nav({ to: "/app" });
+      toast.success("Đăng ký thành công.");
+      nav({ to: getDefaultAppPathForRole(res.data.user.role) });
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(`Đăng ký thất bại: ${err.message}`);
@@ -82,129 +96,186 @@ function Signup() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-12">
-      <div className="w-full max-w-2xl">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-10 text-center">
-          <div className="gradient-brand mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl text-xl font-bold text-white shadow-[var(--shadow-glow)]">
-            5T
+    <div className="min-h-screen bg-[#F6F8FB] px-6 py-10">
+      <div className="mx-auto grid w-full max-w-6xl items-start gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="lg:sticky lg:top-10">
+          <div className="rounded-xl bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="gradient-brand mb-5 flex h-16 w-16 items-center justify-center rounded-3xl text-xl font-bold text-white">
+              5T
+            </div>
+            <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">Bắt đầu hồ sơ</div>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#0F172A] md:text-4xl">
+              Tạo tài khoản để nộp hồ sơ Sinh viên 5 tốt
+            </h1>
+            <p className="mt-3 text-sm leading-7 text-[#64748B]">
+              Sau khi đăng ký, bạn sẽ được đưa thẳng vào workspace hồ sơ để tạo hồ sơ năm học hiện tại.
+            </p>
+
+            <div className="mt-6 grid gap-3">
+              {onboardingSteps.map((step, index) => (
+                <div key={step} className="flex items-center gap-3 rounded-2xl bg-[#F8FAFC] px-3 py-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EAF3FF] text-xs font-black text-[#0057C2]">
+                    {index + 1}
+                  </div>
+                  <div className="text-sm font-semibold text-[#334155]">{step}</div>
+                </div>
+              ))}
+            </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-brand-deep md:text-4xl">Tạo tài khoản</h1>
-          <p className="mt-3 text-muted-foreground">
-            Đăng ký tài khoản sinh viên để bắt đầu hồ sơ Sinh viên 5 tốt.
-          </p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <form onSubmit={handleSignup} className="card-glow space-y-5 p-7">
+          <form onSubmit={handleSignup} autoComplete="off" className="rounded-xl bg-white p-7 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]">
+            <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">Thông tin sinh viên</div>
+                <h2 className="mt-1 text-2xl font-extrabold text-[#0F172A]">Tạo tài khoản</h2>
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF3] px-3 py-1 text-xs font-bold text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Vai trò sinh viên
+              </div>
+            </div>
+
             <div className="grid gap-5 md:grid-cols-2">
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-semibold text-foreground">Họ và tên</label>
+              <Field label="Họ và tên" required className="md:col-span-2">
                 <input
                   type="text"
                   required
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="field"
                   placeholder="Nguyễn Văn A"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   disabled={isLoading}
                 />
-              </div>
+              </Field>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Mã sinh viên</label>
+              <Field label="Mã sinh viên" required>
                 <input
                   type="text"
                   required
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm uppercase ring-offset-background placeholder:normal-case placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="field uppercase placeholder:normal-case"
                   placeholder="21IT001"
                   value={studentCode}
                   onChange={(e) => setStudentCode(e.target.value)}
                   disabled={isLoading}
                 />
-              </div>
+              </Field>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Email</label>
+              <Field label="Email" required>
                 <input
                   type="email"
                   required
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  autoComplete="email"
+                  className="field"
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                 />
-              </div>
+              </Field>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Lớp</label>
+              <Field label="Trường" required className="md:col-span-2">
                 <input
                   type="text"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  required
+                  autoComplete="organization"
+                  className="field"
+                  placeholder="Trường Đại học Bách khoa - ĐHĐN"
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  disabled={isLoading}
+                />
+              </Field>
+
+              <Field label="Lớp" optional>
+                <input
+                  type="text"
+                  className="field"
                   placeholder="21TCLC_DT1"
                   value={className}
                   onChange={(e) => setClassName(e.target.value)}
                   disabled={isLoading}
                 />
-              </div>
+              </Field>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Khoa</label>
+              <Field label="Khoa" optional>
                 <input
                   type="text"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="field"
                   placeholder="Công nghệ thông tin"
                   value={faculty}
                   onChange={(e) => setFaculty(e.target.value)}
                   disabled={isLoading}
                 />
-              </div>
+              </Field>
 
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-semibold text-foreground">Số điện thoại</label>
+              <Field label="Số điện thoại" optional className="md:col-span-2">
                 <input
                   type="tel"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="field"
                   placeholder="0901234567"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={isLoading}
                 />
-              </div>
+              </Field>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Mật khẩu</label>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="********"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
+              <Field label="Mật khẩu" required>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    className="field pr-11"
+                    placeholder="Tối thiểu 8 ký tự"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-2 inline-flex w-8 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#EAF3FF] hover:text-[#0057C2]"
+                    onClick={() => setShowPassword((current) => !current)}
+                    disabled={isLoading}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </Field>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Xác nhận mật khẩu</label>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="********"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
+              <Field label="Xác nhận mật khẩu" required>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    className="field pr-11"
+                    placeholder="Nhập lại mật khẩu"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-2 inline-flex w-8 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#EAF3FF] hover:text-[#0057C2]"
+                    onClick={() => setShowConfirmPassword((current) => !current)}
+                    disabled={isLoading}
+                    aria-label={showConfirmPassword ? "Ẩn mật khẩu xác nhận" : "Hiện mật khẩu xác nhận"}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </Field>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#0057C2] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#004ba8] disabled:pointer-events-none disabled:opacity-50"
             >
               {isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -216,9 +287,9 @@ function Signup() {
               )}
             </button>
 
-            <div className="mt-6 text-center text-sm text-muted-foreground">
+            <div className="mt-6 text-center text-sm text-[#64748B]">
               Đã có tài khoản?{" "}
-              <Link to="/login" className="font-medium text-primary hover:underline">
+              <Link to="/login" className="font-bold text-[#0057C2] hover:underline">
                 Đăng nhập
               </Link>
             </div>
@@ -226,5 +297,51 @@ function Signup() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+function Field({
+  label,
+  required,
+  optional,
+  className = "",
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  optional?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="flex items-center gap-2 text-sm font-semibold text-[#0F172A]">
+        {label}
+        {required ? <span className="text-xs font-bold text-rose-600">Bắt buộc</span> : null}
+        {optional ? <span className="text-xs font-medium text-[#94A3B8]">Tùy chọn</span> : null}
+      </span>
+      <div className="mt-1">{children}</div>
+      <style>{`
+        .field {
+          width: 100%;
+          height: 2.75rem;
+          border-radius: 0.75rem;
+          background: #F8FAFC;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.875rem;
+          outline: none;
+        }
+        .field:focus {
+          box-shadow: 0 0 0 2px rgba(0, 87, 194, 0.18);
+        }
+        .field::placeholder {
+          color: #94A3B8;
+        }
+        .field:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
+      `}</style>
+    </label>
   );
 }

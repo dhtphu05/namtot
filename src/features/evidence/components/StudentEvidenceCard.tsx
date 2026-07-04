@@ -70,12 +70,17 @@ export function StudentEvidenceCard({
       toast.error("Tên tài liệu cần ít nhất 3 ký tự.");
       return;
     }
-    await updateEvidence.mutateAsync({
-      evidenceId: evidence.id,
-      applicationId,
-      data: { evidenceName },
-    });
-    setRenaming(false);
+    try {
+      await updateEvidence.mutateAsync({
+        evidenceId: evidence.id,
+        applicationId,
+        data: { evidenceName },
+      });
+      setRenaming(false);
+      toast.success("Đã lưu tên minh chứng.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể lưu minh chứng. Vui lòng thử lại.");
+    }
   };
 
   const previewFile = async () => {
@@ -98,8 +103,14 @@ export function StudentEvidenceCard({
 
   const replaceFile = async (file: File | undefined) => {
     if (!file) return;
-    await uploadFile.mutateAsync({ evidenceId: evidence.id, applicationId, file });
-    if (inputRef.current) inputRef.current.value = "";
+    try {
+      await uploadFile.mutateAsync({ evidenceId: evidence.id, applicationId, file });
+      toast.success("Đã lưu tệp minh chứng.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể lưu tệp minh chứng. Vui lòng thử lại.");
+    } finally {
+      if (inputRef.current) inputRef.current.value = "";
+    }
   };
 
   if (!primaryFile) {
@@ -138,7 +149,7 @@ export function StudentEvidenceCard({
   }
 
   return (
-    <div className="rounded-lg border border-[#E3ECF6] bg-white p-4 shadow-sm transition-colors hover:border-[#B8CEE8]">
+    <div className="rounded-lg border border-[#E3ECF6] bg-white p-3 shadow-sm transition-colors hover:border-[#B8CEE8]">
       <input
         ref={inputRef}
         type="file"
@@ -149,7 +160,13 @@ export function StudentEvidenceCard({
       />
 
       <div className="flex items-start gap-3">
-        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-[#DCE7F2] bg-[#F1F7FD] text-[#0057C2]">
+        <button
+          type="button"
+          className="h-28 w-28 shrink-0 overflow-hidden rounded-lg border border-[#DCE7F2] bg-[#F1F7FD] text-[#0057C2] transition-colors hover:border-[#0057C2]"
+          onClick={previewFile}
+          disabled={previewLoading}
+          title="Xem minh chứng kích thước lớn"
+        >
           {uploadFile.isPending ? (
             <div className="flex h-full w-full items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -160,10 +177,10 @@ export function StudentEvidenceCard({
             <iframe src={previewUrl} title={evidence.evidenceName} className="h-full w-full border-0 bg-white" />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <FileText className="h-6 w-6" />
+              {previewLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileText className="h-6 w-6" />}
             </div>
           )}
-        </div>
+        </button>
         <div className="min-w-0 flex-1">
           {renaming ? (
             <div className="flex gap-2">
@@ -179,12 +196,9 @@ export function StudentEvidenceCard({
               </Button>
             </div>
           ) : (
-            <button
-              className="block max-w-full truncate text-left text-sm font-bold text-brand-deep hover:text-[#0057C2]"
-              onClick={() => onViewDetails(evidence)}
-            >
+            <div className="block max-w-full truncate text-left text-sm font-bold text-brand-deep">
               {evidence.evidenceName}
-            </button>
+            </div>
           )}
 
           <div className="mt-1 text-xs text-muted-foreground">

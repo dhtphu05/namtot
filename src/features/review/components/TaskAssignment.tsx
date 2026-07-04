@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui-kit";
 import { Button } from "@/components/ui/button";
@@ -64,8 +65,8 @@ function TaskRow({
   onAssign: (officerId: string) => void;
 }) {
   const owner = task.application
-    ? `${task.application.student.fullName} (${task.application.student.studentCode ?? "Chưa có MSSV"})`
-    : `${task.collectiveProfile?.className ?? "Tập thể"} (${task.collectiveProfile?.representative.fullName ?? "Chưa có đại diện"})`;
+    ? `${task.application.student?.fullName ?? "Chưa có dữ liệu"} (${task.application.student?.studentCode ?? "Chưa có MSSV"})`
+    : `${task.collectiveProfile?.className ?? "Tập thể"} (${task.collectiveProfile?.representative?.fullName ?? "Chưa có đại diện"})`;
   const eligible = officers.filter((officer) => officer.specializations.includes(task.criterion));
   const options = eligible.length > 0 ? eligible : officers;
 
