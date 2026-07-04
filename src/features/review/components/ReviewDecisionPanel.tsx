@@ -15,6 +15,7 @@ import { getCriterionLabel, getLevelLabel, getTaskStatusLabel } from "../utils/f
 type ReviewDecisionPanelProps = {
   task: ReviewTaskDetail;
   onSuccess?: () => void;
+  submitLabel?: string;
 };
 
 type TaskDecision = ReviewDecision;
@@ -29,7 +30,7 @@ const decisionOptions: Array<{
   {
     value: "accepted",
     label: "Đạt tiêu chí",
-    description: "Minh chứng và dữ liệu đáp ứng yêu cầu của tiêu chí.",
+    description: "Tài liệu và dữ liệu đáp ứng yêu cầu của tiêu chí.",
   },
   {
     value: "rejected",
@@ -39,7 +40,7 @@ const decisionOptions: Array<{
   {
     value: "supplement_required",
     label: "Cần sinh viên bổ sung",
-    description: "Minh chứng chưa đủ rõ, gửi yêu cầu bổ sung cho sinh viên.",
+    description: "Tài liệu chưa đủ rõ, gửi yêu cầu bổ sung cho sinh viên.",
   },
   {
     value: "resolution_needed",
@@ -49,15 +50,15 @@ const decisionOptions: Array<{
 ];
 
 const reasonTemplates = [
-  "Thiếu minh chứng",
+  "Thiếu tệp xác nhận",
   "Không đạt ngưỡng điểm/số ngày/số lượng",
-  "Minh chứng không hợp lệ",
+  "Tài liệu cần xem lại",
   "Cần hội đồng quyết định",
 ];
 
-export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProps) {
+export function ReviewDecisionPanel({ task, onSuccess, submitLabel = "Gửi kết luận" }: ReviewDecisionPanelProps) {
   const role = useAuth((state) => state.user?.role);
-  const [decision, setDecision] = useState<TaskDecision>("accepted");
+  const [decision, setDecision] = useState<TaskDecision | "">("");
   const [suggestedLevel, setSuggestedLevel] = useState<Level | "">(task.officerSuggestedLevel ?? "");
   const [reasonTemplate, setReasonTemplate] = useState("");
   const [note, setNote] = useState("");
@@ -67,16 +68,38 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const submitDecision = useSubmitReviewDecision(task.id);
 
   const isFinal = finalStatuses.includes(task.status as (typeof finalStatuses)[number]);
-  const canSubmit = role === "officer" && !isFinal;
+  const canSubmit = task.permissions?.availableActions
+    ? task.permissions.availableActions.includes("decide")
+    : task.permissions
+      ? task.permissions.canAct
+      : role === "officer" && !isFinal;
+  const canRequestSupplement = task.permissions?.availableActions
+    ? task.permissions.availableActions.includes("request_supplement")
+    : canSubmit;
+  const canEscalateResolution = task.permissions?.availableActions
+    ? task.permissions.availableActions.includes("escalate_resolution")
+    : canSubmit;
   const evidenceOptions = useMemo(() => task.evidences ?? [], [task.evidences]);
-  const aimImpactText =
-    decision === "accepted"
+  const visibleDecisionOptions = useMemo(
+    () =>
+      decisionOptions.filter((option) => {
+        if (option.value === "supplement_required") return canRequestSupplement;
+        if (option.value === "resolution_needed") return canEscalateResolution;
+        return canSubmit;
+      }),
+    [canEscalateResolution, canRequestSupplement, canSubmit],
+  );
+  const aimImpactText = !decision
+    ? "Chọn kết luận để hệ thống hiển thị tác động tới cấp xét."
+    : decision === "accepted"
       ? suggestedLevel
         ? `Nếu các tiêu chí còn lại cũng đạt, hồ sơ có thể được xét tối đa ${getLevelLabel(suggestedLevel)}.`
-        : "Chọn cấp tối đa để cascade có dữ liệu chốt cấp đạt."
-      : `Nếu task này không đạt, hồ sơ có thể bị hạ khỏi aim ${getLevelLabel(task.application.targetLevel)} hoặc không đạt cấp nào.`;
+        : "Chọn cấp tối đa mà tiêu chí này đáp ứng để hệ thống ghi nhận kết quả xét."
+      : `Nếu tiêu chí này không đạt, hồ sơ có thể chưa phù hợp với ${getLevelLabel(task.application.targetLevel)} hoặc cần sinh viên bổ sung.`;
 
-  const validationMessage = validateDecisionV2(decision, note, suggestedLevel, reasonTemplate);
+  const validationMessage = decision
+    ? validateDecisionV2(decision, note, suggestedLevel, reasonTemplate)
+    : "Vui lòng chọn kết luận xét duyệt.";
   const apiError =
     submitDecision.error instanceof Error
       ? submitDecision.error.message
@@ -90,6 +113,11 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
 
     if (!canSubmit) {
       setFormError("Bạn không thể gửi kết luận cho tác vụ này.");
+      return;
+    }
+
+    if (!decision) {
+      setFormError("Vui lòng chọn kết luận xét duyệt.");
       return;
     }
 
@@ -154,9 +182,10 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
 
           {!canSubmit ? (
             <div className="mt-3 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
-              {isFinal
-                ? "Tác vụ đã có kết luận cuối cùng, không thể gửi quyết định mới."
-                : "Vai trò hiện tại chỉ được xem kết luận, không thể gửi quyết định."}
+              {task.permissions?.reasonLabel ??
+                (isFinal
+                  ? "Tác vụ đã có kết luận cuối cùng, không thể gửi quyết định mới."
+                  : "Vai trò hiện tại chỉ được xem kết luận, không thể gửi quyết định.")}
             </div>
           ) : null}
         </div>
@@ -170,7 +199,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
             setFormError(null);
           }}
         >
-          {decisionOptions.map((option) => (
+          {visibleDecisionOptions.map((option) => (
             <label
               key={option.value}
               className="flex cursor-pointer gap-3 rounded-md border p-3 transition-colors hover:bg-muted/40 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
@@ -212,7 +241,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
         ) : null}
 
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          <span className="font-semibold">Ảnh hưởng tới cấp aim: </span>
+          <span className="font-semibold">Ảnh hưởng tới cấp xét: </span>
           {aimImpactText}
         </div>
 
@@ -268,7 +297,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
 
         {evidenceOptions.length ? (
           <div className="space-y-2">
-            <div className="text-sm font-semibold text-brand-deep">Đánh dấu minh chứng</div>
+            <div className="text-sm font-semibold text-brand-deep">Đánh dấu tài liệu</div>
             <div className="space-y-2">
               {evidenceOptions.map((evidence) => (
                 <div
@@ -320,9 +349,9 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
           </div>
         ) : null}
 
-        <Button className="w-full" disabled={!canSubmit || submitDecision.isPending} type="submit">
+        <Button className="w-full" disabled={!canSubmit || Boolean(validationMessage) || submitDecision.isPending} type="submit">
           <Send className="h-4 w-4" />
-          {submitDecision.isPending ? "Đang gửi..." : "Gửi kết luận"}
+          {submitDecision.isPending ? "Đang gửi..." : submitLabel}
         </Button>
       </form>
     </Card>

@@ -17,7 +17,7 @@ export const studentCriterionLabel: Record<Criterion, string> = {
 };
 
 export const sourceTypeLabel: Record<EvidenceSourceType, string> = {
-  manual_upload: "Tải lên thủ công",
+  manual_upload: "Tự thêm",
   event_import: "Nhập từ sự kiện",
   metric_input: "Nhập chỉ số",
   collective_import: "Nhập từ tập thể",
@@ -26,24 +26,24 @@ export const sourceTypeLabel: Record<EvidenceSourceType, string> = {
 export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
   draft: "Bản nháp",
   pending_indexing: "Chờ xử lý",
-  indexed: "Đã được AI xử lý",
+  indexed: "Đã ghi nhận",
   needs_supplement: "Cần bổ sung",
   under_review: "Chờ cán bộ kiểm tra",
   accepted: "Đã được chấp nhận",
-  rejected: "Không hợp lệ",
+  rejected: "Cần xem lại",
   resolution_needed: "Cần hội đồng xem xét",
 };
 
 export const indexingStatusLabel: Record<IndexingStatus, string> = {
-  not_started: "Chưa xử lý AI",
+  not_started: "Chưa kiểm tra",
   uploaded: "Đã tải lên",
-  pending_indexing: "Đang chờ AI xử lý",
-  ocr_processing: "AI đang đọc file",
-  extracting: "AI đang trích xuất thông tin",
+  pending_indexing: "Đang kiểm tra",
+  ocr_processing: "Đang đọc tệp",
+  extracting: "Đang trích xuất thông tin",
   checking_registry: "Đang đối chiếu dữ liệu",
-  indexed: "AI đã xử lý xong",
+  indexed: "Đã kiểm tra xong",
   needs_manual_review: "Cần cán bộ kiểm tra",
-  failed: "AI không đọc được",
+  failed: "Cần kiểm tra thêm",
 };
 
 export function formatStudentDate(value?: string | null) {
@@ -86,7 +86,7 @@ export function getPrimaryFile(evidence: EvidenceResponse) {
 }
 
 export function getFileName(file?: StudentEvidenceFile | null) {
-  return file?.originalName ?? file?.fileName ?? "File minh chứng";
+  return file?.originalName ?? file?.fileName ?? "Tệp đính kèm";
 }
 
 export function getFileSize(file?: StudentEvidenceFile | null) {
@@ -100,4 +100,3 @@ export function isImageFile(file?: StudentEvidenceFile | null) {
 export function isPdfFile(file?: StudentEvidenceFile | null) {
   return file?.mimeType === "application/pdf";
 }
-

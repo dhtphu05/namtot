@@ -82,10 +82,10 @@ function ResolutionCasesRoute() {
     return <Outlet />;
   }
 
-  return <ResolutionCasesContent />;
+  return <ResolutionCasesContent role={role} />;
 }
 
-function ResolutionCasesContent() {
+function ResolutionCasesContent({ role }: { role: Role }) {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<ResolutionCasesParams>({
     page: 1,
@@ -100,11 +100,17 @@ function ResolutionCasesContent() {
   const canGoPrevious = page > 1 && !isFetching;
   const canGoNext = items.length >= limit && !isFetching;
 
+  const officerView = role === "officer";
+
   return (
     <>
       <TopBar
-        title="Hồ sơ hội ý"
-        subtitle="Theo dõi các hồ sơ cần hội ý, minh chứng chưa rõ hoặc trường hợp cán bộ chuyển xử lý."
+        title={officerView ? "Hội ý của tôi" : "Hồ sơ hội ý"}
+        subtitle={
+          officerView
+            ? "Theo dõi case do bạn chuyển lên hoặc liên quan đến task bạn được giao."
+            : "Theo dõi các hồ sơ cần hội ý, minh chứng chưa rõ hoặc trường hợp cán bộ chuyển xử lý."
+        }
       />
 
       <Card>

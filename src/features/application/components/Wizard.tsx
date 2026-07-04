@@ -630,7 +630,7 @@ export function Wizard() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+              className="max-h-[calc(100vh-2rem)] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
             >
               <div className="w-12 h-12 rounded-full bg-[#0057C2]/15 text-[#0057C2] flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6" />

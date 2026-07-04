@@ -200,7 +200,7 @@ export function UploadEvidence() {
       <AnimatePresence>
         {isScanning && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-[#0057C2]/40 backdrop-blur-md flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.92, y: 20 }} animate={{ scale: 1, y: 0 }} className="card-glow max-w-lg w-full p-8 relative overflow-hidden">
+            <motion.div initial={{ scale: 0.92, y: 20 }} animate={{ scale: 1, y: 0 }} className="card-glow relative max-h-[calc(100vh-3rem)] w-full max-w-lg overflow-y-auto p-8">
               <div className="scan-line" />
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-12 h-12 rounded-2xl gradient-brand flex items-center justify-center text-white shadow-[var(--shadow-glow)] pulse-glow">

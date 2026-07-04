@@ -4,6 +4,7 @@ import type {
   Criterion,
   EvidenceStatus,
   ApiResponse,
+  ClaimReviewTaskResponse,
   CriterionLevelAssessment,
   EscalateResolutionRequest,
   EscalateResolutionResponse,
@@ -19,6 +20,7 @@ import type {
   ReviewTaskListParams,
   ReviewTaskListResponse,
   ReviewTaskMetric,
+  ReviewTaskPermissions,
   ReviewTaskStatus,
   Role,
   SubmitReviewDecisionRequest,
@@ -57,6 +59,12 @@ function asRecordArray(value: unknown): RawRecord[] {
     : [];
 }
 
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 function asString(value: unknown, fallback = "") {
   return value === undefined || value === null ? fallback : String(value);
 }
@@ -64,6 +72,24 @@ function asString(value: unknown, fallback = "") {
 function asNumber(value: unknown, fallback = 0) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function normalizePermissions(value: unknown): ReviewTaskPermissions | undefined {
+  const permissions = asRecord(value);
+  if (!permissions) return undefined;
+
+  return {
+    canView: Boolean(permissions.canView),
+    canAct: Boolean(permissions.canAct),
+    canClaim: Boolean(permissions.canClaim),
+    canRequestSupport: Boolean(permissions.canRequestSupport),
+    reason: asString(permissions.reason) as ReviewTaskPermissions["reason"],
+    reasonLabel: asString(permissions.reasonLabel),
+    badges: asStringArray(permissions.badges),
+    availableActions: asStringArray(
+      permissions.availableActions,
+    ) as ReviewTaskPermissions["availableActions"],
+  };
 }
 
 function normalizeListItem(item: RawRecord): ReviewTaskListItem {
@@ -110,6 +136,8 @@ function normalizeListItem(item: RawRecord): ReviewTaskListItem {
     riskLevel: (item.riskLevel ?? "low") as ReviewTaskListItem["riskLevel"],
     dueDate: item.dueDate === undefined || item.dueDate === null ? null : asString(item.dueDate),
     officerSuggestedLevel: (item.officerSuggestedLevel ?? null) as Level | null,
+    permissions: normalizePermissions(item.permissions),
+    priorityReason: (item.priorityReason ?? null) as ReviewTaskListItem["priorityReason"],
     createdAt: asString(item.createdAt),
     updatedAt: asString(item.updatedAt ?? item.createdAt),
   };
@@ -129,6 +157,7 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
     asRecord(rawTask.student) ??
     null;
   const rawAssignedOfficer = asRecord(rawTask.assignedOfficer) ?? asRecord(payload.assignedOfficer);
+  const evidenceRecords = mergeReviewEvidenceRecords(payload, rawTask, rawApplication);
 
   const applicationType = (rawApplication?.applicationType ??
     (rawCollectiveProfile ? "collective" : "individual")) as "individual" | "collective";
@@ -165,7 +194,7 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
           email: asString(rawAssignedOfficer.email),
         }
       : null,
-    evidences: normalizeEvidences(asRecordArray(payload.evidences ?? rawTask.evidences)),
+    evidences: normalizeEvidences(evidenceRecords),
     metrics: normalizeMetrics(asRecordArray(payload.metrics ?? rawApplication?.metrics)),
     checklist: normalizeChecklist(
       asRecordArray(payload.criteriaChecklist ?? payload.checklist ?? rawTask.checklist),
@@ -177,6 +206,7 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
     levelAssessmentJson: rawTask.levelAssessmentJson ?? null,
     decisionReason: asString(rawTask.decisionReason) || null,
     supplementRequestJson: rawTask.supplementRequestJson ?? null,
+    permissions: normalizePermissions(rawTask.permissions ?? payload.permissions),
     decisionHistory: normalizeDecisionHistory(
       asRecordArray(payload.audit ?? payload.decisionHistory),
     ),
@@ -185,10 +215,52 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
   };
 }
 
+function mergeReviewEvidenceRecords(
+  payload: RawRecord,
+  rawTask: RawRecord,
+  rawApplication: RawRecord | null,
+): RawRecord[] {
+  const evidenceSources = [
+    payload.evidences,
+    payload.reviewTaskEvidences,
+    rawTask.evidences,
+    rawTask.reviewTaskEvidences,
+    rawApplication?.evidences,
+    rawApplication?.evidenceCards,
+  ];
+  const byId = new Map<string, RawRecord>();
+
+  for (const source of evidenceSources) {
+    for (const item of asRecordArray(source)) {
+      const id = asString(item.id ?? item.evidenceId ?? item.cardId);
+      if (!id) continue;
+      byId.set(id, { ...(byId.get(id) ?? {}), ...item, id });
+    }
+  }
+
+  const fileSources = [
+    payload.evidenceFiles,
+    payload.files,
+    rawApplication?.evidenceFiles,
+    rawTask.evidenceFiles,
+  ];
+  for (const source of fileSources) {
+    for (const file of asRecordArray(source)) {
+      const evidenceId = asString(file.evidenceId ?? file.evidenceCardId ?? file.cardId);
+      if (!evidenceId) continue;
+      const current = byId.get(evidenceId) ?? { id: evidenceId };
+      const files = asRecordArray(current.files);
+      byId.set(evidenceId, { ...current, files: [...files, file] });
+    }
+  }
+
+  return Array.from(byId.values());
+}
+
 function normalizeEvidences(items: RawRecord[]): ReviewTaskEvidence[] {
   return (items ?? []).map((item) => ({
     id: asString(item.id),
-    evidenceName: asString(item.evidenceName),
+    evidenceName: asString(item.evidenceName ?? item.title ?? item.name ?? item.documentName),
     criterion: (item.criterion ?? "academic") as Criterion,
     sourceType: item.sourceType ?? "manual_upload",
     status: (item.status ?? "under_review") as EvidenceStatus,
@@ -208,7 +280,7 @@ function normalizeEvidences(items: RawRecord[]): ReviewTaskEvidence[] {
       createdAt: asString(file.createdAt ?? item.createdAt),
       uploadedAt: asString(file.uploadedAt ?? file.createdAt ?? item.createdAt),
     })),
-    card: normalizeEvidenceCard(asRecord(item.card)),
+    card: normalizeEvidenceCard(asRecord(item.card) ?? item),
     event: asRecord(item.event)
       ? {
           id: asString(asRecord(item.event)?.id),
@@ -398,6 +470,20 @@ export const reviewApi = {
     return withDataFallback({
       ...response,
       data: normalizeReviewTaskDetail(response.data),
+    });
+  },
+
+  claimReviewTask: async (taskId: string): Promise<ApiResponse<ClaimReviewTaskResponse>> => {
+    const response = await apiClient<RawRecord>(`/api/review/tasks/${taskId}/claim`, {
+      method: "POST",
+    });
+    const rawTask = asRecord(response.data?.task);
+
+    return withDataFallback({
+      ...response,
+      data: {
+        task: rawTask ? normalizeListItem(rawTask) : undefined,
+      },
     });
   },
 
