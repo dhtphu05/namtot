@@ -64,7 +64,7 @@ export function UploadEvidence() {
         applicationId: appId,
         file: file
       });
-    } catch (err: any) {
+    } catch {
       // toast is already handled by mutations, but catch here to stop flow
     }
     
@@ -81,7 +81,7 @@ export function UploadEvidence() {
     if (!appId) return;
     precheck.mutate({ id: appId, level: appRes?.application?.targetLevel }, {
       onSuccess: () => {
-        toast.success("Tiền kiểm hoàn tất!");
+        toast.success("Kiểm tra hồ sơ hoàn tất!");
         nav({ to: "/app" });
       }
     });
@@ -208,11 +208,11 @@ export function UploadEvidence() {
                 </div>
                 <div>
                   <div className="font-bold text-brand-deep">VNPT SmartReader đang xử lý</div>
-                  <div className="text-xs text-muted-foreground">AI tiền kiểm minh chứng của bạn</div>
+                  <div className="text-xs text-muted-foreground">Hệ thống đang kiểm tra minh chứng của bạn</div>
                 </div>
               </div>
               <div className="space-y-3">
-                {["Đang tải file lên Server", "VNPT SmartReader OCR", "Bóc tách thông tin", "Tạo Evidence Card", "Đối chiếu tiêu chí", "Tìm case tương tự", "Hoàn tất"].map((s, i) => {
+                {["Đang tải file lên hệ thống", "Đang đọc nội dung", "Bóc tách thông tin", "Tạo thẻ minh chứng", "Đối chiếu tiêu chí", "Tìm dữ liệu tương tự", "Hoàn tất"].map((s, i) => {
                   const done = scanStep > i;
                   const active = scanStep === i;
                   return (

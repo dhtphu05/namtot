@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, Clock3, Loader2, Send, X, XCircle } from "lucide-react";
 import { Button, Chip, Progress } from "@/components/ui-kit";
 import type { ApplicationState, Criterion, Level, PrecheckMissingItem, PrecheckResult } from "@/lib/api/types";
-import { getApplicationStatusLabel, getCriterionResultStatusLabel } from "@/lib/status-labels";
+import { getCriterionResultStatusLabel, getStudentApplicationStatusLabel } from "@/lib/status-labels";
 import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
 import { studentCriterionLabel } from "@/features/evidence/components/student-evidence-utils";
 
@@ -48,6 +48,7 @@ export function SubmitConfirmationModal({
     buildCriterionSummary(criterion, evidenceCounts[criterion] ?? 0, precheck),
   );
   const hasRequiredAttention = criterionSummaries.some((item) => item.requiredAttention);
+  const missingCriteriaCount = criterionSummaries.filter((item) => item.requiredAttention).length;
   const copy = getModalCopy(mode, readinessScore);
   const primaryLabel = getPrimaryLabel(mode, readinessScore);
   const secondaryLabel = isSupplement
@@ -86,11 +87,13 @@ export function SubmitConfirmationModal({
 
           <div className="grid gap-3 md:grid-cols-3">
             <InfoBlock label="Cấp đăng ký" value={levelLabel[application.targetLevel]} />
-            <InfoBlock label="Trạng thái" value={getApplicationStatusLabel(application.status)} />
+            <InfoBlock label="Trạng thái" value={getStudentApplicationStatusLabel(application.status)} />
             <div className="rounded-lg bg-[#F6F9FC] px-3 py-3">
               <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
-                <span>Mức sẵn sàng</span>
-                <span className="text-brand-deep">{readinessScore}%</span>
+                <span>Tiến độ tham khảo</span>
+                <span className="text-brand-deep">
+                  {missingCriteriaCount > 0 ? `Còn ${missingCriteriaCount} tiêu chí` : "Đủ dữ liệu cơ bản"}
+                </span>
               </div>
               <div className="mt-2">
                 <Progress value={readinessScore} />
@@ -168,7 +171,7 @@ function ReadinessWarning({
   const message =
     readinessScore < 70
       ? "Hồ sơ còn thiếu nhiều thông tin. Bạn nên bổ sung trước khi nộp."
-      : "Hồ sơ của bạn chưa đạt 100%. Bạn vẫn có thể nộp để cán bộ xét, nhưng một số tiêu chí có thể bị yêu cầu bổ sung.";
+      : "Hồ sơ còn một số điểm cần lưu ý. Hãy kiểm tra lại các cảnh báo trước khi nộp.";
 
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -220,18 +223,18 @@ function getModalCopy(mode: SubmitMode, readinessScore: number) {
   }
 
   return {
-    badge: "Kiểm tra trước khi nộp",
+      badge: "Kiểm tra hồ sơ",
     title: "Xác nhận nộp hồ sơ",
     description:
       readinessScore < 80
-        ? "Hồ sơ chưa thật sự sẵn sàng. Hãy kiểm tra các cảnh báo trước khi quyết định nộp."
+        ? "Hồ sơ còn điểm cần bổ sung. Hãy kiểm tra các cảnh báo trước khi quyết định nộp."
         : "Sau khi nộp, hồ sơ sẽ được khóa để cán bộ xét duyệt.",
   };
 }
 
 function getPrimaryLabel(mode: SubmitMode, readinessScore: number) {
   if (mode === "supplement") return "Gửi lại hồ sơ bổ sung";
-  if (readinessScore < 80) return "Vẫn nộp hồ sơ";
+  if (readinessScore < 80) return "Xác nhận nộp hồ sơ";
   return "Xác nhận nộp hồ sơ";
 }
 
@@ -260,7 +263,7 @@ function buildCriterionSummary(
     return {
       criterion,
       label: "Chưa có minh chứng",
-      explanation: "Chưa có minh chứng hoặc dữ liệu tiền kiểm cho tiêu chí này.",
+      explanation: "Chưa có minh chứng hoặc kết quả kiểm tra cho tiêu chí này.",
       tone: "error",
       icon: XCircle,
       requiredAttention: true,
@@ -270,8 +273,8 @@ function buildCriterionSummary(
   if (result?.status === "ai_processing") {
     return {
       criterion,
-      label: "AI đang xử lý",
-      explanation: "Minh chứng đã tải lên, AI đang xử lý hoặc chờ kết quả mới nhất.",
+      label: "Hệ thống đang kiểm tra",
+      explanation: "Minh chứng đã tải lên và đang chờ kết quả kiểm tra mới nhất.",
       tone: "brand",
       icon: Clock3,
       requiredAttention: false,
@@ -281,8 +284,8 @@ function buildCriterionSummary(
   if (result?.status === "ai_failed") {
     return {
       criterion,
-      label: "AI không đọc được",
-      explanation: "AI không đọc được minh chứng. Cán bộ có thể cần kiểm tra thủ công.",
+      label: "Cần kiểm tra thủ công",
+      explanation: "Hệ thống chưa đọc được minh chứng. Cán bộ có thể cần kiểm tra thủ công.",
       tone: "warning",
       icon: AlertTriangle,
       requiredAttention: true,
@@ -292,7 +295,7 @@ function buildCriterionSummary(
   if (warnings.length > 0 || result?.status === "needs_officer_confirmation" || result?.status === "risky") {
     return {
       criterion,
-      label: "Cần cán bộ xác nhận",
+      label: "Chờ cán bộ xác nhận",
       explanation: getUserFacingText(
         warnings[0] ?? reasons[0] ?? result?.status,
         "Dữ liệu đã có nhưng cần cán bộ xác nhận trước khi chốt kết quả.",
@@ -307,7 +310,7 @@ function buildCriterionSummary(
     return {
       criterion,
       label: getCriterionResultStatusLabel(result.status),
-      explanation: getUserFacingText(reasons[0], "Đủ dữ liệu theo kết quả tiền kiểm mới nhất."),
+      explanation: getUserFacingText(reasons[0], "Đủ dữ liệu theo kết quả kiểm tra mới nhất."),
       tone: "success",
       icon: CheckCircle2,
       requiredAttention: false,
@@ -320,7 +323,7 @@ function buildCriterionSummary(
       label: "Cần bổ sung",
       explanation: getUserFacingText(
         reasons[0] ?? result?.status,
-        "Tiền kiểm cho thấy tiêu chí này cần bổ sung thêm dữ liệu.",
+        "Kết quả kiểm tra cho thấy tiêu chí này cần bổ sung thêm dữ liệu.",
       ),
       tone: "warning",
       icon: AlertTriangle,
@@ -341,8 +344,8 @@ function buildCriterionSummary(
 
   return {
     criterion,
-    label: "Cần cán bộ xác nhận",
-    explanation: "Chưa đủ dữ liệu chi tiết từ tiền kiểm. Cán bộ sẽ xác nhận khi xét duyệt.",
+    label: "Chờ cán bộ xác nhận",
+    explanation: "Chưa đủ dữ liệu chi tiết từ hệ thống kiểm tra. Cán bộ sẽ xác nhận khi xét duyệt.",
     tone: "brand",
     icon: AlertTriangle,
     requiredAttention: false,

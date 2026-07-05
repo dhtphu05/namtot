@@ -55,6 +55,36 @@ export function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
   const wrapper = asRecord(payload);
   const row = asRecord(wrapper?.evidence) ?? wrapper ?? {};
   const file = asRecord(wrapper?.file);
+  const fileId = nullableString(row.fileId ?? row.file_id ?? file?.id) ?? undefined;
+  const fileName =
+    nullableString(
+      row.fileName ??
+        row.file_name ??
+        file?.fileName ??
+        file?.file_name ??
+        file?.originalName ??
+        file?.original_name,
+    ) ?? undefined;
+  const fallbackFile = fileId
+    ? [
+        {
+          id: fileId,
+          fileName: fileName ?? "Tệp đính kèm",
+          originalName: fileName,
+          mimeType:
+            nullableString(row.mimeType ?? row.mime_type ?? file?.mimeType ?? file?.mime_type) ??
+            undefined,
+          fileSize:
+            nullableNumber(row.fileSize ?? row.file_size ?? file?.size ?? file?.fileSize) ??
+            undefined,
+          size:
+            nullableNumber(row.fileSize ?? row.file_size ?? file?.size ?? file?.fileSize) ??
+            undefined,
+          createdAt: nullableString(row.createdAt ?? row.created_at) ?? "",
+          updatedAt: nullableString(row.updatedAt ?? row.updated_at) ?? "",
+        },
+      ]
+    : [];
 
   return {
     ...row,
@@ -76,11 +106,9 @@ export function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
     note: nullableString(row.note),
     confidence: nullableNumber(row.confidence),
     studentStatus: normalizeStudentStatus(row.studentStatus ?? row.student_status),
-    files: Array.isArray(row.files) ? row.files : [],
-    fileId: nullableString(row.fileId ?? row.file_id ?? file?.id) ?? undefined,
-    fileName:
-      nullableString(row.fileName ?? row.file_name ?? file?.fileName ?? file?.file_name) ??
-      undefined,
+    files: Array.isArray(row.files) && row.files.length > 0 ? row.files : fallbackFile,
+    fileId,
+    fileName,
     jobId:
       nullableString(row.jobId ?? row.job_id ?? wrapper?.jobId ?? wrapper?.job_id) ?? undefined,
     uxStatus: asRecord(row.uxStatus ?? row.ux_status),

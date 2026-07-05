@@ -36,8 +36,6 @@ const criteria: Criterion[] = [
   "physical",
   "volunteer",
   "integration",
-  "priority",
-  "collective",
 ];
 const statuses: ReviewTaskStatus[] = [
   "waiting",
@@ -79,105 +77,107 @@ export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps)
   };
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_minmax(150px,180px)_minmax(150px,180px)_minmax(150px,180px)_minmax(140px,160px)_auto]">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          aria-label="Tìm hồ sơ"
-          className="pl-9"
+    <div className="rounded-xl bg-[var(--surface-secondary)] p-3">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_minmax(150px,180px)_minmax(150px,180px)_minmax(150px,180px)_minmax(140px,160px)_auto]">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            aria-label="Tìm hồ sơ"
+            className="pl-9"
+            disabled={disabled}
+            placeholder="Tìm tên, MSSV, lớp, tiêu chí hoặc tên minh chứng"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+
+        <Select
           disabled={disabled}
-          placeholder="Tìm theo tên hoặc mã sinh viên"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+          value={value.criterion ?? allValue}
+          onValueChange={(nextValue) =>
+            updateFilter("criterion", nextValue === allValue ? undefined : (nextValue as Criterion))
+          }
+        >
+          <SelectTrigger aria-label="Lọc tiêu chí">
+            <SelectValue placeholder="Tiêu chí" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={allValue}>Tất cả tiêu chí</SelectItem>
+            {criteria.map((criterion) => (
+              <SelectItem key={criterion} value={criterion}>
+                {getCriterionLabel(criterion)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          disabled={disabled}
+          value={value.status ?? allValue}
+          onValueChange={(nextValue) =>
+            updateFilter(
+              "status",
+              nextValue === allValue ? undefined : (nextValue as ReviewTaskStatus),
+            )
+          }
+        >
+          <SelectTrigger aria-label="Lọc trạng thái">
+            <SelectValue placeholder="Trạng thái" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={allValue}>Tất cả trạng thái</SelectItem>
+            {statuses.map((status) => (
+              <SelectItem key={status} value={status}>
+                {getStatusFilterLabel(status)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          disabled={disabled}
+          value={value.targetLevel ?? allValue}
+          onValueChange={(nextValue) =>
+            updateFilter("targetLevel", nextValue === allValue ? undefined : (nextValue as Level))
+          }
+        >
+          <SelectTrigger aria-label="Lọc cấp xét">
+            <SelectValue placeholder="Cấp xét" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={allValue}>Tất cả cấp xét</SelectItem>
+            {levels.map((level) => (
+              <SelectItem key={level} value={level}>
+                {getLevelLabel(level)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          disabled={disabled}
+          value={value.riskLevel ?? allValue}
+          onValueChange={(nextValue) =>
+            updateFilter("riskLevel", nextValue === allValue ? undefined : (nextValue as ReviewTaskListParams["riskLevel"]))
+          }
+        >
+          <SelectTrigger aria-label="Lọc mức ưu tiên">
+            <SelectValue placeholder="Ưu tiên" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={allValue}>Tất cả ưu tiên</SelectItem>
+            <SelectItem value="high">Cao</SelectItem>
+            <SelectItem value="medium">Cần chú ý</SelectItem>
+            <SelectItem value="low">Bình thường</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Button disabled={disabled} type="button" variant="outline" onClick={clearFilters}>
+          <X className="h-4 w-4" />
+          Xóa lọc
+        </Button>
       </div>
-
-      <Select
-        disabled={disabled}
-        value={value.criterion ?? allValue}
-        onValueChange={(nextValue) =>
-          updateFilter("criterion", nextValue === allValue ? undefined : (nextValue as Criterion))
-        }
-      >
-        <SelectTrigger aria-label="Lọc tiêu chí">
-          <SelectValue placeholder="Tiêu chí" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={allValue}>Tất cả tiêu chí</SelectItem>
-          {criteria.map((criterion) => (
-            <SelectItem key={criterion} value={criterion}>
-              {getCriterionLabel(criterion)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        disabled={disabled}
-        value={value.status ?? allValue}
-        onValueChange={(nextValue) =>
-          updateFilter(
-            "status",
-            nextValue === allValue ? undefined : (nextValue as ReviewTaskStatus),
-          )
-        }
-      >
-        <SelectTrigger aria-label="Lọc trạng thái">
-          <SelectValue placeholder="Trạng thái" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={allValue}>Tất cả trạng thái</SelectItem>
-          {statuses.map((status) => (
-            <SelectItem key={status} value={status}>
-              {getTaskStatusLabel(status)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        disabled={disabled}
-        value={value.targetLevel ?? allValue}
-        onValueChange={(nextValue) =>
-          updateFilter("targetLevel", nextValue === allValue ? undefined : (nextValue as Level))
-        }
-      >
-        <SelectTrigger aria-label="Lọc cấp xét">
-          <SelectValue placeholder="Cấp xét" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={allValue}>Tất cả cấp xét</SelectItem>
-          {levels.map((level) => (
-            <SelectItem key={level} value={level}>
-              {getLevelLabel(level)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        disabled={disabled}
-        value={value.riskLevel ?? allValue}
-        onValueChange={(nextValue) =>
-          updateFilter("riskLevel", nextValue === allValue ? undefined : (nextValue as ReviewTaskListParams["riskLevel"]))
-        }
-      >
-        <SelectTrigger aria-label="Lọc mức ưu tiên">
-          <SelectValue placeholder="Ưu tiên" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={allValue}>Tất cả ưu tiên</SelectItem>
-          <SelectItem value="high">Rủi ro cao</SelectItem>
-          <SelectItem value="medium">Cần chú ý</SelectItem>
-          <SelectItem value="low">Thấp</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Button disabled={disabled} type="button" variant="outline" onClick={clearFilters}>
-        <X className="h-4 w-4" />
-        Xóa lọc
-      </Button>
-      <div className="md:col-span-full flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-1.5">
         <QuickToggle active={value.aiConfidenceMax === 0.7} disabled={disabled} onClick={() => updateFilter("aiConfidenceMax", value.aiConfidenceMax === 0.7 ? undefined : 0.7)}>
           Cần kiểm tra thêm
         </QuickToggle>
@@ -191,11 +191,20 @@ export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps)
           Cần bổ sung
         </QuickToggle>
         <QuickToggle active={Boolean(value.resolutionNeeded)} disabled={disabled} onClick={() => updateFilter("resolutionNeeded", value.resolutionNeeded ? undefined : true)}>
-          Cần hội đồng xử lý
+          Cần hội ý
         </QuickToggle>
       </div>
     </div>
   );
+}
+
+function getStatusFilterLabel(status: ReviewTaskStatus) {
+  if (status === "waiting" || status === "reviewing") return "Cần xử lý";
+  if (status === "supplement_required") return "Cần bổ sung";
+  if (status === "resolution_needed") return "Cần hội ý";
+  if (status === "accepted") return "Đã đạt";
+  if (status === "rejected") return "Không đạt";
+  return getTaskStatusLabel(status);
 }
 
 function QuickToggle({
@@ -210,7 +219,7 @@ function QuickToggle({
   onClick: () => void;
 }) {
   return (
-    <Button disabled={disabled} size="sm" type="button" variant={active ? "default" : "outline"} onClick={onClick}>
+    <Button disabled={disabled} size="sm" type="button" variant={active ? "default" : "secondary"} onClick={onClick}>
       {children}
     </Button>
   );

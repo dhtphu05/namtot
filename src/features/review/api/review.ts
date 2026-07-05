@@ -581,6 +581,7 @@ export const reviewApi = {
       body: {
         reason: payload.reason,
         evidenceId: payload.evidenceIds?.[0],
+        evidenceIds: payload.evidenceIds ?? [],
       },
     });
 

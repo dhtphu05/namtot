@@ -21,7 +21,11 @@ import { Route as AppSmartuxRouteImport } from './routes/app.smartux'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppResolutionRouteImport } from './routes/app.resolution'
 import { Route as AppQueueRouteImport } from './routes/app.queue'
+import { Route as AppProfileRouteImport } from './routes/app.profile'
+import { Route as AppOverviewRouteImport } from './routes/app.overview'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
+import { Route as AppMyApplicationRouteImport } from './routes/app.my-application'
+import { Route as AppFeedbackRouteImport } from './routes/app.feedback'
 import { Route as AppExportRouteImport } from './routes/app.export'
 import { Route as AppEvidenceSearchRouteImport } from './routes/app.evidence-search'
 import { Route as AppEvidenceRouteImport } from './routes/app.evidence'
@@ -34,7 +38,9 @@ import { Route as AppCollectiveRouteImport } from './routes/app.collective'
 import { Route as AppChatbotRouteImport } from './routes/app.chatbot'
 import { Route as AppCascadeRouteImport } from './routes/app.cascade'
 import { Route as AppAuditRouteImport } from './routes/app.audit'
+import { Route as AppAssistantRouteImport } from './routes/app.assistant'
 import { Route as AppAssignmentRouteImport } from './routes/app.assignment'
+import { Route as AppApplicationRouteImport } from './routes/app.application'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 import { Route as AppAiPrecheckRouteImport } from './routes/app.ai-precheck'
 import { Route as AppReviewIdRouteImport } from './routes/app.review.$id'
@@ -107,9 +113,29 @@ const AppQueueRoute = AppQueueRouteImport.update({
   path: '/queue',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOverviewRoute = AppOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMyApplicationRoute = AppMyApplicationRouteImport.update({
+  id: '/my-application',
+  path: '/my-application',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFeedbackRoute = AppFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => AppRoute,
 } as any)
 const AppExportRoute = AppExportRouteImport.update({
@@ -172,9 +198,19 @@ const AppAuditRoute = AppAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAssistantRoute = AppAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAssignmentRoute = AppAssignmentRouteImport.update({
   id: '/assignment',
   path: '/assignment',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppApplicationRoute = AppApplicationRouteImport.update({
+  id: '/application',
+  path: '/application',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
@@ -242,7 +278,9 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/app/ai-precheck': typeof AppAiPrecheckRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/application': typeof AppApplicationRoute
   '/app/assignment': typeof AppAssignmentRoute
+  '/app/assistant': typeof AppAssistantRoute
   '/app/audit': typeof AppAuditRoute
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
@@ -255,7 +293,11 @@ export interface FileRoutesByFullPath {
   '/app/evidence': typeof AppEvidenceRoute
   '/app/evidence-search': typeof AppEvidenceSearchRoute
   '/app/export': typeof AppExportRoute
+  '/app/feedback': typeof AppFeedbackRoute
+  '/app/my-application': typeof AppMyApplicationRoute
   '/app/notifications': typeof AppNotificationsRoute
+  '/app/overview': typeof AppOverviewRoute
+  '/app/profile': typeof AppProfileRoute
   '/app/queue': typeof AppQueueRoute
   '/app/resolution': typeof AppResolutionRouteWithChildren
   '/app/settings': typeof AppSettingsRoute
@@ -280,7 +322,9 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/app/ai-precheck': typeof AppAiPrecheckRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/application': typeof AppApplicationRoute
   '/app/assignment': typeof AppAssignmentRoute
+  '/app/assistant': typeof AppAssistantRoute
   '/app/audit': typeof AppAuditRoute
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
@@ -293,7 +337,11 @@ export interface FileRoutesByTo {
   '/app/evidence': typeof AppEvidenceRoute
   '/app/evidence-search': typeof AppEvidenceSearchRoute
   '/app/export': typeof AppExportRoute
+  '/app/feedback': typeof AppFeedbackRoute
+  '/app/my-application': typeof AppMyApplicationRoute
   '/app/notifications': typeof AppNotificationsRoute
+  '/app/overview': typeof AppOverviewRoute
+  '/app/profile': typeof AppProfileRoute
   '/app/queue': typeof AppQueueRoute
   '/app/resolution': typeof AppResolutionRouteWithChildren
   '/app/settings': typeof AppSettingsRoute
@@ -320,7 +368,9 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/app/ai-precheck': typeof AppAiPrecheckRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/application': typeof AppApplicationRoute
   '/app/assignment': typeof AppAssignmentRoute
+  '/app/assistant': typeof AppAssistantRoute
   '/app/audit': typeof AppAuditRoute
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
@@ -333,7 +383,11 @@ export interface FileRoutesById {
   '/app/evidence': typeof AppEvidenceRoute
   '/app/evidence-search': typeof AppEvidenceSearchRoute
   '/app/export': typeof AppExportRoute
+  '/app/feedback': typeof AppFeedbackRoute
+  '/app/my-application': typeof AppMyApplicationRoute
   '/app/notifications': typeof AppNotificationsRoute
+  '/app/overview': typeof AppOverviewRoute
+  '/app/profile': typeof AppProfileRoute
   '/app/queue': typeof AppQueueRoute
   '/app/resolution': typeof AppResolutionRouteWithChildren
   '/app/settings': typeof AppSettingsRoute
@@ -361,7 +415,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/app/ai-precheck'
     | '/app/analytics'
+    | '/app/application'
     | '/app/assignment'
+    | '/app/assistant'
     | '/app/audit'
     | '/app/cascade'
     | '/app/chatbot'
@@ -374,7 +430,11 @@ export interface FileRouteTypes {
     | '/app/evidence'
     | '/app/evidence-search'
     | '/app/export'
+    | '/app/feedback'
+    | '/app/my-application'
     | '/app/notifications'
+    | '/app/overview'
+    | '/app/profile'
     | '/app/queue'
     | '/app/resolution'
     | '/app/settings'
@@ -399,7 +459,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/app/ai-precheck'
     | '/app/analytics'
+    | '/app/application'
     | '/app/assignment'
+    | '/app/assistant'
     | '/app/audit'
     | '/app/cascade'
     | '/app/chatbot'
@@ -412,7 +474,11 @@ export interface FileRouteTypes {
     | '/app/evidence'
     | '/app/evidence-search'
     | '/app/export'
+    | '/app/feedback'
+    | '/app/my-application'
     | '/app/notifications'
+    | '/app/overview'
+    | '/app/profile'
     | '/app/queue'
     | '/app/resolution'
     | '/app/settings'
@@ -438,7 +504,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/app/ai-precheck'
     | '/app/analytics'
+    | '/app/application'
     | '/app/assignment'
+    | '/app/assistant'
     | '/app/audit'
     | '/app/cascade'
     | '/app/chatbot'
@@ -451,7 +519,11 @@ export interface FileRouteTypes {
     | '/app/evidence'
     | '/app/evidence-search'
     | '/app/export'
+    | '/app/feedback'
+    | '/app/my-application'
     | '/app/notifications'
+    | '/app/overview'
+    | '/app/profile'
     | '/app/queue'
     | '/app/resolution'
     | '/app/settings'
@@ -564,11 +636,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppQueueRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/overview': {
+      id: '/app/overview'
+      path: '/overview'
+      fullPath: '/app/overview'
+      preLoaderRoute: typeof AppOverviewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/notifications': {
       id: '/app/notifications'
       path: '/notifications'
       fullPath: '/app/notifications'
       preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/my-application': {
+      id: '/app/my-application'
+      path: '/my-application'
+      fullPath: '/app/my-application'
+      preLoaderRoute: typeof AppMyApplicationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/feedback': {
+      id: '/app/feedback'
+      path: '/feedback'
+      fullPath: '/app/feedback'
+      preLoaderRoute: typeof AppFeedbackRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/export': {
@@ -655,11 +755,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/assistant': {
+      id: '/app/assistant'
+      path: '/assistant'
+      fullPath: '/app/assistant'
+      preLoaderRoute: typeof AppAssistantRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/assignment': {
       id: '/app/assignment'
       path: '/assignment'
       fullPath: '/app/assignment'
       preLoaderRoute: typeof AppAssignmentRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/application': {
+      id: '/app/application'
+      path: '/application'
+      fullPath: '/app/application'
+      preLoaderRoute: typeof AppApplicationRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/analytics': {
@@ -792,7 +906,9 @@ const AppManagerResultsRouteWithChildren =
 interface AppRouteChildren {
   AppAiPrecheckRoute: typeof AppAiPrecheckRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppApplicationRoute: typeof AppApplicationRoute
   AppAssignmentRoute: typeof AppAssignmentRoute
+  AppAssistantRoute: typeof AppAssistantRoute
   AppAuditRoute: typeof AppAuditRoute
   AppCascadeRoute: typeof AppCascadeRoute
   AppChatbotRoute: typeof AppChatbotRoute
@@ -805,7 +921,11 @@ interface AppRouteChildren {
   AppEvidenceRoute: typeof AppEvidenceRoute
   AppEvidenceSearchRoute: typeof AppEvidenceSearchRoute
   AppExportRoute: typeof AppExportRoute
+  AppFeedbackRoute: typeof AppFeedbackRoute
+  AppMyApplicationRoute: typeof AppMyApplicationRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
+  AppOverviewRoute: typeof AppOverviewRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppQueueRoute: typeof AppQueueRoute
   AppResolutionRoute: typeof AppResolutionRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRoute
@@ -824,7 +944,9 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAiPrecheckRoute: AppAiPrecheckRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
+  AppApplicationRoute: AppApplicationRoute,
   AppAssignmentRoute: AppAssignmentRoute,
+  AppAssistantRoute: AppAssistantRoute,
   AppAuditRoute: AppAuditRoute,
   AppCascadeRoute: AppCascadeRoute,
   AppChatbotRoute: AppChatbotRoute,
@@ -837,7 +959,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppEvidenceRoute: AppEvidenceRoute,
   AppEvidenceSearchRoute: AppEvidenceSearchRoute,
   AppExportRoute: AppExportRoute,
+  AppFeedbackRoute: AppFeedbackRoute,
+  AppMyApplicationRoute: AppMyApplicationRoute,
   AppNotificationsRoute: AppNotificationsRoute,
+  AppOverviewRoute: AppOverviewRoute,
+  AppProfileRoute: AppProfileRoute,
   AppQueueRoute: AppQueueRoute,
   AppResolutionRoute: AppResolutionRouteWithChildren,
   AppSettingsRoute: AppSettingsRoute,

@@ -26,7 +26,7 @@ export const Route = createFileRoute("/signup")({
       throw redirect({ to: getDefaultAppPathForRole(user.role) });
     }
     if (accessToken) {
-      throw redirect({ to: "/app/drafts" });
+      throw redirect({ to: "/app" });
     }
   },
   component: Signup,
@@ -98,22 +98,28 @@ function Signup() {
   return (
     <div className="min-h-screen bg-[#F6F8FB] px-6 py-10">
       <div className="mx-auto grid w-full max-w-6xl items-start gap-8 lg:grid-cols-[0.85fr_1.15fr]">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="lg:sticky lg:top-10">
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} className="lg:sticky lg:top-10">
           <div className="rounded-xl bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="gradient-brand mb-5 flex h-16 w-16 items-center justify-center rounded-3xl text-xl font-bold text-white">
               5T
             </div>
-            <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">Bắt đầu hồ sơ</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">
+              Bắt đầu hồ sơ
+            </div>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#0F172A] md:text-4xl">
               Tạo tài khoản để nộp hồ sơ Sinh viên 5 tốt
             </h1>
             <p className="mt-3 text-sm leading-7 text-[#64748B]">
-              Sau khi đăng ký, bạn sẽ được đưa thẳng vào workspace hồ sơ để tạo hồ sơ năm học hiện tại.
+              Sau khi đăng ký, bạn sẽ được đưa thẳng vào workspace hồ sơ để tạo hồ sơ năm học hiện
+              tại.
             </p>
 
             <div className="mt-6 grid gap-3">
               {onboardingSteps.map((step, index) => (
-                <div key={step} className="flex items-center gap-3 rounded-2xl bg-[#F8FAFC] px-3 py-3">
+                <div
+                  key={step}
+                  className="flex items-center gap-3 rounded-2xl bg-[#F8FAFC] px-3 py-3"
+                >
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EAF3FF] text-xs font-black text-[#0057C2]">
                     {index + 1}
                   </div>
@@ -124,11 +130,17 @@ function Signup() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <form onSubmit={handleSignup} autoComplete="off" className="rounded-xl bg-white p-7 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]">
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <form
+            onSubmit={handleSignup}
+            autoComplete="off"
+            className="rounded-xl bg-white p-7 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]"
+          >
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">Thông tin sinh viên</div>
+                <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">
+                  Thông tin sinh viên
+                </div>
                 <h2 className="mt-1 text-2xl font-extrabold text-[#0F172A]">Tạo tài khoản</h2>
               </div>
               <div className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF3] px-3 py-1 text-xs font-bold text-emerald-700">
@@ -264,9 +276,15 @@ function Signup() {
                     className="absolute inset-y-0 right-2 inline-flex w-8 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#EAF3FF] hover:text-[#0057C2]"
                     onClick={() => setShowConfirmPassword((current) => !current)}
                     disabled={isLoading}
-                    aria-label={showConfirmPassword ? "Ẩn mật khẩu xác nhận" : "Hiện mật khẩu xác nhận"}
+                    aria-label={
+                      showConfirmPassword ? "Ẩn mật khẩu xác nhận" : "Hiện mật khẩu xác nhận"
+                    }
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </Field>

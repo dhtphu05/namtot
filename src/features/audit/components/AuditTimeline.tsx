@@ -3,9 +3,12 @@ import { AlertCircle, ChevronDown, Clock3, History } from "lucide-react";
 import { Card } from "@/components/ui-kit";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useAuth } from "@/features/auth/store/auth-store";
-import type { Role } from "@/features/review/types";
-import { formatDateTime } from "@/features/review/utils/formatters";
+import {
+  formatAuditActionLabel,
+  formatDateTime,
+  formatRoleLabel,
+  isUserFacingAuditAction,
+} from "@/features/review/utils/formatters";
 import { useAuditLogs } from "../hooks/useAudit";
 import type { AuditLogEntry, AuditLogParams } from "../types";
 
@@ -19,7 +22,6 @@ type AuditTimelineProps = {
 const fallbackText = "Chưa có dữ liệu";
 
 export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: AuditTimelineProps) {
-  const role = useAuth((state) => state.user?.role) as Role | undefined;
   const params = useMemo<AuditLogParams>(
     () => ({
       applicationId,
@@ -30,8 +32,10 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
     [applicationId, caseId, limit, taskId],
   );
   const { data, isError, isLoading } = useAuditLogs(params);
-  const items = useMemo(() => sortChronologically(data?.items ?? []), [data?.items]);
-  const canViewRawDetails = role === "manager" || role === "admin";
+  const items = useMemo(
+    () => sortChronologically(data?.items ?? []).filter((item) => isUserFacingAuditAction(item.action)),
+    [data?.items],
+  );
 
   return (
     <Collapsible defaultOpen>
@@ -54,7 +58,7 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
             {isLoading ? (
               <TimelineMessage label="Đang tải lịch sử thao tác..." />
             ) : isError ? (
-              <div className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="flex gap-2 rounded-md bg-[var(--surface-warning)] p-3 text-sm text-amber-800">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>Không thể tải lịch sử thao tác. Nội dung xét duyệt vẫn có thể tiếp tục.</span>
               </div>
@@ -63,7 +67,6 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
                 {items.map((item, index) => (
                   <TimelineItem
                     key={item.id}
-                    canViewRawDetails={canViewRawDetails}
                     isLast={index === items.length - 1}
                     item={item}
                   />
@@ -80,11 +83,9 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
 }
 
 function TimelineItem({
-  canViewRawDetails,
   isLast,
   item,
 }: {
-  canViewRawDetails: boolean;
   isLast: boolean;
   item: AuditLogEntry;
 }) {
@@ -93,26 +94,26 @@ function TimelineItem({
   return (
     <div className="relative flex gap-3">
       <div className="flex flex-col items-center">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full border bg-background text-brand-deep">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-primary-soft)] text-brand-deep">
           <Clock3 className="h-4 w-4" />
         </div>
         {!isLast ? <div className="mt-2 h-full min-h-10 w-px bg-border" /> : null}
       </div>
 
-      <div className="min-w-0 flex-1 rounded-md border p-3">
+      <div className="min-w-0 flex-1 rounded-md bg-[var(--surface-muted)] p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="font-semibold text-brand-deep">{item.action || fallbackText}</div>
+            <div className="font-semibold text-brand-deep">{formatAuditActionLabel(item.action)}</div>
             <div className="mt-1 text-xs text-muted-foreground">
               {item.actor || fallbackText}
-              {item.role ? ` / ${item.role}` : ""}
+              {item.role ? ` / ${formatRoleLabel(item.role)}` : ""}
             </div>
           </div>
           <div className="text-xs text-muted-foreground">{formatDateTime(item.createdAt)}</div>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          {item.entityType ? <Badge variant="outline">{item.entityType}</Badge> : null}
+          {item.entityType ? <Badge variant="outline">{formatEntityTypeLabel(item.entityType)}</Badge> : null}
           {item.entityId ? <Badge variant="outline">#{item.entityId.slice(0, 8)}</Badge> : null}
         </div>
 
@@ -129,16 +130,6 @@ function TimelineItem({
           </div>
         ) : null}
 
-        {canViewRawDetails && item.details && typeof item.details === "object" ? (
-          <details className="mt-3">
-            <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">
-              Xem chi tiết kỹ thuật
-            </summary>
-            <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs text-muted-foreground">
-              {JSON.stringify(item.details, null, 2)}
-            </pre>
-          </details>
-        ) : null}
       </div>
     </div>
   );
@@ -170,7 +161,7 @@ function AuditNotes({ item }: { item: AuditLogEntry }) {
 
 function TimelineMessage({ label }: { label: string }) {
   return (
-    <div className="rounded-md border border-dashed p-5 text-center text-sm text-muted-foreground">
+    <div className="rounded-md bg-[var(--surface-muted)] p-5 text-center text-sm text-muted-foreground">
       {label}
     </div>
   );
@@ -188,9 +179,27 @@ function getSafeDetails(details: unknown) {
   }
 
   return Object.entries(details)
-    .filter(([, value]) => ["string", "number", "boolean"].includes(typeof value))
+    .filter(([key, value]) => {
+      const normalized = key.toLowerCase();
+      if (normalized.includes("id") || normalized.includes("uuid") || normalized.includes("token")) return false;
+      if (normalized.includes("action") || normalized.includes("code")) return false;
+      return ["string", "number", "boolean"].includes(typeof value);
+    })
     .slice(0, 6)
     .map(([key, value]) => [formatKey(key), String(value)] as const);
+}
+
+function formatEntityTypeLabel(entityType: string) {
+  const labels: Record<string, string> = {
+    application: "Hồ sơ",
+    review_task: "Tác vụ xét duyệt",
+    reviewTask: "Tác vụ xét duyệt",
+    evidence: "Minh chứng",
+    resolution_case: "Case hội ý",
+    resolutionCase: "Case hội ý",
+    notification: "Thông báo",
+  };
+  return labels[entityType] ?? formatKey(entityType);
 }
 
 function formatKey(key: string) {

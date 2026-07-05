@@ -5,23 +5,18 @@ import {
   BookOpenCheck,
   CalendarCheck,
   ChartNoAxesCombined,
-  Cpu,
   Download,
   FileText,
   FileUp,
   FolderUp,
-  GitBranch,
   History,
   Inbox,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
-  ScanFace,
   ShieldQuestion,
   SlidersHorizontal,
-  Sparkles,
   Trophy,
-  Upload,
   UserCog,
   UsersRound,
 } from "lucide-react";
@@ -51,76 +46,32 @@ type NavGroup = { group: string; items: NavItem[] };
 const NAV: Record<Role, NavGroup[]> = {
   student: [
     {
-      group: "Hồ sơ sinh viên",
+      group: "Sinh viên",
       items: [
-        { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
-        { label: "Hồ sơ của tôi", to: "/app/drafts", icon: FileText, badge: "Core", tone: "core" },
-        {
-          label: "Thành tích & giấy xác nhận",
-          to: "/app/evidence",
-          icon: FolderUp,
-          badge: "Core",
-          tone: "core",
-        },
-        {
-          label: "Tải minh chứng",
-          to: "/app/upload",
-          icon: Upload,
-          badge: "Core",
-          tone: "core",
-        },
-        {
-          label: "Kho sự kiện",
-          to: "/app/event-library",
-          icon: CalendarCheck,
-          badge: "Data",
-          tone: "ops",
-        },
-        { label: "Thông báo", to: "/app/notifications", icon: Bell },
-        { label: "Trợ lý SV5T", to: "/app/chatbot", icon: LifeBuoy },
-      ],
-    },
-    {
-      group: "Hỗ trợ nâng cao",
-      items: [
-        { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
-        { label: "Cascade Review", to: "/app/cascade", icon: GitBranch, badge: "AI", tone: "ai" },
+        { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
+        { label: "Hồ sơ & minh chứng", to: "/app/application", icon: FileText },
+        { label: "Phản hồi", to: "/app/feedback", icon: Bell },
+        { label: "Trợ lý", to: "/app/assistant", icon: LifeBuoy },
       ],
     },
   ],
   officer: [
     {
-      group: "Xét duyệt",
+      group: "Xử lý hồ sơ",
       items: [
-        { label: "Tổng quan", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
-        { label: "Việc cần xử lý", to: "/app/queue", icon: Inbox, badge: "Core", tone: "core" },
+        { label: "Tổng quan xử lý", to: "/app", icon: LayoutDashboard },
+        { label: "Việc được giao", to: "/app/queue", icon: Inbox },
+        { label: "Hồ sơ đang xét", to: "/app/queue", icon: FileText },
+        { label: "Cần bổ sung", to: "/app/queue", icon: FolderUp },
         {
-          label: "Nhập sự kiện",
-          to: "/app/event-registry",
-          icon: CalendarCheck,
-          badge: "Ops",
-          tone: "ops",
-        },
-        {
-          label: "Import quyết định",
-          to: "/app/decision-imports",
-          icon: FileUp,
-          badge: "Ops",
-          tone: "ops",
-        },
-        {
-          label: "Tài liệu liên quan",
-          to: "/app/evidence-search",
-          icon: BookOpenCheck,
-          badge: "Ops",
-          tone: "ops",
-        },
-        {
-          label: "Hội ý của tôi",
+          label: "Case hội ý",
           to: "/app/resolution",
           icon: ShieldQuestion,
-          badge: "Theo dõi",
-          tone: "beta",
+        },
+        {
+          label: "Tra cứu minh chứng",
+          to: "/app/evidence-search",
+          icon: BookOpenCheck,
         },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
@@ -128,46 +79,24 @@ const NAV: Record<Role, NavGroup[]> = {
   ],
   manager: [
     {
-      group: "Quản lý hồ sơ",
+      group: "Quản lý mùa xét",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
-        { label: "Dashboard thống kê", to: "/app/analytics", icon: ChartNoAxesCombined, badge: "Core", tone: "core" },
-        { label: "Hàng chờ chốt kết quả", to: "/app/committee/inbox", icon: Inbox, badge: "Core", tone: "core" },
-        { label: "Kết quả theo cấp", to: "/app/manager/results", icon: Trophy, badge: "Core", tone: "core" },
-        { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound, badge: "Core", tone: "core" },
-        { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog, badge: "Ops", tone: "ops" },
-        { label: "Hội ý xét duyệt", to: "/app/resolution", icon: ShieldQuestion, badge: "Ops", tone: "ops" },
+        { label: "Tổng quan mùa xét", to: "/app", icon: LayoutDashboard },
+        { label: "Hồ sơ", to: "/app/manager/results", icon: Trophy },
+        { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog },
+        { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion },
+        { label: "Báo cáo & export", to: "/app/export", icon: Download },
+        { label: "Audit log", to: "/app/audit", icon: History },
+        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal },
       ],
     },
     {
-      group: "Vận hành",
+      group: "Dữ liệu vận hành",
       items: [
-        { label: "Nhập sự kiện", to: "/app/event-registry", icon: CalendarCheck, badge: "Data", tone: "ops" },
-        { label: "Import quyết định", to: "/app/decision-imports", icon: FileUp, badge: "Data", tone: "ops" },
-        {
-          label: "Phân tích trải nghiệm",
-          to: "/app/smartux",
-          icon: ChartNoAxesCombined,
-          badge: "Theo dõi",
-          tone: "ops",
-        },
-        {
-          label: "Trung tâm xử lý hồ sơ",
-          to: "/app/vnpt",
-          icon: Cpu,
-          badge: "Tích hợp",
-          tone: "ops",
-        },
-        {
-          label: "Xác thực sinh viên",
-          to: "/app/ekyc",
-          icon: ScanFace,
-          badge: "Tích hợp",
-          tone: "ops",
-        },
-        { label: "Lịch sử hệ thống", to: "/app/audit", icon: History, badge: "Ops", tone: "ops" },
-        { label: "Xuất dữ liệu", to: "/app/export", icon: Download, badge: "Ops", tone: "ops" },
-        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal, badge: "Beta", tone: "beta" },
+        { label: "Sự kiện đã xác nhận", to: "/app/event-registry", icon: CalendarCheck },
+        { label: "Import quyết định", to: "/app/decision-imports", icon: FileUp },
+        { label: "Theo dõi tiến độ", to: "/app/analytics", icon: ChartNoAxesCombined },
+        { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound },
       ],
     },
   ],
@@ -175,10 +104,10 @@ const NAV: Record<Role, NavGroup[]> = {
     {
       group: "Tập thể",
       items: [
-        { label: "Bảng điều khiển", to: "/app", icon: LayoutDashboard, badge: "Core", tone: "core" },
-        { label: "Hồ sơ tập thể", to: "/app/collective", icon: UsersRound, badge: "Core", tone: "core" },
-        { label: "Thêm thành tích", to: "/app/upload", icon: Upload, badge: "Core", tone: "core" },
-        { label: "AI Precheck", to: "/app/ai-precheck", icon: Sparkles, badge: "AI", tone: "ai" },
+        { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
+        { label: "Hồ sơ tập thể", to: "/app/collective", icon: UsersRound },
+        { label: "Minh chứng tập thể", to: "/app/upload", icon: FolderUp },
+        { label: "Kiểm tra hồ sơ", to: "/app/ai-precheck", icon: BookOpenCheck },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
     },
@@ -225,8 +154,12 @@ export function Sidebar() {
   const activeItem = findActiveItem(groups, pathname, role);
 
   return (
-    <aside className="flex h-screen w-72 shrink-0 flex-col bg-white/90 shadow-[1px_0_0_rgba(15,23,42,0.06)] backdrop-blur">
-      <div className="shrink-0 px-4 pb-4 pt-6">
+    <aside
+      className={`h-[100dvh] shrink-0 flex-col bg-white/95 shadow-[1px_0_0_rgba(15,23,42,0.05)] backdrop-blur ${
+        role === "student" ? "hidden w-[248px] md:flex" : "flex w-[264px]"
+      }`}
+    >
+      <div className="shrink-0 px-4 pb-3 pt-5">
         <Link to="/app" className="flex items-center gap-3 px-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0057C2] text-sm font-bold text-white">
             5T
@@ -238,12 +171,12 @@ export function Sidebar() {
         </Link>
       </div>
 
-      <div className="shrink-0 px-4 pb-4">
+      <div className="shrink-0 px-4 pb-3">
         <RolePanel />
       </div>
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-4 pr-3">
-        <div className="flex flex-col gap-5 pb-4">
+        <div className="flex flex-col gap-4 pb-4">
           {groups.map((group) => (
             <div key={group.group}>
               <div className="mb-2 px-3 text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
@@ -257,7 +190,7 @@ export function Sidebar() {
                     <li key={`${group.group}-${item.to}-${item.label}`}>
                       <Link
                         to={item.to}
-                        className={`group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[13px] font-semibold transition-colors ${
+                        className={`group flex items-center gap-3 rounded-2xl px-3 py-2 text-[13px] font-semibold transition-colors ${
                           active
                             ? "bg-[#EAF3FF] text-[#0057C2]"
                             : "text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0057C2]"
@@ -296,7 +229,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-[13px] font-semibold text-[#64748B] transition-colors hover:bg-[#F8FAFC] hover:text-[#0057C2]"
+          className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-[13px] font-semibold text-[#64748B] transition-colors hover:bg-[#F8FAFC] hover:text-[#0057C2]"
         >
           <LogOut className="h-4 w-4" /> Đăng xuất
         </button>
@@ -314,14 +247,39 @@ function findActiveItem(groups: NavGroup[], pathname: string, role: Role): NavIt
   const normalizedPath = normalizeStudentWorkspacePath(pathname, role);
   const allItems = groups.flatMap((group) => group.items);
   return allItems
-    .filter((item) => normalizedPath === item.to || (item.to !== "/app" && normalizedPath.startsWith(`${item.to}/`)))
+    .filter(
+      (item) =>
+        normalizedPath === item.to ||
+        (item.to !== "/app" && normalizedPath.startsWith(`${item.to}/`)),
+    )
     .sort((left, right) => right.to.length - left.to.length)[0];
 }
 
 function normalizeStudentWorkspacePath(pathname: string, role: Role) {
   if (role !== "student") return pathname;
+  if (pathname === "/app/overview") {
+    return "/app";
+  }
   if (pathname.startsWith("/app/wizard")) {
-    return "/app/drafts";
+    return "/app/application";
+  }
+  if (
+    pathname.startsWith("/app/drafts") ||
+    pathname.startsWith("/app/evidence") ||
+    pathname.startsWith("/app/profile") ||
+    pathname.startsWith("/app/my-application") ||
+    pathname.startsWith("/app/upload") ||
+    pathname.startsWith("/app/event-library") ||
+    pathname.startsWith("/app/ai-precheck") ||
+    pathname.startsWith("/app/cascade")
+  ) {
+    return "/app/application";
+  }
+  if (pathname.startsWith("/app/notifications")) {
+    return "/app/feedback";
+  }
+  if (pathname.startsWith("/app/chatbot")) {
+    return "/app/assistant";
   }
   return pathname;
 }
@@ -333,35 +291,38 @@ function RolePanel() {
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const roleMeta = ROLES[role];
+  const isStudent = role === "student";
+  const displayName = user?.fullName ?? roleMeta.label;
+  const initials = getInitials(displayName, roleMeta.initial);
 
   return (
-    <div className="mx-1 rounded-3xl bg-[#F8FAFC] p-3">
+    <div
+      className={`mx-1 bg-[var(--surface-muted)] p-2.5 ${isStudent ? "rounded-2xl" : "rounded-3xl"}`}
+    >
       <div className="mb-2 px-1 text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
         Đang đăng nhập
       </div>
-      <div className="mb-3 flex items-center gap-3 px-1">
+      <div className="mb-2.5 flex items-center gap-3 px-1">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#0057C2] text-xs font-bold text-white">
-          {roleMeta.initial}
+          {initials}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[13px] font-bold text-[#0F172A]">
-            {user?.fullName ?? roleMeta.label}
-          </div>
+          <div className="truncate text-[13px] font-bold text-[#0F172A]">{displayName}</div>
           <div className="truncate text-[11px] text-[#64748B]">
-            {user ? getUserRoleLabel(user) : roleMeta.desc}
+            {isStudent ? "Sinh viên" : user ? getUserRoleLabel(user) : roleMeta.desc}
           </div>
         </div>
       </div>
 
       {ENABLE_DEMO_ROLE_SWITCH ? (
         <>
-          <div className="mb-2 rounded-2xl bg-[#FFF7E6] px-3 py-2 text-[11px] font-medium text-amber-800">
-            Chế độ xem nhanh chỉ đổi giao diện. Quyền dữ liệu vẫn theo tài khoản đang đăng nhập.
+          <div className="mb-2 rounded-2xl bg-[var(--surface-warning)] px-3 py-2 text-[11px] font-medium text-amber-800">
+            Chế độ demo chỉ đổi giao diện. Quyền dữ liệu vẫn theo tài khoản đang đăng nhập.
           </div>
           <select
             value={role}
             onChange={(event) => setRole(event.target.value as Role)}
-            className="w-full rounded-2xl bg-white px-3 py-2 text-[12px] font-semibold text-[#0057C2] outline-none focus:ring-2 focus:ring-[#0057C2]/30"
+            className="w-full rounded-2xl bg-white px-3 py-2 text-[12px] font-semibold text-[#0057C2] outline-none shadow-[0_0_0_1px_rgba(15,23,42,0.07)] focus:ring-2 focus:ring-[#0057C2]/30"
           >
             {Object.entries(ROLES).map(([key, value]) => (
               <option key={key} value={key}>
@@ -372,9 +333,23 @@ function RolePanel() {
         </>
       ) : (
         <div className="rounded-2xl bg-white px-3 py-2 text-[12px] font-semibold text-[#0057C2]">
-          {user ? `Phụ trách: ${getUserAssignmentLabel(user)}` : roleMeta.label}
+          {isStudent
+            ? "Sinh viên"
+            : user
+              ? `Phụ trách: ${getUserAssignmentLabel(user)}`
+              : roleMeta.label}
         </div>
       )}
     </div>
   );
+}
+
+function getInitials(name: string, fallback: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return fallback;
+  return parts
+    .slice(-2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }

@@ -13,11 +13,11 @@ export function toUiRole(role: ApiRole): UiRole {
 }
 
 export function getDefaultAppPathForRole(role: ApiRole): string {
-  if (role === "student") return "/app/drafts";
+  if (role === "student") return "/app";
   if (role === "class_representative") return "/app/collective";
-  if (role === "officer") return "/app/queue";
+  if (role === "officer") return "/app";
   if (role === "manager" || role === "committee" || role === "admin") return "/app/analytics";
-  return "/app/drafts";
+  return "/app";
 }
 
 export function isUiRole(role: string): role is UiRole {
@@ -33,11 +33,11 @@ export function getRoleLabel(role: ApiRole): string {
 }
 
 const officerCriterionLabel: Partial<Record<Criterion, string>> = {
-  ethics: "Đạo đức",
-  academic: "Học tập",
-  physical: "Thể lực",
-  volunteer: "Tình nguyện",
-  integration: "Hội nhập",
+  ethics: "Đạo đức tốt",
+  academic: "Học tập tốt",
+  physical: "Thể lực tốt",
+  volunteer: "Tình nguyện tốt",
+  integration: "Hội nhập tốt",
 };
 
 const allOfficerCriteria: Criterion[] = [
@@ -69,7 +69,7 @@ export function getUserAssignmentLabel(user: SafeUser | null | undefined): strin
     uniqueCriteria.includes(criterion),
   );
 
-  if (coversAllCriteria) return "5 tiêu chí xét duyệt";
+  if (coversAllCriteria) return "5 tiêu chí Sinh viên 5 tốt";
 
   const labels = uniqueCriteria
     .map((criterion) => officerCriterionLabel[criterion])

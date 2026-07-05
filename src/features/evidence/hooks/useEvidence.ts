@@ -168,16 +168,18 @@ export function useDeleteEvidence(applicationId?: string) {
     mutationFn: async ({
       id,
       applicationId: mutationAppId,
+      silent,
     }: {
       id: string;
       applicationId?: string;
+      silent?: boolean;
     }) => {
       await evidenceApi.deleteEvidence(id);
-      return { id, applicationId: mutationAppId || applicationId };
+      return { id, applicationId: mutationAppId || applicationId, silent };
     },
     onSuccess: (data) => {
       invalidateStudentState(queryClient, data.applicationId, data.id);
-      toast.success("Đã xoá minh chứng");
+      if (!data.silent) toast.success("Đã xoá minh chứng");
     },
     onError: (err: Error) => {
       toast.error(`Không thể xoá minh chứng: ${err.message}`);

@@ -14,14 +14,16 @@ const PRECHECK_MESSAGES: Record<string, UserFacingMessage> = {
   FOUNDATION_LEVEL_NEEDS_REVIEW: {
     code: "FOUNDATION_LEVEL_NEEDS_REVIEW",
     title: "Cần cán bộ xác nhận",
-    description: "Hồ sơ đã có dữ liệu cơ bản, nhưng cần cán bộ kiểm tra trước khi kết luận mức đạt.",
+    description:
+      "Hồ sơ đã có dữ liệu cơ bản, nhưng cần cán bộ kiểm tra trước khi kết luận mức đạt.",
     severity: "info",
     actionLabel: "Xem tiêu chí liên quan",
   },
   MISSING_EVIDENCE: {
     code: "MISSING_EVIDENCE",
     title: "Chưa có minh chứng",
-    description: "Tiêu chí này chưa có minh chứng phù hợp. Hãy bổ sung file hoặc dữ liệu liên quan.",
+    description:
+      "Tiêu chí này chưa có minh chứng phù hợp. Hãy bổ sung file hoặc dữ liệu liên quan.",
     severity: "warning",
     actionLabel: "Bổ sung minh chứng",
   },
@@ -76,10 +78,13 @@ const STATUS_MESSAGES: Record<string, UserFacingMessage> = {
   ai_failed: PRECHECK_MESSAGES.OCR_FAILED,
 };
 
-export function getUserFacingMessage(input?: unknown, fallback?: Partial<UserFacingMessage>): UserFacingMessage {
+export function getUserFacingMessage(
+  input?: unknown,
+  fallback?: Partial<UserFacingMessage>,
+): UserFacingMessage {
   const raw = extractMessageInput(input);
   const code = raw.code ?? normalizeCode(raw.text);
-  const mapped = code ? PRECHECK_MESSAGES[code] ?? STATUS_MESSAGES[code] : undefined;
+  const mapped = code ? (PRECHECK_MESSAGES[code] ?? STATUS_MESSAGES[code]) : undefined;
 
   if (mapped) {
     return { ...mapped, ...fallback, code: mapped.code ?? code };
@@ -88,11 +93,16 @@ export function getUserFacingMessage(input?: unknown, fallback?: Partial<UserFac
   const embeddedMessages = getEmbeddedTechnicalMessages(raw.text);
   if (embeddedMessages.length) {
     return {
-      code: embeddedMessages.map((message) => message.code).filter(Boolean).join(","),
+      code: embeddedMessages
+        .map((message) => message.code)
+        .filter(Boolean)
+        .join(","),
       title: fallback?.title ?? embeddedMessages[0].title,
       description: joinUniqueDescriptions(embeddedMessages),
       severity: fallback?.severity ?? highestSeverity(embeddedMessages),
-      actionLabel: fallback?.actionLabel ?? embeddedMessages.find((message) => message.actionLabel)?.actionLabel,
+      actionLabel:
+        fallback?.actionLabel ??
+        embeddedMessages.find((message) => message.actionLabel)?.actionLabel,
     };
   }
 
@@ -124,18 +134,34 @@ export function getPrecheckMissingMessage(item: PrecheckMissingItem): UserFacing
   });
 }
 
-export function getUserFacingText(input?: unknown, fallback = "Cần kiểm tra thêm thông tin."): string {
+export function getUserFacingText(
+  input?: unknown,
+  fallback = "Cần kiểm tra thêm thông tin.",
+): string {
   return getUserFacingMessage(input, { description: fallback }).description;
 }
 
-function extractMessageInput(input?: unknown): { code?: string; text?: string; severity?: UserMessageSeverity } {
+function extractMessageInput(input?: unknown): {
+  code?: string;
+  text?: string;
+  severity?: UserMessageSeverity;
+} {
   if (!input) return {};
   if (typeof input === "string") return { code: normalizeCode(input), text: input };
   if (typeof input !== "object") return { text: String(input) };
 
   const record = input as Record<string, unknown>;
   const code = normalizeCode(record.code ?? record.status ?? record.reasonCode);
-  const text = firstString(record.message, record.description, record.reason, record.explanation, record.title, code);
+  const text = humanizeTechnicalText(
+    firstString(
+      record.message,
+      record.description,
+      record.reason,
+      record.explanation,
+      record.title,
+      code,
+    ),
+  );
   return {
     code,
     text,
@@ -150,11 +176,27 @@ function firstString(...values: unknown[]) {
   return undefined;
 }
 
+function humanizeTechnicalText(text?: string) {
+  if (!text) return text;
+  return text
+    .replace(
+      /Bạn cần bổ sung dữ liệu physical_score\.?/gi,
+      "Bạn cần nhập điểm hoặc thêm minh chứng thể lực.",
+    )
+    .replace(
+      /Bạn cần bổ sung dữ liệu foreign_language_score\.?/gi,
+      "Bạn cần thêm chứng chỉ ngoại ngữ, điểm ngoại ngữ hoặc minh chứng hội nhập.",
+    )
+    .replace(/\bphysical_score\b/g, "điểm hoặc minh chứng thể lực")
+    .replace(/\bforeign_language_score\b/g, "chứng chỉ hoặc điểm ngoại ngữ");
+}
+
 function normalizeCode(value: unknown) {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   if (!trimmed) return undefined;
-  if (PRECHECK_MESSAGES[trimmed] || STATUS_MESSAGES[trimmed] || isTechnicalCode(trimmed)) return trimmed;
+  if (PRECHECK_MESSAGES[trimmed] || STATUS_MESSAGES[trimmed] || isTechnicalCode(trimmed))
+    return trimmed;
   return undefined;
 }
 

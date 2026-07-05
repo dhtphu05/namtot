@@ -38,11 +38,7 @@ const quickRoles = [
   },
 ];
 
-function persistAuthSession(data: {
-  user: unknown;
-  accessToken: string;
-  refreshToken: string;
-}) {
+function persistAuthSession(data: { user: unknown; accessToken: string; refreshToken: string }) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(
     "5tot-auth",
@@ -65,7 +61,7 @@ export const Route = createFileRoute("/login")({
       throw redirect({ to: getDefaultAppPathForRole(user.role) });
     }
     if (accessToken) {
-      throw redirect({ to: "/app/drafts" });
+      throw redirect({ to: "/app" });
     }
   },
   component: Login,
@@ -110,25 +106,34 @@ function Login() {
   return (
     <div className="min-h-screen bg-[#F6F8FB] px-6 py-10">
       <div className="mx-auto grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <div className="mb-7">
             <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-[#0057C2] text-lg font-bold text-white">
               5T
             </div>
-            <div className="mt-5 text-xs font-bold uppercase tracking-wide text-[#0057C2]">Đăng nhập</div>
-            <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-[#0F172A]">Tiếp tục hồ sơ Sinh viên 5 tốt</h1>
+            <div className="mt-5 text-xs font-bold uppercase tracking-wide text-[#0057C2]">
+              Đăng nhập
+            </div>
+            <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-[#0F172A]">
+              Tiếp tục hồ sơ Sinh viên 5 tốt
+            </h1>
             <p className="mt-3 max-w-xl text-sm leading-7 text-[#64748B]">
-              Sinh viên sẽ được đưa thẳng về workspace hồ sơ. Tài khoản truy cập nhanh chỉ dùng để xem từng vai trò.
+              Sinh viên sẽ được đưa thẳng về workspace hồ sơ. Tài khoản truy cập nhanh chỉ dùng để
+              xem từng vai trò.
             </p>
           </div>
 
           <div className="rounded-xl bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-bold text-[#0F172A]">Dùng tài khoản truy cập nhanh</div>
+                <div className="text-sm font-bold text-[#0F172A]">
+                  Dùng tài khoản truy cập nhanh
+                </div>
                 <div className="text-xs text-[#64748B]">Mật khẩu mặc định: Password@123</div>
               </div>
-              <span className="rounded-full bg-[#FFF7E6] px-3 py-1 text-xs font-bold text-amber-700">Nhanh</span>
+              <span className="rounded-full bg-[#FFF7E6] px-3 py-1 text-xs font-bold text-amber-700">
+                Nhanh
+              </span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {quickRoles.map((role) => {
@@ -165,12 +170,19 @@ function Login() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <form onSubmit={handleLogin} className="rounded-xl bg-white p-7 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]">
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <form
+            onSubmit={handleLogin}
+            className="rounded-xl bg-white p-7 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]"
+          >
             <div>
-              <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">Tài khoản của bạn</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">
+                Tài khoản của bạn
+              </div>
               <h2 className="mt-1 text-2xl font-extrabold text-[#0F172A]">Vào hệ thống</h2>
-              <p className="mt-1 text-sm text-[#64748B]">Nhập email và mật khẩu để tiếp tục hồ sơ.</p>
+              <p className="mt-1 text-sm text-[#64748B]">
+                Nhập email và mật khẩu để tiếp tục hồ sơ.
+              </p>
             </div>
 
             <div className="mt-6 space-y-2">

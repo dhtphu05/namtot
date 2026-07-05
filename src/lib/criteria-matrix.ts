@@ -295,16 +295,16 @@ export const criterionInputFields: Record<CoreCriterion, CriterionInputField[]> 
   ethics: [
     { kind: "metric", metricType: "conduct_score", label: "Điểm rèn luyện", placeholder: "Ví dụ 90" },
     { kind: "select", key: "discipline", label: "Có vi phạm pháp luật/kỷ luật không", options: ["Không", "Có"], defaultValue: "Không" },
-    { kind: "text", key: "ethics_achievement", label: "Thành tích đạo đức/Đoàn-Hội nếu cấp yêu cầu" },
+    { kind: "text", key: "ethics_achievement", label: "Minh chứng đạo đức/Đoàn-Hội nếu cấp yêu cầu" },
   ],
   academic: [
     { kind: "metric", metricType: "gpa", label: "GPA/ĐTB", placeholder: "Ví dụ 3.4", scale: 4 },
     { kind: "select", key: "gpa_scale", label: "Thang điểm", options: ["4", "10"], defaultValue: "4" },
     { kind: "select", key: "has_f", label: "Có điểm F không", options: ["Không", "Có"], defaultValue: "Không" },
-    { kind: "text", key: "academic_achievement", label: "Thành tích học thuật/NCKH/giải thưởng" },
+    { kind: "text", key: "academic_achievement", label: "Minh chứng học thuật/NCKH/giải thưởng" },
   ],
   physical: [
-    { kind: "select", key: "physical_passed", label: "Đạt Sinh viên khỏe/Thanh niên khỏe", options: ["Đạt", "Chưa đạt", "Cần xác nhận"], defaultValue: "Đạt" },
+    { kind: "select", key: "physical_passed", label: "Đạt Sinh viên khỏe/Thanh niên khỏe", options: ["Đạt", "Chưa đạt", "Chờ cán bộ kiểm tra sau khi nộp"], defaultValue: "Đạt" },
     { kind: "text", key: "sport_activity_type", label: "Loại hoạt động thể thao" },
     { kind: "text", key: "physical_issued_at", label: "Ngày cấp", inputType: "date" },
     { kind: "text", key: "physical_organizer_level", label: "Cấp tổ chức" },
@@ -316,7 +316,7 @@ export const criterionInputFields: Record<CoreCriterion, CriterionInputField[]> 
     { kind: "select", key: "volunteer_certificate", label: "Có giấy khen/chứng nhận không", options: ["Có", "Chưa có", "Cần bổ sung"], defaultValue: "Có" },
   ],
   integration: [
-    { kind: "metric", metricType: "foreign_language_score", label: "Chứng chỉ ngoại ngữ/điểm ngoại ngữ", placeholder: "Ví dụ IELTS 6.5 hoặc TOEIC 650" },
+    { kind: "metric", metricType: "foreign_language_score", label: "Chứng chỉ hoặc điểm ngoại ngữ", placeholder: "Ví dụ IELTS 6.5 hoặc TOEIC 650" },
     { kind: "text", key: "language_issued_at", label: "Ngày cấp", inputType: "date" },
     { kind: "text", key: "language_expires_at", label: "Thời hạn", inputType: "date" },
     { kind: "text", key: "integration_activity", label: "Hoạt động hội nhập" },
@@ -325,7 +325,7 @@ export const criterionInputFields: Record<CoreCriterion, CriterionInputField[]> 
 };
 
 export const priorityAchievementGroup = {
-  label: "Thành tích ưu tiên / Danh hiệu nổi bật",
+  label: "Minh chứng ưu tiên / Danh hiệu nổi bật",
   examples: ["Sao Tháng Giêng", "Giải thưởng nghiên cứu khoa học", "Danh hiệu thanh niên tiêu biểu", "Giải thưởng học thuật hoặc hội nhập cấp cao"],
 };
 

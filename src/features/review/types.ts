@@ -124,7 +124,7 @@ export const taskStatusLabels: Record<ReviewTaskStatus, string> = {
   supplement_required: "Cần bổ sung",
   accepted: "Đạt",
   rejected: "Không đạt",
-  resolution_needed: "Cần hội đồng xử lý",
+  resolution_needed: "Cần hội ý",
 };
 
 export type ReviewTaskListItem = {

@@ -7,5 +7,5 @@ type LevelBadgeProps = {
 };
 
 export function LevelBadge({ level }: LevelBadgeProps) {
-  return <Badge variant="outline">{getLevelLabel(level)}</Badge>;
+  return <Badge variant="secondary">{getLevelLabel(level)}</Badge>;
 }

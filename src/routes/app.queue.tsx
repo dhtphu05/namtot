@@ -612,9 +612,6 @@ function OfficerCaseCompactCard({
   isSelected: boolean;
   onSelect: (group: OfficerApplicationGroup, criterion?: Criterion) => void;
 }) {
-  const assignedCount = group.tasks.filter(
-    (task) => task.permissions?.reason === "assigned_to_you",
-  ).length;
   const completedCount = group.tasks.filter((task) => isCompletedTask(task)).length;
   const priorityTask = group.primaryTask;
 
@@ -644,7 +641,9 @@ function OfficerCaseCompactCard({
         {group.schoolYear}
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded bg-muted/50 px-2 py-1">Giao: {assignedCount}/5</div>
+        <div className="rounded bg-muted/50 px-2 py-1">
+          Phạm vi: {group.tasks.length}/5
+        </div>
         <div className="rounded bg-muted/50 px-2 py-1">
           Xong: {completedCount}/{group.tasks.length}
         </div>
@@ -736,7 +735,7 @@ function OfficerApplicationWorkspace({
             Bạn được giao: <span className="font-bold">{assignedCount}/5</span>
           </div>
           <div className="rounded-md bg-muted/40 p-3">
-            Toàn hồ sơ đã xử lý:{" "}
+            Đã xử lý trong phạm vi:{" "}
             <span className="font-bold">
               {completedCount}/{group.tasks.length}
             </span>
@@ -750,8 +749,8 @@ function OfficerApplicationWorkspace({
         </div>
         {completedCount === group.tasks.length && group.tasks.length > 0 ? (
           <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-            Đã xử lý {completedCount}/{group.tasks.length} tiêu chí, chờ cấp có thẩm quyền tổng
-            hợp/chốt.
+            Đã xử lý {completedCount}/{group.tasks.length} tiêu chí hiển thị trong phạm vi tài
+            khoản, chờ cấp có thẩm quyền tổng hợp/chốt.
           </div>
         ) : null}
       </div>
@@ -773,7 +772,7 @@ function OfficerApplicationWorkspace({
               >
                 {getCriterionLabel(criterion)}
                 <span className="ml-2 text-xs font-normal text-muted-foreground">
-                  {task ? getTaskStatusLabel(task.status) : "Chưa có task"}
+                  {task ? getTaskStatusLabel(task.status) : "Ngoài phạm vi"}
                 </span>
               </button>
             );
@@ -931,8 +930,9 @@ function OfficerApplicationCard({
               "Chưa có thông tin lớp/khoa"}
           </div>
           <div className="mt-2 text-sm text-muted-foreground">
-            Bạn được giao {assignedCount}/{fiveGoodCriteria.length} tiêu chí trong hồ sơ này. Toàn
-            hồ sơ đã xử lý {completedCount}/{group.tasks.length} tiêu chí.
+            Bạn được giao {assignedCount}/{fiveGoodCriteria.length} tiêu chí trong hồ sơ này. Đang
+            hiển thị {group.tasks.length}/{fiveGoodCriteria.length} tiêu chí theo phạm vi tài khoản;
+            đã xử lý {completedCount}/{group.tasks.length} tiêu chí hiển thị.
           </div>
         </div>
 
@@ -977,7 +977,7 @@ function CriterionTaskChip({
     return (
       <div className="rounded-md border border-dashed p-3">
         <div className="text-sm font-semibold text-brand-deep">{getCriterionLabel(criterion)}</div>
-        <div className="mt-1 text-xs text-muted-foreground">Chưa có task</div>
+        <div className="mt-1 text-xs text-muted-foreground">Ngoài phạm vi của bạn</div>
       </div>
     );
   }

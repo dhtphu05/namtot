@@ -17,33 +17,33 @@ export const studentCriterionLabel: Record<Criterion, string> = {
 };
 
 export const sourceTypeLabel: Record<EvidenceSourceType, string> = {
-  manual_upload: "Tự thêm",
-  event_import: "Nhập từ sự kiện",
-  metric_input: "Nhập chỉ số",
-  collective_import: "Nhập từ tập thể",
+  manual_upload: "Tải lên",
+  event_import: "Danh sách đã xác nhận",
+  metric_input: "Chỉ số đã nhập",
+  collective_import: "Dữ liệu tập thể",
 };
 
 export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
-  draft: "Bản nháp",
-  pending_indexing: "Chờ xử lý",
-  indexed: "Đã ghi nhận",
+  draft: "Đã lưu",
+  pending_indexing: "Đang kiểm tra file",
+  indexed: "Đã đọc được file",
   needs_supplement: "Cần bổ sung",
-  under_review: "Chờ cán bộ kiểm tra",
-  accepted: "Đã được chấp nhận",
-  rejected: "Cần xem lại",
-  resolution_needed: "Cần hội đồng xem xét",
+  under_review: "Chờ cán bộ xác nhận sau khi nộp",
+  accepted: "Đã được xác nhận",
+  rejected: "Không đọc rõ file",
+  resolution_needed: "File cần kiểm tra thêm",
 };
 
 export const indexingStatusLabel: Record<IndexingStatus, string> = {
-  not_started: "Chưa kiểm tra",
-  uploaded: "Đã tải lên",
-  pending_indexing: "Đang kiểm tra",
-  ocr_processing: "Đang đọc tệp",
-  extracting: "Đang trích xuất thông tin",
-  checking_registry: "Đang đối chiếu dữ liệu",
-  indexed: "Đã kiểm tra xong",
-  needs_manual_review: "Cần cán bộ kiểm tra",
-  failed: "Cần kiểm tra thêm",
+  not_started: "Đã lưu",
+  uploaded: "Đã lưu",
+  pending_indexing: "Đang kiểm tra file",
+  ocr_processing: "Đang kiểm tra file",
+  extracting: "Đang kiểm tra file",
+  checking_registry: "Đang kiểm tra file",
+  indexed: "Đã đọc được file",
+  needs_manual_review: "File cần kiểm tra thêm",
+  failed: "Không đọc rõ file",
 };
 
 export function formatStudentDate(value?: string | null) {
@@ -78,7 +78,30 @@ export type StudentEvidenceFile = {
 
 export function getEvidenceFiles(evidence: EvidenceResponse): StudentEvidenceFile[] {
   const raw = evidence.files;
-  return Array.isArray(raw) ? (raw as StudentEvidenceFile[]) : [];
+  if (Array.isArray(raw) && raw.length > 0) return raw as StudentEvidenceFile[];
+
+  const fileId = typeof evidence.fileId === "string" ? evidence.fileId : "";
+  const fileName =
+    getStringValue(evidence.fileName) ||
+    getStringValue(evidence.originalName) ||
+    getStringValue(evidence.file_name);
+  if (!fileId && !fileName) return [];
+
+  return [
+    {
+      id: fileId || undefined,
+      fileName: fileName || "Tệp đính kèm",
+      originalName: fileName || undefined,
+      mimeType:
+        getStringValue(evidence.mimeType) ||
+        getStringValue(evidence.mime_type) ||
+        inferMimeType(fileName),
+      fileSize: getNumberValue(evidence.fileSize ?? evidence.file_size ?? evidence.size),
+      size: getNumberValue(evidence.fileSize ?? evidence.file_size ?? evidence.size),
+      uploadedAt: getStringValue(evidence.uploadedAt ?? evidence.uploaded_at),
+      createdAt: evidence.createdAt,
+    },
+  ];
 }
 
 export function getPrimaryFile(evidence: EvidenceResponse) {
@@ -99,4 +122,26 @@ export function isImageFile(file?: StudentEvidenceFile | null) {
 
 export function isPdfFile(file?: StudentEvidenceFile | null) {
   return file?.mimeType === "application/pdf";
+}
+
+function getStringValue(value: unknown) {
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+function getNumberValue(value: unknown) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function inferMimeType(fileName: string) {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  if (extension === "pdf") return "application/pdf";
+  if (extension === "png") return "image/png";
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "webp") return "image/webp";
+  return null;
 }

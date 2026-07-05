@@ -12,7 +12,7 @@ export function ExtractedFieldsTable({ fields }: ExtractedFieldsTableProps) {
   if (!fields.length) {
     return (
       <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-        Chưa có trường thông tin rõ ràng từ Evidence Card.
+        Chưa có trường thông tin rõ ràng từ thẻ minh chứng.
       </p>
     );
   }

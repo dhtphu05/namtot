@@ -9,6 +9,7 @@ export interface Notification {
   applicationId?: string | null;
   evidenceId?: string | null;
   reviewTaskId?: string | null;
+  resolutionCaseId?: string | null;
   metadata?: Record<string, unknown> | null;
   createdAt: string;
 }
@@ -43,9 +44,12 @@ export const notificationsApi = {
       });
     }
     const qString = query.toString();
-    const res = await apiClient<NotificationListPayload>(`/api/notifications${qString ? `?${qString}` : ""}`, {
-      method: "GET",
-    });
+    const res = await apiClient<NotificationListPayload>(
+      `/api/notifications${qString ? `?${qString}` : ""}`,
+      {
+        method: "GET",
+      },
+    );
     return { ...res, data: normalizeNotifications(res.data) };
   },
 
