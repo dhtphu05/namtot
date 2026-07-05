@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { authApi } from "@/features/auth/api/auth";
 import { authKeys } from "@/features/auth/hooks/useMe";
 import { getDefaultAppPathForRole, toUiRole } from "@/features/auth/role-map";
-import { useAuth } from "@/features/auth/store/auth-store";
+import { useAuth, waitForAuthHydration } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
 import { useApp } from "@/lib/store";
 
@@ -19,9 +19,33 @@ const quickRoles = [
     icon: FileText,
   },
   {
-    label: "Cán bộ xét duyệt",
-    desc: "Xử lý tiêu chí được phân công và yêu cầu bổ sung khi cần.",
+    label: "Cán bộ Học tập",
+    desc: "Xử lý minh chứng Học tập tốt.",
     email: "officer.academic@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Đạo đức",
+    desc: "Xử lý minh chứng Đạo đức tốt.",
+    email: "officer.ethics@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Thể lực",
+    desc: "Xử lý minh chứng Thể lực tốt.",
+    email: "officer.physical@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Tình nguyện",
+    desc: "Xử lý minh chứng Tình nguyện tốt.",
+    email: "officer.volunteer@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Hội nhập",
+    desc: "Xử lý minh chứng Hội nhập tốt.",
+    email: "officer.integration@dut.udn.vn",
     icon: ShieldCheck,
   },
   {
@@ -38,24 +62,13 @@ const quickRoles = [
   },
 ];
 
-function persistAuthSession(data: { user: unknown; accessToken: string; refreshToken: string }) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    "5tot-auth",
-    JSON.stringify({
-      state: {
-        user: data.user,
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-      },
-      version: 0,
-    }),
-  );
-}
-
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Đăng nhập - 5TOT Platform" }] }),
-  beforeLoad: () => {
+  beforeLoad: async () => {
+    if (typeof window === "undefined") return;
+
+    await waitForAuthHydration();
+
     const { accessToken, user } = useAuth.getState();
     if (accessToken && user) {
       throw redirect({ to: getDefaultAppPathForRole(user.role) });
@@ -86,7 +99,6 @@ function Login() {
       const res = await authApi.login(email.trim(), password);
       queryClient.clear();
       resetSessionState();
-      persistAuthSession(res.data);
       setAuthData(res.data.user, res.data.accessToken, res.data.refreshToken);
       queryClient.setQueryData(authKeys.me, res.data.user);
       setRole(toUiRole(res.data.user.role));
@@ -118,19 +130,21 @@ function Login() {
               Tiếp tục hồ sơ Sinh viên 5 tốt
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-7 text-[#64748B]">
-              Sinh viên sẽ được đưa thẳng về workspace hồ sơ. Tài khoản demo chỉ dùng để xem nhanh
-              từng vai trò.
+              Sinh viên sẽ được đưa thẳng về workspace hồ sơ. Tài khoản truy cập nhanh chỉ dùng để
+              xem từng vai trò.
             </p>
           </div>
 
           <div className="rounded-xl bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-bold text-[#0F172A]">Dùng tài khoản demo</div>
+                <div className="text-sm font-bold text-[#0F172A]">
+                  Dùng tài khoản truy cập nhanh
+                </div>
                 <div className="text-xs text-[#64748B]">Mật khẩu mặc định: Password@123</div>
               </div>
               <span className="rounded-full bg-[#FFF7E6] px-3 py-1 text-xs font-bold text-amber-700">
-                Demo
+                Nhanh
               </span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

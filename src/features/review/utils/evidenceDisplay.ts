@@ -9,7 +9,9 @@ export type EvidenceDisplayModel = {
   readerLabel: string;
   matchLabel: string;
   fields: Record<string, unknown>;
+  fieldConfidence?: Record<string, number> | null;
   gpa?: number | null;
+  gpaRequiresConfirmation?: boolean;
   scale?: string | null;
   eventName?: string | null;
   organizer?: string | null;
@@ -49,7 +51,8 @@ export function buildEvidenceDisplayModel(evidence: ReviewTaskEvidence): Evidenc
     evidence.event?.organizerLevel ??
     null;
   const documentType = stringField(fields, "documentType", "document_type");
-  const gpa = numberField(fields, "gpa") ?? parseTranscriptGpa(evidence.card?.ocrText);
+  const gpaSuggestion = asRecord(evidence.card?.metricSuggestions).gpa;
+  const gpa = numberField(asRecord(gpaSuggestion), "value") ?? numberField(fields, "gpa");
   const title = evidence.evidenceName || eventName || documentType || fallbackText;
   const kind = classifyEvidence(evidence, fields, title);
 
@@ -60,7 +63,9 @@ export function buildEvidenceDisplayModel(evidence: ReviewTaskEvidence): Evidenc
     readerLabel: readerLabels[evidence.indexingStatus ?? ""] ?? fallbackText,
     matchLabel: getMatchLabel(evidence),
     fields,
+    fieldConfidence: evidence.card?.fieldConfidence ?? null,
     gpa,
+    gpaRequiresConfirmation: Boolean(asRecord(gpaSuggestion).requiresConfirmation),
     scale: stringField(fields, "scale", "gpaScale", "gpa_scale"),
     eventName,
     organizer,
@@ -96,7 +101,10 @@ export function getEvidenceFields(evidence: ReviewTaskEvidence): Record<string, 
   return {
     ...asRecord(evidence.card?.extractedFieldsJson),
     ...asRecord(evidence.card?.normalizedFieldsJson),
+    ...asRecord(evidence.card?.extractedFields),
+    ...asRecord(evidence.card?.normalizedFields),
     ...asRecord(evidence.card?.readableSummary),
+    ...asRecord(evidence.card?.primaryFields),
   };
 }
 
@@ -149,6 +157,8 @@ export function getVisibleEvidenceFieldEntries(model: EvidenceDisplayModel) {
     if (hiddenByKind[model.kind].has(key)) return false;
 
     const canonicalKey = canonicalFieldKey(key);
+    const confidence = model.fieldConfidence?.[canonicalKey] ?? model.fieldConfidence?.[key];
+    if (confidence !== undefined && confidence < 0.5) return false;
     if (seenCanonicalKeys.has(canonicalKey)) return false;
     seenCanonicalKeys.add(canonicalKey);
     return true;
@@ -257,6 +267,10 @@ function stringField(fields: Record<string, unknown>, ...keys: string[]) {
     const value = fields[key];
     if (typeof value === "string" && value.trim()) return value.trim();
     if (typeof value === "number") return String(value);
+    const record = asRecord(value);
+    const display = record.display ?? record.label ?? record.value;
+    if (typeof display === "string" && display.trim()) return display.trim();
+    if (typeof display === "number") return String(display);
   }
   return null;
 }
@@ -269,16 +283,6 @@ function numberField(fields: Record<string, unknown>, key: string) {
     if (Number.isFinite(parsed)) return parsed;
   }
   return null;
-}
-
-function parseTranscriptGpa(text?: string | null) {
-  if (!text) return null;
-  const match = text.match(
-    /\b(?:GPA|điểm\s*trung\s*bình|điểm\s*)?(?:TBC|TBCTL|trung\s*bình\s*chung|trung\s*bình\s*tích\s*lũy)[^\n:;]{0,40}[:;]?\s*([0-4](?:[.,][0-9]{1,2})?)\b/i,
-  );
-  if (!match?.[1]) return null;
-  const parsed = Number(match[1].replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function normalizeText(value: string) {

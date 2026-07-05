@@ -83,10 +83,18 @@ export type EvidenceCard = {
   evidenceId?: string;
   confidence?: number | null;
   readableSummary?: EvidenceReadableSummary | null;
+  userProvidedFields?: Record<string, unknown> | null;
+  studentProfileFields?: Record<string, unknown> | null;
+  extractedFields?: Record<string, unknown> | null;
+  normalizedFields?: Record<string, unknown> | null;
+  verifiedFields?: Record<string, unknown> | null;
+  primaryFields?: Record<string, unknown> | null;
+  fieldConfidence?: Record<string, number> | null;
+  metricSuggestions?: Record<string, unknown> | null;
+  academic?: Record<string, unknown> | null;
   matchingStatus?: EvidenceMatchingStatus | null;
   missingFields?: string[] | Array<{ label?: string; message?: string; field?: string }>;
   studentStatus?: EvidenceStudentStatus | null;
-  extractedFields?: Record<string, unknown> | null;
   extractedFieldsJson?: unknown;
   warnings?: string[] | unknown;
   warningsJson?: unknown;
@@ -135,6 +143,7 @@ export type ApprovedEvidenceSearchItem = {
     className?: string | null;
     faculty?: string | null;
     participationStatus?: string | null;
+    convertedValue?: number | null;
   };
   importable: boolean;
   alreadyImported: boolean;

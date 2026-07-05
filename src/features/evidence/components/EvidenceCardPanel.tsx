@@ -1,4 +1,4 @@
-import { ChevronDown, FilePlus2, RefreshCw } from "lucide-react";
+import { AlertTriangle, ChevronDown, FilePlus2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -6,12 +6,7 @@ import { ErrorState } from "@/components/feedback/ErrorState";
 import type { EvidenceResponse } from "@/lib/api/types";
 import type { EvidenceCard } from "@/types/evidence";
 import type { JobResponse } from "@/types/jobs";
-import {
-  getSafeExtractedFields,
-  getSafeOcrText,
-  normalizeWarnings,
-  warningCopy,
-} from "./evidence-card-utils";
+import { getSafeOcrText, normalizeWarnings, warningCopy } from "./evidence-card-utils";
 import { EvidenceAuditButton } from "./EvidenceAuditButton";
 import {
   getStudentEvidenceStatus,
@@ -42,10 +37,22 @@ export function EvidenceCardPanel({
   uploading,
 }: EvidenceCardPanelProps) {
   const status = getStudentEvidenceStatus(evidence, card);
-  const fields = getStudentReadableFields(card);
+  const userFields = getUserProvidedFields(evidence, card);
+  const extractedFields = getExtractedReadableFields(card);
+  const academic = getAcademicInfo(card);
   const missingFields = getMissingFields(card);
   const ocrText = card?.ocrTextPreview ?? getSafeOcrText(card);
   const matchingStatus = getMatchingStatus(card, evidence.sourceType);
+  const extractedEventName = getDisplayValue(
+    card?.normalizedFields?.event_name ??
+      card?.normalizedFields?.eventName ??
+      card?.extractedFields?.event_name ??
+      card?.extractedFields?.eventName ??
+      card?.readableSummary?.eventName,
+  );
+  const showExtractedEventName =
+    extractedEventName &&
+    normalizeCompare(extractedEventName) !== normalizeCompare(evidence.evidenceName);
   const fileCount = getEvidenceFiles(evidence).length;
   const failed = evidence.indexingStatus === "failed";
 
@@ -74,22 +81,89 @@ export function EvidenceCardPanel({
       ) : null}
 
       <section className="rounded-md border p-4">
-        <h3 className="font-semibold text-foreground">Thông tin đã đọc</h3>
-        {fields.length ? (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {fields.map((field) => (
-              <Info key={field.label} label={field.label} value={field.value} />
-            ))}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="break-words text-lg font-semibold text-foreground">
+              {evidence.evidenceName}
+            </h3>
+            {showExtractedEventName ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Hệ thống đọc được:{" "}
+                <span className="font-medium text-foreground">{extractedEventName}</span>
+              </p>
+            ) : null}
           </div>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">Chưa có thông tin tóm tắt.</p>
-        )}
+          <StatusBadge status={status} />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Kết quả số hoá chỉ hỗ trợ kiểm tra. Cán bộ/Hội đồng sẽ xác nhận cuối cùng.
+        </p>
       </section>
 
       <section className="rounded-md border p-4">
+        <h3 className="font-semibold text-foreground">Thông tin minh chứng</h3>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {userFields.map((field) => (
+            <FieldInfo
+              key={field.label}
+              label={field.label}
+              value={field.value}
+              source="Sinh viên nhập"
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-md border p-4">
+        <h3 className="font-semibold text-foreground">SmartReader gợi ý</h3>
+        {extractedFields.length ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {extractedFields.map((field) => (
+              <FieldInfo
+                key={field.key}
+                label={field.label}
+                value={field.value}
+                source={field.source}
+                confidence={field.confidence}
+                missing={field.missing}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">Chưa đọc được thông tin tóm tắt.</p>
+        )}
+      </section>
+
+      {academic ? (
+        <section className="rounded-md border p-4">
+          <h3 className="font-semibold text-foreground">GPA / học tập</h3>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <FieldInfo
+              label="GPA sinh viên nhập"
+              value={academic.userGpaDisplay}
+              source="Sinh viên nhập"
+            />
+            <FieldInfo
+              label="GPA SmartReader gợi ý"
+              value={academic.suggestionDisplay}
+              source="SmartReader gợi ý"
+              confidence={academic.suggestionConfidence}
+              missing={!academic.suggestionDisplay}
+            />
+            <FieldInfo
+              label="Ngưỡng tham chiếu"
+              value={academic.thresholdDisplay}
+              source="Kho chính thức"
+            />
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">{academic.message}</p>
+        </section>
+      ) : null}
+
+      <section className="rounded-md border p-4">
         <h3 className="font-semibold text-foreground">Danh sách chính thức</h3>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <StatusBadge status={matchingStatus.status} />
+        <div className="mt-3 flex flex-wrap items-start gap-2 text-sm">
+          <RegistryBadge tone={matchingStatus.tone} label={matchingStatus.label} />
           {matchingStatus.eventName ? (
             <span className="font-medium text-foreground">{matchingStatus.eventName}</span>
           ) : (
@@ -99,13 +173,19 @@ export function EvidenceCardPanel({
       </section>
 
       {missingFields.length ? (
-        <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-900">
-          <h3 className="font-semibold">Cần bổ sung</h3>
+        <section className="rounded-md border border-amber-200 bg-amber-50/60 p-4 text-amber-900">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <h3 className="font-semibold">Cần kiểm tra</h3>
+          </div>
           <ul className="mt-2 space-y-1 text-sm">
             {missingFields.map((field) => (
               <li key={field}>{field}</li>
             ))}
           </ul>
+          <p className="mt-2 text-xs">
+            Nếu trường này không bắt buộc với tiêu chí bạn đang nộp, bạn không cần bổ sung ngay.
+          </p>
           {onUploadMore ? (
             <Button
               type="button"
@@ -259,57 +339,149 @@ function StatusBadge({ status }: { status: StudentEvidenceStatus }) {
   );
 }
 
-function Info({ label, value }: { label: string; value?: string | null }) {
+function RegistryBadge({
+  tone,
+  label,
+}: {
+  tone: "success" | "info" | "warning" | "error" | "neutral";
+  label: string;
+}) {
+  const className = {
+    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-800",
+    error: "border-rose-200 bg-rose-50 text-rose-700",
+    info: "border-sky-200 bg-sky-50 text-sky-700",
+    neutral: "border-slate-200 bg-slate-50 text-slate-700",
+  }[tone];
+
+  return (
+    <Badge className={className} variant="outline">
+      {label}
+    </Badge>
+  );
+}
+
+function FieldInfo({
+  label,
+  value,
+  source,
+  confidence,
+  missing,
+}: {
+  label: string;
+  value?: string | null;
+  source: "Hồ sơ" | "Sinh viên nhập" | "SmartReader gợi ý" | "Kho chính thức" | "Cán bộ xác nhận";
+  confidence?: number;
+  missing?: boolean;
+}) {
   return (
     <div className="rounded-md bg-muted/40 px-3 py-2 text-sm">
-      <div className="text-xs font-medium uppercase text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words font-semibold text-foreground">{value || "--"}</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-xs font-medium uppercase text-muted-foreground">{label}</div>
+        <Badge variant="outline" className="border-slate-200 bg-background px-1.5 py-0 text-[10px]">
+          {source}
+        </Badge>
+        {typeof confidence === "number" ? (
+          <Badge
+            variant="outline"
+            className={`px-1.5 py-0 text-[10px] ${confidenceBadgeClass(confidence)}`}
+          >
+            {confidenceLabel(confidence)}
+          </Badge>
+        ) : null}
+      </div>
+      <div
+        className={`mt-1 break-words font-semibold ${
+          missing ? "text-muted-foreground" : "text-foreground"
+        }`}
+      >
+        {value || "Chưa đọc được"}
+      </div>
     </div>
   );
 }
 
-function getStudentReadableFields(card?: EvidenceCard | null) {
-  const summary = card?.readableSummary;
-  if (summary) {
-    const summaryFields = [
-      fieldFromValue("Tên hoạt động", summary.eventName),
-      fieldFromValue("Đơn vị xác nhận", summary.organizer ?? summary.organizerName),
-      fieldFromValue("Thời gian", summary.time ?? summary.activityTime),
-      fieldFromValue(
-        "Số ngày / giá trị quy đổi",
-        formatConvertedValue(summary.convertedValue, summary.convertedUnit),
-      ),
-      fieldFromValue("Ngày cấp", summary.issueDate),
-      fieldFromValue("Họ tên", summary.studentName),
-      fieldFromValue("MSSV", summary.studentCode),
-    ];
-
-    return summaryFields.filter((field): field is { label: string; value: string } =>
-      Boolean(field),
-    );
-  }
-
-  const fields = getSafeExtractedFields(card);
-  const picked = [
-    pickField(fields, ["eventName", "event_name", "certificateName"], "Tên hoạt động"),
-    pickField(
-      fields,
-      ["activityTime", "activity_time", "convertedValue", "converted_value"],
-      "Thời gian / số ngày",
-    ),
-    pickField(fields, ["organizer", "organizerName"], "Đơn vị xác nhận"),
-    pickField(fields, ["issueDate", "issue_date"], "Ngày cấp"),
-    pickField(fields, ["studentName", "student_name", "fullName"], "Họ tên"),
-    pickField(fields, ["studentCode", "student_code"], "MSSV"),
-  ];
-
-  return picked.filter((field): field is { label: string; value: string } => Boolean(field));
+function getUserProvidedFields(evidence: EvidenceResponse, card?: EvidenceCard | null) {
+  const userProvided = card?.userProvidedFields ?? {};
+  return [
+    {
+      label: "Tên minh chứng",
+      value: getDisplayValue(userProvided.evidenceName ?? evidence.evidenceName),
+    },
+    {
+      label: "Tiêu chí",
+      value: criterionLabel(evidence.criterion),
+    },
+  ].filter((field) => field.value);
 }
 
-function fieldFromValue(label: string, value: unknown) {
-  if (value === undefined || value === null || value === "") return null;
-  if (typeof value === "object") return null;
-  return { label, value: String(value) };
+function getExtractedReadableFields(card?: EvidenceCard | null) {
+  const primary = card?.primaryFields ?? {};
+  const profile = card?.studentProfileFields ?? {};
+  const fields = card?.normalizedFields ?? card?.extractedFields ?? {};
+  const summary = card?.readableSummary;
+  const confidence = card?.fieldConfidence ?? {};
+  const items = [
+    fieldFromLayer(
+      "eventName",
+      "Tên hoạt động",
+      [fields.event_name, fields.eventName, summary?.eventName],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer(
+      "organizer",
+      "Đơn vị xác nhận",
+      [fields.organizer, summary?.organizer, summary?.organizerName],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer(
+      "organizerLevel",
+      "Cấp tổ chức",
+      [fields.organizer_level, fields.organizerLevel],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer(
+      "activityDate",
+      "Ngày hoạt động",
+      [fields.activity_date, fields.activityDate, summary?.activityTime, summary?.time],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer(
+      "issueDate",
+      "Ngày cấp",
+      [fields.issue_date, fields.issueDate, summary?.issueDate],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer("studentName", "Họ tên", [profile.studentName, primary.studentName], "Hồ sơ"),
+    fieldFromLayer("studentCode", "MSSV", [profile.studentCode, primary.studentCode], "Hồ sơ"),
+    fieldFromLayer("className", "Lớp", [profile.className, primary.className], "Hồ sơ"),
+    fieldFromLayer("faculty", "Khoa", [profile.faculty, primary.faculty], "Hồ sơ"),
+    fieldFromLayer(
+      "convertedValue",
+      "Giá trị",
+      [
+        formatConvertedValue(summary?.convertedValue, summary?.convertedUnit),
+        fields.converted_value,
+        fields.convertedValue,
+        fields.volunteer_days,
+      ],
+      "SmartReader gợi ý",
+    ),
+  ];
+
+  return items
+    .map((item) => ({
+      ...item,
+      confidence: item.source === "SmartReader gợi ý" ? confidence[item.key] : undefined,
+      missing: !item.value,
+    }))
+    .map((item) =>
+      item.source === "SmartReader gợi ý" &&
+      typeof item.confidence === "number" &&
+      item.confidence < 0.5
+        ? { ...item, value: null, missing: true }
+        : item,
+    );
 }
 
 function formatConvertedValue(value: unknown, unit?: string | null) {
@@ -317,14 +489,118 @@ function formatConvertedValue(value: unknown, unit?: string | null) {
   return `${value}${unit ? ` ${unit}` : ""}`;
 }
 
-function pickField(
-  fields: Array<{ key: string; label: string; value: string }>,
-  keys: string[],
+function fieldFromLayer(
+  key: string,
   label: string,
+  values: unknown[],
+  source: "Hồ sơ" | "SmartReader gợi ý",
 ) {
-  const found = fields.find((field) => keys.includes(field.key));
-  if (!found || looksLikeJson(found.value)) return null;
-  return { label, value: found.value };
+  return {
+    key,
+    label,
+    value: getDisplayValue(values.find((value) => getDisplayValue(value))),
+    source,
+  };
+}
+
+function getAcademicInfo(card?: EvidenceCard | null) {
+  const academic = card?.academic;
+  if (!academic) return null;
+  const userInput = asRecord(academic.userInput);
+  const suggestion = asRecord(academic.smartReaderSuggestion);
+  const threshold = asRecord(academic.threshold);
+  const suggestionValue = getDisplayValue(suggestion?.value);
+  const suggestionScale = getDisplayValue(suggestion?.scale) ?? "4";
+  const thresholdValue = getDisplayValue(threshold?.value);
+  const thresholdScale = getDisplayValue(threshold?.scale) ?? "4";
+
+  return {
+    userGpaDisplay: getDisplayValue(userInput?.gpaDisplay ?? userInput?.gpa) ?? "Chưa nhập",
+    suggestionDisplay: suggestionValue ? `${suggestionValue}/${suggestionScale}` : null,
+    suggestionConfidence:
+      typeof suggestion?.confidence === "number" ? suggestion.confidence : undefined,
+    thresholdDisplay: thresholdValue ? `${thresholdValue}/${thresholdScale}` : "Chưa có ngưỡng",
+    message:
+      getDisplayValue(academic.message) ??
+      "SmartReader chỉ tạo gợi ý. Vui lòng xác nhận trước khi dùng để tiền kiểm.",
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function getDisplayValue(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return formatDateText(value) ?? mapOrganizerLevel(value) ?? value;
+  if (typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    return getDisplayValue(record.display ?? record.label ?? record.value ?? record.raw);
+  }
+  return null;
+}
+
+function formatDateText(value: string) {
+  const trimmed = value.trim();
+  const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+
+  const dateWithOptionalTime = trimmed.match(
+    /^(?:\d{1,2}:\d{2}\s*)?(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/,
+  );
+  if (!dateWithOptionalTime) return null;
+  const [, day, month, year] = dateWithOptionalTime;
+  return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+}
+
+function mapOrganizerLevel(value: string) {
+  const labels: Record<string, string> = {
+    school: "Cấp Trường",
+    university: "Cấp Đại học",
+    city: "Cấp Thành phố",
+    central: "Cấp Trung ương",
+    faculty: "Cấp Khoa",
+    club: "CLB/Đội/Nhóm",
+    external: "Đơn vị ngoài trường",
+    unknown: "Chưa xác định",
+  };
+  return labels[value] ?? null;
+}
+
+function criterionLabel(value: string) {
+  const labels: Record<string, string> = {
+    ethics: "Đạo đức tốt",
+    academic: "Học tập tốt",
+    physical: "Thể lực tốt",
+    volunteer: "Tình nguyện tốt",
+    integration: "Hội nhập tốt",
+  };
+  return labels[value] ?? value;
+}
+
+function confidenceLabel(value: number) {
+  if (value >= 0.75) return "Chắc chắn cao";
+  if (value >= 0.55) return "Cần xem lại";
+  return "Chưa chắc chắn";
+}
+
+function confidenceBadgeClass(value: number) {
+  if (value >= 0.75) return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (value >= 0.55) return "border-amber-200 bg-amber-50 text-amber-800";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function normalizeCompare(value?: string | null) {
+  return (value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/đ/g, "d")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function getMissingFields(card?: EvidenceCard | null) {
@@ -352,26 +628,56 @@ function getMissingFields(card?: EvidenceCard | null) {
 }
 
 function getMatchingStatus(card: EvidenceCard | null | undefined, sourceType: string) {
+  const warnings = normalizeWarnings(card?.warnings ?? card?.warningsJson);
+  const hasConflict = warnings.includes("event_name_mismatch_with_user_input");
   const code =
     card?.matchingStatus?.code ??
     (sourceType === "event_import" ? "official_match_found" : "official_match_not_found");
-  const status =
-    code === "similar_name_found"
-      ? studentEvidenceStatusMap.similar_name_found
-      : code === "official_match_found"
-        ? studentEvidenceStatusMap.official_match_found
-        : studentEvidenceStatusMap.official_match_not_found;
+
+  if (hasConflict) {
+    return {
+      label: "Có điểm chưa khớp",
+      tone: "warning" as const,
+      message: "Tên hệ thống đọc được khác tên bạn đã nhập, cần cán bộ kiểm tra.",
+      eventName: card?.matchingStatus?.matchedEventName ?? card?.matchingStatus?.eventName ?? null,
+    };
+  }
+
+  if (code === "official_match_found" || sourceType === "event_import") {
+    return {
+      label: "Đã khớp kho chính thức",
+      tone: "success" as const,
+      message:
+        card?.matchingStatus?.message ?? studentEvidenceStatusMap.official_match_found.message,
+      eventName: card?.matchingStatus?.matchedEventName ?? card?.matchingStatus?.eventName ?? null,
+    };
+  }
+
+  if (sourceType === "manual_upload") {
+    return {
+      label: "Minh chứng tự tải lên",
+      tone: "neutral" as const,
+      message: "Chưa đối chiếu với danh sách chính thức.",
+      eventName: null,
+    };
+  }
+
+  if (code === "similar_name_found") {
+    return {
+      label: "Có hoạt động tương tự",
+      tone: "info" as const,
+      message: card?.matchingStatus?.message ?? studentEvidenceStatusMap.similar_name_found.message,
+      eventName: card?.matchingStatus?.matchedEventName ?? card?.matchingStatus?.eventName ?? null,
+    };
+  }
 
   return {
-    status,
-    message: card?.matchingStatus?.message ?? status.message,
+    label: "Chưa khớp danh sách chính thức",
+    tone: "warning" as const,
+    message:
+      card?.matchingStatus?.message ?? studentEvidenceStatusMap.official_match_not_found.message,
     eventName: card?.matchingStatus?.matchedEventName ?? card?.matchingStatus?.eventName ?? null,
   };
-}
-
-function looksLikeJson(value: string) {
-  const trimmed = value.trim();
-  return trimmed.startsWith("{") || trimmed.startsWith("[");
 }
 
 function isReading(status?: string | null) {

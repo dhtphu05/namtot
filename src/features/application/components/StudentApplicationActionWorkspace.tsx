@@ -452,7 +452,7 @@ export function StudentApplicationActionWorkspace() {
           statusBadge={summary.statusBadge}
         />
 
-        <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
+        <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[220px_minmax(0,1fr)_280px] 2xl:grid-cols-[240px_minmax(0,1fr)_300px]">
           <CriteriaSidebar
             criteriaStates={criteriaStates}
             activeCriterion={selectedCriterion}
@@ -817,7 +817,7 @@ function CriterionWorkspace({
   return (
     <main className="min-w-0">
       <SectionCard className="min-w-0">
-        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex min-w-0 flex-col gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl font-bold text-[var(--text-primary)]">{state.label}</h2>
@@ -827,20 +827,20 @@ function CriterionWorkspace({
               {state.description || getCriterionShortDescription(state)}
             </p>
           </div>
-          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <div className="flex min-w-0 flex-wrap gap-2">
             {canEdit ? (
-              <AppButton onClick={onAddEvidence}>
+              <AppButton onClick={onAddEvidence} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
                 Thêm minh chứng
               </AppButton>
             ) : null}
-            <AppButton asChild variant="secondary">
+            <AppButton asChild variant="secondary" className="w-full sm:w-auto">
               <Link to="/app/event-library">
                 <Search className="h-4 w-4" />
                 Tìm trong danh sách đã xác nhận
               </Link>
             </AppButton>
-            <AppButton asChild variant="ghost">
+            <AppButton asChild variant="ghost" className="w-full sm:w-auto">
               <Link to={toStudentAssistantHref(assistantHref)}>
                 <Sparkles className="h-4 w-4" />
                 Hỏi trợ lý
@@ -1108,7 +1108,7 @@ function WorkspaceSkeleton() {
       />
       <div className="space-y-5">
         <SkeletonBlock className="h-24" />
-        <div className="grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
+        <div className="grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)_280px] 2xl:grid-cols-[240px_minmax(0,1fr)_300px]">
           <SkeletonBlock className="h-80" />
           <SkeletonBlock className="h-96" />
           <SkeletonBlock className="h-80" />

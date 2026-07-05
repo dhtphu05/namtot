@@ -234,7 +234,9 @@ function mergeReviewEvidenceRecords(
 
   for (const source of evidenceSources) {
     for (const item of asRecordArray(source)) {
-      const id = asString(item.id ?? item.evidenceId ?? item.cardId);
+      const id = asString(
+        item.id ?? item.evidenceId ?? item.evidence_id ?? item.cardId ?? item.card_id,
+      );
       if (!id) continue;
       byId.set(id, { ...(byId.get(id) ?? {}), ...item, id });
     }
@@ -244,11 +246,20 @@ function mergeReviewEvidenceRecords(
     payload.evidenceFiles,
     payload.files,
     rawApplication?.evidenceFiles,
+    rawApplication?.files,
     rawTask.evidenceFiles,
+    rawTask.files,
   ];
   for (const source of fileSources) {
     for (const file of asRecordArray(source)) {
-      const evidenceId = asString(file.evidenceId ?? file.evidenceCardId ?? file.cardId);
+      const evidenceId = asString(
+        file.evidenceId ??
+          file.evidence_id ??
+          file.evidenceCardId ??
+          file.evidence_card_id ??
+          file.cardId ??
+          file.card_id,
+      );
       if (!evidenceId) continue;
       const current = byId.get(evidenceId) ?? { id: evidenceId };
       const files = asRecordArray(current.files);
@@ -262,7 +273,14 @@ function mergeReviewEvidenceRecords(
 function normalizeEvidences(items: RawRecord[]): ReviewTaskEvidence[] {
   return (items ?? []).map((item) => ({
     id: asString(item.id),
-    evidenceName: asString(item.evidenceName ?? item.title ?? item.name ?? item.documentName),
+    evidenceName: asString(
+      item.evidenceName ??
+        item.evidence_name ??
+        item.title ??
+        item.name ??
+        item.documentName ??
+        item.document_name,
+    ),
     criterion: (item.criterion ?? "academic") as Criterion,
     sourceType: item.sourceType ?? "manual_upload",
     status: (item.status ?? "under_review") as EvidenceStatus,
@@ -273,14 +291,31 @@ function normalizeEvidences(items: RawRecord[]): ReviewTaskEvidence[] {
     createdAt: asString(item.createdAt),
     updatedAt: asString(item.updatedAt),
     files: asRecordArray(item.files).map((file: RawRecord) => ({
-      id: asString(file.id),
-      originalName: asString(file.originalName),
-      mimeType: asString(file.mimeType),
-      size: asNumber(file.size ?? file.fileSize),
-      url: file.url ?? file.publicUrl ?? null,
-      storageKey: file.storageKey ?? null,
-      createdAt: asString(file.createdAt ?? item.createdAt),
-      uploadedAt: asString(file.uploadedAt ?? file.createdAt ?? item.createdAt),
+      id: asString(file.id ?? file.fileId ?? file.file_id),
+      originalName: asString(
+        file.originalName ??
+          file.original_name ??
+          file.fileName ??
+          file.file_name ??
+          file.name ??
+          file.filename,
+      ),
+      mimeType: asString(file.mimeType ?? file.mime_type ?? file.contentType ?? file.content_type),
+      size: asNumber(file.size ?? file.fileSize ?? file.file_size),
+      url:
+        file.url ??
+        file.publicUrl ??
+        file.public_url ??
+        file.signedUrl ??
+        file.signed_url ??
+        file.downloadUrl ??
+        file.download_url ??
+        null,
+      storageKey: file.storageKey ?? file.storage_key ?? file.key ?? null,
+      createdAt: asString(file.createdAt ?? file.created_at ?? item.createdAt),
+      uploadedAt: asString(
+        file.uploadedAt ?? file.uploaded_at ?? file.createdAt ?? file.created_at ?? item.createdAt,
+      ),
     })),
     card: normalizeEvidenceCard(asRecord(item.card) ?? item),
     event: asRecord(item.event)
@@ -304,6 +339,15 @@ function normalizeEvidenceCard(card: RawRecord | null) {
     id: asString(card.id),
     ocrText: (card.ocrText ?? null) as string | null,
     readableSummary: (card.readableSummary ?? null) as Record<string, unknown> | null,
+    userProvidedFields: asRecord(card.userProvidedFields) ?? null,
+    studentProfileFields: asRecord(card.studentProfileFields) ?? null,
+    extractedFields: asRecord(card.extractedFields) ?? null,
+    normalizedFields: asRecord(card.normalizedFields) ?? null,
+    verifiedFields: asRecord(card.verifiedFields) ?? null,
+    primaryFields: asRecord(card.primaryFields) ?? null,
+    fieldConfidence: asRecord(card.fieldConfidence) as Record<string, number> | null,
+    metricSuggestions: asRecord(card.metricSuggestions) ?? null,
+    academic: asRecord(card.academic) ?? null,
     extractedFieldsJson: card.extractedFieldsJson ?? null,
     normalizedFieldsJson: card.normalizedFieldsJson ?? null,
     matchingStatus: asRecord(card.matchingStatus) as ReviewTaskEvidenceCard["matchingStatus"],

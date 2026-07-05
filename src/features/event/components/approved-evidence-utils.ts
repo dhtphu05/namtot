@@ -29,20 +29,22 @@ export const levelCopy: Record<string, string> = {
 export function formatEventDateRange(startDate?: string | null, endDate?: string | null) {
   const start = formatDate(startDate);
   const end = formatDate(endDate);
-  if (start === "--" && end === "--") return "--";
-  if (end === "--" || start === end) return start;
+  if (!start && !end) return null;
+  if (!end || start === end) return start;
+  if (!start) return end;
   return `${start} - ${end}`;
 }
 
 export function formatImportedValue(item: ApprovedEvidenceSearchItem) {
-  if (item.event.convertedValue === null || item.event.convertedValue === undefined) return "--";
-  return `${item.event.convertedValue}${item.event.convertedUnit ? ` ${item.event.convertedUnit}` : ""}`;
+  const value = item.event.convertedValue ?? item.participant.convertedValue;
+  if (value === null || value === undefined) return null;
+  return `${value}${item.event.convertedUnit ? ` ${item.event.convertedUnit}` : ""}`;
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "--";
+  if (!value) return null;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--";
+  if (Number.isNaN(date.getTime())) return null;
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
     month: "2-digit",

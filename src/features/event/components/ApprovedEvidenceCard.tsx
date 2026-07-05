@@ -116,10 +116,12 @@ export function ApprovedEvidenceCard({
 }
 
 function Info({ label, value }: { label: string; value?: string | number | null }) {
+  if (value === null || value === undefined || value === "") return null;
+
   return (
     <div className="rounded-md bg-muted/40 px-3 py-2">
       <div className="text-xs font-medium uppercase text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words font-semibold text-foreground">{value || "--"}</div>
+      <div className="mt-1 break-words font-semibold text-foreground">{value}</div>
     </div>
   );
 }

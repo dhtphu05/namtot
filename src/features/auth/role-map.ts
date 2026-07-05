@@ -40,15 +40,41 @@ const officerCriterionLabel: Partial<Record<Criterion, string>> = {
   integration: "Hội nhập tốt",
 };
 
-const allOfficerCriteria: Criterion[] = [
-  "ethics",
+const officerCriterionOrder: Criterion[] = [
   "academic",
+  "ethics",
   "physical",
   "volunteer",
   "integration",
 ];
 
-const demoAllCriteriaOfficerEmail = "officer.academic@dut.udn.vn";
+const demoOfficerCriterionByEmail: Partial<Record<string, Criterion>> = {
+  "officer.academic@dut.udn.vn": "academic",
+  "officer.ethics@dut.udn.vn": "ethics",
+  "officer.physical@dut.udn.vn": "physical",
+  "officer.volunteer@dut.udn.vn": "volunteer",
+  "officer.integration@dut.udn.vn": "integration",
+};
+
+export function getOfficerLockedCriterion(user: SafeUser | null | undefined): Criterion | null {
+  if (!user || user.role !== "officer") return null;
+
+  const activeCriteria = Array.from(
+    new Set(
+      (user.officerSpecializations ?? [])
+        .filter((item) => item.isActive !== false)
+        .map((item) => item.criterion)
+        .filter((criterion) => officerCriterionOrder.includes(criterion)),
+    ),
+  );
+
+  const backendCriterion = officerCriterionOrder.find((criterion) =>
+    activeCriteria.includes(criterion),
+  );
+  if (backendCriterion) return backendCriterion;
+
+  return demoOfficerCriterionByEmail[user.email] ?? null;
+}
 
 export function getUserRoleLabel(user: SafeUser | null | undefined): string {
   if (!user) return "Sinh viên";
@@ -59,22 +85,7 @@ export function getUserAssignmentLabel(user: SafeUser | null | undefined): strin
   if (!user) return "Sinh viên";
   if (user.role !== "officer") return getRoleLabel(user.role);
 
-  const criteria =
-    user.email === demoAllCriteriaOfficerEmail
-      ? allOfficerCriteria
-      : (user.officerSpecializations ?? []).map((item) => item.criterion);
-
-  const uniqueCriteria = Array.from(new Set(criteria));
-  const coversAllCriteria = allOfficerCriteria.every((criterion) =>
-    uniqueCriteria.includes(criterion),
-  );
-
-  if (coversAllCriteria) return "5 tiêu chí Sinh viên 5 tốt";
-
-  const labels = uniqueCriteria
-    .map((criterion) => officerCriterionLabel[criterion])
-    .filter((label): label is string => Boolean(label));
-
-  if (labels.length) return labels.join(", ");
+  const lockedCriterion = getOfficerLockedCriterion(user);
+  if (lockedCriterion) return officerCriterionLabel[lockedCriterion] ?? getRoleLabel(user.role);
   return "Chưa phân công tiêu chí";
 }

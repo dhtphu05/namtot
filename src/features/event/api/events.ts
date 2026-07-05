@@ -12,6 +12,7 @@ import type { ApprovedEvidenceSearchItem, ImportEvidenceResponse } from "@/types
 export interface EventFilters {
   q?: string;
   studentCode?: string;
+  studentName?: string;
   criterion?: Criterion;
   organizerLevel?: Level;
   level?: Level;
@@ -186,7 +187,12 @@ function normalizeApprovedEvidenceSearchItem(raw: unknown): ApprovedEvidenceSear
     event: {
       id: stringValue(event.id ?? row.eventId ?? row.event_id),
       eventName: stringValue(
-        event.eventName ?? event.event_name ?? row.eventName ?? row.event_name,
+        event.eventName ??
+          event.event_name ??
+          event.name ??
+          row.eventName ??
+          row.event_name ??
+          row.name,
       ),
       criterion: stringValue(event.criterion ?? row.criterion) as Criterion,
       organizer: nullableString(event.organizer ?? row.organizer),
@@ -239,6 +245,12 @@ function normalizeApprovedEvidenceSearchItem(raw: unknown): ApprovedEvidenceSear
           participant.participation_status ??
           row.participationStatus ??
           row.participation_status,
+      ),
+      convertedValue: nullableNumber(
+        participant.convertedValue ??
+          participant.converted_value ??
+          row.participantConvertedValue ??
+          row.participant_converted_value,
       ),
     },
     importable: booleanValue(row.importable, true),
@@ -367,7 +379,10 @@ export const eventsApi = {
   },
 
   searchApprovedEvidence: async (
-    filters?: Pick<EventFilters, "studentCode" | "criterion" | "q" | "page" | "limit">,
+    filters?: Pick<
+      EventFilters,
+      "studentCode" | "studentName" | "criterion" | "q" | "page" | "limit"
+    >,
   ) => {
     try {
       const response = await apiClient<ApprovedEvidenceSearchPayload>(

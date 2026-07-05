@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { authApi } from "@/features/auth/api/auth";
 import { authKeys } from "@/features/auth/hooks/useMe";
 import { getDefaultAppPathForRole, toUiRole } from "@/features/auth/role-map";
-import { useAuth } from "@/features/auth/store/auth-store";
+import { useAuth, waitForAuthHydration } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
 import { useApp } from "@/lib/store";
 
@@ -20,7 +20,11 @@ const onboardingSteps = [
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Đăng ký - 5TOT Platform" }] }),
-  beforeLoad: () => {
+  beforeLoad: async () => {
+    if (typeof window === "undefined") return;
+
+    await waitForAuthHydration();
+
     const { accessToken, user } = useAuth.getState();
     if (accessToken && user) {
       throw redirect({ to: getDefaultAppPathForRole(user.role) });
