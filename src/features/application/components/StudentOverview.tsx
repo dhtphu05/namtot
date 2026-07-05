@@ -214,7 +214,7 @@ function ApplicationHeroCard({
   onStart: () => void;
   summary: ReturnType<typeof getStudentApplicationSummary>;
 }) {
-  const assistantHref = buildAssistantHref({
+  const assistantSearch = buildAssistantSearch({
     applicationId,
     nextActions,
     source: "overview",
@@ -239,10 +239,10 @@ function ApplicationHeroCard({
           <div className="mt-5 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
             {hasApplication ? (
               <AppButton asChild className="sm:w-auto">
-                <a href={summary.primaryAction.route}>
+                <Link to={toStudentRoute(summary.primaryAction.route)}>
                   {summary.primaryAction.label}
                   <ArrowRight className="h-4 w-4" />
-                </a>
+                </Link>
               </AppButton>
             ) : (
               <AppButton onClick={onStart} disabled={isStarting} className="sm:w-auto">
@@ -255,10 +255,10 @@ function ApplicationHeroCard({
               </AppButton>
             )}
             <AppButton asChild variant="secondary" className="sm:w-auto">
-              <a href={assistantHref}>
+              <Link to="/app/assistant" search={assistantSearch}>
                 <Sparkles className="h-4 w-4" />
                 Hỏi trợ lý
-              </a>
+              </Link>
             </AppButton>
           </div>
         </div>
@@ -303,9 +303,10 @@ function CriteriaProgressCards({ criteriaStates }: { criteriaStates: CriteriaSta
           {criteriaStates.map((state) => {
             const Icon = criterionIcons[state.key] ?? FileText;
             return (
-              <a
+              <Link
                 key={state.key}
-                href={criterionHref(state.key)}
+                to="/app/application"
+                search={{ criterion: state.key }}
                 className="min-w-0 scroll-ml-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.035)] transition hover:border-[#91BCEB] hover:shadow-sm"
               >
                 <div className="flex min-w-0 items-start justify-between gap-3">
@@ -327,7 +328,7 @@ function CriteriaProgressCards({ criteriaStates }: { criteriaStates: CriteriaSta
                 ) : (
                   <p className="mt-2 line-clamp-1 text-xs text-slate-500">Đang theo dõi</p>
                 )}
-              </a>
+              </Link>
             );
           })}
         </div>
@@ -373,7 +374,12 @@ function ActionRow({ action, index }: { action: NextAction; index: number }) {
         <p className="line-clamp-1 text-sm text-[var(--text-secondary)]">{action.description}</p>
       </div>
       <AppButton asChild size="sm" variant={index === 0 ? "primary" : "secondary"}>
-        <a href={actionHref(action)}>{action.actionLabel}</a>
+        <Link
+          to={action.criterionKey ? "/app/application" : toStudentRoute(action.route)}
+          search={action.criterionKey ? { criterion: action.criterionKey } : undefined}
+        >
+          {action.actionLabel}
+        </Link>
       </AppButton>
     </div>
   );
@@ -418,9 +424,12 @@ function LatestFeedbackCard({
               </p>
               <div className="mt-3">
                 <AppButton asChild size="sm" variant="secondary">
-                  <a href={feedbackHref(item)}>
+                  <Link
+                    to={item.criterionKey ? "/app/application" : "/app/feedback"}
+                    search={item.criterionKey ? { criterion: item.criterionKey } : undefined}
+                  >
                     {item.criterionKey ? "Đi đến tiêu chí" : "Xem phản hồi"}
-                  </a>
+                  </Link>
                 </AppButton>
               </div>
             </div>
@@ -444,7 +453,7 @@ function CompactHelpCard({
   applicationStatus?: string;
   nextActions: string[];
 }) {
-  const assistantHref = buildAssistantHref({
+  const assistantSearch = buildAssistantSearch({
     applicationId,
     nextActions,
     source: "overview",
@@ -461,17 +470,30 @@ function CompactHelpCard({
           </p>
         </div>
         <AppButton asChild variant="secondary" size="sm" className="shrink-0">
-          <a href={assistantHref}>
+          <Link to="/app/assistant" search={assistantSearch}>
             <Sparkles className="h-4 w-4" />
             Hỏi trợ lý
-          </a>
+          </Link>
         </AppButton>
       </div>
     </SectionCard>
   );
 }
 
-function buildAssistantHref({
+type StudentOverviewRoute = "/app/application" | "/app/feedback";
+
+type AssistantSearch = {
+  source: "overview" | "criterion" | "feedback";
+  applicationId?: string;
+  status?: string;
+  criterionKey?: string;
+  criterionLabel?: string;
+  feedbackId?: string;
+  message?: string;
+  nextActions?: string;
+};
+
+function buildAssistantSearch({
   applicationId,
   criterionKey,
   criterionLabel,
@@ -489,16 +511,17 @@ function buildAssistantHref({
   nextActions?: string[];
   source: "overview" | "criterion" | "feedback";
   status?: string;
-}) {
-  const params = new URLSearchParams({ source });
-  if (applicationId) params.set("applicationId", applicationId);
-  if (status) params.set("status", status);
-  if (criterionKey) params.set("criterionKey", criterionKey);
-  if (criterionLabel) params.set("criterionLabel", criterionLabel);
-  if (feedbackId) params.set("feedbackId", feedbackId);
-  if (message) params.set("message", message);
-  if (nextActions?.length) params.set("nextActions", nextActions.slice(0, 3).join("|"));
-  return `/app/assistant?${params.toString()}`;
+}): AssistantSearch {
+  return {
+    source,
+    applicationId,
+    status,
+    criterionKey,
+    criterionLabel,
+    feedbackId,
+    message,
+    nextActions: nextActions?.length ? nextActions.slice(0, 3).join("|") : undefined,
+  };
 }
 
 function OverviewSkeleton() {
@@ -554,16 +577,8 @@ function normalizeEvidences(value: unknown): EvidenceResponse[] {
   return [];
 }
 
-function criterionHref(criterion: Criterion) {
-  return `/app/application?criterion=${encodeURIComponent(criterion)}`;
-}
-
-function actionHref(action: NextAction) {
-  return action.criterionKey ? criterionHref(action.criterionKey) : action.route;
-}
-
-function feedbackHref(item: FeedbackItem) {
-  return item.criterionKey ? criterionHref(item.criterionKey) : "/app/feedback";
+function toStudentRoute(route: string): StudentOverviewRoute {
+  return route === "/app/feedback" ? "/app/feedback" : "/app/application";
 }
 
 function getFirstName(fullName?: string | null) {
