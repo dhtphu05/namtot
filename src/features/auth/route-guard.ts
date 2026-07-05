@@ -12,7 +12,6 @@ const studentRoutes = [
   "/app/ai-precheck",
   "/app/cascade",
   "/app/ekyc",
-  "/app/chatbot",
   "/app/wizard",
 ];
 
@@ -37,7 +36,7 @@ const managerRoutes = [
 ];
 const collectiveRoutes = ["/app/collective"];
 
-const sharedAuthenticatedRoutes = ["/app/notifications"];
+const sharedAuthenticatedRoutes = ["/app/notifications", "/app/chatbot"];
 const studentEvidenceRoutes = ["/app/evidence", "/app/event-library"];
 const eventRegistryRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const resolutionRoles: Role[] = ["officer", "manager", "committee", "admin"];

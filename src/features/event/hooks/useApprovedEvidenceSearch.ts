@@ -7,6 +7,7 @@ import { evidenceKeys } from "@/features/evidence/hooks/useEvidence";
 
 export type ApprovedEvidenceFilters = {
   studentCode?: string | null;
+  studentName?: string | null;
   criterion?: Criterion | "all";
   q?: string;
   status?: "all" | "importable" | "imported";
@@ -24,6 +25,7 @@ export function useApprovedEvidenceSearch(filters: ApprovedEvidenceFilters, enab
     queryFn: async () => {
       const response = await eventsApi.searchApprovedEvidence({
         studentCode: filters.studentCode ?? undefined,
+        studentName: filters.studentName ?? undefined,
         criterion: filters.criterion && filters.criterion !== "all" ? filters.criterion : undefined,
         q: filters.q?.trim() || undefined,
       });

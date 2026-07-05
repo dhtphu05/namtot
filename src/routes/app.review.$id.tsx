@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { AuditTimeline } from "@/features/audit/components/AuditTimeline";
 import { useAuth } from "@/features/auth/store/auth-store";
+import { SmartbotPanel } from "@/features/chatbot/components/SmartbotPanel";
 import { CriterionBadge } from "@/features/review/components/CriterionBadge";
 import { EmptyReviewState } from "@/features/review/components/EmptyReviewState";
 import { LevelBadge } from "@/features/review/components/LevelBadge";
@@ -263,6 +264,7 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
           </div>
 
           <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+            <ReviewerCopilotPanel task={task} />
             {canDecide ? (
               <ReviewDecisionPanel task={task} onSuccess={() => void refetch()} />
             ) : null}
@@ -299,6 +301,25 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
         }
       />
     </>
+  );
+}
+
+function ReviewerCopilotPanel({ task }: { task: ReviewTaskDetail }) {
+  return (
+    <SmartbotPanel
+      applicationId={task.application.id}
+      contextScope="reviewer_copilot"
+      pageContext={{ page: "review_task", taskId: task.id, criterion: task.criterion }}
+      compact
+      initialPrompt="Mình có thể hỗ trợ tóm tắt minh chứng và soạn dự thảo yêu cầu bổ sung. Cán bộ cần chỉnh sửa/xác nhận trước khi gửi."
+      defaultPrompts={[
+        "Tóm tắt minh chứng",
+        "Minh chứng còn thiếu gì?",
+        "Tìm case tương tự",
+        "Soạn yêu cầu bổ sung",
+        "Chuyển Resolution Hub",
+      ]}
+    />
   );
 }
 

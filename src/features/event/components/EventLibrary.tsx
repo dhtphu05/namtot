@@ -8,6 +8,7 @@ import { useEvents, useCheckParticipant, useImportToApplication } from "@/featur
 import { useCurrentApplication } from "@/features/application/hooks/useApplication";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { SmartbotPanel } from "@/features/chatbot/components/SmartbotPanel";
 
 export function EventLibrary() {
   const user = useAuth((s) => s.user);
@@ -125,6 +126,17 @@ export function EventLibrary() {
         title="Kho minh chứng & sự kiện hợp lệ"
         subtitle="Tìm các sự kiện đã được xác nhận roster trước khi import vào hồ sơ"
       />
+
+      <div className="mb-5">
+        <SmartbotPanel
+          applicationId={applicationId}
+          contextScope="student_helpdesk"
+          pageContext={{ page: "matching_hub", criterion: "volunteer" }}
+          compact
+          initialPrompt="Mình có thể tìm minh chứng trong Matching Hub cho tiêu chí Tình nguyện tốt cấp Trường."
+          quickPrompts={["Tìm minh chứng tình nguyện", "Mùa hè xanh 2025", "Hiến máu nhân đạo đợt 1"]}
+        />
+      </div>
 
       {!canImportEvent ? (
         <Card className="mb-4 bg-[#FFF7E6]">

@@ -2,11 +2,14 @@ import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   Bell,
+  Bot,
   CheckCircle2,
   CircleAlert,
   FileText,
   Loader2,
   Plus,
+  Search,
+  Upload,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/layout/TopBar";
@@ -189,7 +192,7 @@ export function StudentOverview() {
     <>
       <TopBar
         title={`Xin chào, ${firstName}`}
-        subtitle="Dữ liệu bên dưới được tải theo tài khoản đang đăng nhập, không dùng dữ liệu demo."
+        subtitle="Dữ liệu bên dưới được tải theo tài khoản đang đăng nhập."
       />
 
       <Card className="mb-5 overflow-hidden !p-0">
@@ -203,7 +206,7 @@ export function StudentOverview() {
             </span>
             {apiUnavailable && (
               <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-900">
-                Demo fallback
+                Dữ liệu tạm thời
               </span>
             )}
           </div>
@@ -249,6 +252,8 @@ export function StudentOverview() {
           </div>
         </div>
       </Card>
+
+      <SchoolDemoAssistant applicationId={application.id} />
 
       {hasFinalResult || application.finalNote ? (
         <div className="mb-5 rounded-xl border border-[#E3ECF6] bg-white/85 px-4 py-3">
@@ -367,6 +372,48 @@ export function StudentOverview() {
   );
 }
 
+function SchoolDemoAssistant({ applicationId }: { applicationId?: string }) {
+  return (
+    <section className="mb-5 rounded-xl border border-[#DDEAF7] bg-white px-4 py-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EAF4FF] text-[#0057C2]">
+              <Bot className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-base font-bold text-brand-deep">Trợ lý hồ sơ cấp Trường</h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+                Hồ sơ của bạn còn 2 việc cần xử lý: bổ sung minh chứng Thể lực tốt và kiểm tra thêm minh chứng Tình nguyện tốt.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="flex max-w-full flex-wrap gap-2">
+          <Link to="/app/chatbot" search={{ context: "dashboard", targetLevel: "school", applicationId } as never}>
+            <Button variant="secondary" className="rounded-lg">
+              <Bot className="h-4 w-4" />
+              Hỏi AI
+            </Button>
+          </Link>
+          <Link to="/app/event-library" search={{ criterion: "volunteer" } as never}>
+            <Button variant="secondary" className="rounded-lg">
+              <Search className="h-4 w-4" />
+              Tìm minh chứng
+            </Button>
+          </Link>
+          <Link to="/app/evidence" search={{ criterion: "physical", action: "upload" } as never}>
+            <Button className="rounded-lg">
+              <Upload className="h-4 w-4" />
+              Upload thể lực
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function buildDemoApplication(userId?: string): ApplicationWithSummary {
   const now = new Date().toISOString();
   return {
@@ -400,17 +447,17 @@ function buildDemoApplication(userId?: string): ApplicationWithSummary {
     },
     latestPrecheckResult: {
       readinessScore: 68,
-      nextBestAction: "Demo fallback: kiem tra backend API de tai du lieu that.",
+      nextBestAction: "Kiem tra backend API de tai du lieu that.",
       missingItems: [
         { criterion: "volunteer", message: "Bo sung them minh chung tinh nguyen." },
         { criterion: "integration", message: "Xac minh chung chi hoi nhap." },
       ],
       criteriaResults: [
-        { criterion: "ethics", status: "passed", score: 80, explanation: "Demo: dat co ban." },
-        { criterion: "academic", status: "passed", score: 75, explanation: "Demo: can xac minh bang diem." },
-        { criterion: "physical", status: "passed", score: 70, explanation: "Demo: da co minh chung." },
-        { criterion: "volunteer", status: "pending", score: 55, explanation: "Demo: can bo sung." },
-        { criterion: "integration", status: "pending", score: 60, explanation: "Demo: cho xac minh." },
+        { criterion: "ethics", status: "passed", score: 80, explanation: "Dat co ban." },
+        { criterion: "academic", status: "passed", score: 75, explanation: "Can xac minh bang diem." },
+        { criterion: "physical", status: "passed", score: 70, explanation: "Da co minh chung." },
+        { criterion: "volunteer", status: "pending", score: 55, explanation: "Can bo sung." },
+        { criterion: "integration", status: "pending", score: 60, explanation: "Cho xac minh." },
       ],
     },
   };

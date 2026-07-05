@@ -356,7 +356,7 @@ function RolePanel() {
       {ENABLE_DEMO_ROLE_SWITCH ? (
         <>
           <div className="mb-2 rounded-2xl bg-[#FFF7E6] px-3 py-2 text-[11px] font-medium text-amber-800">
-            Chế độ demo chỉ đổi giao diện. Quyền dữ liệu vẫn theo tài khoản đang đăng nhập.
+            Chế độ xem nhanh chỉ đổi giao diện. Quyền dữ liệu vẫn theo tài khoản đang đăng nhập.
           </div>
           <select
             value={role}

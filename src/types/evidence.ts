@@ -135,6 +135,7 @@ export type ApprovedEvidenceSearchItem = {
     className?: string | null;
     faculty?: string | null;
     participationStatus?: string | null;
+    convertedValue?: number | null;
   };
   importable: boolean;
   alreadyImported: boolean;

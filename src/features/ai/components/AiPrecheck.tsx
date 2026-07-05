@@ -13,6 +13,7 @@ import {
   useSubmitApplication,
 } from "@/features/application/hooks/useApplication";
 import { SubmitConfirmationModal } from "@/features/application/components/SubmitConfirmationModal";
+import { SmartbotPanel } from "@/features/chatbot/components/SmartbotPanel";
 import { useEvidences } from "@/features/evidence/hooks/useEvidence";
 import type { Criterion } from "@/lib/api/types";
 import { useMemo, useState } from "react";
@@ -126,7 +127,7 @@ export function AiPrecheck() {
             <Chip tone="brand"><Sparkles className="w-3 h-3" /> AI gợi ý - cán bộ xác nhận</Chip>
             <h2 className="text-3xl font-bold text-brand-deep mt-3">
               {result
-                ? `Hồ sơ đạt khoảng ${overall}% cho cấp ${result.level ?? application?.targetLevel ?? "đang chọn"}`
+                ? `Mức sẵn sàng tiền kiểm: ${overall}% cho cấp ${result.level ?? application?.targetLevel ?? "đang chọn"}`
                 : "Bạn chưa chạy tiền kiểm"}
             </h2>
             <p className="text-muted-foreground mt-2">
@@ -183,11 +184,22 @@ export function AiPrecheck() {
         </div>
       </motion.div>
 
+      <div className="mb-6">
+        <SmartbotPanel
+          applicationId={application?.id}
+          contextScope="student_helpdesk"
+          pageContext={{ page: "precheck" }}
+          compact
+          initialPrompt="Mình có thể giải thích gap tiền kiểm cấp Trường và gợi ý bước xử lý tiếp theo."
+          quickPrompts={["Hồ sơ cấp Trường của em còn thiếu gì?", "Tìm minh chứng tình nguyện", "Hỏi cán bộ phụ trách"]}
+        />
+      </div>
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-7">
         {CRITERIA.map((c, i) => {
           const v = scores[i];
           const hasScore = typeof v === "number";
-          const status = !hasScore ? "Chưa tiền kiểm" : v >= 85 ? "Có thể đạt" : v >= 70 ? "Cần xác minh" : "Cần bổ sung";
+          const status = !hasScore ? "Chưa tiền kiểm" : v >= 85 ? "Có dữ liệu" : v >= 70 ? "Cần cán bộ xác minh" : "Còn thiếu";
           const tone = !hasScore ? "muted" : v >= 85 ? "success" : v >= 70 ? "brand" : "warning";
           return (
             <motion.div key={c.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="card-soft p-5">
@@ -251,4 +263,3 @@ export function AiPrecheck() {
     </>
   );
 }
-

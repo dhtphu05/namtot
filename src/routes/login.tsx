@@ -118,17 +118,17 @@ function Login() {
             <div className="mt-5 text-xs font-bold uppercase tracking-wide text-[#0057C2]">Đăng nhập</div>
             <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-[#0F172A]">Tiếp tục hồ sơ Sinh viên 5 tốt</h1>
             <p className="mt-3 max-w-xl text-sm leading-7 text-[#64748B]">
-              Sinh viên sẽ được đưa thẳng về workspace hồ sơ. Tài khoản demo chỉ dùng để xem nhanh từng vai trò.
+              Sinh viên sẽ được đưa thẳng về workspace hồ sơ. Tài khoản truy cập nhanh chỉ dùng để xem từng vai trò.
             </p>
           </div>
 
           <div className="rounded-xl bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-bold text-[#0F172A]">Dùng tài khoản demo</div>
+                <div className="text-sm font-bold text-[#0F172A]">Dùng tài khoản truy cập nhanh</div>
                 <div className="text-xs text-[#64748B]">Mật khẩu mặc định: Password@123</div>
               </div>
-              <span className="rounded-full bg-[#FFF7E6] px-3 py-1 text-xs font-bold text-amber-700">Demo</span>
+              <span className="rounded-full bg-[#FFF7E6] px-3 py-1 text-xs font-bold text-amber-700">Nhanh</span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {quickRoles.map((role) => {

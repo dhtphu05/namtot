@@ -7,6 +7,7 @@ import {
   FilePlus2,
   FileText,
   Loader2,
+  MessageSquare,
   Search,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,9 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { TopBar } from "@/components/layout/TopBar";
+import { chatbotApi } from "@/features/chatbot/api/chatbot";
+import { SmartbotCardRenderer } from "@/features/chatbot/components/SmartbotCardRenderer";
+import type { ChatbotResponse } from "@/features/chatbot/types";
 import { useCurrentApplication } from "@/features/application/hooks/useApplication";
 import { useAuth } from "@/features/auth/store/auth-store";
 import type { KnowledgeBaseItem } from "@/features/evidence/api/knowledge-base";
@@ -82,10 +86,12 @@ export function EvidenceWorkspaceSafe() {
 function EvidenceWorkspace() {
   const user = useAuth((state) => state.user);
   const studentCode = user?.studentCode;
+  const studentName = user?.fullName;
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [initialCriterion, setInitialCriterion] = React.useState<Criterion>("academic");
   const [initialEvidenceName, setInitialEvidenceName] = React.useState("");
   const [selectedEvidence, setSelectedEvidence] = React.useState<EvidenceResponse | null>(null);
+  const [recentEvidence, setRecentEvidence] = React.useState<EvidenceResponse | null>(null);
   const currentApplication = useCurrentApplication();
   const applicationId = currentApplication.data?.application?.id;
   const applicationStatus = currentApplication.data?.application?.status;
@@ -103,6 +109,14 @@ function EvidenceWorkspace() {
     setInitialEvidenceName(evidenceName);
     setDrawerOpen(true);
   };
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const criterion = params.get("criterion");
+    const action = params.get("action");
+    if (action !== "upload" || !isStudentCriterion(criterion)) return;
+    openUpload(criterion);
+  }, []);
 
   if (currentApplication.isLoading) {
     return <LoadingState label="Đang tải hồ sơ hiện tại..." />;
@@ -146,6 +160,8 @@ function EvidenceWorkspace() {
         subtitle="Hệ thống tự kiểm tra danh sách chính thức trước khi bạn upload."
       />
 
+      <EvidenceAssistantCard applicationId={applicationId} onUploadPhysical={() => openUpload("physical")} />
+
       {evidenceQuery.isLoading ? (
         <LoadingState label="Đang tải minh chứng..." />
       ) : evidenceQuery.isError ? (
@@ -158,6 +174,13 @@ function EvidenceWorkspace() {
         />
       ) : (
         <div className="space-y-5">
+          {recentEvidence ? (
+            <PostUploadEvidenceAssistant
+              evidence={recentEvidence}
+              onAddNote={() => setSelectedEvidence(recentEvidence)}
+              onUploadAnother={() => openUpload(recentEvidence.criterion)}
+            />
+          ) : null}
           {studentEvidenceCriteria.map((criterion) => {
             const items = evidenceList.filter((item) => item.criterion === criterion.key);
             return (
@@ -166,12 +189,14 @@ function EvidenceWorkspace() {
                 criterion={criterion}
                 evidences={items}
                 studentCode={studentCode}
+                studentName={studentName}
                 applicationId={applicationId}
                 isEditable={isEditable}
                 onUpload={(name) => openUpload(criterion.key, name)}
                 onOpenEvidence={setSelectedEvidence}
                 onImported={(evidence) => {
                   setSelectedEvidence(evidence);
+                  setRecentEvidence(evidence);
                   void evidenceQuery.refetch();
                 }}
               />
@@ -190,6 +215,7 @@ function EvidenceWorkspace() {
           onCreated={(evidence) => {
             setInitialEvidenceName("");
             setSelectedEvidence(evidence);
+            setRecentEvidence(evidence);
             void evidenceQuery.refetch();
           }}
         />
@@ -206,10 +232,62 @@ function EvidenceWorkspace() {
   );
 }
 
+function EvidenceAssistantCard({
+  applicationId,
+  onUploadPhysical,
+}: {
+  applicationId?: string;
+  onUploadPhysical: () => void;
+}) {
+  return (
+    <section className="mb-5 rounded-md border border-[#DDEAF7] bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#EAF4FF] text-[#0057C2]">
+            <MessageSquare className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-brand-deep">
+              Trợ lý minh chứng cấp Trường
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+              Tìm minh chứng đã được xác nhận trước khi upload hoặc mở nhanh đúng tiêu chí cần bổ
+              sung.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex max-w-full flex-wrap gap-2">
+          <Link
+            to="/app/chatbot"
+            search={{ context: "evidence", targetLevel: "school", applicationId } as never}
+          >
+            <Button type="button" size="sm" variant="outline">
+              <MessageSquare className="h-4 w-4" />
+              Hỏi AI
+            </Button>
+          </Link>
+          <Link to="/app/event-library" search={{ criterion: "volunteer" } as never}>
+            <Button type="button" size="sm" variant="outline">
+              <Search className="h-4 w-4" />
+              Tìm minh chứng
+            </Button>
+          </Link>
+          <Button type="button" size="sm" onClick={onUploadPhysical}>
+            <FilePlus2 className="h-4 w-4" />
+            Upload thể lực
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CriterionEvidenceSection({
   criterion,
   evidences,
   studentCode,
+  studentName,
   applicationId,
   isEditable,
   onUpload,
@@ -219,6 +297,7 @@ function CriterionEvidenceSection({
   criterion: (typeof studentEvidenceCriteria)[number];
   evidences: EvidenceResponse[];
   studentCode?: string | null;
+  studentName?: string | null;
   applicationId?: string;
   isEditable: boolean;
   onUpload: (evidenceName?: string) => void;
@@ -232,9 +311,16 @@ function CriterionEvidenceSection({
         <p className="mt-1 text-sm text-muted-foreground">{criterionDescription[criterion.key]}</p>
       </div>
 
+      <CriterionAssistantBlock
+        applicationId={applicationId}
+        criterion={criterion.key}
+        onUpload={() => onUpload()}
+      />
+
       <OfficialMatchBlock
         criterion={criterion.key}
         studentCode={studentCode}
+        studentName={studentName}
         applicationId={applicationId}
         isEditable={isEditable}
         onUpload={() => onUpload()}
@@ -251,9 +337,176 @@ function CriterionEvidenceSection({
   );
 }
 
+function CriterionAssistantBlock({
+  applicationId,
+  criterion,
+  onUpload,
+}: {
+  applicationId?: string;
+  criterion: Criterion;
+  onUpload: () => void;
+}) {
+  const [response, setResponse] = React.useState<ChatbotResponse | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  if (criterion !== "volunteer" && criterion !== "physical") return null;
+
+  const sendPrompt = async (text: string) => {
+    if (!applicationId || isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await chatbotApi.sendMessage({
+        text,
+        applicationId,
+        contextScope: "student_helpdesk",
+        pageContext: { page: "evidence", criterion },
+      });
+      setResponse(result.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Chưa gửi được yêu cầu tới trợ lý.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePostback = (payload: string, label: string) => {
+    void sendPrompt(payload.startsWith("fivetot://action/") ? label : payload);
+  };
+
+  const copy =
+    criterion === "volunteer"
+      ? {
+          text: "Bạn có thể tìm minh chứng đã được xác nhận trước khi upload file.",
+          primary: "Tìm minh chứng của tôi trong Matching Hub",
+          secondary: "Minh chứng tình nguyện cần gì?",
+          upload: "Upload minh chứng mới",
+        }
+      : {
+          text: "Bạn có thể upload minh chứng Thể lực tốt như điểm môn thể dục loại Khá trở lên, giấy chứng nhận Sinh viên khỏe, hoạt động thể thao hoặc xác nhận rèn luyện thể thao định kỳ.",
+          primary: "Upload minh chứng thể lực",
+          secondary: "Minh chứng thể lực cần gì?",
+          upload: "Hỏi cán bộ",
+        };
+
+  return (
+    <div className="mb-4 rounded-md border border-[#D8E8F8] bg-[#F8FCFF] p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-bold text-brand-deep">
+            <MessageSquare className="h-4 w-4 text-[#0057C2]" />
+            Trợ lý tiêu chí cấp Trường
+          </div>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{copy.text}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {criterion === "volunteer" ? (
+          <Button
+            type="button"
+            size="sm"
+            disabled={isLoading || !applicationId}
+            onClick={() => void sendPrompt(copy.primary)}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
+            {copy.primary}
+          </Button>
+        ) : (
+          <Button type="button" size="sm" onClick={onUpload}>
+            <FilePlus2 className="h-4 w-4" />
+            {copy.primary}
+          </Button>
+        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={isLoading || !applicationId}
+          onClick={() => void sendPrompt(copy.secondary)}
+        >
+          {copy.secondary}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={criterion === "volunteer" ? onUpload : () => void sendPrompt(copy.upload)}
+          disabled={criterion === "physical" && (isLoading || !applicationId)}
+        >
+          {copy.upload}
+        </Button>
+      </div>
+      {error ? (
+        <div className="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>
+      ) : null}
+      {response ? (
+        <div className="mt-3 space-y-3 rounded-md border bg-white p-3">
+          {response.messages.map((card, index) => (
+            <SmartbotCardRenderer
+              key={`${card.type}-${index}`}
+              card={card}
+              onPostback={handlePostback}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PostUploadEvidenceAssistant({
+  evidence,
+  onAddNote,
+  onUploadAnother,
+}: {
+  evidence: EvidenceResponse;
+  onAddNote: () => void;
+  onUploadAnother: () => void;
+}) {
+  const card = (evidence as EvidenceResponse & { card?: { missingFields?: unknown[] } | null })
+    .card;
+  const hasMissingFields = Array.isArray(card?.missingFields) && card.missingFields.length > 0;
+  return (
+    <section className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-bold text-emerald-900">Trợ lý sau upload</h2>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-emerald-900">
+            {hasMissingFields
+              ? "Minh chứng chưa thể hiện rõ thông tin cần thiết. Bạn có thể upload thêm giấy xác nhận hoặc ghi chú để cán bộ kiểm tra."
+              : "Hệ thống đã đọc được thông tin từ minh chứng:\n- Tên hoạt động\n- Tiêu chí\n- Thời gian hoặc số ngày\n- Đơn vị xác nhận\n\nMinh chứng đã được ghi nhận và sẽ được cán bộ xác nhận khi xét duyệt."}
+          </p>
+        </div>
+        <Badge variant="outline">{evidence.evidenceName}</Badge>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="button" size="sm" onClick={onAddNote}>
+          {hasMissingFields ? "Ghi chú cho cán bộ" : "Nộp minh chứng này"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={onUploadAnother}>
+          {hasMissingFields ? "Upload bổ sung" : "Upload file khác"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={onAddNote}>
+          {hasMissingFields ? "Vẫn nộp minh chứng này" : "Thêm ghi chú"}
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function isStudentCriterion(value: string | null): value is Criterion {
+  return studentEvidenceCriteria.some((criterion) => criterion.key === value);
+}
+
 function OfficialMatchBlock({
   criterion,
   studentCode,
+  studentName,
   applicationId,
   isEditable,
   onUpload,
@@ -261,6 +514,7 @@ function OfficialMatchBlock({
 }: {
   criterion: Criterion;
   studentCode?: string | null;
+  studentName?: string | null;
   applicationId?: string;
   isEditable: boolean;
   onUpload: () => void;
@@ -269,6 +523,7 @@ function OfficialMatchBlock({
   const officialSearch = useApprovedEvidenceSearch(
     {
       studentCode,
+      studentName,
       criterion,
       status: "all",
     },
@@ -293,7 +548,7 @@ function OfficialMatchBlock({
         <div>
           <h3 className="font-semibold text-foreground">Minh chứng chính thức của bạn</h3>
           <p className="text-sm text-muted-foreground">
-            Hệ thống tự kiểm tra theo MSSV của bạn trong các danh sách đã xác nhận.
+            Hệ thống tự kiểm tra theo họ tên hoặc MSSV của bạn trong các danh sách đã xác nhận.
           </p>
         </div>
 
@@ -334,6 +589,7 @@ function OfficialMatchBlock({
       <SearchFallbackBlock
         criterion={criterion}
         studentCode={studentCode}
+        studentName={studentName}
         isEditable={isEditable}
         isImporting={importEvidence.isPending}
         onImport={(item) => void importItem(item)}
@@ -348,6 +604,7 @@ function OfficialMatchBlock({
 function SearchFallbackBlock({
   criterion,
   studentCode,
+  studentName,
   isEditable,
   isImporting,
   onImport,
@@ -355,6 +612,7 @@ function SearchFallbackBlock({
 }: {
   criterion: Criterion;
   studentCode?: string | null;
+  studentName?: string | null;
   isEditable: boolean;
   isImporting: boolean;
   onImport: (item: ApprovedEvidenceSearchItem) => void;
@@ -366,6 +624,7 @@ function SearchFallbackBlock({
   const search = useApprovedEvidenceSearch(
     {
       studentCode,
+      studentName,
       criterion,
       q: debouncedQ,
       status: "all",
@@ -547,6 +806,9 @@ function OfficialMatchCard({
   onImport: () => void;
 }) {
   const alreadyImported = item.alreadyImported || Boolean(item.evidenceId);
+  const dateRange = formatEventDateRange(item.event.startDate, item.event.endDate);
+  const importedValue = formatImportedValue(item);
+  const hasMetadata = Boolean(dateRange || importedValue || item.event.officialDocumentNo);
 
   return (
     <article className="rounded-md border bg-white p-3">
@@ -559,16 +821,13 @@ function OfficialMatchCard({
         </div>
         <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
       </div>
-      <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-        <InlineInfo
-          label="Thời gian"
-          value={formatEventDateRange(item.event.startDate, item.event.endDate)}
-        />
-        <InlineInfo label="Giá trị" value={formatImportedValue(item)} />
-        {item.event.officialDocumentNo ? (
+      {hasMetadata ? (
+        <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <InlineInfo label="Thời gian" value={dateRange} />
+          <InlineInfo label="Giá trị" value={importedValue} />
           <InlineInfo label="Số văn bản" value={item.event.officialDocumentNo} />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700" variant="outline">
           Có tên bạn trong danh sách
@@ -695,10 +954,12 @@ function StatusTag({ status }: { status: StudentEvidenceStatus }) {
 }
 
 function InlineInfo({ label, value }: { label: string; value?: string | number | null }) {
+  if (value === null || value === undefined || value === "") return null;
+
   return (
     <div className="rounded-md bg-muted/40 px-2.5 py-2">
       <div className="text-[11px] font-medium uppercase text-muted-foreground">{label}</div>
-      <div className="mt-0.5 break-words font-semibold text-foreground">{value || "--"}</div>
+      <div className="mt-0.5 break-words font-semibold text-foreground">{value}</div>
     </div>
   );
 }

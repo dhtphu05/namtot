@@ -25,6 +25,7 @@ type SearchStatus = "all" | "importable" | "imported";
 export function ApprovedEvidencePage() {
   const user = useAuth((state) => state.user);
   const studentCode = user?.studentCode;
+  const studentName = user?.fullName;
   const currentApplication = useCurrentApplication();
   const applicationId = currentApplication.data?.application?.id;
   const [q, setQ] = useState("");
@@ -39,6 +40,7 @@ export function ApprovedEvidencePage() {
   const search = useApprovedEvidenceSearch(
     {
       studentCode,
+      studentName,
       criterion,
       q: debouncedQ,
       status,
