@@ -40,6 +40,7 @@ import {
   useResolutionCase,
   useResolveResolutionCase,
 } from "@/features/resolution/hooks/useResolution";
+import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 import type {
   ResolutionCaseDetail,
   ResolutionCaseStatus,
@@ -211,8 +212,10 @@ function ResolutionCaseDetailContent({ caseId, role }: { caseId: string; role: R
             ) : (
               <ResolveResolutionPanel
                 caseId={resolutionCase.id}
+                criterion={resolutionCase.criterion}
                 evidences={resolutionEvidences}
                 status={resolutionCase.status}
+                targetLevel={resolutionCase.targetLevel}
                 onSuccess={() => void refetch()}
               />
             )}
@@ -549,16 +552,21 @@ function TimelineSection({ timeline }: { timeline: ResolutionTimelineItem[] }) {
 
 function ResolveResolutionPanel({
   caseId,
+  criterion,
   evidences,
   status,
+  targetLevel,
   onSuccess,
 }: {
   caseId: string;
+  criterion: ResolutionCaseDetail["criterion"];
   evidences: ResolutionEvidence[];
   status: ResolutionCaseStatus;
+  targetLevel: ResolutionCaseDetail["targetLevel"];
   onSuccess?: () => void;
 }) {
   const navigate = useNavigate();
+  const { trackAction } = useSmartUXTracking();
   const [decision, setDecision] = useState<ResolutionFinalDecision>("accepted");
   const [evidenceDecisions, setEvidenceDecisions] = useState<
     Record<string, Exclude<ResolutionFinalDecision, "closed_no_action">>
@@ -597,6 +605,13 @@ function ResolveResolutionPanel({
     }
 
     setFormError(null);
+    trackAction("manager_confirm_resolution", {
+      role: "manager",
+      criterion,
+      target_level: targetLevel,
+      status: decision,
+      count: evidences.length,
+    });
     resolveCase.mutate(
       {
         decision,
@@ -613,6 +628,13 @@ function ResolveResolutionPanel({
       },
       {
         onSuccess: () => {
+          trackAction("manager_confirm_resolution", {
+            role: "manager",
+            criterion,
+            target_level: targetLevel,
+            status: "success",
+            count: evidences.length,
+          });
           const message =
             "Đã lưu kết luận hội ý. Kết quả sẽ được áp dụng vào tác vụ/hồ sơ liên quan.";
           setSubmittedMessage(message);
@@ -775,7 +797,12 @@ function ResolveResolutionPanel({
           </div>
         ) : null}
 
-        <Button className="w-full" disabled={isResolved || resolveCase.isPending} type="submit">
+        <Button
+          className="w-full"
+          disabled={isResolved || resolveCase.isPending}
+          type="submit"
+          data-smartux-tag="officer_escalate_resolution"
+        >
           <Send className="h-4 w-4" />
           {resolveCase.isPending ? "Đang gửi..." : "Gửi kết luận"}
         </Button>

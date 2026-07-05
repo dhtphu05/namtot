@@ -15,7 +15,7 @@ export function toUiRole(role: ApiRole): UiRole {
 export function getDefaultAppPathForRole(role: ApiRole): string {
   if (role === "student") return "/app";
   if (role === "class_representative") return "/app/collective";
-  if (role === "officer") return "/app";
+  if (role === "officer") return "/app/queue";
   if (role === "manager" || role === "committee" || role === "admin") return "/app/analytics";
   return "/app";
 }

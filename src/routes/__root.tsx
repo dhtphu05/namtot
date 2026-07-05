@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import { SmartUXRouteTracker } from "@/components/analytics/SmartUXRouteTracker";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "sonner";
@@ -79,21 +80,44 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "5TOT Platform — Hồ sơ Sinh viên 5 tốt" },
-      { name: "description", content: "Nền tảng quản lý hồ sơ, AI tiền kiểm, xét duyệt và xuất danh sách Sinh viên 5 tốt." },
+      {
+        name: "description",
+        content:
+          "Nền tảng quản lý hồ sơ, AI tiền kiểm, xét duyệt và xuất danh sách Sinh viên 5 tốt.",
+      },
       { property: "og:title", content: "5TOT Platform — Hồ sơ Sinh viên 5 tốt" },
-      { property: "og:description", content: "Nền tảng quản lý hồ sơ, AI tiền kiểm, xét duyệt và xuất danh sách Sinh viên 5 tốt." },
+      {
+        property: "og:description",
+        content:
+          "Nền tảng quản lý hồ sơ, AI tiền kiểm, xét duyệt và xuất danh sách Sinh viên 5 tốt.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "5TOT Platform — Hồ sơ Sinh viên 5 tốt" },
-      { name: "twitter:description", content: "Nền tảng quản lý hồ sơ, AI tiền kiểm, xét duyệt và xuất danh sách Sinh viên 5 tốt." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ec3e2145-7696-4331-ac95-3148165a82e5/id-preview-bdf6100a--d10f1d69-070b-4a54-96d4-7668d5686d99.lovable.app-1782719439019.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ec3e2145-7696-4331-ac95-3148165a82e5/id-preview-bdf6100a--d10f1d69-070b-4a54-96d4-7668d5686d99.lovable.app-1782719439019.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Nền tảng quản lý hồ sơ, AI tiền kiểm, xét duyệt và xuất danh sách Sinh viên 5 tốt.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ec3e2145-7696-4331-ac95-3148165a82e5/id-preview-bdf6100a--d10f1d69-070b-4a54-96d4-7668d5686d99.lovable.app-1782719439019.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ec3e2145-7696-4331-ac95-3148165a82e5/id-preview-bdf6100a--d10f1d69-070b-4a54-96d4-7668d5686d99.lovable.app-1782719439019.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -107,6 +131,7 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="vi">
       <head>
         <HeadContent />
+        <SmartUXHeadScript />
       </head>
       <body>
         {children}
@@ -116,11 +141,36 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function SmartUXHeadScript() {
+  const enabled = import.meta.env.VITE_SMARTUX_ENABLED === "true";
+  const scriptSrc = import.meta.env.VITE_SMARTUX_SCRIPT_SRC;
+  const inlineScript = import.meta.env.VITE_SMARTUX_INLINE_SCRIPT;
+  const smartUXEnv = import.meta.env.VITE_SMARTUX_ENV || "production";
+
+  if (!enabled) return null;
+
+  return (
+    <>
+      {scriptSrc ? (
+        <script src={scriptSrc} async defer data-smartux="true" data-smartux-env={smartUXEnv} />
+      ) : null}
+      {!scriptSrc && inlineScript ? (
+        <script
+          data-smartux="true"
+          data-smartux-env={smartUXEnv}
+          dangerouslySetInnerHTML={{ __html: inlineScript }}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
+      <SmartUXRouteTracker />
       <Outlet />
       <Toaster position="top-right" richColors closeButton />
     </QueryClientProvider>

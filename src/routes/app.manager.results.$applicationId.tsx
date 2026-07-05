@@ -27,8 +27,16 @@ import {
 import { useAuth } from "@/features/auth/store/auth-store";
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import { FinalizationDialog } from "@/features/manager/components/FinalizationDialog";
-import { useManagerResultDetail, useReopenFinalApplication } from "@/features/manager/hooks/useManager";
-import type { ManagerResultDetail, ManagerResultEvidence, ManagerResultItem } from "@/features/manager/types";
+import {
+  useManagerResultDetail,
+  useReopenFinalApplication,
+} from "@/features/manager/hooks/useManager";
+import type {
+  ManagerResultDetail,
+  ManagerResultEvidence,
+  ManagerResultItem,
+} from "@/features/manager/types";
+import { useSignedFileUrl } from "@/features/review/hooks/useReview";
 import type { Criterion, Level, Role } from "@/features/review/types";
 import type { FinalStatus } from "@/lib/api/types";
 import { fallbackStatusLabel, getStatusTone, getWorkflowStatusLabel } from "@/lib/status-labels";
@@ -36,7 +44,8 @@ import { fallbackStatusLabel, getStatusTone, getWorkflowStatusLabel } from "@/li
 export const Route = createFileRoute("/app/manager/results/$applicationId")({
   validateSearch: (search) => ({
     focus: typeof search.focus === "string" ? search.focus : undefined,
-    resolutionCaseId: typeof search.resolutionCaseId === "string" ? search.resolutionCaseId : undefined,
+    resolutionCaseId:
+      typeof search.resolutionCaseId === "string" ? search.resolutionCaseId : undefined,
   }),
   component: ManagerResultDetailRoute,
 });
@@ -112,11 +121,17 @@ function ManagerResultDetailRoute() {
   if (detailQuery.isError || !detailQuery.data) {
     return (
       <>
-        <TopBar title="Kết quả hồ sơ" subtitle="Không thể tải chi tiết hồ sơ." action={<BackButton />} />
+        <TopBar
+          title="Kết quả hồ sơ"
+          subtitle="Không thể tải chi tiết hồ sơ."
+          action={<BackButton />}
+        />
         <Card>
           <div className="py-10 text-center">
             <div className="font-semibold text-rose-600">
-              {detailQuery.error instanceof Error ? detailQuery.error.message : "Không tìm thấy hồ sơ."}
+              {detailQuery.error instanceof Error
+                ? detailQuery.error.message
+                : "Không tìm thấy hồ sơ."}
             </div>
             <Button className="mt-4" variant="outline" onClick={() => void detailQuery.refetch()}>
               Tải lại
@@ -134,8 +149,12 @@ function ManagerResultDetailRoute() {
   const processedCount = detail.reviewTasks.filter((task) =>
     ["accepted", "rejected", "supplement_required", "resolution_needed"].includes(task.status),
   ).length;
-  const openResolutionCount = detail.resolutionCases.filter((item) => item.status === "open" || item.status === "in_review").length;
-  const supplementCount = detail.reviewTasks.filter((task) => task.status === "supplement_required").length;
+  const openResolutionCount = detail.resolutionCases.filter(
+    (item) => item.status === "open" || item.status === "in_review",
+  ).length;
+  const supplementCount = detail.reviewTasks.filter(
+    (task) => task.status === "supplement_required",
+  ).length;
 
   return (
     <>
@@ -147,7 +166,10 @@ function ManagerResultDetailRoute() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
-          <InboxFocusBanner focus={inboxFocus.focus} resolutionCaseId={inboxFocus.resolutionCaseId} />
+          <InboxFocusBanner
+            focus={inboxFocus.focus}
+            resolutionCaseId={inboxFocus.resolutionCaseId}
+          />
           <HeaderCard detail={detail} />
           <AnalysisSection detail={detail} />
           <CriterionDecisionBoard detail={detail} />
@@ -213,24 +235,45 @@ function InboxFocusBanner({
 
 function getInboxFocusContent(focus: string) {
   if (focus === "ready_to_finalize") {
-    return { title: "Hồ sơ đủ điều kiện chốt", desc: "Kiểm tra Decision Panel bên phải và chốt theo đề xuất mới nhất." };
+    return {
+      title: "Hồ sơ đủ điều kiện chốt",
+      desc: "Kiểm tra Decision Panel bên phải và chốt theo đề xuất mới nhất.",
+    };
   }
   if (focus === "downgraded") {
-    return { title: "Hồ sơ bị hạ cấp", desc: "Ưu tiên xem phần phân tích cascade và lý do blocker trước khi chốt." };
+    return {
+      title: "Hồ sơ bị hạ cấp",
+      desc: "Ưu tiên xem phần phân tích cascade và lý do blocker trước khi chốt.",
+    };
   }
   if (focus === "no_eligible_level") {
-    return { title: "Không đạt cấp nào", desc: "Xem blocker chính và chốt chưa đạt nếu dữ liệu đã đầy đủ." };
+    return {
+      title: "Không đạt cấp nào",
+      desc: "Xem blocker chính và chốt chưa đạt nếu dữ liệu đã đầy đủ.",
+    };
   }
   if (focus === "needs_resolution") {
-    return { title: "Còn case hội ý đang mở", desc: "Cần xử lý Resolution Case trước khi chốt kết quả cuối." };
+    return {
+      title: "Còn case hội ý đang mở",
+      desc: "Cần xử lý Resolution Case trước khi chốt kết quả cuối.",
+    };
   }
   if (focus === "supplement_required") {
-    return { title: "Đang cần bổ sung", desc: "Kiểm tra tiêu chí cần bổ sung và trạng thái minh chứng của sinh viên." };
+    return {
+      title: "Đang cần bổ sung",
+      desc: "Kiểm tra tiêu chí cần bổ sung và trạng thái minh chứng của sinh viên.",
+    };
   }
   if (focus === "overdue") {
-    return { title: "Việc xử lý quá hạn", desc: "Ưu tiên kiểm tra task/case lâu chưa cập nhật và nhắc bên phụ trách." };
+    return {
+      title: "Việc xử lý quá hạn",
+      desc: "Ưu tiên kiểm tra task/case lâu chưa cập nhật và nhắc bên phụ trách.",
+    };
   }
-  return { title: "Mở từ hàng chờ chốt kết quả", desc: "Hồ sơ này được mở theo bucket công việc của Hội đồng/Cấp quản lý." };
+  return {
+    title: "Mở từ hàng chờ chốt kết quả",
+    desc: "Hồ sơ này được mở theo bucket công việc của Hội đồng/Cấp quản lý.",
+  };
 }
 
 function ReopenFinalDialog({
@@ -280,10 +323,14 @@ function ReopenFinalDialog({
         </DialogHeader>
         <div className="space-y-4">
           <label className="block text-sm">
-            <span className="mb-1 block font-semibold text-brand-deep">Trang thai sau khi mo lai</span>
+            <span className="mb-1 block font-semibold text-brand-deep">
+              Trang thai sau khi mo lai
+            </span>
             <select
               value={status}
-              onChange={(event) => setStatus(event.target.value as "under_review" | "supplement_required")}
+              onChange={(event) =>
+                setStatus(event.target.value as "under_review" | "supplement_required")
+              }
               className="w-full rounded-lg border border-[#DCE7F2] px-3 py-2"
             >
               <option value="under_review">Đang xét duyệt</option>
@@ -345,8 +392,8 @@ function DecisionPanel({
   supplementCount: number;
 }) {
   const isFinalized = Boolean(detail.application.finalizedAt);
-  const blockerMessages = detail.aggregation.blockingIssues.map((issue) =>
-    `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`,
+  const blockerMessages = detail.aggregation.blockingIssues.map(
+    (issue) => `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`,
   );
   const businessReady = detail.aggregation.canFinalize && blockerMessages.length === 0;
   const canSubmitFinal = canFinalize && businessReady;
@@ -366,20 +413,30 @@ function DecisionPanel({
 
         <div className="mt-4 space-y-2 text-sm">
           <Info label="Kết quả cuối" value={getFinalResultLabel(detail)} />
-          <Info label="Cấp đạt" value={getLevelLabel(detail.application.finalLevel, "Không có cấp đạt")} />
+          <Info
+            label="Cấp đạt"
+            value={getLevelLabel(detail.application.finalLevel, "Không có cấp đạt")}
+          />
           <Info label="Thời gian chốt" value={formatDate(detail.application.finalizedAt)} />
           <Info label="Người chốt" value={detail.application.finalizedBy?.fullName ?? "--"} />
         </div>
 
         {detail.application.finalNote ? (
           <div className="mt-4 rounded-lg border bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Ghi chú hội đồng</div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Ghi chú hội đồng
+            </div>
             <p className="mt-1 whitespace-pre-wrap">{detail.application.finalNote}</p>
           </div>
         ) : null}
 
         {canFinalize ? (
-          <Button className="mt-5 w-full" variant="outline" onClick={onReopen} title="Mở lại kết quả đã chốt">
+          <Button
+            className="mt-5 w-full"
+            variant="outline"
+            onClick={onReopen}
+            title="Mở lại kết quả đã chốt"
+          >
             Mở lại kết quả
           </Button>
         ) : null}
@@ -399,19 +456,31 @@ function DecisionPanel({
       <div className="mt-4 space-y-2 text-sm">
         <Info label="Aim đăng ký" value={getLevelLabel(detail.application.targetLevel)} />
         <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
-        <Info label="Gợi ý hệ thống" value={getPendingFinalResultLabel(detail.aggregation.suggestedFinalStatus, suggestedLevel)} />
+        <Info
+          label="Gợi ý hệ thống"
+          value={getPendingFinalResultLabel(
+            detail.aggregation.suggestedFinalStatus,
+            suggestedLevel,
+          )}
+        />
         <Info label="Điều kiện nghiệp vụ" value={businessReady ? "Đủ để chốt" : "Chưa đủ"} />
         <Info label="Quyền chốt của tài khoản" value={canFinalize ? "Có" : "Không"} />
       </div>
       <div className="mt-4 space-y-2 rounded-lg border bg-slate-50 p-3 text-sm">
-        <DecisionCheck ok={processedCount >= 5} label={`${Math.min(processedCount, 5)}/5 tiêu chí đã xử lý`} />
+        <DecisionCheck
+          ok={processedCount >= 5}
+          label={`${Math.min(processedCount, 5)}/5 tiêu chí đã xử lý`}
+        />
         <DecisionCheck ok={openResolutionCount === 0} label="Không còn hội ý đang mở" />
         <DecisionCheck ok={supplementCount === 0} label="Không còn yêu cầu bổ sung" />
       </div>
       {blockerMessages.length ? (
         <div className="mt-4 space-y-2">
           {blockerMessages.map((message, index) => (
-            <div key={`${message}-${index}`} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <div
+              key={`${message}-${index}`}
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+            >
               {message}
             </div>
           ))}
@@ -419,13 +488,19 @@ function DecisionPanel({
       ) : null}
       <div className="mt-5">
         {canFinalize ? (
-          <Button className="w-full" disabled={!canSubmitFinal} onClick={onFinalize}>
+          <Button
+            className="w-full"
+            disabled={!canSubmitFinal}
+            onClick={onFinalize}
+            data-smartux-tag="manager_confirm_final_result"
+          >
             <CheckCircle2 className="h-4 w-4" />
             Chọn kết quả chốt
           </Button>
         ) : (
           <div className="rounded-lg border bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
-            Cán bộ duyệt từng tiêu chí. Hội đồng/Cấp quản lý theo dõi, điều phối và chốt kết quả cuối.
+            Cán bộ duyệt từng tiêu chí. Hội đồng/Cấp quản lý theo dõi, điều phối và chốt kết quả
+            cuối.
           </div>
         )}
       </div>
@@ -460,17 +535,26 @@ function HeaderCard({ detail }: { detail: ManagerResultDetail }) {
             )}
           </div>
           <div className="min-w-0">
-            <h1 className="break-words text-2xl font-bold text-brand-deep">{detail.student?.fullName ?? "Chưa có dữ liệu"}</h1>
+            <h1 className="break-words text-2xl font-bold text-brand-deep">
+              {detail.student?.fullName ?? "Chưa có dữ liệu"}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {detail.student?.studentCode ?? "--"} • {detail.student?.className ?? "--"} • {detail.student?.faculty ?? "--"}
+              {detail.student?.studentCode ?? "--"} • {detail.student?.className ?? "--"} •{" "}
+              {detail.student?.faculty ?? "--"}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Chip tone="brand">Hồ sơ {detail.application.schoolYear}</Chip>
-              <Chip tone={statusTone(detail.application.status)}>{label(detail.application.status)}</Chip>
+              <Chip tone={statusTone(detail.application.status)}>
+                {label(detail.application.status)}
+              </Chip>
               <Chip tone="brand">{getLevelLabel(detail.application.targetLevel)}</Chip>
-              {hasFinalLevel ? <Chip tone="success">Đã chốt {getLevelLabel(detail.application.finalLevel)}</Chip> : null}
+              {hasFinalLevel ? (
+                <Chip tone="success">Đã chốt {getLevelLabel(detail.application.finalLevel)}</Chip>
+              ) : null}
               {!photoUrl ? <Chip tone="muted">Chưa có ảnh hồ sơ</Chip> : null}
-              {isLegacyCentral ? <Chip tone="warning">Ngoài phạm vi flow chính hiện tại</Chip> : null}
+              {isLegacyCentral ? (
+                <Chip tone="warning">Ngoài phạm vi flow chính hiện tại</Chip>
+              ) : null}
             </div>
           </div>
         </div>
@@ -483,10 +567,14 @@ function HeaderCard({ detail }: { detail: ManagerResultDetail }) {
 }
 
 function DecisionConsole({ detail }: { detail: ManagerResultDetail }) {
-  const suggestedLevel = detail.latestCascade?.suggestedLevel ?? detail.aggregation.suggestedFinalLevel ?? null;
+  const suggestedLevel =
+    detail.latestCascade?.suggestedLevel ?? detail.aggregation.suggestedFinalLevel ?? null;
   const canFinalize = detail.aggregation.canFinalize;
   const blocker = detail.aggregation.blockingIssues[0]?.message ?? "Không có blocker chính.";
-  const finalText = getPendingFinalResultLabel(detail.aggregation.suggestedFinalStatus, suggestedLevel);
+  const finalText = getPendingFinalResultLabel(
+    detail.aggregation.suggestedFinalStatus,
+    suggestedLevel,
+  );
 
   return (
     <Card>
@@ -525,7 +613,8 @@ function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
           <div>
             <h2 className="font-bold text-brand-deep">5 tiêu chí xét duyệt</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mỗi tiêu chí gom task, minh chứng, ghi chú cán bộ và blocker vào một dòng để hội đồng ra quyết định nhanh.
+              Mỗi tiêu chí gom task, minh chứng, ghi chú cán bộ và blocker vào một dòng để hội đồng
+              ra quyết định nhanh.
             </p>
           </div>
           <Chip tone={detail.aggregation.canFinalize ? "success" : "warning"}>
@@ -537,7 +626,9 @@ function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
           {criterionOrder.map((criterion) => {
             const summary = detail.criterionSummary[criterion];
             const task = detail.reviewTasks.find((candidate) => candidate.criterion === criterion);
-            const evidences = detail.applicationEvidences.filter((evidence) => evidence.criterion === criterion);
+            const evidences = detail.applicationEvidences.filter(
+              (evidence) => evidence.criterion === criterion,
+            );
             const note = getBusinessNote(task?.decisionReason, task?.officerNote, summary?.summary);
 
             return (
@@ -581,7 +672,11 @@ function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
                       </Button>
                     ) : null}
                     {detail.resolutionCases
-                      .filter((item) => item.evidenceId && evidences.some((evidence) => evidence.id === item.evidenceId))
+                      .filter(
+                        (item) =>
+                          item.evidenceId &&
+                          evidences.some((evidence) => evidence.id === item.evidenceId),
+                      )
                       .slice(0, 2)
                       .map((item) => (
                         <Button key={item.id} asChild size="sm" variant="secondary">
@@ -594,9 +689,15 @@ function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
 
                   <div className="mt-4 grid gap-3 lg:grid-cols-2">
                     {evidences.length ? (
-                      evidences.slice(0, 4).map((evidence) => (
-                        <EvidenceCard key={evidence.id} evidence={evidence} onSelect={setSelectedEvidence} />
-                      ))
+                      evidences
+                        .slice(0, 4)
+                        .map((evidence) => (
+                          <EvidenceCard
+                            key={evidence.id}
+                            evidence={evidence}
+                            onSelect={setSelectedEvidence}
+                          />
+                        ))
                     ) : (
                       <div className="rounded-lg border border-dashed bg-white p-3 text-sm text-muted-foreground">
                         Chưa có minh chứng liên quan.
@@ -605,7 +706,8 @@ function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
                   </div>
                   {evidences.length > 4 ? (
                     <div className="mt-3 rounded-lg border bg-white px-3 py-2 text-sm text-muted-foreground">
-                      Còn {evidences.length - 4} minh chứng khác. Mở task review để xem toàn bộ hồ sơ tiêu chí.
+                      Còn {evidences.length - 4} minh chứng khác. Mở task review để xem toàn bộ hồ
+                      sơ tiêu chí.
                     </div>
                   ) : null}
                 </div>
@@ -637,11 +739,14 @@ function CriterionSummary({ detail }: { detail: ManagerResultDetail }) {
         <div>
           <h2 className="font-bold text-brand-deep">Tổng quan 5 tiêu chí</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Màn này cho quản lý/hội đồng biết tiêu chí nào đã đạt, chưa đạt, cần bổ sung hoặc chưa được cán bộ xét.
+            Màn này cho quản lý/hội đồng biết tiêu chí nào đã đạt, chưa đạt, cần bổ sung hoặc chưa
+            được cán bộ xét.
           </p>
         </div>
         <Chip tone={incompleteCriteria.length ? "warning" : "success"}>
-          {incompleteCriteria.length ? `${incompleteCriteria.length} tiêu chí cần xử lý` : "Đủ 5/5 tiêu chí"}
+          {incompleteCriteria.length
+            ? `${incompleteCriteria.length} tiêu chí cần xử lý`
+            : "Đủ 5/5 tiêu chí"}
         </Chip>
       </div>
 
@@ -653,7 +758,9 @@ function CriterionSummary({ detail }: { detail: ManagerResultDetail }) {
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {incompleteCriteria.map((criterion) => (
-              <Chip key={criterion} tone="warning">{criterionLabel[criterion]}</Chip>
+              <Chip key={criterion} tone="warning">
+                {criterionLabel[criterion]}
+              </Chip>
             ))}
           </div>
         </div>
@@ -663,15 +770,15 @@ function CriterionSummary({ detail }: { detail: ManagerResultDetail }) {
         {criterionOrder.map((criterion) => {
           const item = detail.criterionSummary[criterion];
           const task = detail.reviewTasks.find((candidate) => candidate.criterion === criterion);
-          const evidences = detail.applicationEvidences.filter((evidence) => evidence.criterion === criterion);
+          const evidences = detail.applicationEvidences.filter(
+            (evidence) => evidence.criterion === criterion,
+          );
           const blocker = task?.decisionReason || task?.officerNote || item?.summary;
           return (
             <div key={criterion} className="rounded-lg border p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="font-semibold text-brand-deep">{criterionLabel[criterion]}</div>
-                <Chip tone={statusTone(item?.status)}>
-                  {label(item?.status)}
-                </Chip>
+                <Chip tone={statusTone(item?.status)}>{label(item?.status)}</Chip>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
                 {item?.summary ?? "Chưa có dữ liệu xét duyệt cho tiêu chí này."}
@@ -721,23 +828,32 @@ function ReviewTasks({ detail }: { detail: ManagerResultDetail }) {
     <Card>
       <h2 className="font-bold text-brand-deep">Task xét duyệt</h2>
       <div className="mt-4 space-y-3">
-        {detail.reviewTasks.length ? detail.reviewTasks.map((task) => (
-          <div key={task.id} className="rounded-lg border p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-semibold text-brand-deep">{criterionLabel[task.criterion]}</div>
-              <Chip tone={statusTone(task.status)}>{label(task.status)}</Chip>
+        {detail.reviewTasks.length ? (
+          detail.reviewTasks.map((task) => (
+            <div key={task.id} className="rounded-lg border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="font-semibold text-brand-deep">
+                  {criterionLabel[task.criterion]}
+                </div>
+                <Chip tone={statusTone(task.status)}>{label(task.status)}</Chip>
+              </div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                Cán bộ: {task.assignedOfficer?.fullName ?? "Chưa phân công"} • Gợi ý cấp:{" "}
+                {level(task.officerSuggestedLevel)}
+              </div>
+              {task.decisionReason || task.officerNote ? (
+                <p className="mt-2 text-sm">{task.decisionReason ?? task.officerNote}</p>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Chưa có ghi chú/nhận xét của cán bộ cho task này.
+                </p>
+              )}
+              <div className="mt-3 text-xs text-muted-foreground">
+                {task.evidences.length} minh chứng liên kết
+              </div>
             </div>
-            <div className="mt-2 text-sm text-muted-foreground">
-              Cán bộ: {task.assignedOfficer?.fullName ?? "Chưa phân công"} • Gợi ý cấp: {level(task.officerSuggestedLevel)}
-            </div>
-            {task.decisionReason || task.officerNote ? (
-              <p className="mt-2 text-sm">{task.decisionReason ?? task.officerNote}</p>
-            ) : (
-              <p className="mt-2 text-sm text-muted-foreground">Chưa có ghi chú/nhận xét của cán bộ cho task này.</p>
-            )}
-            <div className="mt-3 text-xs text-muted-foreground">{task.evidences.length} minh chứng liên kết</div>
-          </div>
-        )) : (
+          ))
+        ) : (
           <div className="rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground">
             Hồ sơ chưa có task xét duyệt, nên chưa thể kết luận đủ 5 tiêu chí.
           </div>
@@ -758,7 +874,8 @@ function EvidenceSection({ evidences }: { evidences: ManagerResultEvidence[] }) 
           <div>
             <h2 className="font-bold text-brand-deep">Minh chứng theo tiêu chí</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Chọn "Xem chi tiết" để kiểm tra file, OCR, tóm tắt AI, trường trích xuất và cảnh báo của từng minh chứng.
+              Chọn "Xem chi tiết" để kiểm tra file, OCR, tóm tắt AI, trường trích xuất và cảnh báo
+              của từng minh chứng.
             </p>
           </div>
           <Chip tone="brand">{evidences.length} minh chứng</Chip>
@@ -768,11 +885,18 @@ function EvidenceSection({ evidences }: { evidences: ManagerResultEvidence[] }) 
             <div key={criterion}>
               <h3 className="text-sm font-bold text-brand-deep">{criterionLabel[criterion]}</h3>
               <div className="mt-2 grid gap-3 md:grid-cols-2">
-                {(grouped[criterion] ?? []).length ? grouped[criterion].map((evidence) => (
-                  <EvidenceCard key={evidence.id} evidence={evidence} onSelect={setSelectedEvidence} />
-                )) : (
+                {(grouped[criterion] ?? []).length ? (
+                  grouped[criterion].map((evidence) => (
+                    <EvidenceCard
+                      key={evidence.id}
+                      evidence={evidence}
+                      onSelect={setSelectedEvidence}
+                    />
+                  ))
+                ) : (
                   <div className="rounded-lg border border-dashed bg-slate-50 p-4 text-sm text-muted-foreground">
-                    Chưa có minh chứng cho tiêu chí này. Nếu task chưa đạt, đây là điểm cần yêu cầu sinh viên bổ sung.
+                    Chưa có minh chứng cho tiêu chí này. Nếu task chưa đạt, đây là điểm cần yêu cầu
+                    sinh viên bổ sung.
                   </div>
                 )}
               </div>
@@ -812,10 +936,18 @@ function EvidenceCard({
         <div className="min-w-0">
           <div className="break-words font-semibold text-brand-deep">{evidence.evidenceName}</div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {evidence.files?.length ?? 0} file • {typeof evidence.confidence === "number" ? `AI ${Math.round(evidence.confidence * 100)}%` : "Chưa có độ tin cậy AI"}
+            {evidence.files?.length ?? 0} file •{" "}
+            {typeof evidence.confidence === "number"
+              ? `AI ${Math.round(evidence.confidence * 100)}%`
+              : "Chưa có độ tin cậy AI"}
           </div>
         </div>
-        <Button size="sm" variant="secondary" onClick={() => onSelect(evidence)}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => onSelect(evidence)}
+          data-smartux-tag="officer_open_evidence_card"
+        >
           <Eye className="h-4 w-4" />
           Xem chi tiết
         </Button>
@@ -830,20 +962,95 @@ function EvidenceCard({
       ) : (
         <p className="mt-3 text-sm text-muted-foreground">AI chưa có tóm tắt cho minh chứng này.</p>
       )}
+      <EvidenceInlinePreview evidence={evidence} onSelect={onSelect} />
       <div className="mt-3 space-y-2">
-        {evidence.files?.length ? evidence.files.map((file) => (
-          <div key={file.id} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm">
-            <span className="truncate">{file.originalName}</span>
-            <Button size="sm" variant="ghost" onClick={() => openFile(file.id)}>
-              <ExternalLink className="h-4 w-4" />
-              Xem file
-            </Button>
+        {evidence.files?.length ? (
+          evidence.files.map((file) => (
+            <div
+              key={file.id}
+              className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm"
+            >
+              <span className="truncate">{file.originalName}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => openFile(file.id)}
+                data-smartux-tag="officer_view_original_file"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Xem file
+              </Button>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Minh chứng này chưa có file đính kèm.
           </div>
-        )) : (
-          <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Minh chứng này chưa có file đính kèm.</div>
         )}
       </div>
     </div>
+  );
+}
+
+function EvidenceInlinePreview({
+  evidence,
+  onSelect,
+}: {
+  evidence: ManagerResultEvidence;
+  onSelect: (evidence: ManagerResultEvidence) => void;
+}) {
+  const primaryFile = evidence.files?.[0];
+  const { data: previewUrl, isLoading } = useSignedFileUrl(primaryFile?.id, Boolean(primaryFile));
+
+  if (!primaryFile) {
+    return (
+      <div className="mt-3 rounded-lg border border-dashed bg-slate-50 px-3 py-6 text-center text-sm text-muted-foreground">
+        Chưa có file để preview.
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(evidence)}
+      className="mt-3 block w-full overflow-hidden rounded-lg border bg-slate-50 text-left transition hover:border-[#0057C2]/60 hover:bg-blue-50/40"
+    >
+      <div className="flex items-center justify-between gap-2 border-b bg-white px-3 py-2 text-xs">
+        <span className="truncate font-semibold text-brand-deep">Preview minh chứng</span>
+        <span className="shrink-0 text-muted-foreground">{evidence.files.length} file</span>
+      </div>
+      <div className="flex h-48 items-center justify-center overflow-hidden bg-slate-100">
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Đang tải preview...
+          </div>
+        ) : previewUrl && isImageMime(primaryFile.mimeType) ? (
+          <img
+            src={previewUrl}
+            alt={primaryFile.originalName}
+            className="h-full w-full object-contain"
+            loading="lazy"
+          />
+        ) : previewUrl && isPdfMime(primaryFile.mimeType) ? (
+          <iframe
+            title={primaryFile.originalName}
+            src={previewUrl}
+            className="h-full w-full bg-white"
+            loading="lazy"
+          />
+        ) : (
+          <div className="px-4 text-center text-sm text-muted-foreground">
+            <FileText className="mx-auto mb-2 h-8 w-8" />
+            Không preview trực tiếp được file này.
+          </div>
+        )}
+      </div>
+      <div className="truncate px-3 py-2 text-xs text-muted-foreground">
+        {primaryFile.originalName}
+      </div>
+    </button>
   );
 }
 
@@ -856,19 +1063,29 @@ function EvidenceDetailDialog({
   evidence: ManagerResultEvidence | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [preview, setPreview] = useState<{ file: ManagerResultEvidence["files"][number]; url: string } | null>(null);
+  const [preview, setPreview] = useState<{
+    file: ManagerResultEvidence["files"][number];
+    url: string;
+  } | null>(null);
   const [loadingFileId, setLoadingFileId] = useState<string | null>(null);
   const fields = useReadableFields(evidence?.evidenceCard?.extractedFieldsJson);
   const warnings = useWarnings(evidence?.evidenceCard?.warningsJson);
   const relatedTask = useMemo(() => {
     if (!detail || !evidence) return null;
-    return detail.reviewTasks.find((task) =>
-      task.evidences.some((item) => item.id === evidence.id) || task.criterion === evidence.criterion,
-    ) ?? null;
+    return (
+      detail.reviewTasks.find(
+        (task) =>
+          task.evidences.some((item) => item.id === evidence.id) ||
+          task.criterion === evidence.criterion,
+      ) ?? null
+    );
   }, [detail, evidence]);
   const taskNote = getBusinessNote(relatedTask?.decisionReason, relatedTask?.officerNote);
 
-  const openPreview = async (file: ManagerResultEvidence["files"][number], openInNewTab = false) => {
+  const openPreview = async (
+    file: ManagerResultEvidence["files"][number],
+    openInNewTab = false,
+  ) => {
     try {
       setLoadingFileId(file.id);
       const response = await evidenceApi.getSignedFileUrl(file.id);
@@ -905,7 +1122,8 @@ function EvidenceDetailDialog({
             <DialogHeader className="pr-8">
               <DialogTitle className="pr-8">{evidence.evidenceName}</DialogTitle>
               <DialogDescription>
-                {criterionLabel[evidence.criterion]} • {label(evidence.status)} • {evidence.files?.length ?? 0} file
+                {criterionLabel[evidence.criterion]} • {label(evidence.status)} •{" "}
+                {evidence.files?.length ?? 0} file
               </DialogDescription>
             </DialogHeader>
 
@@ -918,12 +1136,20 @@ function EvidenceDetailDialog({
                       Tài liệu gốc
                     </h3>
                     <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {preview?.file.originalName ?? evidence.files[0]?.originalName ?? "Minh chứng chưa có file đính kèm."}
+                      {preview?.file.originalName ??
+                        evidence.files[0]?.originalName ??
+                        "Minh chứng chưa có file đính kèm."}
                     </p>
                   </div>
                   {preview ? (
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" onClick={() => openPreview(preview.file, true)} disabled={loadingFileId === preview.file.id}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openPreview(preview.file, true)}
+                        disabled={loadingFileId === preview.file.id}
+                        data-smartux-tag="officer_view_original_file"
+                      >
                         <ExternalLink className="h-4 w-4" />
                         Mở tab mới
                       </Button>
@@ -947,11 +1173,15 @@ function EvidenceDetailDialog({
                           type="button"
                           onClick={() => openPreview(file)}
                           className={`min-w-48 rounded-lg border px-3 py-2 text-left text-xs transition ${
-                            active ? "border-[#0057C2] bg-blue-50 text-brand-deep" : "bg-slate-50 text-muted-foreground hover:bg-slate-100"
+                            active
+                              ? "border-[#0057C2] bg-blue-50 text-brand-deep"
+                              : "bg-slate-50 text-muted-foreground hover:bg-slate-100"
                           }`}
                         >
                           <div className="truncate font-semibold">{file.originalName}</div>
-                          <div className="mt-1 truncate">{file.mimeType || "--"} • {formatFileSize(file.fileSize)}</div>
+                          <div className="mt-1 truncate">
+                            {file.mimeType || "--"} • {formatFileSize(file.fileSize)}
+                          </div>
                         </button>
                       );
                     })}
@@ -966,17 +1196,33 @@ function EvidenceDetailDialog({
                     </div>
                   ) : preview ? (
                     isImageMime(preview.file.mimeType) ? (
-                      <img src={preview.url} alt={preview.file.originalName} className="max-h-[65vh] w-full object-contain" />
+                      <img
+                        src={preview.url}
+                        alt={preview.file.originalName}
+                        className="max-h-[65vh] w-full object-contain"
+                      />
                     ) : isPdfMime(preview.file.mimeType) ? (
-                      <iframe title={preview.file.originalName} src={preview.url} className="h-[65vh] w-full bg-white" />
+                      <iframe
+                        title={preview.file.originalName}
+                        src={preview.url}
+                        className="h-[65vh] w-full bg-white"
+                      />
                     ) : (
                       <div className="max-w-md p-5 text-center">
                         <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
-                        <div className="mt-3 font-semibold text-brand-deep">{preview.file.originalName}</div>
-                        <div className="mt-1 text-sm text-muted-foreground">
-                          {preview.file.mimeType || "File"} • {formatFileSize(preview.file.fileSize)} • {formatDate(preview.file.createdAt)}
+                        <div className="mt-3 font-semibold text-brand-deep">
+                          {preview.file.originalName}
                         </div>
-                        <Button className="mt-4" variant="outline" onClick={() => openPreview(preview.file, true)}>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {preview.file.mimeType || "File"} •{" "}
+                          {formatFileSize(preview.file.fileSize)} •{" "}
+                          {formatDate(preview.file.createdAt)}
+                        </div>
+                        <Button
+                          className="mt-4"
+                          variant="outline"
+                          onClick={() => openPreview(preview.file, true)}
+                        >
                           <ExternalLink className="h-4 w-4" />
                           Mở file
                         </Button>
@@ -1003,7 +1249,11 @@ function EvidenceDetailDialog({
                     <Info label="AI/OCR" value={label(evidence.indexingStatus)} />
                     <Info
                       label="Độ tin cậy"
-                      value={typeof evidence.confidence === "number" ? `${Math.round(evidence.confidence * 100)}%` : "--"}
+                      value={
+                        typeof evidence.confidence === "number"
+                          ? `${Math.round(evidence.confidence * 100)}%`
+                          : "--"
+                      }
                     />
                     <Info label="Số file" value={evidence.files?.length ?? 0} />
                   </div>
@@ -1026,7 +1276,9 @@ function EvidenceDetailDialog({
                     clamp
                   />
                   <div className="mt-4">
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">Trường đã trích xuất</div>
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">
+                      Trường đã trích xuất
+                    </div>
                     {fields.length ? (
                       <div className="mt-2 grid gap-2">
                         {fields.map((field) => (
@@ -1034,7 +1286,9 @@ function EvidenceDetailDialog({
                         ))}
                       </div>
                     ) : (
-                      <p className="mt-2 text-sm text-muted-foreground">Chưa có trường trích xuất.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Chưa có trường trích xuất.
+                      </p>
                     )}
                   </div>
                 </section>
@@ -1047,23 +1301,37 @@ function EvidenceDetailDialog({
                   {warnings.length ? (
                     <div className="mt-3 space-y-2">
                       {warnings.map((warning, index) => (
-                        <div key={`${warning}-${index}`} className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        <div
+                          key={`${warning}-${index}`}
+                          className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                        >
                           {warning}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">Chưa có cảnh báo cần đối chiếu.</p>
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Chưa có cảnh báo cần đối chiếu.
+                    </p>
                   )}
                 </section>
 
                 <section className="rounded-lg border bg-white p-4">
                   <h3 className="font-bold text-brand-deep">Trạng thái task/quyết định</h3>
                   <div className="mt-3 grid gap-2 text-sm">
-                    <Info label="Task liên quan" value={relatedTask ? relatedTask.id.slice(0, 8) : "--"} />
-                    <Info label="Cán bộ xử lý" value={relatedTask?.assignedOfficer?.fullName ?? "--"} />
+                    <Info
+                      label="Task liên quan"
+                      value={relatedTask ? relatedTask.id.slice(0, 8) : "--"}
+                    />
+                    <Info
+                      label="Cán bộ xử lý"
+                      value={relatedTask?.assignedOfficer?.fullName ?? "--"}
+                    />
                     <Info label="Trạng thái task" value={label(relatedTask?.status)} />
-                    <Info label="Gợi ý cấp" value={getLevelLabel(relatedTask?.officerSuggestedLevel)} />
+                    <Info
+                      label="Gợi ý cấp"
+                      value={getLevelLabel(relatedTask?.officerSuggestedLevel)}
+                    />
                   </div>
                   <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
                     <span className="font-semibold text-brand-deep">Ghi chú cán bộ: </span>
@@ -1082,10 +1350,16 @@ function EvidenceDetailDialog({
 function AnalysisSection({ detail }: { detail: ManagerResultDetail }) {
   const suggestedLevel = getSuggestedLevel(detail);
   const hasBlockingIssue = detail.aggregation.blockingIssues.length > 0;
-  const hasOpenResolution = detail.resolutionCases.some((item) => item.status === "open" || item.status === "in_review");
+  const hasOpenResolution = detail.resolutionCases.some(
+    (item) => item.status === "open" || item.status === "in_review",
+  );
   const hasSupplement = detail.reviewTasks.some((task) => task.status === "supplement_required");
   const isDowngraded = Boolean(suggestedLevel && suggestedLevel !== detail.application.targetLevel);
-  const isStraightPass = suggestedLevel === detail.application.targetLevel && !hasBlockingIssue && !hasOpenResolution && !hasSupplement;
+  const isStraightPass =
+    suggestedLevel === detail.application.targetLevel &&
+    !hasBlockingIssue &&
+    !hasOpenResolution &&
+    !hasSupplement;
   const reason =
     suggestedLevel === detail.application.targetLevel
       ? "Đủ 5/5 tiêu chí theo cấp đăng ký."
@@ -1093,7 +1367,9 @@ function AnalysisSection({ detail }: { detail: ManagerResultDetail }) {
         ? `Đề xuất hạ từ ${getLevelLabel(detail.application.targetLevel)} xuống ${getLevelLabel(suggestedLevel)} theo kết quả tiêu chí.`
         : "Chưa đủ điều kiện đạt cấp nào theo kết quả tiêu chí.";
   const reasons = [
-    ...detail.aggregation.blockingIssues.map((issue) => `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`),
+    ...detail.aggregation.blockingIssues.map(
+      (issue) => `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`,
+    ),
     ...(hasOpenResolution ? ["Đang còn hồ sơ hội ý cần xử lý."] : []),
     ...(hasSupplement ? ["Đang còn yêu cầu bổ sung minh chứng."] : []),
   ];
@@ -1114,15 +1390,20 @@ function AnalysisSection({ detail }: { detail: ManagerResultDetail }) {
         <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
       </div>
       <p className="mt-4 text-sm text-muted-foreground">
-            Cán bộ duyệt từng tiêu chí. Hội đồng/Cấp quản lý theo dõi, điều phối và chốt kết quả cuối.
+        Cán bộ duyệt từng tiêu chí. Hội đồng/Cấp quản lý theo dõi, điều phối và chốt kết quả cuối.
       </p>
-      {(isDowngraded || !suggestedLevel || reasons.length) ? (
+      {isDowngraded || !suggestedLevel || reasons.length ? (
         <div className="mt-4 space-y-2">
-          {reasons.length ? reasons.map((item, index) => (
-            <div key={`${item}-${index}`} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              {item}
-            </div>
-          )) : (
+          {reasons.length ? (
+            reasons.map((item, index) => (
+              <div
+                key={`${item}-${index}`}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              >
+                {item}
+              </div>
+            ))
+          ) : (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               Cần đối chiếu lại từng tiêu chí trước khi chốt kết quả.
             </div>
@@ -1138,13 +1419,24 @@ function ResolutionSection({ detail }: { detail: ManagerResultDetail }) {
     <Card>
       <h2 className="font-bold text-brand-deep">Hồ sơ hội ý liên quan</h2>
       <div className="mt-4 space-y-3">
-        {detail.resolutionCases.length ? detail.resolutionCases.map((item) => (
-          <Link key={item.id} to="/app/resolution/$id" params={{ id: item.id }} className="block rounded-lg border p-4 hover:bg-slate-50">
-            <div className="font-semibold text-brand-deep">#{item.id.slice(0, 8)} • {label(item.status)}</div>
-            <p className="mt-1 text-sm text-muted-foreground">{item.reason}</p>
-          </Link>
-        )) : (
-          <div className="rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground">Không có hồ sơ hội ý liên quan.</div>
+        {detail.resolutionCases.length ? (
+          detail.resolutionCases.map((item) => (
+            <Link
+              key={item.id}
+              to="/app/resolution/$id"
+              params={{ id: item.id }}
+              className="block rounded-lg border p-4 hover:bg-slate-50"
+            >
+              <div className="font-semibold text-brand-deep">
+                #{item.id.slice(0, 8)} • {label(item.status)}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{item.reason}</p>
+            </Link>
+          ))
+        ) : (
+          <div className="rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground">
+            Không có hồ sơ hội ý liên quan.
+          </div>
         )}
       </div>
     </Card>
@@ -1164,20 +1456,27 @@ function AuditSection({ detail }: { detail: ManagerResultDetail }) {
             Lịch sử xử lý
           </h2>
           <span className="text-xs font-semibold text-muted-foreground">
-            {businessEvents.length ? `${Math.min(5, businessEvents.length)} sự kiện gần nhất` : "Chưa có"}
+            {businessEvents.length
+              ? `${Math.min(5, businessEvents.length)} sự kiện gần nhất`
+              : "Chưa có"}
           </span>
         </summary>
         <div className="mt-4 space-y-3">
-          {recent.length ? recent.map((item) => (
-            <div key={item.id} className="rounded-lg border p-3 text-sm">
-              <div className="font-semibold text-brand-deep">{auditActionLabel(item.action)}</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {formatDate(item.createdAt)} • {item.actorRole ?? "--"} • <span className="font-mono">{item.action}</span>
+          {recent.length ? (
+            recent.map((item) => (
+              <div key={item.id} className="rounded-lg border p-3 text-sm">
+                <div className="font-semibold text-brand-deep">{auditActionLabel(item.action)}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {formatDate(item.createdAt)} • {item.actorRole ?? "--"} •{" "}
+                  <span className="font-mono">{item.action}</span>
+                </div>
+                {item.note ? <p className="mt-2 text-muted-foreground">{item.note}</p> : null}
               </div>
-              {item.note ? <p className="mt-2 text-muted-foreground">{item.note}</p> : null}
+            ))
+          ) : (
+            <div className="rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground">
+              Chưa có lịch sử xử lý.
             </div>
-          )) : (
-            <div className="rounded-lg border bg-slate-50 p-4 text-sm text-muted-foreground">Chưa có lịch sử xử lý.</div>
           )}
         </div>
       </details>
@@ -1186,7 +1485,8 @@ function AuditSection({ detail }: { detail: ManagerResultDetail }) {
 }
 
 function auditActionLabel(action: string) {
-  if (action.includes("FINAL_RESULT_CONFIRMED") || action.includes("APPLICATION_FINALIZED")) return "Đã chốt kết quả";
+  if (action.includes("FINAL_RESULT_CONFIRMED") || action.includes("APPLICATION_FINALIZED"))
+    return "Đã chốt kết quả";
   if (action.includes("AGGREG")) return "Đã tổng hợp hồ sơ";
   if (action.includes("REVIEW")) return "Cán bộ đã duyệt tiêu chí";
   if (action.includes("REOPEN")) return "Đã mở lại kết quả";
@@ -1197,8 +1497,12 @@ function auditActionLabel(action: string) {
 function Info({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="rounded-lg border bg-white px-3 py-2">
-      <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 min-w-0 break-words text-sm font-semibold text-brand-deep">{value ?? "--"}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 min-w-0 break-words text-sm font-semibold text-brand-deep">
+        {value ?? "--"}
+      </div>
     </div>
   );
 }
@@ -1207,7 +1511,9 @@ function DecisionCheck({ label, ok }: { label: string; ok: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-muted-foreground">{label}</span>
-      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${ok ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+      <span
+        className={`rounded-full px-2 py-0.5 text-xs font-bold ${ok ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
+      >
         {ok ? "Đạt" : "Cần xử lý"}
       </span>
     </div>
@@ -1228,7 +1534,9 @@ function TextBlock({
   return (
     <div className="mt-4">
       <div className="text-xs font-semibold uppercase text-muted-foreground">{label}</div>
-      <p className={`mt-2 whitespace-pre-wrap text-sm text-slate-700 ${clamp ? "max-h-36 overflow-auto rounded-lg bg-slate-50 p-3" : ""}`}>
+      <p
+        className={`mt-2 whitespace-pre-wrap text-sm text-slate-700 ${clamp ? "max-h-36 overflow-auto rounded-lg bg-slate-50 p-3" : ""}`}
+      >
         {value?.trim() || empty}
       </p>
     </div>
@@ -1247,7 +1555,15 @@ function toFinalizationItem(detail: ManagerResultDetail): ManagerResultItem {
       if (task.status === "reviewing") acc.reviewing = (acc.reviewing ?? 0) + 1;
       return acc;
     },
-    { total: 0, accepted: 0, rejected: 0, supplementRequired: 0, resolutionNeeded: 0, waiting: 0, reviewing: 0 },
+    {
+      total: 0,
+      accepted: 0,
+      rejected: 0,
+      supplementRequired: 0,
+      resolutionNeeded: 0,
+      waiting: 0,
+      reviewing: 0,
+    },
   );
 
   return {
@@ -1318,7 +1634,10 @@ function getSuggestedLevelLabel(detail: ManagerResultDetail) {
   return getLevelLabel(getSuggestedLevel(detail), "Chưa có đề xuất");
 }
 
-function getPendingFinalResultLabel(status?: FinalStatus | "pending", suggestedLevel?: Level | null) {
+function getPendingFinalResultLabel(
+  status?: FinalStatus | "pending",
+  suggestedLevel?: Level | null,
+) {
   if (status === "failed" || !suggestedLevel) return "Chưa đạt";
   if (status === "partially_passed") return `Đạt cấp thấp hơn: ${getLevelLabel(suggestedLevel)}`;
   if (status === "passed") return `Đạt ${getLevelLabel(suggestedLevel)}`;
@@ -1343,7 +1662,13 @@ function getStudentPhotoUrl(detail: ManagerResultDetail) {
     profileImageUrl?: string | null;
     photoUrl?: string | null;
   };
-  return student.avatarUrl ?? student.studentPhotoUrl ?? student.profileImageUrl ?? student.photoUrl ?? null;
+  return (
+    student.avatarUrl ??
+    student.studentPhotoUrl ??
+    student.profileImageUrl ??
+    student.photoUrl ??
+    null
+  );
 }
 
 function useResolvedAvatarUrl(avatarUrl?: string | null) {
@@ -1386,10 +1711,7 @@ function useResolvedAvatarUrl(avatarUrl?: string | null) {
 }
 
 function getInitials(name?: string | null) {
-  const words = (name ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (!words.length) return "SV";
   const lastTwo = words.slice(-2);
   return lastTwo.map((word) => word[0]?.toUpperCase() ?? "").join("") || "SV";
@@ -1451,7 +1773,9 @@ function useReadableFields(value: unknown) {
   return useMemo(() => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return [];
     return Object.entries(value as Record<string, unknown>)
-      .filter(([, fieldValue]) => fieldValue !== undefined && fieldValue !== null && fieldValue !== "")
+      .filter(
+        ([, fieldValue]) => fieldValue !== undefined && fieldValue !== null && fieldValue !== "",
+      )
       .map(([key, fieldValue]) => ({
         label: key.replace(/_/g, " "),
         value: Array.isArray(fieldValue) ? fieldValue.join(", ") : String(fieldValue),

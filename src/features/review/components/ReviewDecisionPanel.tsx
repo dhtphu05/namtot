@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui-kit";
 import { useAuth } from "@/features/auth/store/auth-store";
+import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 import { ACTIVE_LEVELS } from "@/lib/levels";
 import { useSubmitReviewDecision } from "../hooks/useReview";
 import type {
@@ -103,6 +104,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const [formError, setFormError] = useState<string | null>(null);
   const [submittedMessage, setSubmittedMessage] = useState<string | null>(null);
   const submitDecision = useSubmitReviewDecision(task.id);
+  const { trackAction } = useSmartUXTracking();
 
   const isFinal = finalStatuses.includes(task.status as (typeof finalStatuses)[number]);
   const canDecide = task.permissions?.availableActions
@@ -178,6 +180,13 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
     }
 
     setFormError(null);
+    trackAction(getOfficerDecisionEvent(decision), {
+      role: "officer",
+      criterion: task.criterion,
+      target_level: suggestedLevel || task.application.targetLevel,
+      status: task.status,
+      count: selectedEvidenceIds.length,
+    });
 
     const payload: SubmitReviewDecisionRequest = {
       decision,
@@ -201,6 +210,13 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
       { payload },
       {
         onSuccess: () => {
+          trackAction(getOfficerDecisionEvent(decision), {
+            role: "officer",
+            criterion: task.criterion,
+            target_level: suggestedLevel || task.application.targetLevel,
+            status: "success",
+            count: selectedEvidenceIds.length,
+          });
           const message = "Đã gửi kết luận xét duyệt.";
           setSubmittedMessage(message);
           toast.success(message);
@@ -256,6 +272,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
               <label
                 key={option.value}
                 className="flex min-h-14 cursor-pointer gap-3 rounded-xl border border-[#E5E7EB] p-3 transition-colors hover:bg-slate-50 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
+                data-smartux-tag={getOfficerDecisionEvent(option.value)}
               >
                 <RadioGroupItem className="mt-1" value={option.value} />
                 <span>
@@ -450,6 +467,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
             className="w-full rounded-xl shadow-sm"
             disabled={!selectedCanSubmit || Boolean(validationMessage) || submitDecision.isPending}
             type="submit"
+            data-smartux-tag={decision ? getOfficerDecisionEvent(decision) : "officer_open_task"}
           >
             <Send className="h-4 w-4" />
             {submitDecision.isPending ? "Đang gửi..." : ctaLabel}
@@ -539,6 +557,13 @@ function canSubmitDecision(
   if (decision === "supplement_required") return canRequestSupplement;
   if (decision === "resolution_needed") return canEscalateResolution;
   return canDecide;
+}
+
+function getOfficerDecisionEvent(decision: TaskDecision) {
+  if (decision === "accepted") return "officer_accept_criterion";
+  if (decision === "rejected") return "officer_reject_criterion";
+  if (decision === "supplement_required") return "officer_request_supplement";
+  return "officer_escalate_resolution";
 }
 
 function validateDecision({

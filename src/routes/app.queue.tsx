@@ -76,6 +76,7 @@ import {
   getLevelLabel,
   getTaskStatusLabel,
 } from "@/features/review/utils/formatters";
+import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 
 export const Route = createFileRoute("/app/queue")({
   component: ReviewQueueRoute,
@@ -137,7 +138,11 @@ const fiveGoodCriteria: Criterion[] = [
 ];
 
 const officerTabs: Array<{ value: QueueTab; label: string; description: string }> = [
-  { value: "all", label: "Tất cả", description: "Toàn bộ việc trong phạm vi xem." },
+  {
+    value: "all",
+    label: "Cần xử lý",
+    description: "Chỉ hồ sơ chưa chốt và còn cần cán bộ xem xét.",
+  },
   { value: "mine", label: "Được giao cho tôi", description: "Task bạn có thể quyết định." },
   { value: "due_soon", label: "Sắp đến hạn", description: "Ưu tiên xử lý theo deadline." },
   {
@@ -179,13 +184,14 @@ function ReviewQueueRoute() {
 function ReviewQueueContent({ role }: { role: Role }) {
   const navigate = useNavigate();
   const user = useAuth((state) => state.user);
+  const { trackAction } = useSmartUXTracking();
   const lockedOfficerCriterion = useMemo(
     () => (role === "officer" ? getOfficerLockedCriterion(user) : null),
     [role, user],
   );
   const [activeTab, setActiveTab] = useState<QueueTab>("all");
   const [viewMode, setViewMode] = useState<QueueViewMode>("application");
-  const [sortBy, setSortBy] = useState<QueueSort>("deadline");
+  const [sortBy, setSortBy] = useState<QueueSort>("newest");
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const [selectedCriterion, setSelectedCriterion] = useState<Criterion | null>(null);
   const [claimCandidate, setClaimCandidate] = useState<ReviewTaskListItem | null>(null);
@@ -238,8 +244,19 @@ function ReviewQueueContent({ role }: { role: Role }) {
         : items,
     [items, lockedOfficerCriterion, role],
   );
-  const summary = useMemo(() => getCurrentListSummary(items), [items]);
-  const allApplicationGroups = useMemo(() => groupOfficerApplications(items), [items]);
+  const officerQueueItems = useMemo(
+    () =>
+      role === "officer"
+        ? officerScopedItems.filter((item) => isOfficerQueueVisibleTask(item))
+        : officerScopedItems,
+    [officerScopedItems, role],
+  );
+  const summaryItems = role === "officer" ? officerQueueItems : items;
+  const summary = useMemo(() => getCurrentListSummary(summaryItems), [summaryItems]);
+  const allApplicationGroups = useMemo(
+    () => groupOfficerApplications(role === "officer" ? officerQueueItems : items),
+    [items, officerQueueItems, role],
+  );
   const officerScopedGroups = useMemo(
     () =>
       role === "officer" && lockedOfficerCriterion
@@ -253,10 +270,10 @@ function ReviewQueueContent({ role }: { role: Role }) {
   const visibleItems = useMemo(
     () =>
       sortQueueItems(
-        role === "officer" ? filterOfficerTasks(officerScopedItems, activeTab) : items,
+        role === "officer" ? filterOfficerTasks(officerQueueItems, activeTab) : items,
         sortBy,
       ),
-    [activeTab, items, officerScopedItems, role, sortBy],
+    [activeTab, items, officerQueueItems, role, sortBy],
   );
   const visibleGroups = useMemo(() => {
     if (role === "officer") {
@@ -315,6 +332,13 @@ function ReviewQueueContent({ role }: { role: Role }) {
   const canGoNext = pageItems.length >= limit && !isFetching;
 
   const openTask = (taskId: string) => {
+    const task = items.find((item) => item.id === taskId);
+    trackAction("officer_open_task", {
+      role,
+      criterion: task?.criterion,
+      status: task?.status,
+      target_level: task?.targetLevel,
+    });
     navigate({ to: "/app/review/$id", params: { id: taskId } });
   };
 
@@ -401,7 +425,7 @@ function ReviewQueueContent({ role }: { role: Role }) {
           selectedCriterion={lockedOfficerCriterion}
           selectedGroup={selectedGroup}
           sortBy={sortBy}
-          taskItems={officerScopedItems}
+          taskItems={officerQueueItems}
           errorDescription={getErrorMessage(
             error,
             "Không thể tải hàng đợi xét duyệt. Vui lòng thử lại sau.",
@@ -925,6 +949,7 @@ function OfficerQueueColumn({
               }`}
               onClick={() => onTabChange(tab.value)}
               title={tab.description}
+              data-smartux-tag="officer_open_queue"
             >
               {tab.label} <span className="ml-1 text-[11px] opacity-70">{count}</span>
             </button>
@@ -951,9 +976,9 @@ function OfficerQueueColumn({
           disabled={isFetching}
           onChange={(event) => onSortChange(event.target.value as QueueSort)}
         >
-          <option value="deadline">Deadline gần nhất</option>
-          <option value="review_need">Mức cần xử lý</option>
           <option value="newest">Mới nhất</option>
+          <option value="review_need">Mức cần xử lý</option>
+          <option value="deadline">Deadline gần nhất</option>
           <option value="student_name">Sinh viên A-Z</option>
           <option value="evidence_count">Số minh chứng</option>
         </select>
@@ -3488,6 +3513,10 @@ function hasCriterionEvidenceTask(task?: ReviewTaskListItem | null) {
   return Boolean(task && (task.evidenceCount ?? 0) > 0);
 }
 
+function isOfficerQueueVisibleTask(task: ReviewTaskListItem) {
+  return hasCriterionEvidenceTask(task) && isOpenTask(task);
+}
+
 function getTaskForCriterion(
   group: OfficerApplicationGroup,
   criterion: Criterion,
@@ -3502,7 +3531,7 @@ function filterOfficerGroupsByCriterion(
 ) {
   return groups.filter((group) => {
     const task = getTaskForCriterion(group, criterion);
-    if (!hasCriterionEvidenceTask(task)) return false;
+    if (!task || !isOfficerQueueVisibleTask(task)) return false;
     return filterOfficerTasks([task], tab).length > 0;
   });
 }
@@ -3569,6 +3598,8 @@ function sortQueueGroups(
       (a, b) =>
         dateValue(sortTask(a).dueDate ?? a.dueDate) - dateValue(sortTask(b).dueDate ?? b.dueDate),
     );
+  if (sortBy === "newest")
+    return list.sort((a, b) => dateValue(b.updatedAt) - dateValue(a.updatedAt));
   if (sortBy === "level")
     return list.sort((a, b) => text(a.targetLevel).localeCompare(text(b.targetLevel), "vi"));
   if (sortBy === "evidence_count") {

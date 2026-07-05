@@ -74,6 +74,10 @@ export async function requireAuthenticatedAppRoute(pathname: string, queryClient
     throw redirect({ to: "/login" });
   }
 
+  if ((pathname === "/app" || pathname === "/app/") && role !== "student") {
+    throw redirect({ to: getDefaultAppPathForRole(role) });
+  }
+
   if (!canAccessPath(role, pathname)) {
     throw redirect({ to: getDefaultAppPathForRole(role) });
   }
