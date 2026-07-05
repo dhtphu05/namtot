@@ -124,7 +124,7 @@ function EvidenceWorkspace() {
     <>
       <TopBar
         title="Minh chứng của tôi"
-        subtitle="Tải lên minh chứng để hệ thống hỗ trợ số hoá, tạo Evidence Card và gợi ý điểm cần kiểm tra."
+        subtitle="Tải lên minh chứng để hệ thống hỗ trợ số hoá và gợi ý điểm cần kiểm tra."
         action={
           isEditable ? (
             <Button type="button" onClick={() => openCreate()}>
@@ -313,7 +313,7 @@ function EvidenceListItem({
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={onOpen}>
-          Xem Evidence Card
+          Xem minh chứng
         </Button>
         {canEdit ? (
           <Button type="button" size="sm" variant="outline" onClick={onOpen}>

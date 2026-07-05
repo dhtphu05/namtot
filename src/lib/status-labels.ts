@@ -40,24 +40,38 @@ export const fallbackStatusLabel = "Chưa rõ";
 export const applicationStatusLabel: Record<ApplicationStatusLabelKey, string> = {
   not_started: "Chưa có hồ sơ",
   draft: "Bản nháp",
-  prechecked: "Đã tiền kiểm",
+  prechecked: "Đã tự kiểm tra",
   ready_to_submit: "Sẵn sàng nộp",
   submitted: "Đã nộp",
   under_review: "Đang xét duyệt",
   supplement_required: "Cần bổ sung",
   draft_supplement: "Đang bổ sung",
-  resolution_needed: "Cần hội đồng xử lý",
+  resolution_needed: "Cần hội ý",
   completed: "Hoàn tất",
+  rejected: "Chưa đạt",
+};
+
+export const studentApplicationStatusLabel: Record<ApplicationStatusLabelKey, string> = {
+  not_started: "Chưa có hồ sơ",
+  draft: "Đang hoàn thiện",
+  prechecked: "Đã tự kiểm tra",
+  ready_to_submit: "Đủ dữ liệu để nộp",
+  submitted: "Đã nộp",
+  under_review: "Đang được xét duyệt",
+  supplement_required: "Cần bổ sung",
+  draft_supplement: "Cần bổ sung",
+  resolution_needed: "Đang được xét duyệt",
+  completed: "Đã có kết quả",
   rejected: "Chưa đạt",
 };
 
 export const reviewTaskStatusLabel: Record<ReviewTaskStatusLabelKey, string> = {
   waiting: "Chờ xét",
   reviewing: "Đang xét",
-  supplement_required: "Cần bổ sung",
-  accepted: "Đạt",
+  supplement_required: "Chờ bổ sung",
+  accepted: "Đã đạt",
   rejected: "Không đạt",
-  resolution_needed: "Cần hội đồng xử lý",
+  resolution_needed: "Cần hội ý",
 };
 
 export const evidenceStatusLabel: Record<EvidenceStatusLabelKey, string> = {
@@ -68,7 +82,7 @@ export const evidenceStatusLabel: Record<EvidenceStatusLabelKey, string> = {
   under_review: "Đang xét duyệt",
   accepted: "Đã duyệt",
   rejected: "Từ chối",
-  resolution_needed: "Cần hội đồng xử lý",
+  resolution_needed: "Cần hội ý",
 };
 
 export const finalStatusLabel: Record<FinalStatusLabelKey, string> = {
@@ -123,20 +137,25 @@ export const criterionResultStatusLabel: Record<string, string> = {
   complete: "Đủ dữ liệu",
   ready: "Đủ dữ liệu cơ bản",
   passed: "Đủ dữ liệu",
-  passed_with_warning: "Cần cán bộ xác nhận",
-  pending: "Cần cán bộ xác nhận",
+  passed_with_warning: "Chờ cán bộ xác nhận",
+  pending: "Chờ cán bộ xác nhận",
   failed: "Cần bổ sung",
   needs_supplement: "Cần bổ sung",
-  needs_officer_confirmation: "Cần cán bộ xác nhận",
+  needs_officer_confirmation: "Chờ cán bộ xác nhận",
   missing_evidence: "Chưa có minh chứng",
-  ai_processing: "AI đang xử lý",
-  ai_failed: "AI không đọc được",
+  ai_processing: "Hệ thống đang kiểm tra",
+  ai_failed: "Cần kiểm tra thủ công",
   risky: "Cần kiểm tra thêm",
 };
 
 export function getApplicationStatusLabel(status?: StudentApplicationStatus | null) {
   if (!status) return fallbackStatusLabel;
   return applicationStatusLabel[String(status) as ApplicationStatusLabelKey] ?? fallbackStatusLabel;
+}
+
+export function getStudentApplicationStatusLabel(status?: StudentApplicationStatus | null) {
+  if (!status) return fallbackStatusLabel;
+  return studentApplicationStatusLabel[String(status) as ApplicationStatusLabelKey] ?? fallbackStatusLabel;
 }
 
 export function getReviewTaskStatusLabel(status?: string | null) {
@@ -166,8 +185,8 @@ export function getWorkflowStatusLabel(status?: string | null) {
 }
 
 export function getCriterionResultStatusLabel(status?: string | null) {
-  if (!status) return "Cần cán bộ xác nhận";
-  return criterionResultStatusLabel[status] ?? "Cần cán bộ xác nhận";
+  if (!status) return "Chờ cán bộ xác nhận";
+  return criterionResultStatusLabel[status] ?? "Chờ cán bộ xác nhận";
 }
 
 export function getStatusTone(status?: string | null): StatusTone {

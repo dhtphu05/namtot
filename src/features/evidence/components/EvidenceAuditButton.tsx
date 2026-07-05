@@ -16,10 +16,10 @@ const actionLabels: Record<string, string> = {
   SMARTREADER_FILE_UPLOADED: "File đã được gửi đến SmartReader",
   SMARTREADER_OCR_STARTED: "SmartReader bắt đầu đọc minh chứng",
   SMARTREADER_OCR_COMPLETED: "SmartReader đã đọc xong",
-  EVIDENCE_CARD_GENERATED: "Evidence Card đã được tạo",
+  EVIDENCE_CARD_GENERATED: "Thẻ minh chứng đã được tạo",
   EVIDENCE_NEEDS_MANUAL_REVIEW: "Cần cán bộ kiểm tra",
   EVIDENCE_INDEXING_FAILED: "Số hoá chưa thành công",
-  EVENT_EVIDENCE_IMPORTED_BY_STUDENT: "Sinh viên đã import từ kho minh chứng chính thức",
+  EVENT_EVIDENCE_IMPORTED_BY_STUDENT: "Sinh viên đã thêm minh chứng từ sự kiện đã xác nhận",
 };
 
 export function EvidenceAuditButton({ evidenceId }: EvidenceAuditButtonProps) {
@@ -41,7 +41,7 @@ export function EvidenceAuditButton({ evidenceId }: EvidenceAuditButtonProps) {
         onOpenChange={setOpen}
         items={items}
         title="Lịch sử xử lý minh chứng"
-        description="Các thao tác chính trong quá trình upload, số hoá và tạo Evidence Card."
+        description="Các thao tác chính trong quá trình tải lên, số hoá và tạo thẻ minh chứng."
       />
     </>
   );

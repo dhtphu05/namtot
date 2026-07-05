@@ -98,7 +98,7 @@ function Signup() {
   return (
     <div className="min-h-screen bg-[#F6F8FB] px-6 py-10">
       <div className="mx-auto grid w-full max-w-6xl items-start gap-8 lg:grid-cols-[0.85fr_1.15fr]">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="lg:sticky lg:top-10">
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} className="lg:sticky lg:top-10">
           <div className="rounded-xl bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="gradient-brand mb-5 flex h-16 w-16 items-center justify-center rounded-3xl text-xl font-bold text-white">
               5T
@@ -124,7 +124,7 @@ function Signup() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <form onSubmit={handleSignup} autoComplete="off" className="rounded-xl bg-white p-7 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]">
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div>

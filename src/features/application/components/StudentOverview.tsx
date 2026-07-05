@@ -26,36 +26,10 @@ import type {
   PrecheckCriterionResult,
   PrecheckMissingItem,
 } from "@/lib/api/types";
-import { finalStatusTone, getFinalStatusLabel } from "@/lib/status-labels";
+import { finalStatusTone, getFinalStatusLabel, getStudentApplicationStatusLabel } from "@/lib/status-labels";
 import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
 
 const SCHOOL_YEAR = "2025-2026";
-
-const statusLabel: Record<ApplicationStatus | "not_started", string> = {
-  not_started: "Chưa có hồ sơ",
-  draft: "Đang hoàn thiện bản nháp",
-  prechecked: "Đã tiền kiểm",
-  ready_to_submit: "Sẵn sàng nộp",
-  submitted: "Đã nộp",
-  under_review: "Đang xét duyệt",
-  supplement_required: "Cần bổ sung",
-  resolution_needed: "Cần hội đồng xử lý",
-  completed: "Hoàn tất",
-  rejected: "Chưa đạt",
-};
-
-const statusCta: Record<ApplicationStatus | "not_started", string> = {
-  not_started: "Bắt đầu tạo hồ sơ",
-  draft: "Tiếp tục hoàn thiện",
-  prechecked: "Xem tiền kiểm",
-  ready_to_submit: "Nộp hồ sơ",
-  submitted: "Theo dõi xét duyệt",
-  under_review: "Theo dõi xét duyệt",
-  supplement_required: "Bổ sung hồ sơ",
-  resolution_needed: "Theo dõi xử lý",
-  completed: "Xem kết quả",
-  rejected: "Xem kết quả",
-};
 
 const levelLabel: Record<Level, string> = {
   school: "Cấp Trường",
@@ -132,8 +106,8 @@ export function StudentOverview() {
               Chưa có hồ sơ Sinh viên 5 tốt năm học {SCHOOL_YEAR}
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
-              Đây là trạng thái đúng cho sinh viên mới. Hãy tạo hồ sơ rồi nhập chỉ số, tải minh chứng,
-              chạy tiền kiểm và nộp xét duyệt.
+              Tạo hồ sơ để bắt đầu đi qua các bước: hoàn thiện 5 tiêu chí, kiểm tra hồ sơ,
+              nộp hồ sơ và theo dõi kết quả.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Button
@@ -182,6 +156,15 @@ export function StudentOverview() {
   const nextActions = buildNextActions(application, precheck?.criteriaResults, precheck?.missingItems);
   const updatedAt = formatDateTime(application.lastUpdatedAt ?? application.updatedAt);
   const primaryActionPath = getPrimaryActionPath(status);
+  const missingCriteriaCount = criteria.filter((criterion) => (evidenceByCriterion[criterion.key] ?? 0) === 0).length;
+  const missingWorkCount = getMissingWorkCount({
+    missingCriteriaCount,
+    missingItemsCount: precheck?.missingItems?.length ?? 0,
+    metricsCompleted,
+    metricsRequired,
+  });
+  const headline = getOverviewHeadline(status, missingCriteriaCount, missingWorkCount, Boolean(precheck));
+  const ctaLabel = getOverviewCta(status, missingWorkCount, Boolean(precheck));
   const finalStatus = application.finalStatus ?? "pending";
   const hasFinalResult = finalStatus !== "pending" && Boolean(application.finalizedAt);
 
@@ -199,7 +182,7 @@ export function StudentOverview() {
               <FileText className="h-3 w-3" /> Hồ sơ của tôi
             </Chip>
             <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold">
-              {statusLabel[status]}
+              {getStudentApplicationStatusLabel(status)}
             </span>
             {apiUnavailable && (
               <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-900">
@@ -210,27 +193,27 @@ export function StudentOverview() {
           <div className="mt-4 grid gap-5 lg:grid-cols-3 lg:items-end">
             <div className="lg:col-span-2">
               <h2 className="text-2xl font-bold leading-tight md:text-3xl">
-                Hồ sơ Sinh viên 5 tốt năm học {application.schoolYear}
+                {headline}
               </h2>
               <div className="mt-3 grid gap-2 text-sm text-white/85 sm:grid-cols-2">
                 <div>
-                  Trạng thái hiện tại: <b className="text-white">{statusLabel[status]}</b>
+                  Năm học: <b className="text-white">{application.schoolYear}</b>
                 </div>
                 <div>
-                  Cấp aim: <b className="text-white">{levelLabel[application.targetLevel]}</b>
+                  Cấp đăng ký: <b className="text-white">{levelLabel[application.targetLevel]}</b>
+                </div>
+                <div>
+                  Trạng thái: <b className="text-white">{getStudentApplicationStatusLabel(status)}</b>
                 </div>
                 <div>
                   Cập nhật lần cuối: <b className="text-white">{updatedAt}</b>
-                </div>
-                <div>
-                  Tiến độ: <b className="text-white">{readinessScore}%</b>
                 </div>
               </div>
             </div>
             <div className="rounded-lg bg-white/15 p-4">
               <div className="mb-2 flex items-center justify-between text-xs">
-                <span>Hoàn thiện hồ sơ</span>
-                <b>{readinessScore}%</b>
+                <span>Việc cần làm</span>
+                <b>{missingWorkCount > 0 ? `Còn ${missingWorkCount} việc` : "Đủ dữ liệu cơ bản"}</b>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-white/20">
                 <motion.div
@@ -242,7 +225,7 @@ export function StudentOverview() {
               </div>
               <Link to={primaryActionPath} className="mt-4 block">
                 <Button className="w-full bg-white !text-[#0057C2] hover:bg-[#F1F7FD]">
-                  {statusCta[status]} <ArrowRight className="h-4 w-4" />
+                  {ctaLabel} <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
@@ -307,7 +290,7 @@ export function StudentOverview() {
           <h3 className="font-bold text-brand-deep">Tiến độ 5 tiêu chí</h3>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {criteria.map((criterion) => {
-              const result = precheck?.criteriaResults?.find((item) => item.criterion === criterion.key);
+              const result = precheck?.criteriaResults?.find((item: PrecheckCriterionResult) => item.criterion === criterion.key);
               const progress = typeof result?.score === "number" ? result.score : 0;
               const evidenceCount = evidenceByCriterion[criterion.key] ?? 0;
               const needsWork = progress < 60 || evidenceCount === 0;
@@ -325,7 +308,7 @@ export function StudentOverview() {
                   </div>
                   <div className="mt-3 text-sm font-bold text-brand-deep">{criterion.label}</div>
                   <div className="mt-1 min-h-8 text-xs text-muted-foreground">
-                    {getUserFacingText(result?.explanation, "Chưa có dữ liệu tiền kiểm.")}
+                    {getUserFacingText(result?.explanation, "Chưa có kết quả kiểm tra hồ sơ.")}
                   </div>
                   <div className="mt-3">
                     <Progress value={progress} tint={criterion.color} />
@@ -356,9 +339,9 @@ export function StudentOverview() {
             </div>
           </div>
           <div className="rounded-lg bg-[#F6F9FC] px-3 py-3">
-            <div className="text-sm font-semibold text-brand-deep">Tiền kiểm</div>
+            <div className="text-sm font-semibold text-brand-deep">Kiểm tra hồ sơ</div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {getUserFacingText(precheck?.nextBestAction, "Chưa chạy tiền kiểm cho hồ sơ này.")}
+              {getUserFacingText(precheck?.nextBestAction, "Chưa tự kiểm tra hồ sơ trên hệ thống.")}
             </div>
           </div>
         </div>
@@ -428,8 +411,8 @@ function buildNextActions(
   if (!criteriaResults?.length) {
     return [
       "Nhập đủ các chỉ số cơ bản trong Hồ sơ của tôi.",
-      "Tải minh chứng cho 5 tiêu chí.",
-      "Chạy tiền kiểm trước khi nộp hồ sơ.",
+      "Thêm minh chứng cho 5 tiêu chí.",
+      "Kiểm tra hồ sơ trước khi nộp.",
     ];
   }
 
@@ -452,8 +435,50 @@ function buildNextActions(
 function getPrimaryActionPath(status: ApplicationStatus) {
   if (status === "submitted" || status === "under_review" || status === "resolution_needed") return "/app/cascade";
   if (status === "completed" || status === "rejected") return "/app/cascade";
-  if (status === "supplement_required") return "/app/evidence";
+  if (status === "supplement_required") return "/app/drafts";
   return "/app/drafts";
+}
+
+function getMissingWorkCount({
+  missingCriteriaCount,
+  missingItemsCount,
+  metricsCompleted,
+  metricsRequired,
+}: {
+  missingCriteriaCount: number;
+  missingItemsCount: number;
+  metricsCompleted: number;
+  metricsRequired: number;
+}) {
+  const missingMetrics = Math.max(0, metricsRequired - metricsCompleted);
+  return Math.max(missingCriteriaCount, missingItemsCount, missingMetrics);
+}
+
+function getOverviewHeadline(
+  status: ApplicationStatus,
+  missingCriteriaCount: number,
+  missingWorkCount: number,
+  hasPrecheck: boolean,
+) {
+  if (status === "submitted" || status === "under_review" || status === "resolution_needed") {
+    return "Hồ sơ đã nộp, theo dõi kết quả tại đây";
+  }
+  if (status === "completed" || status === "rejected") return "Đã có kết quả hồ sơ";
+  if (status === "supplement_required") {
+    return missingWorkCount > 0 ? `Bạn còn ${missingWorkCount} việc cần bổ sung` : "Bạn cần gửi lại hồ sơ bổ sung";
+  }
+  if (missingCriteriaCount > 0) return `Còn ${missingCriteriaCount}/5 tiêu chí cần bổ sung`;
+  if (!hasPrecheck) return "Đã đủ dữ liệu cơ bản để kiểm tra hồ sơ";
+  if (missingWorkCount > 0) return `Bạn còn ${missingWorkCount} việc cần hoàn thành`;
+  return "Đã đủ dữ liệu cơ bản để nộp hồ sơ";
+}
+
+function getOverviewCta(status: ApplicationStatus, missingWorkCount: number, hasPrecheck: boolean) {
+  if (status === "submitted" || status === "under_review" || status === "resolution_needed") return "Theo dõi hồ sơ";
+  if (status === "completed" || status === "rejected") return "Xem kết quả";
+  if (status === "supplement_required" || missingWorkCount > 0) return "Tiếp tục hoàn thiện";
+  if (!hasPrecheck) return "Kiểm tra hồ sơ";
+  return "Nộp hồ sơ";
 }
 
 function ResultMeta({ label, value }: { label: string; value: string }) {

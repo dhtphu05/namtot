@@ -42,7 +42,7 @@ export function ApprovedEvidenceCard({
                 className="border-emerald-200 bg-emerald-50 text-emerald-700"
                 variant="outline"
               >
-                Đã import
+                Đã thêm vào hồ sơ
               </Badge>
             ) : unavailable ? (
               <Badge className="border-slate-200 bg-slate-50 text-slate-700" variant="outline">
@@ -50,7 +50,7 @@ export function ApprovedEvidenceCard({
               </Badge>
             ) : (
               <Badge className="border-sky-200 bg-sky-50 text-sky-700" variant="outline">
-                Có thể import
+                Có thể thêm
               </Badge>
             )}
           </div>
@@ -97,12 +97,12 @@ export function ApprovedEvidenceCard({
         {alreadyImported ? (
           <Button type="button" size="sm" onClick={onViewEvidence} disabled={!evidenceId}>
             <Eye className="h-4 w-4" />
-            Xem Evidence Card
+            Xem minh chứng
           </Button>
         ) : item.importable ? (
           <Button type="button" size="sm" onClick={onImport} disabled={isImporting}>
             <PlusCircle className="h-4 w-4" />
-            Import vào hồ sơ
+            Thêm vào hồ sơ
           </Button>
         ) : (
           <Button type="button" size="sm" variant="outline" disabled>

@@ -58,13 +58,13 @@ function borderForAction(action: string) {
   switch (action) {
     case "APPLICATION_SUBMITTED":
     case "REVIEW_DECISION":
-      return "border-[#0057C2] bg-blue-50/30";
+      return "bg-[var(--brand-primary-soft)]";
     case "SUPPLEMENT_REQUESTED":
-      return "border-amber-400 bg-amber-50/20";
+      return "bg-[var(--surface-warning)]";
     case "APPLICATION_STARTED":
-      return "border-emerald-400 bg-emerald-50/20";
+      return "bg-[var(--surface-success)]";
     default:
-      return "border-slate-200 bg-white";
+      return "bg-[var(--surface-muted)]";
   }
 }
 
@@ -126,7 +126,7 @@ export function AuditLogs() {
       <TopBar title="Lịch sử hoạt động hồ sơ" subtitle="Bản ghi minh bạch lịch sử và quyết định xét duyệt" />
 
       {/* Summary Card */}
-      <Card className="mb-6 !p-5 border border-[#EEF2F7]">
+      <Card className="mb-6 !p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Mã hồ sơ: {profile.id.slice(0, 8)}</span>
@@ -153,7 +153,7 @@ export function AuditLogs() {
         </div>
       </Card>
 
-      <Card className="!p-6 border border-[#EEF2F7]">
+      <Card className="!p-5">
         <h3 className="font-bold text-brand-deep text-base mb-6 flex items-center gap-2">
           <History className="w-4 h-4 text-[#0057C2]" /> Lịch trình hồ sơ
         </h3>
@@ -165,7 +165,7 @@ export function AuditLogs() {
             Chưa có sự kiện nào được ghi lại trong hồ sơ này.
           </div>
         ) : (
-          <div className="relative border-l-2 border-[#EEF2F7] ml-3 pl-8 space-y-6">
+          <div className="relative ml-3 space-y-5 border-l border-[#E2E8F0] pl-8">
             {logs.map((log: any, idx: number) => {
               const actor = log.actorName || log.actor || "Hệ thống";
               const role = log.actorRole || log.role;
@@ -174,11 +174,11 @@ export function AuditLogs() {
               return (
                 <div key={log.id || idx} className="relative">
                   {/* Outer circle dot */}
-                  <span className="absolute -left-12 top-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white border border-[#EEF2F7] shadow-sm z-10">
+                  <span className="absolute -left-12 top-0.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--brand-primary-soft)] text-[#0057C2]">
                     {iconForAction(log.action)}
                   </span>
 
-                  <div className={`p-4 rounded-xl border ${borderForAction(log.action)}`}>
+                  <div className={`rounded-xl p-3.5 ${borderForAction(log.action)}`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
                       <span className="font-bold text-[13.5px] text-brand-deep">
                         {formatActionLabel(log.action)}

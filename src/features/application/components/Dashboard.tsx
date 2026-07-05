@@ -16,7 +16,13 @@ import { useManagerDashboardSummary } from "@/features/manager/hooks/useManager"
 import { levelLabel, applicationStatusLabel, type ApplicationStatus } from "@/lib/api/types";
 import { StudentOverview } from "./StudentOverview";
 import { useOfficerDashboard } from "@/features/review/hooks/useReview";
-import { formatDateTime, getCriterionLabel, getLevelLabel, getTaskStatusLabel } from "@/features/review/utils/formatters";
+import {
+  formatDateTime,
+  getCriterionLabel,
+  getLevelLabel,
+  getReadabilityLabel,
+  getTaskStatusLabel,
+} from "@/features/review/utils/formatters";
 import { getStatusTone } from "@/lib/status-labels";
 import type { OfficerDashboardResponse } from "@/features/review/types";
 
@@ -207,7 +213,7 @@ function StudentDash() {
 
             {profile.readinessScore !== undefined && profile.readinessScore !== null && (
               <div className="text-sm opacity-90 mt-2">
-                Mức sẵn sàng tham khảo: {profile.readinessScore}%
+                Tiến độ tham khảo: {profile.readinessScore}%
               </div>
             )}
 
@@ -260,13 +266,15 @@ function OfficerDashReal() {
     ? specializations.map((criterion) => getCriterionLabel(criterion)).join(", ")
     : "Chưa khai báo tiêu chí";
   const summary = data?.summary;
-  const priorityTasks = data?.priorityTasks ?? [];
-  const priorityGroups = useMemo(() => groupOfficerPriorityTasks(priorityTasks), [priorityTasks]);
+  const priorityTasks = useMemo(
+    () => [...(data?.priorityTasks ?? [])].sort(compareOfficerPriorityTasks).slice(0, 5),
+    [data?.priorityTasks],
+  );
 
   if (isLoading) {
     return (
       <>
-        <TopBar title="Không gian xét duyệt chuyên trách" subtitle="Đang tải dữ liệu phân công từ backend..." />
+        <TopBar title="Tổng quan xử lý" subtitle="Đang tải việc được giao và hồ sơ cần xét duyệt." />
         <Card>
           <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -280,7 +288,7 @@ function OfficerDashReal() {
   if (isError) {
     return (
       <>
-        <TopBar title="Không gian xét duyệt chuyên trách" subtitle="Không thể tải dashboard cán bộ." />
+        <TopBar title="Tổng quan xử lý" subtitle="Không thể tải danh sách việc được giao." />
         <Card>
           <div className="py-10 text-center">
             <div className="font-semibold text-rose-600">Không thể tải dữ liệu xét duyệt.</div>
@@ -296,53 +304,25 @@ function OfficerDashReal() {
   return (
     <>
       <TopBar
-        title="Tổng quan cán bộ xét duyệt"
-        subtitle={`${user?.fullName ?? data?.officer.fullName ?? "Cán bộ"} • Phụ trách: ${specializationText}. AI gợi ý, cán bộ quyết định theo từng tiêu chí.`}
+        title="Tổng quan xử lý"
+        subtitle={`${user?.fullName ?? data?.officer.fullName ?? "Cán bộ"} • Phụ trách: ${specializationText}. Tập trung xử lý hồ sơ, minh chứng và yêu cầu bổ sung theo từng tiêu chí.`}
       />
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
-        <StatCard label="Task được giao" value={summary?.totalAssigned ?? 0} icon={<Inbox className="w-5 h-5" />} />
-        <StatCard label="Chờ xét / đang xét" value={(summary?.waiting ?? 0) + (summary?.reviewing ?? 0)} icon={<Clock className="w-5 h-5" />} tint="#0057C2" />
-        <StatCard label="Cần bổ sung" value={summary?.supplementRequired ?? 0} icon={<CircleAlert className="w-5 h-5" />} tint="#F59E0B" />
-        <StatCard label="AI thấp / quá hạn" value={`${summary?.aiLowConfidence ?? 0}/${summary?.overdue ?? 0}`} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
-      </div>
+      <OfficerDashboardCards summary={summary} />
 
       <Card className="mb-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-bold text-brand-deep">Việc ưu tiên</h3>
             <div className="mt-1 text-sm text-muted-foreground">
-              Quá hạn, AI thấp, deadline gần, việc được giao và việc có thể nhận.
+              Sắp xếp theo quá hạn, sắp quá hạn, tài liệu cần kiểm tra và việc mới được giao.
             </div>
           </div>
-          <Link to="/app/queue"><Button size="sm" variant="ghost">Mở hàng đợi →</Button></Link>
+          <a href="/app/queue?tab=actionable"><Button size="sm" variant="ghost">Mở danh sách →</Button></a>
         </div>
         <div className="space-y-2">
-          {priorityGroups.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Chưa có việc ưu tiên thuộc phạm vi phụ trách.</div>}
-          {priorityGroups.map((group) => (
-            <Link to="/app/review/$id" params={{ id: group.primaryTask.taskId }} key={group.applicationId} className="block">
-              <div className="p-4 rounded-xl hover:bg-[#F4FBFF] transition-all flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-[#0057C2] text-white flex items-center justify-center text-xs font-bold shrink-0">{group.studentName.split(" ").slice(-1)[0]?.[0] ?? "?"}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-brand-deep truncate">{group.studentName} <span className="text-xs text-muted-foreground font-normal">• {group.studentCode}</span></div>
-                  <div className="text-xs text-muted-foreground truncate">{group.tasks.length}/5 tiêu chí nổi bật • {getLevelLabel(group.targetLevel)} • {formatDateTime(group.dueDate)}</div>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {group.tasks.map((task) => (
-                      <Chip key={task.taskId} tone={task.status === "supplement_required" ? "warning" : task.status === "accepted" ? "success" : task.status === "rejected" ? "error" : task.status === "resolution_needed" ? "warning" : "brand"}>
-                        {getCriterionLabel(task.criterion)}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-                <Chip tone={getPriorityTone(group.primaryTask.priorityReason)}>{getPriorityReasonLabel(group.primaryTask.priorityReason)}</Chip>
-                <Chip tone={group.primaryTask.riskLevel === "high" ? "error" : group.primaryTask.riskLevel === "medium" ? "warning" : "success"}>{group.primaryTask.riskLevel}</Chip>
-                <Chip tone={(group.primaryTask.aiConfidence ?? 1) < 0.7 ? "warning" : "brand"}>
-                  {group.primaryTask.aiConfidence === null || group.primaryTask.aiConfidence === undefined
-                    ? "AI chưa có dữ liệu"
-                    : `AI ${Math.round(group.primaryTask.aiConfidence * 100)}%`}
-                </Chip>
-                <Chip tone="brand">Mở hồ sơ</Chip>
-              </div>
-            </Link>
+          {priorityTasks.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Bạn chưa có task cần xử lý. Hãy chuyển sang tab Có thể nhận hoặc kiểm tra lại bộ lọc.</div>}
+          {priorityTasks.map((task) => (
+            <OfficerPriorityTaskItem key={task.taskId} task={task} />
           ))}
         </div>
       </Card>
@@ -375,6 +355,103 @@ function OfficerDashReal() {
   );
 }
 
+function OfficerDashboardCards({ summary }: { summary?: OfficerDashboardResponse["summary"] }) {
+  const cards = [
+    {
+      label: "Cần xử lý hôm nay",
+      value: (summary?.waiting ?? 0) + (summary?.reviewing ?? 0),
+      href: "/app/queue?tab=actionable",
+      icon: <Inbox className="h-5 w-5" />,
+      tint: "#0057C2",
+    },
+    {
+      label: "Sắp quá hạn",
+      value: summary?.dueSoon ?? 0,
+      href: "/app/queue?tab=actionable&dueSoon=1",
+      icon: <Clock className="h-5 w-5" />,
+      tint: "#D97706",
+    },
+    {
+      label: "Chờ sinh viên bổ sung",
+      value: summary?.supplementRequired ?? 0,
+      href: "/app/queue?tab=supplement&supplementRequired=1",
+      icon: <CircleAlert className="h-5 w-5" />,
+      tint: "#F59E0B",
+    },
+    {
+      label: "Cần hội ý",
+      value: summary?.resolutionNeeded ?? 0,
+      href: "/app/resolution",
+      icon: <ShieldQuestion className="h-5 w-5" />,
+      tint: "#7C3AED",
+    },
+    {
+      label: "Đã xử lý hôm nay",
+      value: (summary?.accepted ?? 0) + (summary?.rejected ?? 0),
+      href: "/app/queue?tab=mine&status=accepted",
+      icon: <FileCheck2 className="h-5 w-5" />,
+      tint: "#15803D",
+    },
+  ];
+
+  return (
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      {cards.map((card) => (
+        <a key={card.label} href={card.href} className="block">
+          <Card className="h-full !p-4 transition-colors hover:bg-[var(--surface-muted)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[12px] font-semibold text-muted-foreground">{card.label}</div>
+                <div className="mt-2 text-3xl font-bold leading-none text-brand-deep">{card.value}</div>
+                <div className="mt-2 text-xs font-semibold text-[#0057C2]">Mở danh sách</div>
+              </div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-white" style={{ background: card.tint }}>
+                {card.icon}
+              </div>
+            </div>
+          </Card>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function OfficerPriorityTaskItem({ task }: { task: OfficerPriorityTask }) {
+  return (
+    <Link to="/app/review/$id" params={{ id: task.taskId }} className="block">
+      <div className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-[var(--surface-muted)]">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0057C2] text-xs font-bold text-white">
+          {task.studentName.split(" ").slice(-1)[0]?.[0] ?? "?"}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold text-brand-deep">
+            {task.studentName} <span className="font-normal text-muted-foreground">• {task.studentCode}</span>
+          </div>
+          <div className="mt-1 line-clamp-2 text-sm text-[#475569]">{getOfficerPrioritySentence(task)}</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Chip tone={getPriorityTone(task.priorityReason)}>{getPriorityReasonLabel(task.priorityReason)}</Chip>
+            <Chip tone={(task.aiConfidence ?? 1) < 0.7 ? "warning" : "brand"}>{getReadabilityLabel(task.aiConfidence)}</Chip>
+            <Chip tone="muted">{formatDateTime(task.dueDate)}</Chip>
+          </div>
+        </div>
+        <Button size="sm">Mở xét duyệt</Button>
+      </div>
+    </Link>
+  );
+}
+
+function getOfficerPrioritySentence(task: OfficerPriorityTask) {
+  const criterion = getCriterionLabel(task.criterion);
+  if (task.priorityReason === "overdue") return `${criterion} — quá hạn, cần kiểm tra và lưu kết luận ngay.`;
+  if (task.priorityReason === "due_soon") return `${criterion} — sắp quá hạn, cần đối chiếu minh chứng trước deadline.`;
+  if (task.priorityReason === "student_resubmitted") return `${criterion} — sinh viên đã bổ sung, cần xét lại.`;
+  if (task.priorityReason === "low_ai_confidence" || (task.aiConfidence ?? 1) < 0.7) {
+    return `${criterion} — cần kiểm tra giấy xác nhận, tài liệu đọc chưa đủ rõ hoặc thiếu thông tin.`;
+  }
+  if (task.status === "resolution_needed") return `${criterion} — case cần hội ý trước khi kết luận.`;
+  return `${criterion} — đối chiếu minh chứng và đưa ra kết luận theo phạm vi phụ trách.`;
+}
+
 function OfficerDash() {
   const officerId = useApp((s) => s.currentOfficerId);
   const tasks = useApp((s) => s.tasks);
@@ -390,13 +467,13 @@ function OfficerDash() {
     <>
       <TopBar
         title="Không gian xét duyệt chuyên trách"
-        subtitle={`${me.name} • ${me.role} — chỉ xử lý task ${critLabel}. AI gợi ý, cán bộ xác nhận quyết định cuối cùng.`}
+        subtitle={`${me.name} • ${me.role} — xử lý hồ sơ thuộc tiêu chí ${critLabel}. Cán bộ xác nhận quyết định cuối cùng.`}
       />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
         <StatCard label={`Task ${critLabel} chờ xét`} value={waiting.length} icon={<Inbox className="w-5 h-5" />} />
         <StatCard label="Cần bổ sung" value={supp.length} icon={<CircleAlert className="w-5 h-5" />} tint="#F59E0B" />
-        <StatCard label="AI confidence thấp" value={lowConf.length} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
-        <StatCard label="Cần Resolution Hub" value={reso.length} icon={<ShieldQuestion className="w-5 h-5" />} tint="#a855f7" />
+        <StatCard label="Cần kiểm tra kỹ" value={lowConf.length} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
+        <StatCard label="Cần hội ý" value={reso.length} icon={<ShieldQuestion className="w-5 h-5" />} tint="#a855f7" />
       </div>
 
       <Card className="mb-5">
@@ -414,7 +491,7 @@ function OfficerDash() {
                   <div className="font-semibold text-brand-deep truncate">{t.studentName} <span className="text-xs text-muted-foreground font-normal">• {t.studentMssv}</span></div>
                   <div className="text-xs text-muted-foreground truncate">{t.evidenceName} • Aim {LEVELS.find(l => l.key === t.targetLevel)?.label}</div>
                 </div>
-                <Chip tone={t.confidence < 0.7 ? "warning" : "brand"}>AI {Math.round(t.confidence * 100)}%</Chip>
+                <Chip tone={t.confidence < 0.7 ? "warning" : "brand"}>{getReadabilityLabel(t.confidence)}</Chip>
                 <Chip tone={getStatusTone(t.status)}>{getTaskStatusLabel(t.status)}</Chip>
               </div>
             </Link>
@@ -424,13 +501,13 @@ function OfficerDash() {
 
       <div className="grid lg:grid-cols-2 gap-5">
         <Card>
-          <h3 className="font-bold text-brand-deep mb-3 flex items-center gap-2"><ShieldQuestion className="w-4 h-4" /> Resolution Hub đang chờ</h3>
+          <h3 className="font-bold text-brand-deep mb-3 flex items-center gap-2"><ShieldQuestion className="w-4 h-4" /> Case hội ý đang chờ</h3>
           <div className="space-y-2">
             {RESOLUTION_CASES.map((r) => (
               <Link to="/app/resolution/$id" params={{ id: r.id }} key={r.id} className="block p-3 rounded-xl bg-purple-50 hover:bg-purple-100">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold text-purple-900">{r.student}</div>
-                  <Chip tone="warning">{Math.round(r.confidence * 100)}%</Chip>
+                  <Chip tone="warning">Cần hội ý</Chip>
                 </div>
                 <div className="text-xs text-purple-700 mt-1">{r.type}</div>
               </Link>
@@ -493,7 +570,7 @@ function ManagerDashReal() {
   if (isLoading) {
     return (
       <>
-        <TopBar title="Bảng điều khiển quản lý" subtitle="Tổng quan kỳ xét SV5T 2025-2026" />
+        <TopBar title="Tổng quan mùa xét" subtitle="Theo dõi tiến độ, phân công cán bộ và kiểm soát kết quả xét duyệt." />
         <Card>
           <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -507,7 +584,7 @@ function ManagerDashReal() {
   if (isError) {
     return (
       <>
-        <TopBar title="Bảng điều khiển quản lý" subtitle="Tổng quan kỳ xét SV5T 2025-2026" />
+        <TopBar title="Tổng quan mùa xét" subtitle="Theo dõi tiến độ, phân công cán bộ và kiểm soát kết quả xét duyệt." />
         <Card>
           <div className="py-10 text-center">
             <div className="font-semibold text-rose-600">Không thể tải dữ liệu dashboard.</div>
@@ -522,12 +599,12 @@ function ManagerDashReal() {
 
   return (
     <>
-      <TopBar title="Bảng điều khiển quản lý" subtitle="Tổng quan kỳ xét SV5T 2025-2026" />
+      <TopBar title="Tổng quan mùa xét" subtitle="Theo dõi tiến độ, phân công cán bộ và kiểm soát kết quả xét duyệt." />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
         <StatCard label="Tổng hồ sơ" value={overview?.totalApplications ?? 0} icon={<FileText className="w-5 h-5" />} />
         <StatCard label="Đã nộp / đang xét" value={(overview?.submittedCount ?? 0) + (overview?.underReviewCount ?? 0)} icon={<FileCheck2 className="w-5 h-5" />} tint="#22C55E" />
         <StatCard label="Cần bổ sung" value={overview?.supplementRequiredCount ?? 0} icon={<CircleAlert className="w-5 h-5" />} tint="#F59E0B" />
-        <StatCard label="Mập mờ / Resolution" value={overview?.resolutionNeededCount ?? 0} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
+        <StatCard label="Case hội ý" value={overview?.resolutionNeededCount ?? 0} icon={<TriangleAlert className="w-5 h-5" />} tint="#EF4444" />
       </div>
 
       <div className="mb-3">
@@ -643,7 +720,7 @@ function ManagerDashReal() {
 function getPriorityReasonLabel(reason?: string | null) {
   if (reason === "overdue") return "Quá hạn";
   if (reason === "student_resubmitted") return "Vừa bổ sung";
-  if (reason === "low_ai_confidence") return "AI thấp";
+  if (reason === "low_ai_confidence") return "Cần kiểm tra kỹ";
   if (reason === "due_soon") return "Sắp đến hạn";
   if (reason === "assigned_to_you") return "Được giao";
   if (reason === "unassigned_claimable") return "Có thể nhận";
@@ -659,46 +736,14 @@ function getPriorityTone(reason?: string | null) {
 
 type OfficerPriorityTask = OfficerDashboardResponse["priorityTasks"][number];
 
-function groupOfficerPriorityTasks(tasks: OfficerPriorityTask[]) {
-  const groups = new Map<string, OfficerPriorityTask[]>();
-
-  for (const task of tasks) {
-    const current = groups.get(task.applicationId) ?? [];
-    current.push(task);
-    groups.set(task.applicationId, current);
-  }
-
-  return Array.from(groups.entries())
-    .map(([applicationId, groupTasks]) => {
-      const sortedTasks = [...groupTasks].sort(compareOfficerPriorityTasks);
-      const primaryTask = sortedTasks[0];
-      const dueDate =
-        sortedTasks
-          .map((task) => task.dueDate)
-          .filter((value): value is string => Boolean(value))
-          .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null;
-
-      return {
-        applicationId,
-        studentName: primaryTask.studentName,
-        studentCode: primaryTask.studentCode,
-        targetLevel: primaryTask.targetLevel,
-        dueDate,
-        tasks: sortedTasks,
-        primaryTask,
-      };
-    })
-    .sort((a, b) => compareOfficerPriorityTasks(a.primaryTask, b.primaryTask));
-}
-
 function compareOfficerPriorityTasks(a: OfficerPriorityTask, b: OfficerPriorityTask) {
   const reasonWeight: Record<string, number> = {
     overdue: 0,
-    student_resubmitted: 1,
+    due_soon: 1,
+    student_resubmitted: 2,
     low_ai_confidence: 2,
-    due_soon: 3,
-    assigned_to_you: 4,
-    unassigned_claimable: 5,
+    assigned_to_you: 3,
+    unassigned_claimable: 4,
   };
   const riskWeight: Record<string, number> = { high: 0, medium: 1, low: 2 };
   const aReason = a.priorityReason ? reasonWeight[a.priorityReason] ?? 99 : 99;

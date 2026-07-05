@@ -1,6 +1,5 @@
-import { AlertCircle, CheckCircle2, RefreshCw, ShieldCheck } from "lucide-react";
+import { RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { JobProgressInline } from "@/components/status/JobProgressInline";
 import { UxStatusCard } from "@/components/status/UxStatusCard";
@@ -8,7 +7,6 @@ import type { EvidenceResponse } from "@/lib/api/types";
 import type { EvidenceCard } from "@/types/evidence";
 import type { JobResponse } from "@/types/jobs";
 import {
-  getConfidenceSummary,
   getEvidenceUxStatus,
   getSafeExtractedFields,
   getSafeOcrText,
@@ -35,7 +33,6 @@ export function EvidenceCardPanel({
   onRetry,
   retrying,
 }: EvidenceCardPanelProps) {
-  const confidence = getConfidenceSummary(card?.confidence ?? evidence.confidence);
   const fields = getSafeExtractedFields(card);
   const warnings = normalizeWarnings(card?.warnings ?? card?.warningsJson);
   const uxStatus = getEvidenceUxStatus(evidence, card);
@@ -66,28 +63,6 @@ export function EvidenceCardPanel({
       {isOfficialImport ? (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
           Minh chứng này được tạo từ danh sách chính thức đã được xác nhận, không cần OCR lại.
-        </div>
-      ) : null}
-
-      {confidence ? (
-        <div className="rounded-md border p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 font-semibold text-foreground">
-                {confidence.tone === "success" ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                )}
-                {confidence.label}
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Đây là độ chắc chắn của việc đọc và rút trích thông tin, không phải kết quả xét
-                duyệt cuối cùng.
-              </p>
-            </div>
-            <Badge variant="outline">{confidence.percent}%</Badge>
-          </div>
         </div>
       ) : null}
 

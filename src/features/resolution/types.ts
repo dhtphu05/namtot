@@ -15,6 +15,7 @@ export type ResolutionCasesParams = {
   limit?: number;
   status?: ResolutionCaseStatus;
   criterion?: Criterion;
+  escalator?: string;
   level?: Level;
   q?: string;
 };

@@ -17,7 +17,6 @@ import { Card } from "@/components/ui-kit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { AuditTimeline } from "@/features/audit/components/AuditTimeline";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import { CriterionBadge } from "@/features/review/components/CriterionBadge";
@@ -28,7 +27,15 @@ import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingSt
 import { ReviewStatusBadge } from "@/features/review/components/ReviewStatusBadge";
 import type { ReviewDecision, Role } from "@/features/review/types";
 import { getErrorMessage } from "@/features/review/utils/errors";
-import { formatDateTime, getTaskStatusLabel } from "@/features/review/utils/formatters";
+import {
+  formatAuditActionLabel,
+  formatDateTime,
+  formatEvidenceClarityLabel,
+  formatRoleLabel,
+  getCriterionLabel,
+  getTaskStatusLabel,
+  isUserFacingAuditAction,
+} from "@/features/review/utils/formatters";
 import {
   useResolutionCase,
   useResolveResolutionCase,
@@ -52,10 +59,10 @@ const resolveDecisionOptions: Array<{
   value: ResolutionFinalDecision;
   label: string;
 }> = [
-  { value: "accepted", label: "Đồng ý đạt tiêu chí" },
-  { value: "rejected", label: "Kết luận không đạt" },
-  { value: "supplement_required", label: "Yêu cầu bổ sung thêm" },
-  { value: "closed_no_action", label: "Đóng không xử lý" },
+  { value: "accepted", label: "Công nhận minh chứng" },
+  { value: "rejected", label: "Không công nhận minh chứng" },
+  { value: "supplement_required", label: "Yêu cầu bổ sung" },
+  { value: "closed_no_action", label: "Đóng case không xử lý" },
 ];
 
 function ResolutionCaseDetailRoute() {
@@ -154,7 +161,7 @@ function ResolutionCaseDetailContent({ caseId, role }: { caseId: string; role: R
   return (
     <>
       <TopBar
-        title={`Hồ sơ hội ý #${resolutionCase.id.slice(0, 8)}`}
+        title={`Case hội ý #${shortId(resolutionCase.id)}`}
         subtitle={`${resolutionCase.studentName || fallbackText} • ${resolutionCase.studentCode || fallbackText}`}
         action={<BackToResolutionButton />}
       />
@@ -183,7 +190,7 @@ function ResolutionCaseDetailContent({ caseId, role }: { caseId: string; role: R
             <HeaderField label="Người chuyển" value={getActorLabel(resolutionCase)} />
             <HeaderField label="Ngày tạo" value={formatDateTime(resolutionCase.createdAt)} />
             <HeaderField label="Cập nhật" value={formatDateTime(resolutionCase.updatedAt)} />
-            <HeaderField label="Mã hồ sơ" value={resolutionCase.applicationId} />
+            <HeaderField label="Mã hồ sơ" value={`#${shortId(resolutionCase.applicationId)}`} />
           </div>
         </Card>
 
@@ -210,12 +217,6 @@ function ResolutionCaseDetailContent({ caseId, role }: { caseId: string; role: R
               />
             )}
             <TimelineSection timeline={resolutionCase.auditTimeline ?? []} />
-            <AuditTimeline
-              applicationId={resolutionCase.applicationId}
-              caseId={resolutionCase.id}
-              limit={10}
-              taskId={resolutionCase.taskId ?? undefined}
-            />
           </div>
         </section>
       </div>
@@ -298,6 +299,13 @@ function ReasonSection({ resolutionCase }: { resolutionCase: ResolutionCaseDetai
   return (
     <Card>
       <SectionHeader icon={<FileQuestion className="h-5 w-5" />} title="Lý do cần hội ý" />
+      <div className="mb-3 grid gap-3 md:grid-cols-2">
+        <InfoRow label="Lý do chính" value={resolutionCase.reason || fallbackText} />
+        <InfoRow
+          label="Câu hỏi cần hội đồng quyết định"
+          value={`Minh chứng này có được tính cho ${getCriterionLabel(resolutionCase.criterion)} ${getResolutionLevelText(resolutionCase.targetLevel)} không?`}
+        />
+      </div>
       <div className="rounded-md border bg-muted/30 p-4 text-sm text-foreground">
         {resolutionCase.reason || fallbackText}
       </div>
@@ -325,9 +333,15 @@ function LinkedDataSection({ resolutionCase }: { resolutionCase: ResolutionCaseD
         title="Liên kết hồ sơ / tác vụ / minh chứng"
       />
       <div className="grid gap-3 sm:grid-cols-2">
-        <InfoRow label="Mã hồ sơ ứng tuyển" value={resolutionCase.applicationId} />
-        <InfoRow label="Mã tác vụ xét duyệt" value={resolutionCase.taskId} />
+        <InfoRow label="Mã hồ sơ ngắn" value={`#${shortId(resolutionCase.applicationId)}`} />
+        <InfoRow label="Tác vụ xét duyệt liên quan" value={resolutionCase.taskId ? `#${shortId(resolutionCase.taskId)}` : undefined} />
       </div>
+
+      {!resolutionCase.applicationId || !resolutionCase.taskId || !evidenceIds.length ? (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Case này thiếu liên kết minh chứng hoặc tác vụ xét duyệt. Vui lòng quay lại tác vụ xét duyệt và chuyển hội ý lại để hội đồng có đủ ngữ cảnh.
+        </div>
+      ) : null}
 
       <div className="mt-4">
         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -397,12 +411,17 @@ function ResolutionEvidenceCard({ evidence }: { evidence: ResolutionEvidence }) 
     <div className="rounded-lg border p-3">
       <div className="font-semibold text-brand-deep">{evidence.evidenceName}</div>
       <div className="mt-1 text-xs text-muted-foreground">
-        {evidence.sourceType} • {evidence.status} • {evidence.indexingStatus}
+        {getResolutionEvidenceSourceLabel(evidence.sourceType)} · {getResolutionEvidenceStatusLabel(evidence.status)} · {getIndexingLabel(evidence.indexingStatus)}
       </div>
+      {typeof evidence.confidence === "number" ? (
+        <div className="mt-2">
+          <Badge variant="secondary">{formatEvidenceClarityLabel(evidence.confidence)}</Badge>
+        </div>
+      ) : null}
       {evidence.evidenceCard?.aiSummary ? (
         <p className="mt-2 text-sm text-muted-foreground">{evidence.evidenceCard.aiSummary}</p>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">AI chưa xử lý minh chứng này.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Chưa có tóm tắt đọc nhanh cho minh chứng này.</p>
       )}
       <div className="mt-3 space-y-2">
         {evidence.files?.length ? evidence.files.map((file) => (
@@ -457,7 +476,7 @@ function HistorySection({
           {comments.map((comment) => (
             <HistoryItem
               key={comment.id}
-              actor={`${comment.actorName || fallbackText} / ${comment.actorRole}`}
+              actor={`${comment.actorName || fallbackText} / ${formatRoleLabel(comment.actorRole)}`}
               note={comment.message}
               title="Ghi chú hội ý"
               timestamp={comment.createdAt}
@@ -467,7 +486,7 @@ function HistorySection({
           {decisionHistory.map((item) => (
             <HistoryItem
               key={item.id}
-              actor={`${item.actorName || fallbackText} / ${item.actorRole}`}
+              actor={`${item.actorName || fallbackText} / ${formatRoleLabel(item.actorRole)}`}
               note={item.note}
               title={getTaskStatusLabel(item.decision)}
               timestamp={item.createdAt}
@@ -485,25 +504,26 @@ function HistorySection({
 }
 
 function TimelineSection({ timeline }: { timeline: ResolutionTimelineItem[] }) {
+  const visibleTimeline = timeline.filter((item) => isUserFacingAuditAction(item.action));
   return (
     <Card>
-      <SectionHeader icon={<History className="h-5 w-5" />} title="Audit / timeline" />
-      {timeline.length ? (
+      <SectionHeader icon={<History className="h-5 w-5" />} title="Lịch sử xử lý case" />
+      {visibleTimeline.length ? (
         <div className="space-y-3">
-          {timeline.map((item) => (
+          {visibleTimeline.map((item) => (
             <HistoryItem
               key={item.id}
-              actor={[item.actorName, item.actorRole].filter(Boolean).join(" / ") || fallbackText}
+              actor={[item.actorName, formatRoleLabel(item.actorRole)].filter(Boolean).join(" / ") || fallbackText}
               note={item.note}
-              title={item.action || "Cập nhật hồ sơ"}
+              title={formatAuditActionLabel(item.action)}
               timestamp={item.createdAt}
             />
           ))}
         </div>
       ) : (
         <EmptyReviewState
-          title="Chưa có timeline từ backend"
-          description="Khi backend trả về audit/timeline, dữ liệu sẽ hiển thị trong khung này."
+          title="Chưa có lịch sử xử lý"
+          description="Khi có thao tác hội ý hoặc kết luận, lịch sử nghiệp vụ sẽ hiển thị tại đây."
         />
       )}
     </Card>
@@ -554,7 +574,7 @@ function ResolveResolutionPanel({
     }
 
     if (updateKnowledgeBase && !knowledgeBaseTitle.trim()) {
-      setFormError("Vui long nhap tieu de knowledge base.");
+      setFormError("Vui lòng nhập tiêu đề tiền lệ xét duyệt.");
       return;
     }
 
@@ -575,9 +595,16 @@ function ResolveResolutionPanel({
       },
       {
         onSuccess: () => {
-          const message = "Đã lưu kết luận hội ý.";
+          const message = "Đã lưu kết luận hội ý. Kết quả sẽ được áp dụng vào tác vụ/hồ sơ liên quan.";
           setSubmittedMessage(message);
-          toast.success(message);
+          toast.success(message, {
+            action: {
+              label: "Quay về danh sách",
+              onClick: () => {
+                window.location.href = "/app/resolution";
+              },
+            },
+          });
           onSuccess?.();
         },
       },
@@ -675,16 +702,16 @@ function ResolveResolutionPanel({
                 setFormError(null);
               }}
             />
-            Lưu kết luận vào knowledge base
+            Lưu thành tiền lệ xét duyệt
           </label>
           <p className="mt-2 text-xs text-muted-foreground">
-            Dùng làm tiền lệ cho các hồ sơ sau khi gặp minh chứng hoặc tình huống tương tự.
+            Dùng làm tiền lệ xét duyệt cho hồ sơ tương tự. Không lưu thêm thông tin cá nhân không cần thiết.
           </p>
           {updateKnowledgeBase ? (
             <input
               className="mt-3 h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
               disabled={isResolved || resolveCase.isPending}
-              placeholder="Tiêu đề knowledge base"
+              placeholder="Tiêu đề tiền lệ xét duyệt"
               value={knowledgeBaseTitle}
               onChange={(event) => {
                 setKnowledgeBaseTitle(event.target.value);
@@ -757,6 +784,59 @@ function HistoryItem({
       {note ? <p className="mt-2 text-sm text-muted-foreground">{note}</p> : null}
     </div>
   );
+}
+
+function getResolutionLevelText(level: ResolutionCaseDetail["targetLevel"]) {
+  const labels: Record<ResolutionCaseDetail["targetLevel"], string> = {
+    school: "cấp Trường",
+    university: "cấp ĐHĐN",
+    city: "cấp Thành phố",
+    central: "cấp Trung ương",
+  };
+  return labels[level] ?? "cấp xét hiện tại";
+}
+
+function getResolutionEvidenceSourceLabel(sourceType?: string | null) {
+  const labels: Record<string, string> = {
+    metric_input: "Dữ liệu sinh viên khai báo",
+    manual_upload: "Minh chứng sinh viên tải lên",
+    event_import: "Minh chứng từ sự kiện",
+    collective_import: "Minh chứng tập thể",
+  };
+  return sourceType ? labels[sourceType] ?? sourceType : fallbackText;
+}
+
+function getResolutionEvidenceStatusLabel(status?: string | null) {
+  const labels: Record<string, string> = {
+    draft: "Bản nháp",
+    pending_indexing: "Đang kiểm tra",
+    indexed: "Đã kiểm tra",
+    needs_supplement: "Cần bổ sung",
+    under_review: "Đang xét duyệt",
+    accepted: "Đã công nhận",
+    rejected: "Không công nhận",
+    resolution_needed: "Cần hội ý",
+  };
+  return status ? labels[status] ?? status : fallbackText;
+}
+
+function getIndexingLabel(status?: string | null) {
+  const labels: Record<string, string> = {
+    not_started: "Chưa đọc file",
+    uploaded: "Đã tải lên",
+    pending_indexing: "Đang kiểm tra",
+    ocr_processing: "Đang đọc file",
+    extracting: "Đang đọc thông tin",
+    checking_registry: "Đang đối chiếu",
+    indexed: "Đã kiểm tra xong",
+    needs_manual_review: "Cần cán bộ kiểm tra",
+    failed: "Cần kiểm tra thủ công",
+  };
+  return status ? labels[status] ?? status : fallbackText;
+}
+
+function shortId(id?: string | null) {
+  return id ? id.slice(0, 8).toUpperCase() : "N/A";
 }
 
 function InfoRow({ label, value }: { label: string; value?: React.ReactNode }) {

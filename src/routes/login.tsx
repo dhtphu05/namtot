@@ -110,7 +110,7 @@ function Login() {
   return (
     <div className="min-h-screen bg-[#F6F8FB] px-6 py-10">
       <div className="mx-auto grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <div className="mb-7">
             <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-[#0057C2] text-lg font-bold text-white">
               5T
@@ -165,7 +165,7 @@ function Login() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <form onSubmit={handleLogin} className="rounded-xl bg-white p-7 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]">
             <div>
               <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">Tài khoản của bạn</div>

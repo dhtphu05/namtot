@@ -95,7 +95,16 @@ const officerTabs: Array<{ value: QueueTab; label: string; description: string }
   { value: "all", label: "Tất cả", description: "Tất cả việc được phép xem." },
 ];
 
-const queueLevels: Level[] = ["school", "university", "city", "central"];
+const queueTabValues: QueueTab[] = ["actionable", "claimable", "mine", "supplement", "readonly", "all"];
+const reviewTaskStatusValues: ReviewTaskStatus[] = [
+  "waiting",
+  "reviewing",
+  "supplement_required",
+  "accepted",
+  "rejected",
+  "resolution_needed",
+];
+
 const queueRejectionReasons = [
   "Không đạt điều kiện cứng của tiêu chí",
   "Dữ liệu sinh viên không khớp với tài liệu",
@@ -109,6 +118,37 @@ const queueResolutionReasons = [
   "Tài liệu cần xác minh thêm",
   "Trường hợp ngoài quy trình thông thường",
 ];
+
+function getInitialQueueTab(): QueueTab {
+  if (typeof window === "undefined") return "actionable";
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  return queueTabValues.includes(tab as QueueTab) ? (tab as QueueTab) : "actionable";
+}
+
+function getInitialQueueFilters(): ReviewTaskListParams {
+  const base: ReviewTaskListParams = {
+    page: 1,
+    limit: defaultLimit,
+  };
+  if (typeof window === "undefined") return base;
+
+  const params = new URLSearchParams(window.location.search);
+  const status = parseReviewTaskStatus(params.get("status"));
+  return {
+    ...base,
+    ...(status ? { status } : {}),
+    ...(params.get("dueSoon") === "1" ? { dueSoon: true } : {}),
+    ...(params.get("overdue") === "1" ? { overdue: true } : {}),
+    ...(params.get("supplementRequired") === "1" ? { supplementRequired: true } : {}),
+    ...(params.get("resolutionNeeded") === "1" ? { resolutionNeeded: true } : {}),
+  };
+}
+
+function parseReviewTaskStatus(value: string | null): ReviewTaskStatus | undefined {
+  return reviewTaskStatusValues.includes(value as ReviewTaskStatus)
+    ? (value as ReviewTaskStatus)
+    : undefined;
+}
 
 function ReviewQueueRoute() {
   const user = useAuth((state) => state.user);
@@ -140,16 +180,13 @@ function ReviewQueueRoute() {
 
 function ReviewQueueContent({ role }: { role: Role }) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<QueueTab>("actionable");
+  const [activeTab, setActiveTab] = useState<QueueTab>(() => getInitialQueueTab());
   const [viewMode, setViewMode] = useState<QueueViewMode>("application");
   const [sortBy, setSortBy] = useState<QueueSort>("deadline");
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const [selectedCriterion, setSelectedCriterion] = useState<Criterion | null>(null);
   const [claimCandidate, setClaimCandidate] = useState<ReviewTaskListItem | null>(null);
-  const [filters, setFilters] = useState<ReviewTaskListParams>({
-    page: 1,
-    limit: defaultLimit,
-  });
+  const [filters, setFilters] = useState<ReviewTaskListParams>(() => getInitialQueueFilters());
 
   const queryParams = useMemo<ReviewTaskListParams>(
     () => ({
@@ -273,8 +310,8 @@ function ReviewQueueContent({ role }: { role: Role }) {
   return (
     <>
       <TopBar
-        title="Hàng đợi xét duyệt"
-        subtitle="Theo dõi và xử lý các hồ sơ được phân công theo từng tiêu chí Sinh viên 5 tốt."
+        title={role === "officer" ? "Việc được giao" : "Hồ sơ đang xét"}
+        subtitle="Xử lý các tiêu chí và minh chứng thuộc phạm vi phụ trách."
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -624,19 +661,19 @@ function OfficerQueueWorkbench({
   };
 
   return (
-    <div className="flex h-screen min-w-0 flex-col overflow-hidden bg-[#F6F8FB] text-[#0F172A]">
-      <div className="flex min-h-16 flex-wrap items-center gap-3 border-b border-[rgba(15,23,42,0.08)] bg-white px-4 py-2">
+    <div className="flex h-screen min-w-0 flex-col overflow-hidden bg-[var(--surface-app)] text-[var(--text-primary)]">
+      <div className="flex min-h-14 flex-wrap items-center gap-3 bg-white px-4 py-2 shadow-[0_1px_0_rgba(15,23,42,0.05)]">
         <div className="min-w-0 shrink-0 md:min-w-[210px]">
-          <h1 className="text-lg font-bold text-[#0F172A]">Việc cần xử lý</h1>
+          <h1 className="text-lg font-bold text-[var(--text-primary)]">Việc được giao</h1>
           <div className="text-xs text-[#475569]">
             {groups.length} hồ sơ · {totalCriteria} tiêu chí · {summary.reviewing} đang xét · {summary.supplementRequired} cần bổ sung
           </div>
         </div>
 
         <input
-          className="h-9 min-w-[160px] flex-1 rounded-full border border-[rgba(15,23,42,0.08)] bg-[#F8FAFC] px-3 text-sm outline-none"
+          className="h-9 min-w-[160px] flex-1 rounded-full bg-[var(--surface-muted)] px-3 text-sm outline-none shadow-[0_0_0_1px_rgba(15,23,42,0.07)] focus:bg-white focus:ring-2 focus:ring-[#0057C2]/20"
           disabled={isFetching}
-          placeholder="Tìm tên, MSSV, khoa..."
+          placeholder="Tìm tên, MSSV, lớp, tiêu chí hoặc tên minh chứng"
           value={filters.q ?? ""}
           onChange={(event) =>
             onFiltersChange((current) => ({
@@ -676,7 +713,7 @@ function OfficerQueueWorkbench({
         </Button>
 
         <select
-          className="h-9 rounded-full border border-[rgba(15,23,42,0.08)] bg-white px-3 text-sm outline-none"
+          className="h-9 rounded-full bg-white px-3 text-sm outline-none shadow-[0_0_0_1px_rgba(15,23,42,0.07)] focus:ring-2 focus:ring-[#0057C2]/20"
           disabled={isFetching}
           value={sortBy}
           onChange={(event) => onSetSortBy(event.target.value as QueueSort)}
@@ -687,7 +724,7 @@ function OfficerQueueWorkbench({
           <option value="student_code">MSSV</option>
         </select>
 
-        <div className="hidden rounded-full border border-[rgba(15,23,42,0.08)] bg-[#F8FAFC] p-1 lg:flex">
+        <div className="hidden rounded-full bg-[var(--surface-muted)] p-1 lg:flex">
           <button
             className={`rounded-full px-3 py-1 text-xs font-semibold ${viewMode === "application" ? "bg-white text-[#0057C2]" : "text-[#475569]"}`}
             type="button"
@@ -706,7 +743,7 @@ function OfficerQueueWorkbench({
       </div>
 
       {filtersOpen ? (
-        <div className="border-b border-[rgba(15,23,42,0.08)] bg-white px-4 py-3">
+        <div className="bg-white px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.05)]">
           <ReviewFilters value={filters} disabled={isFetching} onChange={updateAdvancedFilters} />
         </div>
       ) : null}
@@ -719,8 +756,8 @@ function OfficerQueueWorkbench({
         }
       >
         {viewMode === "application" ? (
-        <aside className="min-h-0 overflow-hidden rounded-lg bg-white">
-          <div className="border-b border-[rgba(15,23,42,0.08)] p-4">
+        <aside className="min-h-0 overflow-hidden rounded-lg bg-white shadow-[var(--shadow-card)]">
+          <div className="p-4 shadow-[0_1px_0_rgba(15,23,42,0.05)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-bold text-[#0F172A]">Hồ sơ trong phạm vi</h2>
@@ -744,7 +781,7 @@ function OfficerQueueWorkbench({
 
           <div className="h-[calc(100%-118px)] overflow-y-auto p-3">
             {isLoading ? (
-              <div className="rounded-lg border border-dashed p-5 text-sm text-[#475569]">Đang tải hàng chờ hồ sơ...</div>
+              <div className="rounded-lg bg-[var(--surface-muted)] p-5 text-sm text-[#475569]">Đang tải hàng chờ hồ sơ...</div>
             ) : groups.length ? (
               <div className="space-y-2">
                 {groups.map((group) => (
@@ -757,13 +794,13 @@ function OfficerQueueWorkbench({
                 ))}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed p-5 text-sm text-[#475569]">
+              <div className="rounded-lg bg-[var(--surface-muted)] p-5 text-sm text-[#475569]">
                 Chưa có hồ sơ trong nhóm này. Thử đổi bộ lọc để xem hồ sơ khác.
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t border-[rgba(15,23,42,0.08)] p-3">
+          <div className="flex items-center justify-between p-3 shadow-[0_-1px_0_rgba(15,23,42,0.05)]">
             <Button size="sm" variant="outline" disabled={!canGoPrevious} onClick={() => onFiltersChange((current) => ({ ...current, page: Math.max(1, (current.page ?? 1) - 1) }))}>
               Trước
             </Button>
@@ -775,7 +812,7 @@ function OfficerQueueWorkbench({
         </aside>
         ) : null}
 
-        <main className={viewMode === "application" ? "min-h-0 overflow-y-auto rounded-lg bg-white" : "min-h-full rounded-lg bg-white"}>
+        <main className={viewMode === "application" ? "min-h-0 overflow-y-auto rounded-lg bg-white shadow-[var(--shadow-card)]" : "min-h-full rounded-lg bg-white shadow-[var(--shadow-card)]"}>
           {isError ? (
             <div className="p-6">
               <ReviewErrorState description="Không thể tải hàng đợi xét duyệt. Vui lòng thử lại sau." onRetry={onRetry} />
@@ -937,8 +974,8 @@ function OfficerCaseCompactCard({
 
   return (
     <button
-      className={`w-full rounded-lg border border-[rgba(15,23,42,0.08)] p-3 text-left transition ${
-        isSelected ? "bg-[#EAF3FF] text-[#0F172A]" : "bg-white hover:bg-[#F8FAFC]"
+      className={`w-full rounded-lg p-3 text-left transition ${
+        isSelected ? "bg-[var(--surface-selected)] text-[var(--text-primary)]" : "bg-white hover:bg-[var(--surface-muted)]"
       }`}
       type="button"
       onClick={() => onSelect(group)}
@@ -948,14 +985,14 @@ function OfficerCaseCompactCard({
           <div className="truncate text-sm font-bold text-brand-deep">{group.studentName || "Chưa có tên sinh viên"}</div>
           <div className="mt-1 text-xs text-muted-foreground">{group.studentCode || "Chưa có MSSV"}</div>
         </div>
-        <Badge variant={isSelected ? "default" : "outline"}>{getLevelLabel(group.targetLevel)}</Badge>
+        <Badge variant={isSelected ? "default" : "secondary"}>{getLevelLabel(group.targetLevel)}</Badge>
       </div>
       <div className="mt-2 truncate text-xs text-muted-foreground">
         {[group.className, group.faculty].filter(Boolean).join(" • ") || "Chưa có lớp/khoa"} • {group.schoolYear}
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded bg-muted/50 px-2 py-1">Giao: {assignedCount}/5</div>
-        <div className="rounded bg-muted/50 px-2 py-1">Xong: {completedCount}/{group.tasks.length}</div>
+        <div className="rounded bg-white/70 px-2 py-1">Giao: {assignedCount}/5</div>
+        <div className="rounded bg-white/70 px-2 py-1">Xong: {completedCount}/{group.tasks.length}</div>
       </div>
       <div className="mt-2 flex flex-wrap gap-1">
         {fiveGoodCriteria.map((criterion) => {
@@ -1109,7 +1146,7 @@ function OfficerApplicationWorkspace({
               <div className="text-sm font-semibold text-[#0F172A]">Hồ sơ chưa được giao</div>
               <p className="mt-1 text-sm text-[#475569]">{activeTask.permissions.reasonLabel}</p>
               <Button className="mt-3" type="button" onClick={() => onClaimTask(activeTask)}>
-                Nhận xử lý
+                Mở xét duyệt
               </Button>
             </div>
           ) : null}
@@ -1182,7 +1219,7 @@ function QueueDecisionActionBar({
             Yêu cầu bổ sung
           </Button>
           <Button className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100" type="button" variant="outline" onClick={() => onAction("resolution_needed")}>
-            Chuyển Resolution Hub
+            Chuyển hội ý
           </Button>
         </div>
       </div>
@@ -1206,8 +1243,7 @@ function QueueDecisionModal({
   const submitDecision = useSubmitReviewDecision(task.id);
   const requestSupplement = useRequestSupplement(task.id);
   const escalateResolution = useEscalateResolution(task.id);
-  const relatedEvidences = task.evidences ?? [];
-  const [suggestedLevel, setSuggestedLevel] = useState<Level | "">(task.officerSuggestedLevel ?? task.application.targetLevel);
+  const relatedEvidences = useMemo(() => task.evidences ?? [], [task.evidences]);
   const [note, setNote] = useState("");
   const [reasonTemplate, setReasonTemplate] = useState("");
   const [supplementItems, setSupplementItems] = useState<string[]>([]);
@@ -1220,7 +1256,6 @@ function QueueDecisionModal({
   );
 
   useEffect(() => {
-    setSuggestedLevel(task.officerSuggestedLevel ?? task.application.targetLevel);
     setNote("");
     setReasonTemplate("");
     setSupplementItems([]);
@@ -1229,11 +1264,10 @@ function QueueDecisionModal({
     setResolutionReason("");
     setResolutionSummary("");
     setSelectedEvidenceIds(relatedEvidences.filter((evidence) => evidence.files?.length).map((evidence) => evidence.id));
-  }, [action, task.id]);
+  }, [action, relatedEvidences, task.id]);
 
   const isPending = submitDecision.isPending || requestSupplement.isPending || escalateResolution.isPending;
   const confirmDisabled = isPending || !isQueueDecisionReady(action, {
-    suggestedLevel,
     note,
     reasonTemplate,
     supplementItems,
@@ -1260,7 +1294,7 @@ function QueueDecisionModal({
           payload: {
             decision: "accepted",
             evidenceAssessments: evidencePayload,
-            officerSuggestedLevel: suggestedLevel as Level,
+            officerSuggestedLevel: task.application.targetLevel,
             levelAssessmentJson: task.criterionLevelAssessment ? { assessment: task.criterionLevelAssessment } : undefined,
             note: note.trim(),
           },
@@ -1306,7 +1340,7 @@ function QueueDecisionModal({
           evidenceIds: selectedEvidenceIds,
         },
       },
-      { onSuccess: () => closeAfterSuccess("Đã chuyển hồ sơ sang Resolution Hub.") },
+      { onSuccess: () => closeAfterSuccess("Đã chuyển case sang hội ý.") },
     );
   };
 
@@ -1329,16 +1363,9 @@ function QueueDecisionModal({
 
         {action === "accepted" ? (
           <div className="space-y-4">
-            <QueueField label="Cấp đạt tối đa">
-              <select
-                className="mt-2 h-10 w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 text-sm"
-                value={suggestedLevel}
-                onChange={(event) => setSuggestedLevel(event.target.value as Level | "")}
-              >
-                <option value="">Chọn cấp đạt tối đa</option>
-                {queueLevels.map((level) => <option key={level} value={level}>{getLevelLabel(level)}</option>)}
-              </select>
-            </QueueField>
+            <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              Cán bộ đang xác nhận tiêu chí này ở {getLevelLabel(task.application.targetLevel)}. Kết quả cuối toàn hồ sơ sẽ do cấp quản lý/hội đồng tổng hợp.
+            </div>
             <QueueField label="Ghi chú">
               <textarea
                 className="mt-2 min-h-[88px] w-full rounded-lg border border-[rgba(15,23,42,0.12)] bg-white px-3 py-2 text-sm"
@@ -1410,7 +1437,7 @@ function QueueDecisionModal({
                 value={resolutionReason}
                 onChange={(event) => setResolutionReason(event.target.value)}
               >
-                <option value="">Chọn lý do chuyển Resolution Hub</option>
+                <option value="">Chọn lý do chuyển hội ý</option>
                 {queueResolutionReasons.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
               </select>
             </QueueField>
@@ -1424,7 +1451,7 @@ function QueueDecisionModal({
             </QueueField>
             <QueueEvidenceSelection evidences={relatedEvidences} selectedIds={selectedEvidenceIds} onChange={setSelectedEvidenceIds} />
             <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Khi xác nhận, tác vụ được chuyển sang Resolution Hub và ghi lịch sử xử lý.
+              Khi xác nhận, tác vụ được chuyển hội ý và ghi lịch sử xử lý.
             </div>
           </div>
         ) : null}
@@ -1575,7 +1602,7 @@ function OfficerApplicationCard({
   const nextClaimableTask = group.claimableTasks[0];
 
   return (
-    <article className="rounded-md border bg-background p-4">
+    <article className="rounded-md bg-[var(--surface-muted)] p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -1599,7 +1626,7 @@ function OfficerApplicationCard({
         <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
           {nextClaimableTask ? (
             <Button size="sm" type="button" onClick={() => onClaimTask(nextClaimableTask)}>
-              Nhận xử lý
+              Mở xét duyệt
             </Button>
           ) : null}
           <Button size="sm" type="button" onClick={() => onOpenTask(group.primaryTask.id)}>
@@ -1627,7 +1654,7 @@ function OfficerApplicationCard({
 function CriterionTaskChip({ criterion, task }: { criterion: Criterion; task?: ReviewTaskListItem }) {
   if (!task) {
     return (
-      <div className="rounded-md border border-dashed p-3">
+      <div className="rounded-md bg-white/70 p-3">
         <div className="text-sm font-semibold text-brand-deep">{getCriterionLabel(criterion)}</div>
         <div className="mt-1 text-xs text-muted-foreground">Chưa có task</div>
       </div>
@@ -1635,7 +1662,7 @@ function CriterionTaskChip({ criterion, task }: { criterion: Criterion; task?: R
   }
 
   return (
-    <div className="rounded-md border p-3">
+    <div className="rounded-md bg-white/70 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-brand-deep">{getCriterionLabel(criterion)}</div>
@@ -1662,7 +1689,7 @@ function QueueCriteriaSummaryTable({
   onSelectCriterion: (criterion: Criterion) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-[rgba(15,23,42,0.08)]">
+    <div className="responsive-scroll rounded-lg bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.05)]">
       <table className="min-w-[860px] w-full text-left text-sm">
         <thead className="bg-[#F8FAFC] text-xs uppercase tracking-wide text-[#475569]">
           <tr>
@@ -2160,7 +2187,7 @@ function PriorityTaskCard({
         <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
           {item.permissions?.canClaim ? (
             <Button size="sm" type="button" onClick={onClaim}>
-              Nhận xử lý
+              Mở xét duyệt
             </Button>
           ) : null}
           <Button size="sm" type="button" variant="outline" onClick={onOpen}>
@@ -2310,7 +2337,6 @@ function getNextActionableCriterion(group: OfficerApplicationGroup, currentCrite
 function isQueueDecisionReady(
   action: QueueDecisionAction | null,
   values: {
-    suggestedLevel: Level | "";
     note: string;
     reasonTemplate: string;
     supplementItems: string[];
@@ -2321,7 +2347,7 @@ function isQueueDecisionReady(
   },
 ) {
   if (!action) return false;
-  if (action === "accepted") return Boolean(values.suggestedLevel);
+  if (action === "accepted") return true;
   if (action === "rejected") return Boolean(values.reasonTemplate && values.note.trim());
   if (action === "supplement_required") {
     return Boolean(values.supplementItems.length && values.supplementContent.trim() && values.supplementDeadline);
@@ -2345,7 +2371,7 @@ function getQueueDecisionModalTitle(action: QueueDecisionAction | null) {
   if (action === "accepted") return "Đạt tiêu chí";
   if (action === "rejected") return "Không đạt";
   if (action === "supplement_required") return "Yêu cầu bổ sung";
-  if (action === "resolution_needed") return "Chuyển Resolution Hub";
+  if (action === "resolution_needed") return "Chuyển hội ý";
   return "Kết luận xét duyệt";
 }
 
@@ -2353,7 +2379,7 @@ function getQueueDecisionConfirmLabel(action: QueueDecisionAction | null) {
   if (action === "accepted") return "Xác nhận đạt";
   if (action === "rejected") return "Xác nhận không đạt";
   if (action === "supplement_required") return "Gửi yêu cầu bổ sung";
-  if (action === "resolution_needed") return "Chuyển Resolution Hub";
+  if (action === "resolution_needed") return "Chuyển hội ý";
   return "Xác nhận";
 }
 
@@ -2490,8 +2516,9 @@ function getPriorityBadgeVariant(reason: ReviewTaskListItem["priorityReason"]) {
 }
 
 function formatConfidence(value?: number | null) {
-  if (value === null || value === undefined) return "Chưa có dữ liệu";
-  return `${Math.round(value * 100)}%`;
+  if (value === null || value === undefined) return "Chưa có";
+  if (value < 0.7) return "Cần kiểm tra";
+  return "Đã đọc được";
 }
 
 function getQueueMetricLabel(metricType?: string | null) {

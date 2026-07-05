@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  AlertCircle,
   CalendarDays,
   CheckCircle2,
   CheckSquare,
@@ -30,7 +31,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { AuditTimeline } from "@/features/audit/components/AuditTimeline";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { CriterionBadge } from "@/features/review/components/CriterionBadge";
 import { EmptyReviewState } from "@/features/review/components/EmptyReviewState";
@@ -43,6 +43,7 @@ import {
   useClaimReviewTask,
   useEscalateResolution,
   useRequestSupplement,
+  useReviewTasks,
   useReviewTask,
   useSubmitReviewDecision,
 } from "@/features/review/hooks/useReview";
@@ -52,6 +53,7 @@ import type {
   ReviewTaskDetail,
   ReviewTaskEvidence,
   ReviewTaskEvidenceFile,
+  ReviewTaskListItem,
   Role,
 } from "@/features/review/types";
 import { getErrorMessage } from "@/features/review/utils/errors";
@@ -71,7 +73,6 @@ import {
   getCriterionMatrixItem,
   getPrimaryMetricInput,
 } from "@/lib/criteria-matrix";
-import { ACTIVE_LEVELS } from "@/lib/levels";
 import { getFinalStatusLabel } from "@/lib/status-labels";
 
 export const Route = createFileRoute("/app/review/$id")({
@@ -139,6 +140,11 @@ function ReviewTaskDetailRoute() {
 
 function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
   const { data: task, error, isError, isLoading, refetch } = useReviewTask(taskId);
+  const { data: queueData, isLoading: isQueueLoading } = useReviewTasks({
+    assignedToMe: true,
+    page: 1,
+    limit: 8,
+  });
   const claimTask = useClaimReviewTask(taskId);
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
   const [selectedCriterion, setSelectedCriterion] = useState<CoreCriterion>("academic");
@@ -192,7 +198,6 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
 
   const evidences = task.evidences ?? [];
   const metrics = task.metrics ?? [];
-  const checklist = task.checklist ?? [];
   const decisionHistory = task.decisionHistory ?? [];
   const student = task.application.student;
   const facultyClass =
@@ -200,6 +205,7 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
   const canDecide = hasTaskAction(task, "decide");
   const canRequestSupplement = hasTaskAction(task, "request_supplement");
   const activeCriterion = selectedCriterion;
+  const queueItems = queueData?.items ?? [];
 
   return (
     <>
@@ -209,29 +215,22 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
         action={<BackToQueueButton />}
       />
 
-      <div className="space-y-5">
-        <Card>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <HeaderField label="Họ tên" value={student.fullName} />
-            <HeaderField label="Mã sinh viên" value={student.studentCode} />
-            <HeaderField label="Khoa / lớp" value={facultyClass} />
-            <HeaderField label="Năm học" value={task.application.schoolYear} />
-            <HeaderField
-              label="Cấp xét"
-              value={<LevelBadge level={task.application.targetLevel} />}
-            />
-            <HeaderField
-              label="Trạng thái hồ sơ"
-              value={<ReviewStatusBadge status={task.application.status} />}
-            />
-            <HeaderField
-              label="Tiêu chí tác vụ"
-              value={<CriterionBadge criterion={task.criterion} />}
-            />
-            <HeaderField
-              label="Trạng thái tác vụ"
-              value={<ReviewStatusBadge status={task.status} />}
-            />
+      <div className="grid min-h-[calc(100vh-96px)] gap-3 xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+        <OfficerTaskSideQueue currentTask={task} isLoading={isQueueLoading} items={queueItems} />
+        <main className="min-w-0 space-y-3 pb-24">
+        <Card className="sticky top-3 z-10 border border-white/80 bg-white/95 !p-3 shadow-[var(--shadow-card)] backdrop-blur">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <div className="truncate text-base font-bold text-brand-deep">{student.fullName || fallbackText}</div>
+              <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                {student.studentCode || fallbackText} · {facultyClass} · Năm học {task.application.schoolYear || fallbackText}
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <LevelBadge level={task.application.targetLevel} />
+              <ReviewStatusBadge status={task.application.status} />
+              {task.permissions?.canAct ? <Badge variant="default">Được giao cho bạn</Badge> : null}
+            </div>
           </div>
         </Card>
 
@@ -241,14 +240,7 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
           onClaim={() => setClaimDialogOpen(true)}
         />
 
-        <section className="min-w-0 space-y-5">
-          <CriteriaOverviewSection
-            evidences={evidences}
-            metrics={metrics}
-            selectedCriterion={activeCriterion}
-            task={task}
-            onSelectCriterion={setSelectedCriterion}
-          />
+        <section className="min-w-0 space-y-3">
           <CriterionTabs
             evidences={evidences}
             metrics={metrics}
@@ -257,9 +249,7 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
             onSelectCriterion={setSelectedCriterion}
           />
           <CriterionWorkspace
-            checklist={checklist}
             criterion={activeCriterion}
-            decisionHistory={decisionHistory}
             evidenceAssessments={evidenceAssessments}
             evidences={evidences}
             metrics={metrics}
@@ -271,20 +261,29 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
               setEvidenceAssessments((current) => ({ ...current, [evidenceId]: assessment }))
             }
           />
-          <AuditTimeline applicationId={task.application.id} limit={10} taskId={task.id} />
-          {canDecide || canRequestSupplement || hasTaskAction(task, "escalate_resolution") ? (
-            <ReviewDecisionActionBar
-              activeAction={activeDecisionAction}
-              evidenceAssessments={evidenceAssessments}
-              task={task}
-              onActionChange={setActiveDecisionAction}
-              onSuccess={() => void refetch()}
-            />
-          ) : (
-            <ReadOnlyActionPanel task={task} />
-          )}
         </section>
+        </main>
+
+        <OfficerSupportPanel
+          activeCriterion={activeCriterion}
+          decisionHistory={decisionHistory}
+          evidenceAssessments={evidenceAssessments}
+          evidences={evidences}
+          task={task}
+        />
       </div>
+
+      {canDecide || canRequestSupplement || hasTaskAction(task, "escalate_resolution") ? (
+        <ReviewDecisionActionBar
+          activeAction={activeDecisionAction}
+          evidenceAssessments={evidenceAssessments}
+          task={task}
+          onActionChange={setActiveDecisionAction}
+          onSuccess={() => void refetch()}
+        />
+      ) : (
+        <ReadOnlyActionPanel task={task} />
+      )}
 
       <ConfirmClaimDialog
         isLoading={claimTask.isPending}
@@ -301,7 +300,7 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
               toast.error(
                 getErrorMessage(
                   error,
-                  "Task này vừa được giao cho cán bộ khác. Bạn đang ở chế độ chỉ xem.",
+                  "Tác vụ này vừa được giao cho cán bộ khác. Bạn đang ở chế độ chỉ xem.",
                 ),
               );
               setClaimDialogOpen(false);
@@ -311,6 +310,143 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
         }
       />
     </>
+  );
+}
+
+function OfficerTaskSideQueue({
+  currentTask,
+  isLoading,
+  items,
+}: {
+  currentTask: ReviewTaskDetail;
+  isLoading: boolean;
+  items: ReviewTaskListItem[];
+}) {
+  const groups = useMemo(() => getSideQueueGroups(items, currentTask), [currentTask, items]);
+
+  return (
+    <aside className="min-w-0 xl:sticky xl:top-3 xl:h-[calc(100vh-120px)] xl:overflow-y-auto">
+      <div className="rounded-lg bg-white p-2.5 shadow-[var(--shadow-card)]">
+        <div className="mb-2 flex items-center justify-between gap-2 px-1">
+          <div>
+            <h2 className="text-sm font-bold text-brand-deep">Danh sách hồ sơ/tác vụ</h2>
+            <div className="text-xs text-muted-foreground">Các việc trong phạm vi hiện tại</div>
+          </div>
+          <Badge variant="secondary">{groups.length || 1}</Badge>
+        </div>
+
+        {isLoading && !groups.length ? (
+          <div className="rounded-md bg-muted/40 p-4 text-sm text-muted-foreground">Đang tải danh sách tác vụ liên quan...</div>
+        ) : null}
+
+        <div className="space-y-1.5">
+          {groups.map((group) => (
+            <Link
+              key={group.applicationId}
+              className={[
+                "block rounded-md px-2.5 py-2 transition",
+                group.selected ? "bg-[var(--surface-selected)] shadow-[inset_3px_0_0_#0057C2]" : "bg-[var(--surface-muted)] hover:bg-[#EEF6FF]",
+              ].join(" ")}
+              to="/app/review/$id"
+              params={{ id: group.primaryTaskId }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-bold text-brand-deep">{group.studentName || "Chưa có tên sinh viên"}</div>
+                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {group.studentCode || "Chưa có MSSV"} · {group.facultyClass}
+                  </div>
+                </div>
+                <LevelBadge level={group.targetLevel} />
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+                <span className="font-semibold text-brand-deep">{group.completedCount}/5 đã xử lý</span>
+                <Badge variant={group.statusVariant}>{group.statusLabel}</Badge>
+              </div>
+              <div className="mt-1 truncate text-[11px] font-semibold text-[#0057C2]">
+                Chờ: {getQueuePendingCriteriaLabel(group)}
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
+          <span>Trang 1</span>
+          <Link to="/app/queue" className="font-semibold text-[#0057C2]">Mở danh sách</Link>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function OfficerSupportPanel({
+  activeCriterion,
+  decisionHistory,
+  evidenceAssessments,
+  evidences,
+  task,
+}: {
+  activeCriterion: CoreCriterion;
+  decisionHistory: NonNullable<ReviewTaskDetail["decisionHistory"]>;
+  evidenceAssessments: Record<string, EvidenceAssessmentValue>;
+  evidences: ReviewTaskEvidence[];
+  task: ReviewTaskDetail;
+}) {
+  const relatedEvidences = getCriterionEvidences(evidences, activeCriterion);
+  const warnings = relatedEvidences.flatMap((evidence) => getEvidenceWarnings(evidence));
+  const checklist = getBusinessChecklist(activeCriterion, task.application.targetLevel).slice(0, 6);
+  const markedCount = Object.keys(evidenceAssessments).length;
+
+  return (
+    <aside className="min-w-0 xl:sticky xl:top-3 xl:h-[calc(100vh-120px)] xl:overflow-y-auto">
+      <div className="space-y-3">
+        <details className="rounded-lg bg-white p-3 shadow-[var(--shadow-card)]">
+          <summary className="cursor-pointer text-sm font-bold text-brand-deep">
+            Xem tiêu chuẩn xét
+          </summary>
+          <div className="mt-3 space-y-2">
+            <div className="text-xs text-muted-foreground">
+              {getCriterionLabel(activeCriterion)} · {getLevelLabel(task.application.targetLevel)}
+            </div>
+            {checklist.map((item) => (
+              <div key={item} className="rounded-md bg-muted/40 p-2.5 text-sm font-medium text-brand-deep">
+                {item}
+              </div>
+            ))}
+          </div>
+        </details>
+
+        <Card>
+          <SectionHeader icon={<History className="h-5 w-5" />} title="Lịch sử xử lý" />
+          <ReviewerTimeline history={decisionHistory} task={task} />
+        </Card>
+
+        <Card>
+          <SectionHeader icon={<MessageSquarePlus className="h-5 w-5" />} title="Ghi chú nội bộ" />
+          <div className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
+            {task.decisionReason || task.permissions?.reasonLabel || "Chưa có ghi chú nội bộ cho tác vụ này."}
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            Đã đánh dấu {markedCount}/{relatedEvidences.length} minh chứng trong phiên làm việc này.
+          </div>
+        </Card>
+
+        <Card>
+          <SectionHeader icon={<AlertCircle className="h-5 w-5" />} title="Thông báo liên quan" />
+          {warnings.length ? (
+            <ul className="space-y-2 text-sm text-amber-900">
+              {warnings.slice(0, 4).map((warning, index) => (
+                <li key={`${warning}-${index}`} className="rounded-md bg-amber-50 px-3 py-2">{warning}</li>
+              ))}
+            </ul>
+          ) : (
+            <div className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
+              Không phát hiện cảnh báo rõ ràng, cán bộ vẫn cần đối chiếu theo tiêu chí.
+            </div>
+          )}
+        </Card>
+      </div>
+    </aside>
   );
 }
 
@@ -482,7 +618,7 @@ function ReviewDecisionActionBar({
     },
     {
       value: "resolution_needed",
-      label: "Chuyển Resolution Hub",
+      label: "Chuyển hội ý",
       description: "Chuyển trường hợp cần hội ý.",
       icon: <Send className="h-4 w-4" />,
       enabled: canEscalateResolution && !isFinal,
@@ -492,25 +628,25 @@ function ReviewDecisionActionBar({
 
   return (
     <>
-      <Card className="sticky bottom-4 z-20 border border-white/80 bg-white/95 !p-3 shadow-[0_18px_48px_-28px_rgba(15,23,42,0.55)] backdrop-blur">
+      <Card className="fixed bottom-3 left-3 right-3 z-30 border border-white/80 bg-white/95 !p-2.5 shadow-[0_18px_48px_-28px_rgba(15,23,42,0.55)] backdrop-blur xl:left-[calc(264px+0.75rem)]">
         <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
             <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Kết luận xét duyệt</div>
-            <div className="mt-1 text-sm font-semibold text-brand-deep">
+            <div className="text-sm font-semibold text-brand-deep">
               {getCriterionLabel(task.criterion)} • {getTaskStatusLabel(task.status)}
             </div>
             {isFinal || (!canDecide && !canRequestSupplement && !canEscalateResolution) ? (
               <div className="mt-1 text-xs text-muted-foreground">
-                {isFinal ? "Tác vụ đã có kết luận cuối cùng." : disabledReason}
+                {isFinal ? "Tác vụ đã có kết luận cho tiêu chí này." : disabledReason}
               </div>
             ) : null}
           </div>
-          <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
             {actions.map((action) => (
               <button
                 key={action.value}
                 className={[
-                  "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-45",
+                  "inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-45",
                   action.className,
                 ].join(" ")}
                 disabled={!action.enabled}
@@ -553,7 +689,6 @@ function DecisionConfirmModal({
   const submitDecision = useSubmitReviewDecision(task.id);
   const requestSupplement = useRequestSupplement(task.id);
   const escalateResolution = useEscalateResolution(task.id);
-  const [suggestedLevel, setSuggestedLevel] = useState<Level | "">(task.officerSuggestedLevel ?? task.application.targetLevel);
   const [note, setNote] = useState("");
   const [reasonTemplate, setReasonTemplate] = useState("");
   const [supplementItems, setSupplementItems] = useState<string[]>([]);
@@ -565,7 +700,6 @@ function DecisionConfirmModal({
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>(relatedEvidences.map((evidence) => evidence.id));
 
   useEffect(() => {
-    setSuggestedLevel(task.officerSuggestedLevel ?? task.application.targetLevel);
     setNote("");
     setReasonTemplate("");
     setSupplementItems([]);
@@ -579,7 +713,6 @@ function DecisionConfirmModal({
   const context = getDecisionContext(task);
   const isPending = submitDecision.isPending || requestSupplement.isPending || escalateResolution.isPending;
   const confirmDisabled = isPending || !isDecisionFormReady(action, {
-    suggestedLevel,
     note,
     reasonTemplate,
     supplementItems,
@@ -587,10 +720,20 @@ function DecisionConfirmModal({
     supplementDeadline,
     resolutionReason,
     resolutionSummary,
+    selectedEvidenceIds,
+    hasRelatedEvidences: relatedEvidences.length > 0,
+    hasResolutionContext: Boolean(task.application.id && task.id && task.criterion),
   });
 
-  const closeAfterSuccess = (message: string) => {
-    toast.success(message);
+  const closeAfterSuccess = (message: string, actionLabel: string, href: string) => {
+    toast.success(message, {
+      action: {
+        label: actionLabel,
+        onClick: () => {
+          window.location.href = href;
+        },
+      },
+    });
     onClose();
     onSuccess();
   };
@@ -604,12 +747,12 @@ function DecisionConfirmModal({
           payload: {
             decision: "accepted",
             evidenceAssessments: toEvidenceAssessmentsPayload(evidenceAssessments),
-            officerSuggestedLevel: suggestedLevel as Level,
+            officerSuggestedLevel: task.application.targetLevel,
             levelAssessmentJson: task.criterionLevelAssessment ? { assessment: task.criterionLevelAssessment } : undefined,
             note: note.trim(),
           },
         },
-        { onSuccess: () => closeAfterSuccess("Đã xác nhận tiêu chí đạt.") },
+        { onSuccess: () => closeAfterSuccess(`Đã lưu kết luận đạt cho tiêu chí ${getCriterionLabel(task.criterion)}.`, "Xét tiêu chí tiếp theo", "/app/queue") },
       );
       return;
     }
@@ -624,7 +767,7 @@ function DecisionConfirmModal({
             note: `${reasonTemplate}. ${note.trim()}`,
           },
         },
-        { onSuccess: () => closeAfterSuccess("Đã xác nhận tiêu chí không đạt.") },
+        { onSuccess: () => closeAfterSuccess(`Đã lưu kết luận không đạt cho tiêu chí ${getCriterionLabel(task.criterion)}.`, "Quay về danh sách", "/app/queue") },
       );
       return;
     }
@@ -638,7 +781,7 @@ function DecisionConfirmModal({
             evidenceIds: selectedEvidenceIds,
           },
         },
-        { onSuccess: () => closeAfterSuccess("Đã gửi yêu cầu bổ sung cho sinh viên.") },
+        { onSuccess: () => closeAfterSuccess("Đã gửi yêu cầu bổ sung cho sinh viên.", "Xem thông báo", "/app/notifications") },
       );
       return;
     }
@@ -650,7 +793,7 @@ function DecisionConfirmModal({
           evidenceIds: selectedEvidenceIds,
         },
       },
-      { onSuccess: () => closeAfterSuccess("Đã chuyển hồ sơ sang Resolution Hub.") },
+      { onSuccess: () => closeAfterSuccess("Đã chuyển case sang Hội ý.", "Xem case hội ý", "/app/resolution") },
     );
   };
 
@@ -668,20 +811,9 @@ function DecisionConfirmModal({
 
         {action === "accepted" ? (
           <div className="space-y-4">
-            <label className="block text-sm font-semibold text-brand-deep" htmlFor="accepted-level">
-              Cấp đạt tối đa
-              <select
-                className="mt-2 h-10 w-full rounded-lg border border-[#DCE7F2] bg-white px-3 text-sm"
-                id="accepted-level"
-                value={suggestedLevel}
-                onChange={(event) => setSuggestedLevel(event.target.value as Level | "")}
-              >
-                <option value="">Chọn cấp đạt tối đa</option>
-                {([...ACTIVE_LEVELS] as Level[]).map((level) => (
-                  <option key={level} value={level}>{getLevelLabel(level)}</option>
-                ))}
-              </select>
-            </label>
+            <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              Cán bộ đang xác nhận tiêu chí này ở {getLevelLabel(task.application.targetLevel)}. Kết quả cuối toàn hồ sơ sẽ do cấp quản lý/hội đồng tổng hợp.
+            </div>
             <ReviewNoteField
               optional
               label="Ghi chú"
@@ -707,7 +839,7 @@ function DecisionConfirmModal({
               </select>
             </label>
             <div className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              Nếu tiêu chí này không đạt, hồ sơ có thể không đủ điều kiện cho {getLevelLabel(task.application.targetLevel)}.
+              Nếu tiêu chí này không đạt, hồ sơ có thể không đủ điều kiện ở cấp xét tương ứng. Kết quả cuối vẫn do cấp quản lý/hội đồng tổng hợp.
             </div>
             <ReviewNoteField
               label="Ghi chú bắt buộc"
@@ -747,7 +879,7 @@ function DecisionConfirmModal({
               onChange={setSelectedEvidenceIds}
             />
             <div className="rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
-              Khi xác nhận, hệ thống chuyển tác vụ sang Cần bổ sung, gửi thông báo cho sinh viên và ghi lịch sử xử lý.
+              Khi xác nhận, tác vụ chuyển sang Chờ bổ sung, sinh viên nhận thông báo và lịch sử xử lý được ghi lại.
             </div>
           </div>
         ) : null}
@@ -762,7 +894,7 @@ function DecisionConfirmModal({
                 value={resolutionReason}
                 onChange={(event) => setResolutionReason(event.target.value)}
               >
-                <option value="">Chọn lý do chuyển Resolution Hub</option>
+                <option value="">Chọn lý do chuyển hội ý</option>
                 {resolutionReasons.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
               </select>
             </label>
@@ -778,7 +910,7 @@ function DecisionConfirmModal({
               onChange={setSelectedEvidenceIds}
             />
             <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Khi xác nhận, tác vụ được chuyển sang Resolution Hub và ghi lịch sử xử lý.
+              Khi xác nhận, tác vụ chuyển trạng thái Cần hội ý và case xuất hiện ở trang Case hội ý.
             </div>
           </div>
         ) : null}
@@ -802,12 +934,13 @@ function DecisionConfirmModal({
 function DecisionContextSummary({
   context,
 }: {
-  context: { student: string; criterion: string; primaryData: string; documentCount: number };
+  context: { student: string; criterion: string; level: string; primaryData: string; documentCount: number };
 }) {
   return (
-    <div className="grid gap-2 rounded-2xl bg-[#F8FBFE] p-3 sm:grid-cols-2">
+    <div className="grid gap-2 rounded-md bg-[#F8FBFE] p-3 sm:grid-cols-2">
       <InfoRow label="Sinh viên" value={context.student} />
       <InfoRow label="Tiêu chí" value={context.criterion} />
+      <InfoRow label="Cấp đang xét" value={context.level} />
       <InfoRow label="Dữ liệu chính" value={context.primaryData} />
       <InfoRow label="Số tài liệu" value={`${context.documentCount} tệp`} />
     </div>
@@ -1093,8 +1226,8 @@ function CriterionTabs({
   onSelectCriterion: (criterion: CoreCriterion) => void;
 }) {
   return (
-    <Card>
-      <div className="flex min-w-0 flex-wrap gap-2">
+    <Card className="!p-2">
+      <div className="responsive-scroll flex min-w-0 gap-2 overflow-x-auto pb-1">
         {coreCriteria.map((criterion) => {
           const assessment = evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion.key, { metrics, evidences });
           const active = selectedCriterion === criterion.key;
@@ -1102,15 +1235,16 @@ function CriterionTabs({
             <button
               key={criterion.key}
               className={[
-                "flex min-w-[min(100%,96px)] items-center justify-between gap-2 rounded-full border px-3 py-2 text-sm transition",
-                active ? "border-brand-deep bg-brand-deep text-white" : "bg-white text-brand-deep hover:bg-muted/40",
+                "min-w-[136px] shrink-0 rounded-md px-3 py-2 text-left transition",
+                active
+                  ? "bg-[#0057C2] text-white shadow-[0_8px_18px_-14px_rgba(0,87,194,0.75)]"
+                  : "bg-[var(--surface-muted)] text-brand-deep hover:bg-[#EEF6FF]",
               ].join(" ")}
               type="button"
               onClick={() => onSelectCriterion(criterion.key)}
             >
-              <span className="font-semibold sm:hidden">{criterionShortLabels[criterion.key]}</span>
-              <span className="hidden font-semibold sm:inline">{criterion.label}</span>
-              <span className={active ? "text-xs text-white/80" : "text-xs text-muted-foreground"}>
+              <span className="block truncate text-sm font-bold">{criterion.label}</span>
+              <span className={active ? "mt-0.5 block truncate text-[11px] font-semibold text-white/85" : "mt-0.5 block truncate text-[11px] font-semibold text-muted-foreground"}>
                 {getCriterionTaskStatusLabel(task, criterion.key, assessment.statusLabel)}
               </span>
             </button>
@@ -1126,8 +1260,6 @@ function CriterionWorkspace({
   criterion,
   metrics,
   evidences,
-  checklist,
-  decisionHistory,
   evidenceAssessments,
   onEvidenceAssessmentChange,
   onRequestSupplement,
@@ -1136,29 +1268,31 @@ function CriterionWorkspace({
   criterion: CoreCriterion;
   metrics: ReviewTaskDetail["metrics"];
   evidences: ReviewTaskEvidence[];
-  checklist: NonNullable<ReviewTaskDetail["checklist"]>;
-  decisionHistory: NonNullable<ReviewTaskDetail["decisionHistory"]>;
   evidenceAssessments: Record<string, EvidenceAssessmentValue>;
   onEvidenceAssessmentChange: (evidenceId: string, assessment: EvidenceAssessmentValue) => void;
   onRequestSupplement?: () => void;
 }) {
   const criterionMeta = coreCriteria.find((item) => item.key === criterion) ?? coreCriteria[0];
-  const matrixItem = getCriterionMatrixItem(task.application.targetLevel, criterion);
   const relatedMetrics = getCriterionMetrics(metrics, criterion);
   const relatedEvidences = getCriterionEvidences(evidences, criterion);
   const assessment = evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion, { metrics, evidences });
 
   return (
-    <Card>
-      <div className="space-y-5">
-        <div className="flex flex-col gap-3 border-b pb-4 md:flex-row md:items-start md:justify-between">
+    <div className="space-y-3">
+        <div className="flex flex-col gap-2 rounded-md bg-white px-4 py-3 shadow-[var(--shadow-card)] md:flex-row md:items-center md:justify-between">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tiêu chí đang xét</div>
-            <h2 className="mt-1 text-xl font-bold text-brand-deep">{criterionMeta.label}</h2>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{criterionMeta.description}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-bold text-brand-deep">{criterionMeta.label}</h2>
+              <LevelBadge level={task.application.targetLevel} />
+              <ReviewStatusBadge status={task.status} />
+              {task.permissions?.canAct ? <Badge variant="secondary">Được giao cho bạn</Badge> : null}
+            </div>
           </div>
           <Badge variant={getCriterionStatusVariant(assessment.status)}>{assessment.statusLabel}</Badge>
         </div>
+
+        <CriterionMetricsSection criterion={criterion} evidences={relatedEvidences} metrics={relatedMetrics} />
 
         <CriterionDocumentsSection
           assessmentStatus={assessment.status}
@@ -1169,21 +1303,7 @@ function CriterionWorkspace({
           onRequestSupplement={onRequestSupplement}
           onEvidenceAssessmentChange={onEvidenceAssessmentChange}
         />
-
-        <CriterionMetricsSection criterion={criterion} evidences={relatedEvidences} metrics={relatedMetrics} />
-
-        <CriterionChecklistSection
-          assessmentStatus={assessment.status}
-          checklist={task.criterion === criterion ? checklist : []}
-          criterion={criterion}
-          evidences={relatedEvidences}
-          matrixItem={matrixItem}
-          targetLevel={task.application.targetLevel}
-        />
-
-        <DecisionHistorySection history={decisionHistory} />
-      </div>
-    </Card>
+    </div>
   );
 }
 
@@ -1262,14 +1382,20 @@ function CriterionEvidenceCard({
   onAssessmentChange: (evidenceId: string, assessment: EvidenceAssessmentValue) => void;
 }) {
   const fields = toFieldEntries(evidence.card?.extractedFieldsJson);
-  const warnings = toReadableList(evidence.card?.warningsJson);
+  const warnings = getEvidenceWarnings(evidence);
   return (
-    <div className="rounded-2xl border border-[#E3ECF6] bg-white p-4">
-      <EvidenceInlineActions
-        assessment={assessment}
-        evidence={evidence}
-        onAssessmentChange={onAssessmentChange}
-      />
+    <div className="rounded-lg bg-white p-4 shadow-[var(--shadow-card)]">
+      <div className="mb-3 flex flex-col gap-2 border-b border-[#E8EEF5] pb-3 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-bold text-brand-deep">{evidence.evidenceName || getDefaultDocumentName(criterion)}</h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <CriterionBadge criterion={criterion} />
+            <Badge variant="secondary">{getEvidenceReadabilityLabel(evidence.confidence)}</Badge>
+            <Badge variant="outline">{evidence.files?.length ?? 0} tệp</Badge>
+          </div>
+        </div>
+        <ReviewStatusBadge status={evidence.status} />
+      </div>
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(min(100%,260px),420px)_minmax(0,1fr)]">
         <div className="space-y-3">
           {evidence.files?.length ? (
@@ -1279,15 +1405,6 @@ function CriterionEvidenceCard({
           )}
         </div>
         <div className="space-y-3">
-          <div>
-            <h3 className="text-base font-bold text-brand-deep">{evidence.evidenceName || getDefaultDocumentName(criterion)}</h3>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Badge variant="outline">{getSourceTypeLabel(evidence.sourceType)}</Badge>
-              <CriterionBadge criterion={criterion} />
-              <ReviewStatusBadge status={evidence.status} />
-              {typeof evidence.confidence === "number" ? <Badge variant="secondary">Độ rõ {Math.round(evidence.confidence * 100)}%</Badge> : null}
-            </div>
-          </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <InfoRow label="Ngày ghi nhận" value={formatDateTime(evidence.createdAt)} />
             <InfoRow label="Đơn vị cấp" value={evidence.event?.organizer} />
@@ -1301,7 +1418,11 @@ function CriterionEvidenceCard({
                 {fields.map(([key, value]) => <InfoRow key={key} label={key} value={String(value)} />)}
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-muted-foreground">
+              Chưa có thông tin OCR đọc được. Cán bộ cần kiểm tra trực tiếp trên file đính kèm.
+            </div>
+          )}
           {warnings.length ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
               <div className="text-sm font-semibold text-amber-900">Cần kiểm tra thêm</div>
@@ -1312,6 +1433,11 @@ function CriterionEvidenceCard({
           ) : null}
         </div>
       </div>
+      <EvidenceInlineActions
+        assessment={assessment}
+        evidence={evidence}
+        onAssessmentChange={onAssessmentChange}
+      />
     </div>
   );
 }
@@ -1337,16 +1463,16 @@ function EvidenceInlineActions({
   };
 
   return (
-    <div className="mb-3 flex flex-col gap-2 rounded-xl bg-[#F8FBFE] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-4 flex flex-col gap-2 border-t border-[#E8EEF5] pt-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Đánh dấu tài liệu</div>
-        <div className="truncate text-sm font-semibold text-brand-deep">{getEvidenceDisplayName(evidence)}</div>
+        <div className="truncate text-xs text-muted-foreground">Trạng thái này sẽ đi kèm kết luận của cán bộ.</div>
       </div>
       <div className="flex flex-wrap gap-2">
         <button
           className={[
-            "rounded-full px-3 py-1.5 text-xs font-semibold transition",
-            assessment === "valid" ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+            "rounded-md px-3 py-2 text-xs font-bold transition shadow-[0_1px_2px_rgba(15,23,42,0.06)]",
+            assessment === "valid" ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
           ].join(" ")}
           type="button"
           onClick={() => markEvidence("valid")}
@@ -1355,7 +1481,7 @@ function EvidenceInlineActions({
         </button>
         <button
           className={[
-            "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+            "rounded-md px-3 py-2 text-xs font-bold transition shadow-[0_1px_2px_rgba(15,23,42,0.06)]",
             assessment === "ambiguous" ? "bg-amber-600 text-white" : "bg-amber-50 text-amber-800 hover:bg-amber-100",
           ].join(" ")}
           type="button"
@@ -1365,7 +1491,7 @@ function EvidenceInlineActions({
         </button>
         <button
           className={[
-            "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+            "rounded-md px-3 py-2 text-xs font-bold transition shadow-[0_1px_2px_rgba(15,23,42,0.06)]",
             assessment === "invalid" ? "bg-rose-600 text-white" : "bg-rose-50 text-rose-700 hover:bg-rose-100",
           ].join(" ")}
           type="button"
@@ -1373,7 +1499,13 @@ function EvidenceInlineActions({
         >
           Không dùng cho tiêu chí này
         </button>
-        <Button size="sm" type="button" variant="outline">So với tiêu chí</Button>
+        <button
+          className="rounded-md bg-[#EEF6FF] px-3 py-2 text-xs font-bold text-[#0057C2] shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition hover:bg-[#DDEEFF]"
+          type="button"
+          onClick={() => toast.info("Dữ liệu đối chiếu nằm ngay phía trên danh sách tài liệu.")}
+        >
+          So với tiêu chí
+        </button>
       </div>
     </div>
   );
@@ -1631,6 +1763,235 @@ function getIndexingStatusLabel(status: string) {
   return labels[status] ?? status;
 }
 
+type SideQueueGroup = {
+  applicationId: string;
+  completedCount: number;
+  criteria: Set<CoreCriterion>;
+  facultyClass: string;
+  primaryTaskId: string;
+  selected: boolean;
+  statusLabel: string;
+  statusVariant: "default" | "secondary" | "outline" | "destructive";
+  studentCode: string;
+  studentName: string;
+  targetLevel: ReviewTaskDetail["application"]["targetLevel"];
+  totalTasks: number;
+};
+
+function getSideQueueGroups(items: ReviewTaskListItem[], currentTask: ReviewTaskDetail): SideQueueGroup[] {
+  const groups = new Map<string, SideQueueGroup>();
+  const sourceItems = items.length ? items : [reviewDetailToListItem(currentTask)];
+
+  for (const item of sourceItems) {
+    const current = groups.get(item.applicationId);
+    const criterion = isCoreCriterion(item.criterion) ? item.criterion : null;
+    const completed = item.status === "accepted" || item.status === "rejected";
+    if (!current) {
+      groups.set(item.applicationId, {
+        applicationId: item.applicationId,
+        completedCount: completed ? 1 : 0,
+        criteria: new Set(criterion ? [criterion] : []),
+        facultyClass: [item.className, item.faculty].filter(Boolean).join(" / ") || "Chưa có lớp/khoa",
+        primaryTaskId: item.id,
+        selected: item.applicationId === currentTask.application.id,
+        statusLabel: getApplicationQueueStatusLabel(item.status),
+        statusVariant: getApplicationQueueStatusVariant(item.status),
+        studentCode: item.studentCode,
+        studentName: item.studentName,
+        targetLevel: item.targetLevel,
+        totalTasks: 1,
+      });
+      continue;
+    }
+
+    current.totalTasks += 1;
+    if (completed) current.completedCount += 1;
+    if (criterion) current.criteria.add(criterion);
+    if (item.id === currentTask.id) current.primaryTaskId = item.id;
+    if (item.status === "supplement_required" || item.status === "resolution_needed") {
+      current.statusLabel = getApplicationQueueStatusLabel(item.status);
+      current.statusVariant = getApplicationQueueStatusVariant(item.status);
+    }
+  }
+
+  return Array.from(groups.values()).sort((a, b) => Number(b.selected) - Number(a.selected));
+}
+
+function getQueuePendingCriteriaLabel(group: SideQueueGroup) {
+  const criteria = Array.from(group.criteria);
+  if (!criteria.length) return "Chưa rõ tiêu chí";
+  return criteria
+    .slice(0, 3)
+    .map((criterion) => getCriterionLabel(criterion))
+    .join(", ");
+}
+
+function reviewDetailToListItem(task: ReviewTaskDetail): ReviewTaskListItem {
+  const student = task.application.student;
+  return {
+    id: task.id,
+    applicationId: task.application.id,
+    studentId: student.id,
+    studentName: student.fullName,
+    studentCode: student.studentCode,
+    faculty: student.faculty,
+    className: student.className,
+    schoolYear: task.application.schoolYear,
+    targetLevel: task.application.targetLevel,
+    applicationStatus: task.application.status,
+    criterion: task.criterion,
+    status: task.status,
+    assignedOfficerId: task.assignedOfficer?.id,
+    assignedOfficerName: task.assignedOfficer?.fullName,
+    evidenceCount: task.evidences.length,
+    supplementCount: 0,
+    aiConfidence: null,
+    dueDate: null,
+    permissions: task.permissions,
+    priorityReason: null,
+    createdAt: task.createdAt ?? "",
+    updatedAt: task.updatedAt ?? task.createdAt ?? "",
+  };
+}
+
+function getApplicationQueueStatusLabel(status: ReviewTaskDetail["status"]) {
+  if (status === "supplement_required") return "Chờ bổ sung";
+  if (status === "resolution_needed") return "Cần hội ý";
+  if (status === "accepted" || status === "rejected") return "Đã xử lý";
+  return "Cần cán bộ xác nhận";
+}
+
+function getApplicationQueueStatusVariant(status: ReviewTaskDetail["status"]): SideQueueGroup["statusVariant"] {
+  if (status === "accepted") return "secondary";
+  if (status === "rejected") return "destructive";
+  if (status === "supplement_required" || status === "resolution_needed") return "outline";
+  return "default";
+}
+
+function ReviewerTimeline({
+  history,
+  task,
+}: {
+  history: NonNullable<ReviewTaskDetail["decisionHistory"]>;
+  task: ReviewTaskDetail;
+}) {
+  const businessEvents = getBusinessTimeline(history, task);
+  return (
+    <div className="space-y-2">
+      {businessEvents.map((event) => (
+        <div key={event.id} className="rounded-md bg-muted/40 p-3">
+          <div className="text-sm font-semibold text-brand-deep">{event.label}</div>
+          <div className="mt-1 text-xs text-muted-foreground">{event.actor} · {formatDateTime(event.createdAt)}</div>
+          {event.note ? <div className="mt-2 text-sm text-muted-foreground">{event.note}</div> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function getBusinessTimeline(history: NonNullable<ReviewTaskDetail["decisionHistory"]>, task: ReviewTaskDetail) {
+  const events = history.map((item) => ({
+    id: item.id,
+    actor: item.actorName || "Hệ thống",
+    createdAt: item.createdAt,
+    label: getBusinessDecisionLabel(item.decision),
+    note: item.note,
+  }));
+
+  if (!events.length) {
+    return [
+      {
+        id: "submitted",
+        actor: task.assignedOfficer?.fullName || "Hệ thống",
+        createdAt: task.application.submittedAt || task.createdAt || task.updatedAt || "",
+        label: "Hồ sơ được nộp",
+        note: "Chưa có sự kiện xử lý nghiệp vụ khác cho tác vụ này.",
+      },
+    ];
+  }
+
+  return events.slice(0, 5);
+}
+
+function getBusinessDecisionLabel(decision: ReviewDecision) {
+  if (decision === "accepted") return "Cán bộ kết luận đạt tiêu chí";
+  if (decision === "rejected") return "Cán bộ kết luận không đạt tiêu chí";
+  if (decision === "supplement_required") return "Yêu cầu sinh viên bổ sung";
+  return "Chuyển hội ý";
+}
+
+function getBusinessChecklist(criterion: CoreCriterion, targetLevel: ReviewTaskDetail["application"]["targetLevel"]) {
+  const matrixItem = getCriterionMatrixItem(targetLevel, criterion);
+  const rules = [...(matrixItem?.hardRequirements ?? []), ...(matrixItem?.additionalRequirements ?? [])];
+  return rules.length ? rules : businessChecklistFallback[criterion];
+}
+
+const businessChecklistFallback: Record<CoreCriterion, string[]> = {
+  ethics: [
+    "Điểm rèn luyện đạt ngưỡng theo cấp xét",
+    "Không có vi phạm quy chế trong năm xét",
+    "Có minh chứng hoặc điều kiện bổ sung nếu cấp xét yêu cầu",
+  ],
+  academic: [
+    "GPA đạt ngưỡng theo cấp xét",
+    "Không có điểm F nếu quy định yêu cầu",
+    "Có bảng điểm hoặc dữ liệu xác nhận",
+    "Có tiêu chí cộng thêm nếu cấp xét yêu cầu",
+  ],
+  physical: [
+    "Có điểm thể dục hoặc chứng nhận sinh viên khỏe/thanh niên khỏe",
+    "Hoặc tham gia/đạt giải hoạt động thể thao hợp lệ",
+    "Thời gian và cấp tổ chức phù hợp",
+  ],
+  volunteer: [
+    "Có số ngày hoặc hoạt động tình nguyện rõ ràng",
+    "Có xác nhận/giấy chứng nhận/danh sách hợp lệ",
+    "Thời gian thuộc năm xét",
+    "Tổng số ngày đạt ngưỡng theo cấp xét",
+    "Đơn vị tổ chức phù hợp",
+  ],
+  integration: [
+    "Minh chứng có họ tên/MSSV rõ ràng",
+    "Có ngày cấp/ngày tham gia trong năm xét",
+    "Có đơn vị tổ chức/xác nhận",
+    "Đáp ứng một nhóm hội nhập hợp lệ",
+    "Cấp tổ chức phù hợp với cấp xét",
+    "Không có mâu thuẫn với dữ liệu sinh viên khai báo",
+  ],
+};
+
+function getEvidenceReadabilityLabel(value?: number | null) {
+  if (value === null || value === undefined) return "Chưa có dữ liệu đọc";
+  if (value < 0.55) return "Tài liệu khó đọc";
+  if (value < 0.7) return "Cần kiểm tra";
+  return "Đọc rõ";
+}
+
+function getEvidenceWarnings(evidence: ReviewTaskEvidence) {
+  const warnings = toReadableList(evidence.card?.warningsJson).map(mapEvidenceWarningLabel);
+  if (typeof evidence.confidence === "number" && evidence.confidence < 0.7) {
+    warnings.unshift("Thông tin đọc được chưa đủ chắc chắn");
+  }
+  return warnings.length ? Array.from(new Set(warnings)) : [];
+}
+
+function mapEvidenceWarningLabel(warning: string) {
+  const normalized = warning.toLowerCase();
+  if (normalized.includes("name") || normalized.includes("student") || normalized.includes("mssv")) {
+    return "Thiếu họ tên hoặc mã số sinh viên";
+  }
+  if (normalized.includes("date") || normalized.includes("time")) {
+    return "Thiếu ngày cấp hoặc ngày tham gia";
+  }
+  if (normalized.includes("organizer") || normalized.includes("issuer") || normalized.includes("unit")) {
+    return "Thiếu đơn vị tổ chức hoặc xác nhận";
+  }
+  if (normalized.includes("blur") || normalized.includes("ocr") || normalized.includes("confidence")) {
+    return "Tài liệu cần kiểm tra thêm";
+  }
+  return warning;
+}
+
 function toFieldEntries(value: unknown): Array<[string, unknown]> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   return Object.entries(value as Record<string, unknown>).filter(([, fieldValue]) => fieldValue !== null && fieldValue !== undefined && fieldValue !== "");
@@ -1732,6 +2093,7 @@ function getDecisionContext(task: ReviewTaskDetail) {
   return {
     student: `${task.application.student?.fullName || fallbackText} • ${task.application.student?.studentCode || fallbackText}`,
     criterion: getCriterionLabel(task.criterion),
+    level: getLevelLabel(task.application.targetLevel),
     primaryData: relatedMetrics.length ? getPrimaryDataText(relatedMetrics, criterion) : fallbackText,
     documentCount: relatedEvidences.reduce((sum, evidence) => sum + (evidence.files?.length ?? 0), 0),
   };
@@ -1740,7 +2102,6 @@ function getDecisionContext(task: ReviewTaskDetail) {
 function isDecisionFormReady(
   action: DetailDecisionAction | null,
   values: {
-    suggestedLevel: Level | "";
     note: string;
     reasonTemplate: string;
     supplementItems: string[];
@@ -1748,15 +2109,23 @@ function isDecisionFormReady(
     supplementDeadline: string;
     resolutionReason: string;
     resolutionSummary: string;
+    selectedEvidenceIds: string[];
+    hasRelatedEvidences: boolean;
+    hasResolutionContext: boolean;
   },
 ) {
   if (!action) return false;
-  if (action === "accepted") return Boolean(values.suggestedLevel);
+  if (action === "accepted") return true;
   if (action === "rejected") return Boolean(values.reasonTemplate) && values.note.trim().length >= 10;
   if (action === "supplement_required") {
     return values.supplementItems.length > 0 && values.supplementContent.trim().length >= 10 && Boolean(values.supplementDeadline);
   }
-  return Boolean(values.resolutionReason) && values.resolutionSummary.trim().length >= 10;
+  return (
+    values.hasResolutionContext &&
+    Boolean(values.resolutionReason) &&
+    values.resolutionSummary.trim().length >= 10 &&
+    (!values.hasRelatedEvidences || values.selectedEvidenceIds.length > 0)
+  );
 }
 
 function buildSupplementNote(selectedItems: string[], content: string) {
@@ -1790,15 +2159,15 @@ function getDecisionModalTitle(action: DetailDecisionAction | null) {
   if (action === "accepted") return "Xác nhận đạt tiêu chí";
   if (action === "rejected") return "Xác nhận không đạt";
   if (action === "supplement_required") return "Yêu cầu sinh viên bổ sung";
-  if (action === "resolution_needed") return "Chuyển Resolution Hub";
+  if (action === "resolution_needed") return "Chuyển case hội ý";
   return "Kết luận xét duyệt";
 }
 
 function getDecisionConfirmLabel(action: DetailDecisionAction | null) {
-  if (action === "accepted") return "Xác nhận đạt";
+  if (action === "accepted") return "Xác nhận đạt tiêu chí";
   if (action === "rejected") return "Xác nhận không đạt";
   if (action === "supplement_required") return "Gửi yêu cầu bổ sung";
-  if (action === "resolution_needed") return "Chuyển Resolution Hub";
+  if (action === "resolution_needed") return "Chuyển hội ý";
   return "Xác nhận";
 }
 

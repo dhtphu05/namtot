@@ -327,7 +327,7 @@ export function ReviewDecisionPanel({ task, onSuccess, submitLabel = "Gửi kế
                     <option value="">Không đánh dấu</option>
                     <option value="accepted">Đạt</option>
                     <option value="rejected">Không đạt</option>
-                    <option value="resolution_needed">Cần hội đồng xử lý</option>
+                    <option value="resolution_needed">Cần hội ý</option>
                   </select>
                 </div>
               ))}

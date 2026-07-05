@@ -58,9 +58,9 @@ export function ApprovedEvidencePage() {
     }
 
     return {
-      title: "Chưa tìm thấy minh chứng chính thức",
+      title: "Chưa tìm thấy sự kiện đã xác nhận",
       description:
-        "Hiện chưa có hoạt động nào trong kho chính thức khớp với MSSV của bạn. Bạn vẫn có thể upload minh chứng thủ công ở mục Minh chứng của tôi.",
+        "Hiện chưa có hoạt động đã xác nhận nào khớp với MSSV của bạn. Bạn vẫn có thể tải minh chứng thủ công ở mục Minh chứng của tôi.",
     };
   }, [criterion, debouncedQ, status]);
 
@@ -103,12 +103,12 @@ export function ApprovedEvidencePage() {
     return (
       <>
         <TopBar
-          title="Kho minh chứng chính thức"
-          subtitle="Vui lòng tạo hồ sơ trước khi import minh chứng."
+          title="Tìm trong sự kiện đã xác nhận"
+          subtitle="Vui lòng tạo hồ sơ trước khi thêm minh chứng từ sự kiện."
         />
         <EmptyState
           title="Bạn chưa có hồ sơ xét duyệt"
-          description="Hãy tạo hồ sơ để import minh chứng từ kho chính thức."
+          description="Hãy tạo hồ sơ để thêm minh chứng từ sự kiện đã xác nhận."
           action={
             <Button asChild>
               <Link to="/app/wizard">Tạo hồ sơ ngay</Link>
@@ -123,12 +123,12 @@ export function ApprovedEvidencePage() {
     return (
       <>
         <TopBar
-          title="Kho minh chứng chính thức"
+          title="Tìm trong sự kiện đã xác nhận"
           subtitle="Không tìm thấy MSSV trong tài khoản hiện tại."
         />
         <ErrorState
           title="Thiếu MSSV"
-          message="Tài khoản của bạn chưa có MSSV nên chưa thể tìm minh chứng chính thức."
+          message="Tài khoản của bạn chưa có MSSV nên chưa thể tìm minh chứng từ sự kiện đã xác nhận."
         />
       </>
     );
@@ -137,8 +137,8 @@ export function ApprovedEvidencePage() {
   return (
     <>
       <TopBar
-        title="Kho minh chứng chính thức"
-        subtitle="Các hoạt động và danh sách đã được cán bộ xác nhận. Nếu bạn có tên trong danh sách, bạn có thể import vào hồ sơ mà không cần upload lại giấy chứng nhận."
+        title="Tìm trong sự kiện đã xác nhận"
+        subtitle="Các hoạt động và danh sách đã được cán bộ xác nhận. Nếu bạn có tên trong danh sách, bạn có thể thêm vào hồ sơ mà không cần tải lại giấy chứng nhận."
         action={
           <Button asChild variant="outline">
             <Link to="/app/evidence">
@@ -150,7 +150,7 @@ export function ApprovedEvidencePage() {
       />
 
       <div className="mb-4 rounded-md border bg-white p-4 text-sm text-muted-foreground">
-        Minh chứng import từ kho chính thức vẫn được cán bộ/Hội đồng xác nhận trong quá trình xét
+        Minh chứng thêm từ sự kiện đã xác nhận vẫn được cán bộ/Hội đồng kiểm tra trong quá trình xét
         duyệt.
       </div>
 
@@ -166,7 +166,7 @@ export function ApprovedEvidencePage() {
 
       <div className="mt-5">
         {search.isLoading ? (
-          <LoadingState label="Đang tải kho minh chứng chính thức..." />
+          <LoadingState label="Đang tải sự kiện đã xác nhận..." />
         ) : search.isError ? (
           <ErrorState
             title={getErrorTitle(searchError)}
@@ -182,7 +182,7 @@ export function ApprovedEvidencePage() {
             action={
               debouncedQ || criterion !== "all" || status !== "all" ? null : (
                 <Button asChild>
-                  <Link to="/app/evidence">Upload minh chứng thủ công</Link>
+                  <Link to="/app/evidence">Tải minh chứng thủ công</Link>
                 </Button>
               )
             }
@@ -253,15 +253,15 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
 function getErrorTitle(error: ApiError | null) {
   if (error?.status === 403) return "Bạn chỉ có thể xem minh chứng của chính mình";
   if (error?.status === 404) return "Không tìm thấy hoạt động hoặc danh sách này";
-  return "Không thể tải kho minh chứng";
+  return "Không thể tải sự kiện đã xác nhận";
 }
 
 function getErrorMessage(error: ApiError | null) {
-  if (error?.status === 403) return "Bạn chỉ có thể xem và import minh chứng của chính mình.";
+  if (error?.status === 403) return "Bạn chỉ có thể xem và thêm minh chứng của chính mình.";
   if (error?.status === 404) return "Không tìm thấy hoạt động hoặc danh sách này.";
   if (error?.code?.toLowerCase().includes("already")) return "Minh chứng này đã có trong hồ sơ.";
   if (error?.code?.toLowerCase().includes("participant"))
-    return "Bạn không thể import minh chứng của sinh viên khác.";
+    return "Bạn không thể thêm minh chứng của sinh viên khác.";
   return error?.message ?? "Vui lòng kiểm tra kết nối và thử lại.";
 }
 

@@ -42,6 +42,11 @@ export function AppIcon({
 }
 
 const CRIT_ICON: Record<string, IconKey> = {
+  ethics: "ShieldCheck",
+  academic: "GraduationCap",
+  physical: "Dumbbell",
+  volunteer: "HeartHandshake",
+  integration: "Globe2",
   "dao-duc": "ShieldCheck",
   "hoc-tap": "GraduationCap",
   "the-luc": "Dumbbell",

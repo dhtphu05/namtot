@@ -2,7 +2,7 @@ import { CheckCircle2, CircleAlert, ClipboardCheck, FileText, Send, Upload } fro
 import { Button, Chip } from "@/components/ui-kit";
 import type { ApplicationStatus, PrecheckResult } from "@/lib/api/types";
 
-type StepStatus = "Hoàn thành" | "Đang làm" | "Đang xét duyệt" | "Cần bổ sung" | "Bị khóa" | "Chờ cán bộ";
+type StepStatus = "Hoàn thành" | "Đang làm" | "Đang xét duyệt" | "Cần bổ sung" | "Bị khóa";
 
 type StudentFlowState = {
   applicationExists: boolean;
@@ -10,6 +10,7 @@ type StudentFlowState = {
   evidenceCount: number;
   criteriaTouched?: boolean;
   latestPrecheck?: PrecheckResult | null;
+  missingWorkCount?: number;
 };
 
 export function StudentFlowStepper({
@@ -32,6 +33,7 @@ export function StudentFlowStepper({
   const needsSupplement = state.applicationStatus === "supplement_required" || String(state.applicationStatus) === "draft_supplement";
   const finalDone = hasFinalResult(state.applicationStatus);
   const inReview = isInReview(state.applicationStatus);
+  const hasMissingWork = (state.missingWorkCount ?? 0) > 0;
   const steps = [
     {
       label: "Tạo hồ sơ",
@@ -48,7 +50,7 @@ export function StudentFlowStepper({
       action: onUpload,
     },
     {
-      label: "Thêm thành tích",
+      label: "Thêm minh chứng",
       icon: Upload,
       status: !state.applicationExists
         ? "Bị khóa"
@@ -57,7 +59,7 @@ export function StudentFlowStepper({
             ? "Cần bổ sung"
             : "Hoàn thành"
           : "Đang làm",
-      actionLabel: "Thêm thành tích",
+      actionLabel: "Thêm minh chứng",
       action: onUpload,
     },
     {
@@ -72,7 +74,15 @@ export function StudentFlowStepper({
       action: onPrecheck,
     },
     {
-      label: finalDone ? "Hoàn thành" : needsSupplement ? "Cần bổ sung" : inReview ? "Đang xét duyệt" : "Nộp / Theo dõi",
+      label: finalDone
+        ? "Hoàn thành"
+        : needsSupplement
+          ? "Cần bổ sung"
+          : inReview
+            ? "Đang xét duyệt"
+            : hasMissingWork
+              ? "Chưa thể nộp"
+              : "Nộp / Theo dõi",
       icon: Send,
       status: !state.applicationExists || finalDone || inReview || needsSupplement
         ? finalDone
@@ -81,12 +91,18 @@ export function StudentFlowStepper({
             ? "Cần bổ sung"
             : inReview
               ? "Đang xét duyệt"
-          : "Bị khóa"
+              : "Bị khóa"
+        : hasMissingWork
+          ? "Đang làm"
         : state.latestPrecheck
           ? "Đang làm"
           : "Bị khóa",
-      actionLabel: finalDone || inReview || needsSupplement ? "Theo dõi xét duyệt" : "Nộp hồ sơ",
-      action: finalDone || inReview || needsSupplement ? onTrack : onSubmit,
+      actionLabel: finalDone || inReview || needsSupplement
+        ? "Theo dõi xét duyệt"
+        : hasMissingWork
+          ? "Hoàn thiện phần còn thiếu"
+          : "Nộp hồ sơ",
+      action: finalDone || inReview || needsSupplement ? onTrack : hasMissingWork ? onUpload : onSubmit,
     },
   ] satisfies Array<{
     label: string;
@@ -96,7 +112,7 @@ export function StudentFlowStepper({
     action?: () => void;
   }>;
 
-  const active = steps.find((step) => step.status === "Đang làm" || step.status === "Cần bổ sung") ?? steps.find((step) => step.status === "Chờ cán bộ");
+  const active = steps.find((step) => step.status === "Đang làm" || step.status === "Cần bổ sung");
 
   return (
     <div className="rounded-xl border border-[#E3ECF6] bg-white/85 px-3 py-2.5 backdrop-blur">
@@ -140,7 +156,6 @@ function StatusChip({ status }: { status: StepStatus }) {
   if (status === "Đang làm") return <Chip tone="brand">Đang làm</Chip>;
   if (status === "Đang xét duyệt") return <Chip tone="brand">Đang xét duyệt</Chip>;
   if (status === "Cần bổ sung") return <Chip tone="warning">Cần bổ sung</Chip>;
-  if (status === "Chờ cán bộ") return <Chip tone="warning">Chờ cán bộ</Chip>;
   return (
     <Chip tone="muted">
       <CircleAlert className="h-3 w-3" /> Bị khóa

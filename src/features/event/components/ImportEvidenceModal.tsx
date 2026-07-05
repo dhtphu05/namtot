@@ -36,10 +36,10 @@ export function ImportEvidenceModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Import minh chứng từ kho chính thức?</DialogTitle>
+          <DialogTitle>Thêm minh chứng từ sự kiện đã xác nhận?</DialogTitle>
           <DialogDescription>
-            Minh chứng này được lấy từ danh sách chính thức đã được cán bộ xác nhận. Sau khi import,
-            hệ thống sẽ tạo Evidence Card ngay và không cần OCR lại.
+            Minh chứng này được lấy từ danh sách đã được cán bộ xác nhận. Sau khi thêm vào hồ sơ,
+            hệ thống sẽ ghi nhận thông tin chính và không cần đọc lại file.
           </DialogDescription>
         </DialogHeader>
 
@@ -75,7 +75,7 @@ export function ImportEvidenceModal({
           </Button>
           <Button type="button" disabled={isSubmitting} onClick={onConfirm}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Import vào hồ sơ
+            Thêm vào hồ sơ
           </Button>
         </DialogFooter>
       </DialogContent>

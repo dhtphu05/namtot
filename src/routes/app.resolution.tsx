@@ -19,7 +19,7 @@ import { EmptyReviewState } from "@/features/review/components/EmptyReviewState"
 import { LevelBadge } from "@/features/review/components/LevelBadge";
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
 import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingState";
-import type { Criterion, Role } from "@/features/review/types";
+import type { Criterion, Level, Role } from "@/features/review/types";
 import { getErrorMessage } from "@/features/review/utils/errors";
 import {
   formatDateTime,
@@ -46,11 +46,10 @@ const criterionOptions: Criterion[] = [
   "physical",
   "volunteer",
   "integration",
-  "priority",
-  "collective",
 ];
 
 const statusOptions: ResolutionCaseStatus[] = ["open", "in_review", "resolved"];
+const levelOptions: Level[] = ["school", "university", "city", "central"];
 
 function ResolutionCasesRoute() {
   const user = useAuth((state) => state.user);
@@ -93,7 +92,22 @@ function ResolutionCasesContent({ role }: { role: Role }) {
   });
 
   const { data, error, isError, isFetching, isLoading, refetch } = useResolutionCases(filters);
-  const items = useMemo(() => data?.items ?? [], [data?.items]);
+  const rawItems = useMemo(() => data?.items ?? [], [data?.items]);
+  const items = useMemo(() => {
+    const escalator = filters.escalator?.trim().toLowerCase();
+    if (!escalator) return rawItems;
+
+    return rawItems.filter((item) =>
+      [
+        item.escalatedByName,
+        item.escalatedByRole,
+        item.createdByName,
+        item.createdByRole,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(escalator)),
+    );
+  }, [filters.escalator, rawItems]);
 
   const page = filters.page ?? 1;
   const limit = filters.limit ?? defaultLimit;
@@ -131,6 +145,25 @@ function ResolutionCasesContent({ role }: { role: Role }) {
                 }
               />
             </div>
+          </div>
+
+          <div className="min-w-[180px] lg:w-52">
+            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Người chuyển
+            </label>
+            <Input
+              className="mt-1"
+              disabled={isFetching}
+              placeholder="Tên hoặc vai trò"
+              value={filters.escalator ?? ""}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  escalator: event.target.value,
+                  page: 1,
+                }))
+              }
+            />
           </div>
 
           <FilterSelect
@@ -173,6 +206,26 @@ function ResolutionCasesContent({ role }: { role: Role }) {
             ))}
           </FilterSelect>
 
+          <FilterSelect
+            disabled={isFetching}
+            label="Cấp xét"
+            value={filters.level ?? "all"}
+            onChange={(value) =>
+              setFilters((current) => ({
+                ...current,
+                page: 1,
+                level: value === "all" ? undefined : (value as Level),
+              }))
+            }
+          >
+            <option value="all">Tất cả cấp xét</option>
+            {levelOptions.map((level) => (
+              <option key={level} value={level}>
+                {getLevelFilterLabel(level)}
+              </option>
+            ))}
+          </FilterSelect>
+
           <Button
             disabled={isFetching}
             type="button"
@@ -202,13 +255,15 @@ function ResolutionCasesContent({ role }: { role: Role }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Hồ sơ</TableHead>
+                  <TableHead>Mã case</TableHead>
                   <TableHead>Sinh viên</TableHead>
-                  <TableHead>Cấp xét</TableHead>
                   <TableHead>Tiêu chí</TableHead>
+                  <TableHead>Cấp xét</TableHead>
+                  <TableHead>Lý do hội ý</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  <TableHead>Người tạo / chuyển</TableHead>
-                  <TableHead>Ngày tạo</TableHead>
+                  <TableHead>Người chuyển</TableHead>
+                  <TableHead>Ngày chuyển</TableHead>
+                  <TableHead>Minh chứng</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -220,7 +275,7 @@ function ResolutionCasesContent({ role }: { role: Role }) {
                     onClick={() => navigate({ to: "/app/resolution/$id", params: { id: item.id } })}
                   >
                     <TableCell className="font-semibold text-brand-deep">
-                      #{item.id.slice(0, 8)}
+                      #{shortId(item.id)}
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-foreground">
@@ -233,10 +288,15 @@ function ResolutionCasesContent({ role }: { role: Role }) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <LevelBadge level={item.targetLevel} />
+                      <CriterionBadge criterion={item.criterion} />
                     </TableCell>
                     <TableCell>
-                      <CriterionBadge criterion={item.criterion} />
+                      <LevelBadge level={item.targetLevel} />
+                    </TableCell>
+                    <TableCell className="max-w-[260px]">
+                      <div className="line-clamp-2 text-sm text-foreground">
+                        {item.reason || "Chưa có lý do hội ý"}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${resolutionStatusClass(item.status)}`}>
@@ -245,6 +305,9 @@ function ResolutionCasesContent({ role }: { role: Role }) {
                     </TableCell>
                     <TableCell>{getCreatorLabel(item)}</TableCell>
                     <TableCell>{formatDateTime(item.createdAt)}</TableCell>
+                    <TableCell>
+                      {item.evidenceIds?.length ? `${item.evidenceIds.length} minh chứng` : "Chưa liên kết"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button
                         size="sm"
@@ -266,8 +329,8 @@ function ResolutionCasesContent({ role }: { role: Role }) {
           </Card>
         ) : (
           <EmptyReviewState
-            title="Chưa có hồ sơ cần hội ý."
-            description="Các trường hợp cán bộ chuyển hội ý sẽ hiển thị tại đây."
+            title="Chưa có case hội ý."
+            description="Các trường hợp cán bộ chuyển hội ý sẽ hiển thị tại đây với đầy đủ hồ sơ, task và minh chứng liên quan."
           />
         )}
       </div>
@@ -368,23 +431,46 @@ function getCreatorLabel(item: ResolutionCaseListItem) {
     return fallbackText;
   }
 
-  return [name, role].filter(Boolean).join(" / ");
+  return [name, formatResolutionRole(role)].filter(Boolean).join(" / ");
 }
 
 function getResolutionStatusLabel(status: ResolutionCaseStatus) {
   if (status === "resolved") {
-    return "Đã xử lý";
+    return "Đã kết luận";
   }
 
   if (status === "in_review") {
-    return "Đang xử lý";
+    return "Đang xem xét";
   }
 
-  return "Đang mở";
+  return "Chờ hội ý";
 }
 
 function resolutionStatusClass(status: ResolutionCaseStatus) {
   if (status === "resolved") return "bg-emerald-50 text-emerald-700";
   if (status === "in_review") return "bg-sky-50 text-sky-700";
   return "bg-violet-50 text-violet-700";
+}
+
+function getLevelFilterLabel(level: Level) {
+  const labels: Record<Level, string> = {
+    school: "Cấp Trường",
+    university: "Cấp ĐHĐN",
+    city: "Cấp Thành phố",
+    central: "Cấp Trung ương",
+  };
+  return labels[level];
+}
+
+function formatResolutionRole(role?: string | null) {
+  if (!role) return "";
+  if (role === "officer") return "Cán bộ xét duyệt";
+  if (role === "manager") return "Cấp quản lý";
+  if (role === "committee") return "Hội đồng";
+  if (role === "admin") return "Quản trị viên";
+  return role;
+}
+
+function shortId(id?: string | null) {
+  return id ? id.slice(0, 8).toUpperCase() : "N/A";
 }

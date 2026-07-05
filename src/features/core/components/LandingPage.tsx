@@ -93,7 +93,7 @@ export function LandingPage() {
       </nav>
 
       <section className="mx-auto grid max-w-7xl items-center gap-10 px-6 pb-12 pt-10 lg:grid-cols-[1.05fr_0.95fr]">
-        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+        <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
           <span className="inline-flex items-center gap-2 rounded-full bg-[#EAF3FF] px-3 py-1 text-xs font-bold text-[#0057C2]">
             <Sparkles className="h-3.5 w-3.5" />
             Sinh viên 5 tốt 2025-2026
@@ -138,7 +138,7 @@ export function LandingPage() {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.08 }}
           className="rounded-xl bg-white p-5 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]"

@@ -19,7 +19,7 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <div className={cn("rounded-md border border-dashed p-6 text-center", className)}>
+    <div className={cn("rounded-md bg-[var(--surface-muted)] p-6 text-center", className)}>
       <Icon className="mx-auto h-8 w-8 text-muted-foreground" />
       <div className="mt-3 font-semibold text-foreground">{title}</div>
       {description ? (

@@ -36,6 +36,14 @@ type EvidencePayload =
     }
   | null;
 
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue | undefined };
+
 function normalizeEvidences(payload: EvidenceListPayload | null): EvidenceResponse[] {
   const rows = Array.isArray(payload)
     ? payload
@@ -48,6 +56,22 @@ function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
   const wrapper = asRecord(payload);
   const row = asRecord(wrapper?.evidence) ?? wrapper ?? {};
   const file = asRecord(wrapper?.file);
+  const fileId = nullableString(row.fileId ?? row.file_id ?? file?.id) ?? undefined;
+  const fileName =
+    nullableString(row.fileName ?? row.file_name ?? file?.fileName ?? file?.file_name ?? file?.originalName ?? file?.original_name) ??
+    undefined;
+  const fallbackFile = fileId
+    ? [{
+        id: fileId,
+        fileName: fileName ?? "Tệp đính kèm",
+        originalName: fileName,
+        mimeType: nullableString(row.mimeType ?? row.mime_type ?? file?.mimeType ?? file?.mime_type) ?? undefined,
+        fileSize: nullableNumber(row.fileSize ?? row.file_size ?? file?.size ?? file?.fileSize ?? file?.file_size) ?? undefined,
+        size: nullableNumber(row.fileSize ?? row.file_size ?? file?.size ?? file?.fileSize ?? file?.file_size) ?? undefined,
+        createdAt: nullableString(row.createdAt ?? row.created_at) ?? "",
+        updatedAt: nullableString(row.updatedAt ?? row.updated_at) ?? "",
+      }]
+    : [];
 
   return {
     ...row,
@@ -68,11 +92,9 @@ function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
     description: nullableString(row.description),
     note: nullableString(row.note),
     confidence: nullableNumber(row.confidence),
-    files: Array.isArray(row.files) ? row.files : [],
-    fileId: nullableString(row.fileId ?? row.file_id ?? file?.id) ?? undefined,
-    fileName:
-      nullableString(row.fileName ?? row.file_name ?? file?.fileName ?? file?.file_name) ??
-      undefined,
+    files: Array.isArray(row.files) && row.files.length > 0 ? row.files : fallbackFile,
+    fileId,
+    fileName,
     jobId:
       nullableString(row.jobId ?? row.job_id ?? wrapper?.jobId ?? wrapper?.job_id) ?? undefined,
     uxStatus: asRecord(row.uxStatus ?? row.ux_status),
@@ -119,6 +141,28 @@ function enumString(value: unknown, fallback: string) {
   );
 }
 
+function toJsonObject(value?: Record<string, unknown>): Record<string, JsonValue | undefined> | undefined {
+  if (!value) return undefined;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [key, toJsonValue(item)]),
+  );
+}
+
+function toJsonValue(value: unknown): JsonValue | undefined {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(toJsonValue).filter((item): item is JsonValue => item !== undefined);
+  }
+  if (typeof value === "object") {
+    return toJsonObject(value as Record<string, unknown>);
+  }
+  return String(value);
+}
+
 export const evidenceApi = {
   getEvidences: async (
     applicationId: string,
@@ -157,9 +201,17 @@ export const evidenceApi = {
       metadata?: Record<string, unknown>;
     },
   ) => {
+    const body: Record<string, JsonValue | undefined> = {
+      evidenceName: input.evidenceName,
+      criterion: input.criterion,
+      sourceType: input.sourceType,
+      description: input.description,
+      note: input.note,
+      metadata: toJsonObject(input.metadata),
+    };
     const res = await apiClient<EvidencePayload>(`/api/applications/${applicationId}/evidences`, {
       method: "POST",
-      body: input,
+      body,
     });
     return { ...res, data: normalizeEvidence(res.data) };
   },
@@ -174,9 +226,16 @@ export const evidenceApi = {
       metadata?: Record<string, unknown>;
     },
   ) => {
+    const body: Record<string, JsonValue | undefined> = {
+      evidenceName: input.evidenceName,
+      criterion: input.criterion,
+      description: input.description,
+      note: input.note,
+      metadata: toJsonObject(input.metadata),
+    };
     const res = await apiClient<EvidencePayload>(`/api/evidences/${evidenceId}`, {
       method: "PATCH",
-      body: input,
+      body,
     });
     return { ...res, data: normalizeEvidence(res.data) };
   },

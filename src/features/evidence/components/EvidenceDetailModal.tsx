@@ -45,6 +45,10 @@ type EvidenceDetailModalProps = {
 
 type DetailTab = "card" | "files";
 
+const maxFileSize = 10 * 1024 * 1024;
+const acceptedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
+const acceptedMimeTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+
 export function EvidenceDetailModal({
   evidence,
   applicationId,
@@ -99,6 +103,12 @@ export function EvidenceDetailModal({
 
   const uploadMore = async (file?: File) => {
     if (!file || !activeEvidence) return;
+    const validationError = validateEvidenceFile(file);
+    if (validationError) {
+      toast.error(validationError);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     try {
       const uploaded = await uploadFile.mutateAsync({
         evidenceId: activeEvidence.id,
@@ -106,9 +116,13 @@ export function EvidenceDetailModal({
         file,
       });
       if (!uploaded.res?.jobId) {
-        await startIndexing.mutateAsync({ evidenceId: activeEvidence.id });
+        try {
+          await startIndexing.mutateAsync({ evidenceId: activeEvidence.id });
+        } catch {
+          toast.warning("Đã lưu file minh chứng. Hệ thống sẽ kiểm tra lại file sau.");
+        }
       }
-      toast.success("Đã tải file bổ sung. Hệ thống đang chuẩn bị số hoá.");
+      toast.success("Đã tải file bổ sung.");
       onChanged?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể tải file bổ sung.");
@@ -143,7 +157,7 @@ export function EvidenceDetailModal({
                 ) : null}
               </div>
               <DialogTitle className="truncate text-xl">
-                {activeEvidence?.evidenceName ?? "Evidence Card"}
+                {activeEvidence?.evidenceName ?? "Thẻ minh chứng"}
               </DialogTitle>
               <DialogDescription>
                 Kết quả số hoá chỉ hỗ trợ kiểm tra. Cán bộ/Hội đồng sẽ xác nhận cuối cùng.
@@ -195,7 +209,7 @@ export function EvidenceDetailModal({
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png"
+                  accept={acceptedExtensions.join(",")}
                   onChange={(event) => void uploadMore(event.target.files?.[0])}
                 />
                 <Button
@@ -256,10 +270,10 @@ export function EvidenceDetailModal({
 
             {tab === "card" && activeEvidence ? (
               cardQuery.isLoading && !card ? (
-                <LoadingState label="Đang tải Evidence Card..." />
+                <LoadingState label="Đang tải thẻ minh chứng..." />
               ) : cardQuery.isError ? (
                 <ErrorState
-                  title="Không thể tải Evidence Card"
+                  title="Không thể tải thẻ minh chứng"
                   message={cardError?.message ?? "Vui lòng thử lại sau."}
                   requestId={cardError?.meta?.requestId}
                   onRetry={() => void cardQuery.refetch()}
@@ -280,6 +294,14 @@ export function EvidenceDetailModal({
       </DialogContent>
     </Dialog>
   );
+}
+
+function validateEvidenceFile(file: File) {
+  const extension = `.${file.name.split(".").pop()?.toLowerCase() ?? ""}`;
+  const validType = acceptedMimeTypes.includes(file.type) || acceptedExtensions.includes(extension);
+  if (!validType) return "Tệp không đúng định dạng. Vui lòng tải PDF, PNG, JPG, JPEG hoặc WEBP.";
+  if (file.size > maxFileSize) return "Tệp vượt quá dung lượng cho phép. Vui lòng chọn file tối đa 10MB.";
+  return "";
 }
 
 function Info({ label, value }: { label: string; value?: string | null }) {

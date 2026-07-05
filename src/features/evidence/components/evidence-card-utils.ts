@@ -11,8 +11,8 @@ export const studentEvidenceCriteria = [
 ] as const;
 
 export const sourceTypeCopy: Record<string, string> = {
-  manual_upload: "Upload thủ công",
-  event_import: "Từ kho minh chứng",
+  manual_upload: "Tải thủ công",
+  event_import: "Từ sự kiện đã xác nhận",
   metric_input: "Chỉ số",
   collective_import: "Từ hồ sơ tập thể",
 };
@@ -23,10 +23,10 @@ export const indexingStatusCopy: Record<string, string> = {
   pending_indexing: "Chờ số hoá",
   ocr_processing: "Đang số hoá",
   processing: "Đang xử lý",
-  extracting: "Đang tạo Evidence Card",
-  extracting_fields: "Đang tạo Evidence Card",
-  checking_registry: "Đang đối chiếu kho minh chứng",
-  indexed: "Đã tạo Evidence Card",
+  extracting: "Đang tạo thẻ minh chứng",
+  extracting_fields: "Đang tạo thẻ minh chứng",
+  checking_registry: "Đang đối chiếu sự kiện đã xác nhận",
+  indexed: "Đã tạo thẻ minh chứng",
   needs_manual_review: "Cần cán bộ kiểm tra",
   failed: "Số hoá chưa thành công",
 };
@@ -37,7 +37,7 @@ export const warningCopy: Record<string, string> = {
   missing_issue_date: "Chưa nhận diện được ngày cấp/ngày ký",
   missing_organizer: "Chưa nhận diện được đơn vị tổ chức",
   missing_event_name: "Chưa nhận diện rõ tên hoạt động/minh chứng",
-  not_matched_registry: "Chưa tìm thấy minh chứng này trong kho danh sách chính thức",
+  not_matched_registry: "Chưa tìm thấy minh chứng này trong danh sách đã xác nhận",
   ocr_empty_text: "Chưa đọc được nội dung rõ ràng từ file",
   possible_wrong_student: "Thông tin sinh viên có thể chưa khớp",
   smartreader_warning_anh_dau_vao_nghieng: "Ảnh/tài liệu có thể bị nghiêng",
@@ -74,12 +74,12 @@ export function getEvidenceUxStatus(
 
   if (status === "indexed") {
     return {
-      label: "Evidence Card đã sẵn sàng",
+      label: "Thẻ minh chứng đã sẵn sàng",
       message: "Hệ thống đã đọc xong minh chứng và rút trích thông tin chính.",
       nextAction: "Kiểm tra lại thông tin trước khi nộp hồ sơ.",
       severity: "success",
       progressPercent: 100,
-      badges: ["Evidence Card"],
+      badges: ["Thẻ minh chứng"],
     };
   }
 
@@ -107,20 +107,20 @@ export function getEvidenceUxStatus(
     return {
       label: "Đang số hoá minh chứng",
       message: "SmartReader đang đọc nội dung trong file. Bạn có thể rời trang và quay lại sau.",
-      nextAction: "Hệ thống sẽ tự cập nhật khi Evidence Card sẵn sàng.",
+      nextAction: "Hệ thống sẽ tự cập nhật khi thẻ minh chứng sẵn sàng.",
       severity: "info",
-      badges: ["SmartReader", "Đang xử lý"],
+      badges: ["Đang xử lý"],
     };
   }
 
   if (status === "extracting" || status === "checking_registry") {
     return {
       label:
-        status === "checking_registry" ? "Đang đối chiếu kho minh chứng" : "Đang tạo Evidence Card",
+        status === "checking_registry" ? "Đang đối chiếu sự kiện đã xác nhận" : "Đang tạo thẻ minh chứng",
       message: "Hệ thống đang rút trích thông tin chính từ minh chứng.",
       nextAction: "Bạn có thể tiếp tục hoàn thiện hồ sơ trong lúc chờ.",
       severity: "info",
-      badges: ["Evidence Card"],
+      badges: ["Thẻ minh chứng"],
     };
   }
 

@@ -68,8 +68,8 @@ export function ApprovedEvidenceFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả</SelectItem>
-            <SelectItem value="importable">Có thể import</SelectItem>
-            <SelectItem value="imported">Đã import</SelectItem>
+            <SelectItem value="importable">Có thể thêm</SelectItem>
+            <SelectItem value="imported">Đã thêm</SelectItem>
           </SelectContent>
         </Select>
       </div>
