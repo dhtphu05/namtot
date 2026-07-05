@@ -465,11 +465,11 @@ function FeedbackCard({
           </AppButton>
         ) : (
           <AppButton asChild size="sm" variant={item.isActionable ? "primary" : "secondary"}>
-            <a href={actionHref}>{item.actionLabel}</a>
+            <Link to={toStudentHref(actionHref)}>{item.actionLabel}</Link>
           </AppButton>
         )}
         <AppButton asChild size="sm" variant="ghost">
-          <a href={assistantHref}>Hỏi cách xử lý</a>
+          <Link to={toStudentHref(assistantHref)}>Hỏi cách xử lý</Link>
         </AppButton>
         {!isAcknowledgeOnly && (item.status === "new" || item.isActionable) ? (
           <AppButton
@@ -505,6 +505,10 @@ function buildAssistantHref({
   if (criterionLabel) params.set("criterionLabel", criterionLabel);
   if (message) params.set("message", message);
   return `/app/assistant?${params.toString()}`;
+}
+
+function toStudentHref(href: string) {
+  return href as "/app/application" | "/app/feedback" | "/app/assistant";
 }
 
 function formatFeedbackDate(value: string) {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -245,7 +245,8 @@ function OfficerResolutionReadonlyCard() {
         <div>
           <h3 className="font-bold text-brand-deep">Theo dõi hội ý</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cán bộ xem lại lý do chuyển hội ý, minh chứng liên quan và lịch sử xử lý. Chỉ Hội đồng/Cấp quản lý được kết luận case này.
+            Cán bộ xem lại lý do chuyển hội ý, minh chứng liên quan và lịch sử xử lý. Chỉ Hội
+            đồng/Cấp quản lý được kết luận case này.
           </p>
         </div>
       </div>
@@ -334,12 +335,16 @@ function LinkedDataSection({ resolutionCase }: { resolutionCase: ResolutionCaseD
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <InfoRow label="Mã hồ sơ ngắn" value={`#${shortId(resolutionCase.applicationId)}`} />
-        <InfoRow label="Tác vụ xét duyệt liên quan" value={resolutionCase.taskId ? `#${shortId(resolutionCase.taskId)}` : undefined} />
+        <InfoRow
+          label="Tác vụ xét duyệt liên quan"
+          value={resolutionCase.taskId ? `#${shortId(resolutionCase.taskId)}` : undefined}
+        />
       </div>
 
       {!resolutionCase.applicationId || !resolutionCase.taskId || !evidenceIds.length ? (
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          Case này thiếu liên kết minh chứng hoặc tác vụ xét duyệt. Vui lòng quay lại tác vụ xét duyệt và chuyển hội ý lại để hội đồng có đủ ngữ cảnh.
+          Case này thiếu liên kết minh chứng hoặc tác vụ xét duyệt. Vui lòng quay lại tác vụ xét
+          duyệt và chuyển hội ý lại để hội đồng có đủ ngữ cảnh.
         </div>
       ) : null}
 
@@ -411,7 +416,9 @@ function ResolutionEvidenceCard({ evidence }: { evidence: ResolutionEvidence }) 
     <div className="rounded-lg border p-3">
       <div className="font-semibold text-brand-deep">{evidence.evidenceName}</div>
       <div className="mt-1 text-xs text-muted-foreground">
-        {getResolutionEvidenceSourceLabel(evidence.sourceType)} · {getResolutionEvidenceStatusLabel(evidence.status)} · {getIndexingLabel(evidence.indexingStatus)}
+        {getResolutionEvidenceSourceLabel(evidence.sourceType)} ·{" "}
+        {getResolutionEvidenceStatusLabel(evidence.status)} ·{" "}
+        {getIndexingLabel(evidence.indexingStatus)}
       </div>
       {typeof evidence.confidence === "number" ? (
         <div className="mt-2">
@@ -421,18 +428,25 @@ function ResolutionEvidenceCard({ evidence }: { evidence: ResolutionEvidence }) 
       {evidence.evidenceCard?.aiSummary ? (
         <p className="mt-2 text-sm text-muted-foreground">{evidence.evidenceCard.aiSummary}</p>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">Chưa có tóm tắt đọc nhanh cho minh chứng này.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Chưa có tóm tắt đọc nhanh cho minh chứng này.
+        </p>
       )}
       <div className="mt-3 space-y-2">
-        {evidence.files?.length ? evidence.files.map((file) => (
-          <div key={file.id} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm">
-            <span className="truncate">{file.originalName}</span>
-            <Button size="sm" variant="ghost" onClick={() => openFile(file.id)}>
-              <ExternalLink className="h-4 w-4" />
-              Xem file
-            </Button>
-          </div>
-        )) : (
+        {evidence.files?.length ? (
+          evidence.files.map((file) => (
+            <div
+              key={file.id}
+              className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm"
+            >
+              <span className="truncate">{file.originalName}</span>
+              <Button size="sm" variant="ghost" onClick={() => openFile(file.id)}>
+                <ExternalLink className="h-4 w-4" />
+                Xem file
+              </Button>
+            </div>
+          ))
+        ) : (
           <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
             Minh chứng chưa có file đính kèm.
           </div>
@@ -513,7 +527,10 @@ function TimelineSection({ timeline }: { timeline: ResolutionTimelineItem[] }) {
           {visibleTimeline.map((item) => (
             <HistoryItem
               key={item.id}
-              actor={[item.actorName, formatRoleLabel(item.actorRole)].filter(Boolean).join(" / ") || fallbackText}
+              actor={
+                [item.actorName, formatRoleLabel(item.actorRole)].filter(Boolean).join(" / ") ||
+                fallbackText
+              }
               note={item.note}
               title={formatAuditActionLabel(item.action)}
               timestamp={item.createdAt}
@@ -541,6 +558,7 @@ function ResolveResolutionPanel({
   status: ResolutionCaseStatus;
   onSuccess?: () => void;
 }) {
+  const navigate = useNavigate();
   const [decision, setDecision] = useState<ResolutionFinalDecision>("accepted");
   const [evidenceDecisions, setEvidenceDecisions] = useState<
     Record<string, Exclude<ResolutionFinalDecision, "closed_no_action">>
@@ -595,13 +613,14 @@ function ResolveResolutionPanel({
       },
       {
         onSuccess: () => {
-          const message = "Đã lưu kết luận hội ý. Kết quả sẽ được áp dụng vào tác vụ/hồ sơ liên quan.";
+          const message =
+            "Đã lưu kết luận hội ý. Kết quả sẽ được áp dụng vào tác vụ/hồ sơ liên quan.";
           setSubmittedMessage(message);
           toast.success(message, {
             action: {
               label: "Quay về danh sách",
               onClick: () => {
-                window.location.href = "/app/resolution";
+                void navigate({ to: "/app/resolution" });
               },
             },
           });
@@ -672,7 +691,10 @@ function ResolveResolutionPanel({
                     onChange={(event) => {
                       setEvidenceDecisions((current) => ({
                         ...current,
-                        [evidence.id]: event.target.value as Exclude<ResolutionFinalDecision, "closed_no_action">,
+                        [evidence.id]: event.target.value as Exclude<
+                          ResolutionFinalDecision,
+                          "closed_no_action"
+                        >,
                       }));
                       setFormError(null);
                     }}
@@ -680,10 +702,10 @@ function ResolveResolutionPanel({
                     {resolveDecisionOptions
                       .filter((option) => option.value !== "closed_no_action")
                       .map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                   </select>
                 </label>
               ))}
@@ -705,7 +727,8 @@ function ResolveResolutionPanel({
             Lưu thành tiền lệ xét duyệt
           </label>
           <p className="mt-2 text-xs text-muted-foreground">
-            Dùng làm tiền lệ xét duyệt cho hồ sơ tương tự. Không lưu thêm thông tin cá nhân không cần thiết.
+            Dùng làm tiền lệ xét duyệt cho hồ sơ tương tự. Không lưu thêm thông tin cá nhân không
+            cần thiết.
           </p>
           {updateKnowledgeBase ? (
             <input
@@ -803,7 +826,7 @@ function getResolutionEvidenceSourceLabel(sourceType?: string | null) {
     event_import: "Minh chứng từ sự kiện",
     collective_import: "Minh chứng tập thể",
   };
-  return sourceType ? labels[sourceType] ?? sourceType : fallbackText;
+  return sourceType ? (labels[sourceType] ?? sourceType) : fallbackText;
 }
 
 function getResolutionEvidenceStatusLabel(status?: string | null) {
@@ -817,7 +840,7 @@ function getResolutionEvidenceStatusLabel(status?: string | null) {
     rejected: "Không công nhận",
     resolution_needed: "Cần hội ý",
   };
-  return status ? labels[status] ?? status : fallbackText;
+  return status ? (labels[status] ?? status) : fallbackText;
 }
 
 function getIndexingLabel(status?: string | null) {
@@ -832,7 +855,7 @@ function getIndexingLabel(status?: string | null) {
     needs_manual_review: "Cần cán bộ kiểm tra",
     failed: "Cần kiểm tra thủ công",
   };
-  return status ? labels[status] ?? status : fallbackText;
+  return status ? (labels[status] ?? status) : fallbackText;
 }
 
 function shortId(id?: string | null) {

@@ -317,7 +317,7 @@ function OfficerDashReal() {
               Sắp xếp theo quá hạn, sắp quá hạn, tài liệu cần kiểm tra và việc mới được giao.
             </div>
           </div>
-          <a href="/app/queue?tab=actionable"><Button size="sm" variant="ghost">Mở danh sách →</Button></a>
+          <Link to="/app/queue?tab=actionable"><Button size="sm" variant="ghost">Mở danh sách →</Button></Link>
         </div>
         <div className="space-y-2">
           {priorityTasks.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Bạn chưa có task cần xử lý. Hãy chuyển sang tab Có thể nhận hoặc kiểm tra lại bộ lọc.</div>}
@@ -397,7 +397,7 @@ function OfficerDashboardCards({ summary }: { summary?: OfficerDashboardResponse
   return (
     <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {cards.map((card) => (
-        <a key={card.label} href={card.href} className="block">
+        <Link key={card.label} to={card.href} className="block">
           <Card className="h-full !p-4 transition-colors hover:bg-[var(--surface-muted)]">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -410,7 +410,7 @@ function OfficerDashboardCards({ summary }: { summary?: OfficerDashboardResponse
               </div>
             </div>
           </Card>
-        </a>
+        </Link>
       ))}
     </div>
   );
