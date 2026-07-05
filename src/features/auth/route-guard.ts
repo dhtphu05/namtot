@@ -1,7 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { authKeys, meQueryOptions } from "@/features/auth/hooks/useMe";
-import { useAuth } from "@/features/auth/store/auth-store";
+import { useAuth, waitForAuthHydration } from "@/features/auth/store/auth-store";
 import { getDefaultAppPathForRole, toUiRole } from "@/features/auth/role-map";
 import { useApp } from "@/lib/store";
 import type { Role, SafeUser } from "@/lib/api/types";
@@ -50,10 +50,12 @@ const reviewRoles: Role[] = ["officer", "manager", "committee", "admin"];
 
 export async function requireAuthenticatedAppRoute(pathname: string, queryClient: QueryClient) {
   if (typeof window === "undefined") {
-    throw redirect({ to: "/login" });
+    return;
   }
 
-  const { accessToken, user } = useAuth.getState();
+  await waitForAuthHydration();
+
+  const { accessToken } = useAuth.getState();
   if (!accessToken) {
     throw redirect({ to: "/login" });
   }

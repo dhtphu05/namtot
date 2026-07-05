@@ -39,6 +39,7 @@ export function EvidenceCardPanel({
   const status = getStudentEvidenceStatus(evidence, card);
   const userFields = getUserProvidedFields(evidence, card);
   const extractedFields = getExtractedReadableFields(card);
+  const academic = getAcademicInfo(card);
   const missingFields = getMissingFields(card);
   const ocrText = card?.ocrTextPreview ?? getSafeOcrText(card);
   const matchingStatus = getMatchingStatus(card, evidence.sourceType);
@@ -114,7 +115,7 @@ export function EvidenceCardPanel({
       </section>
 
       <section className="rounded-md border p-4">
-        <h3 className="font-semibold text-foreground">Hệ thống đọc được từ file</h3>
+        <h3 className="font-semibold text-foreground">SmartReader gợi ý</h3>
         {extractedFields.length ? (
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {extractedFields.map((field) => (
@@ -122,7 +123,7 @@ export function EvidenceCardPanel({
                 key={field.key}
                 label={field.label}
                 value={field.value}
-                source="OCR đọc được"
+                source={field.source}
                 confidence={field.confidence}
                 missing={field.missing}
               />
@@ -132,6 +133,32 @@ export function EvidenceCardPanel({
           <p className="mt-2 text-sm text-muted-foreground">Chưa đọc được thông tin tóm tắt.</p>
         )}
       </section>
+
+      {academic ? (
+        <section className="rounded-md border p-4">
+          <h3 className="font-semibold text-foreground">GPA / học tập</h3>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <FieldInfo
+              label="GPA sinh viên nhập"
+              value={academic.userGpaDisplay}
+              source="Sinh viên nhập"
+            />
+            <FieldInfo
+              label="GPA SmartReader gợi ý"
+              value={academic.suggestionDisplay}
+              source="SmartReader gợi ý"
+              confidence={academic.suggestionConfidence}
+              missing={!academic.suggestionDisplay}
+            />
+            <FieldInfo
+              label="Ngưỡng tham chiếu"
+              value={academic.thresholdDisplay}
+              source="Kho chính thức"
+            />
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">{academic.message}</p>
+        </section>
+      ) : null}
 
       <section className="rounded-md border p-4">
         <h3 className="font-semibold text-foreground">Danh sách chính thức</h3>
@@ -343,7 +370,7 @@ function FieldInfo({
 }: {
   label: string;
   value?: string | null;
-  source: "Sinh viên nhập" | "OCR đọc được" | "Kho chính thức" | "Cán bộ xác nhận";
+  source: "Hồ sơ" | "Sinh viên nhập" | "SmartReader gợi ý" | "Kho chính thức" | "Cán bộ xác nhận";
   confidence?: number;
   missing?: boolean;
 }) {
@@ -389,58 +416,72 @@ function getUserProvidedFields(evidence: EvidenceResponse, card?: EvidenceCard |
 }
 
 function getExtractedReadableFields(card?: EvidenceCard | null) {
+  const primary = card?.primaryFields ?? {};
+  const profile = card?.studentProfileFields ?? {};
   const fields = card?.normalizedFields ?? card?.extractedFields ?? {};
   const summary = card?.readableSummary;
   const confidence = card?.fieldConfidence ?? {};
   const items = [
-    fieldFromLayer("eventName", "Tên hoạt động", [
-      fields.event_name,
-      fields.eventName,
-      summary?.eventName,
-    ]),
-    fieldFromLayer("organizer", "Đơn vị xác nhận", [
-      fields.organizer,
-      summary?.organizer,
-      summary?.organizerName,
-    ]),
-    fieldFromLayer("organizerLevel", "Cấp tổ chức", [
-      fields.organizer_level,
-      fields.organizerLevel,
-    ]),
-    fieldFromLayer("activityDate", "Ngày hoạt động", [
-      fields.activity_date,
-      fields.activityDate,
-      summary?.activityTime,
-      summary?.time,
-    ]),
-    fieldFromLayer("issueDate", "Ngày cấp", [
-      fields.issue_date,
-      fields.issueDate,
-      summary?.issueDate,
-    ]),
-    fieldFromLayer("studentName", "Họ tên", [
-      fields.student_name,
-      fields.studentName,
-      summary?.studentName,
-    ]),
-    fieldFromLayer("studentCode", "MSSV", [
-      fields.student_code,
-      fields.studentCode,
-      summary?.studentCode,
-    ]),
-    fieldFromLayer("convertedValue", "Giá trị", [
-      formatConvertedValue(summary?.convertedValue, summary?.convertedUnit),
-      fields.converted_value,
-      fields.convertedValue,
-      fields.volunteer_days,
-    ]),
+    fieldFromLayer(
+      "eventName",
+      "Tên hoạt động",
+      [fields.event_name, fields.eventName, summary?.eventName],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer(
+      "organizer",
+      "Đơn vị xác nhận",
+      [fields.organizer, summary?.organizer, summary?.organizerName],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer(
+      "organizerLevel",
+      "Cấp tổ chức",
+      [fields.organizer_level, fields.organizerLevel],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer(
+      "activityDate",
+      "Ngày hoạt động",
+      [fields.activity_date, fields.activityDate, summary?.activityTime, summary?.time],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer(
+      "issueDate",
+      "Ngày cấp",
+      [fields.issue_date, fields.issueDate, summary?.issueDate],
+      "SmartReader gợi ý",
+    ),
+    fieldFromLayer("studentName", "Họ tên", [profile.studentName, primary.studentName], "Hồ sơ"),
+    fieldFromLayer("studentCode", "MSSV", [profile.studentCode, primary.studentCode], "Hồ sơ"),
+    fieldFromLayer("className", "Lớp", [profile.className, primary.className], "Hồ sơ"),
+    fieldFromLayer("faculty", "Khoa", [profile.faculty, primary.faculty], "Hồ sơ"),
+    fieldFromLayer(
+      "convertedValue",
+      "Giá trị",
+      [
+        formatConvertedValue(summary?.convertedValue, summary?.convertedUnit),
+        fields.converted_value,
+        fields.convertedValue,
+        fields.volunteer_days,
+      ],
+      "SmartReader gợi ý",
+    ),
   ];
 
-  return items.map((item) => ({
-    ...item,
-    confidence: confidence[item.key],
-    missing: !item.value,
-  }));
+  return items
+    .map((item) => ({
+      ...item,
+      confidence: item.source === "SmartReader gợi ý" ? confidence[item.key] : undefined,
+      missing: !item.value,
+    }))
+    .map((item) =>
+      item.source === "SmartReader gợi ý" &&
+      typeof item.confidence === "number" &&
+      item.confidence < 0.5
+        ? { ...item, value: null, missing: true }
+        : item,
+    );
 }
 
 function formatConvertedValue(value: unknown, unit?: string | null) {
@@ -448,12 +489,47 @@ function formatConvertedValue(value: unknown, unit?: string | null) {
   return `${value}${unit ? ` ${unit}` : ""}`;
 }
 
-function fieldFromLayer(key: string, label: string, values: unknown[]) {
+function fieldFromLayer(
+  key: string,
+  label: string,
+  values: unknown[],
+  source: "Hồ sơ" | "SmartReader gợi ý",
+) {
   return {
     key,
     label,
     value: getDisplayValue(values.find((value) => getDisplayValue(value))),
+    source,
   };
+}
+
+function getAcademicInfo(card?: EvidenceCard | null) {
+  const academic = card?.academic;
+  if (!academic) return null;
+  const userInput = asRecord(academic.userInput);
+  const suggestion = asRecord(academic.smartReaderSuggestion);
+  const threshold = asRecord(academic.threshold);
+  const suggestionValue = getDisplayValue(suggestion?.value);
+  const suggestionScale = getDisplayValue(suggestion?.scale) ?? "4";
+  const thresholdValue = getDisplayValue(threshold?.value);
+  const thresholdScale = getDisplayValue(threshold?.scale) ?? "4";
+
+  return {
+    userGpaDisplay: getDisplayValue(userInput?.gpaDisplay ?? userInput?.gpa) ?? "Chưa nhập",
+    suggestionDisplay: suggestionValue ? `${suggestionValue}/${suggestionScale}` : null,
+    suggestionConfidence:
+      typeof suggestion?.confidence === "number" ? suggestion.confidence : undefined,
+    thresholdDisplay: thresholdValue ? `${thresholdValue}/${thresholdScale}` : "Chưa có ngưỡng",
+    message:
+      getDisplayValue(academic.message) ??
+      "SmartReader chỉ tạo gợi ý. Vui lòng xác nhận trước khi dùng để tiền kiểm.",
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function getDisplayValue(value: unknown): string | null {

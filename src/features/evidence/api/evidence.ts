@@ -142,13 +142,17 @@ function normalizeEvidenceCard(payload: unknown): EvidenceCard | null {
     missingFields,
     studentStatus: normalizeStudentStatus(row.studentStatus ?? row.student_status),
     userProvidedFields: asRecord(row.userProvidedFields ?? row.user_provided_fields) ?? null,
+    studentProfileFields: asRecord(row.studentProfileFields ?? row.student_profile_fields) ?? null,
     extractedFields: asRecord(row.extractedFields ?? row.extracted_fields) ?? null,
     normalizedFields: asRecord(row.normalizedFields ?? row.normalized_fields) ?? null,
     verifiedFields: asRecord(row.verifiedFields ?? row.verified_fields) ?? null,
+    primaryFields: asRecord(row.primaryFields ?? row.primary_fields) ?? null,
     fieldConfidence: asRecord(row.fieldConfidence ?? row.field_confidence) as Record<
       string,
       number
     > | null,
+    metricSuggestions: asRecord(row.metricSuggestions ?? row.metric_suggestions) ?? null,
+    academic: asRecord(row.academic) ?? null,
     extractedFieldsJson: row.extractedFieldsJson ?? row.extracted_fields_json,
     warnings: normalizeStringOrObjectArray(row.warnings ?? row.warningsJson ?? row.warnings_json),
     warningsJson: row.warningsJson ?? row.warnings_json,

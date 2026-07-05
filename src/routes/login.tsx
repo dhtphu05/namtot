@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { authApi } from "@/features/auth/api/auth";
 import { authKeys } from "@/features/auth/hooks/useMe";
 import { getDefaultAppPathForRole, toUiRole } from "@/features/auth/role-map";
-import { useAuth } from "@/features/auth/store/auth-store";
+import { useAuth, waitForAuthHydration } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
 import { useApp } from "@/lib/store";
 
@@ -19,9 +19,33 @@ const quickRoles = [
     icon: FileText,
   },
   {
-    label: "Cán bộ xét duyệt",
-    desc: "Xử lý tiêu chí được phân công và yêu cầu bổ sung khi cần.",
+    label: "Cán bộ Học tập",
+    desc: "Xử lý minh chứng Học tập tốt.",
     email: "officer.academic@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Đạo đức",
+    desc: "Xử lý minh chứng Đạo đức tốt.",
+    email: "officer.ethics@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Thể lực",
+    desc: "Xử lý minh chứng Thể lực tốt.",
+    email: "officer.physical@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Tình nguyện",
+    desc: "Xử lý minh chứng Tình nguyện tốt.",
+    email: "officer.volunteer@dut.udn.vn",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Cán bộ Hội nhập",
+    desc: "Xử lý minh chứng Hội nhập tốt.",
+    email: "officer.integration@dut.udn.vn",
     icon: ShieldCheck,
   },
   {
@@ -38,24 +62,13 @@ const quickRoles = [
   },
 ];
 
-function persistAuthSession(data: { user: unknown; accessToken: string; refreshToken: string }) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    "5tot-auth",
-    JSON.stringify({
-      state: {
-        user: data.user,
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-      },
-      version: 0,
-    }),
-  );
-}
-
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Đăng nhập - 5TOT Platform" }] }),
-  beforeLoad: () => {
+  beforeLoad: async () => {
+    if (typeof window === "undefined") return;
+
+    await waitForAuthHydration();
+
     const { accessToken, user } = useAuth.getState();
     if (accessToken && user) {
       throw redirect({ to: getDefaultAppPathForRole(user.role) });
@@ -86,7 +99,6 @@ function Login() {
       const res = await authApi.login(email.trim(), password);
       queryClient.clear();
       resetSessionState();
-      persistAuthSession(res.data);
       setAuthData(res.data.user, res.data.accessToken, res.data.refreshToken);
       queryClient.setQueryData(authKeys.me, res.data.user);
       setRole(toUiRole(res.data.user.role));

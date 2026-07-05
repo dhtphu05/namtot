@@ -48,6 +48,7 @@ export function AddEvidenceDrawer({
   const [nameError, setNameError] = useState("");
   const [fileError, setFileError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const createEvidence = useCreateEvidence(applicationId);
   const uploadFile = useUploadEvidenceFile(applicationId);
@@ -63,6 +64,9 @@ export function AddEvidenceDrawer({
     if (!open) return;
     setCriterion(initialCriterion);
     setEvidenceName(initialEvidenceName);
+    window.requestAnimationFrame(() => {
+      contentRef.current?.scrollTo({ top: 0 });
+    });
   }, [initialCriterion, initialEvidenceName, open]);
 
   const resetForm = () => {
@@ -147,15 +151,15 @@ export function AddEvidenceDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="mx-auto max-h-[92vh] max-w-2xl overflow-y-auto">
-        <DrawerHeader>
+      <DrawerContent className="mx-auto grid max-h-[92dvh] max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
+        <DrawerHeader className="shrink-0">
           <DrawerTitle>Thêm minh chứng</DrawerTitle>
           <DrawerDescription>
             Upload khi chưa tìm thấy trong danh sách chính thức.
           </DrawerDescription>
         </DrawerHeader>
 
-        <div className="space-y-4 px-4 pb-2">
+        <div ref={contentRef} className="min-h-0 space-y-4 overflow-y-auto px-4 pb-2">
           <div className="space-y-2">
             <Label htmlFor="evidence-name">Tên minh chứng</Label>
             <Input
@@ -214,7 +218,7 @@ export function AddEvidenceDrawer({
           {isSubmitting ? <UploadProgress /> : null}
         </div>
 
-        <DrawerFooter>
+        <DrawerFooter className="shrink-0 border-t">
           <Button type="button" onClick={() => void submit()} disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {isSubmitting ? "Đang ghi nhận..." : "Upload minh chứng"}

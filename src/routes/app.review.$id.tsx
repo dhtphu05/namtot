@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+  Bot,
   CalendarDays,
   CheckSquare,
   ClipboardList,
@@ -11,6 +12,8 @@ import {
   FileText,
   History,
   ListChecks,
+  MessageSquare,
+  SlidersHorizontal,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui-kit";
@@ -24,13 +27,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AuditTimeline } from "@/features/audit/components/AuditTimeline";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { SmartbotPanel } from "@/features/chatbot/components/SmartbotPanel";
 import { CriterionBadge } from "@/features/review/components/CriterionBadge";
 import { EmptyReviewState } from "@/features/review/components/EmptyReviewState";
 import { LevelBadge } from "@/features/review/components/LevelBadge";
-import { RequestSupplementPanel } from "@/features/review/components/RequestSupplementPanel";
 import { ReviewDecisionPanel } from "@/features/review/components/ReviewDecisionPanel";
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
 import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingState";
@@ -78,13 +88,6 @@ export const Route = createFileRoute("/app/review/$id")({
 const allowedRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const fallbackText = "Chưa có dữ liệu";
 const levelOrder = ["school", "university", "city", "central"] as const;
-const criterionShortLabels: Record<CoreCriterion, string> = {
-  ethics: "ĐĐ",
-  academic: "HT",
-  physical: "TL",
-  volunteer: "TN",
-  integration: "HN",
-};
 const metricLabels: Record<string, string> = {
   gpa: "GPA/ĐTB",
   conduct_score: "Điểm rèn luyện",
@@ -138,6 +141,10 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
   const { data: task, error, isError, isLoading, refetch } = useReviewTask(taskId);
   const claimTask = useClaimReviewTask(taskId);
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [technicalDrawerOpen, setTechnicalDrawerOpen] = useState(false);
+  const [criteriaOverviewOpen, setCriteriaOverviewOpen] = useState(false);
+  const [mobileDecisionOpen, setMobileDecisionOpen] = useState(false);
   const [selectedCriterion, setSelectedCriterion] = useState<CoreCriterion>("academic");
 
   useEffect(() => {
@@ -194,6 +201,13 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
     [student.faculty, student.className].filter(Boolean).join(" / ") || fallbackText;
   const canDecide = hasTaskAction(task, "decide");
   const canRequestSupplement = hasTaskAction(task, "request_supplement");
+  const canEscalateResolution = hasTaskAction(task, "escalate_resolution");
+  const canUseDecisionPanel = canDecide || canRequestSupplement || canEscalateResolution;
+  const canViewTechnicalLog =
+    role === "manager" ||
+    role === "committee" ||
+    role === "admin" ||
+    Boolean(task.permissions?.canView);
   const activeCriterion = selectedCriterion;
 
   return (
@@ -204,76 +218,85 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
         action={<BackToQueueButton />}
       />
 
-      <div className="space-y-5">
-        <Card>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <HeaderField label="Họ tên" value={student.fullName} />
-            <HeaderField label="Mã sinh viên" value={student.studentCode} />
-            <HeaderField label="Khoa / lớp" value={facultyClass} />
-            <HeaderField label="Năm học" value={task.application.schoolYear} />
-            <HeaderField
-              label="Cấp xét"
-              value={<LevelBadge level={task.application.targetLevel} />}
-            />
-            <HeaderField
-              label="Trạng thái hồ sơ"
-              value={<ReviewStatusBadge status={task.application.status} />}
-            />
-            <HeaderField
-              label="Tiêu chí tác vụ"
-              value={<CriterionBadge criterion={task.criterion} />}
-            />
-            <HeaderField
-              label="Trạng thái tác vụ"
-              value={<ReviewStatusBadge status={task.status} />}
-            />
-          </div>
-        </Card>
+      <div className="-mx-4 bg-[#F7F9FC] px-4 pb-8 pt-1 md:-mx-6 md:px-6">
+        <div className="space-y-4">
+          <ApplicationReviewHeader facultyClass={facultyClass} task={task} />
 
-        <PermissionSummary
-          isClaiming={claimTask.isPending}
-          task={task}
-          onClaim={() => setClaimDialogOpen(true)}
-        />
+          <CriteriaStatusStrip
+            evidences={evidences}
+            metrics={metrics}
+            selectedCriterion={activeCriterion}
+            task={task}
+            onOpenOverview={() => setCriteriaOverviewOpen(true)}
+            onSelectCriterion={setSelectedCriterion}
+          />
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-          <div className="space-y-5">
-            <CriteriaOverviewSection
-              evidences={evidences}
-              metrics={metrics}
-              selectedCriterion={activeCriterion}
-              task={task}
-              onSelectCriterion={setSelectedCriterion}
-            />
-            <CriterionTabs
-              evidences={evidences}
-              metrics={metrics}
-              selectedCriterion={activeCriterion}
-              task={task}
-              onSelectCriterion={setSelectedCriterion}
-            />
-            <CriterionWorkspace
-              checklist={checklist}
-              criterion={activeCriterion}
-              decisionHistory={decisionHistory}
-              evidences={evidences}
-              metrics={metrics}
-              task={task}
-            />
-            <AuditTimeline applicationId={task.application.id} limit={10} taskId={task.id} />
-          </div>
+          <PermissionSummary
+            isClaiming={claimTask.isPending}
+            task={task}
+            onClaim={() => setClaimDialogOpen(true)}
+          />
 
-          <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
-            <ReviewerCopilotPanel task={task} />
-            {canDecide ? (
-              <ReviewDecisionPanel task={task} onSuccess={() => void refetch()} />
-            ) : null}
-            {canRequestSupplement ? (
-              <RequestSupplementPanel task={task} onSuccess={() => void refetch()} />
-            ) : null}
-            {!canDecide && !canRequestSupplement ? <ReadOnlyActionPanel task={task} /> : null}
-          </div>
-        </section>
+          <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
+            <div className="min-w-0 space-y-4">
+              <ReviewWorkspaceTabs
+                checklist={checklist}
+                criterion={activeCriterion}
+                evidences={evidences}
+                metrics={metrics}
+                task={task}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-muted-foreground">
+                <span>
+                  Audit log và lịch sử kỹ thuật không hiển thị trong luồng xét duyệt chính.
+                </span>
+                {canViewTechnicalLog ? (
+                  <Button
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                    onClick={() => setTechnicalDrawerOpen(true)}
+                  >
+                    <History className="h-4 w-4" />
+                    Xem nhật ký kỹ thuật
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            <aside className="hidden xl:block xl:sticky xl:top-6 xl:max-h-[calc(100vh-96px)] xl:self-start">
+              <div className="flex max-h-[calc(100vh-96px)] flex-col gap-3">
+                <Button
+                  className="w-full justify-center"
+                  type="button"
+                  variant="outline"
+                  onClick={() => setAiDrawerOpen(true)}
+                >
+                  <Bot className="h-4 w-4" />
+                  Hỏi trợ lý AI
+                </Button>
+                {canUseDecisionPanel ? (
+                  <ReviewDecisionPanel task={task} onSuccess={() => void refetch()} />
+                ) : (
+                  <ReadOnlyActionPanel task={task} />
+                )}
+              </div>
+            </aside>
+          </section>
+        </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur xl:hidden">
+        <div className="mx-auto flex max-w-2xl gap-2">
+          <Button className="flex-1" type="button" onClick={() => setMobileDecisionOpen(true)}>
+            <CheckSquare className="h-4 w-4" />
+            Ra quyết định
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setAiDrawerOpen(true)}>
+            <MessageSquare className="h-4 w-4" />
+            AI
+          </Button>
+        </div>
       </div>
 
       <ConfirmClaimDialog
@@ -300,26 +323,80 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
           })
         }
       />
+      <CriteriaOverviewDialog
+        evidences={evidences}
+        metrics={metrics}
+        open={criteriaOverviewOpen}
+        selectedCriterion={activeCriterion}
+        task={task}
+        onOpenChange={setCriteriaOverviewOpen}
+        onSelectCriterion={setSelectedCriterion}
+      />
+      <AiAssistantDrawer open={aiDrawerOpen} task={task} onOpenChange={setAiDrawerOpen} />
+      <TechnicalAuditDrawer
+        decisionHistory={decisionHistory}
+        open={technicalDrawerOpen}
+        task={task}
+        onOpenChange={setTechnicalDrawerOpen}
+      />
+      <Sheet open={mobileDecisionOpen} onOpenChange={setMobileDecisionOpen}>
+        <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto p-4">
+          <SheetHeader className="mb-3 text-left">
+            <SheetTitle>Ra quyết định</SheetTitle>
+            <SheetDescription>
+              Cán bộ kiểm tra minh chứng và xác nhận kết luận cuối cùng cho tiêu chí.
+            </SheetDescription>
+          </SheetHeader>
+          {canUseDecisionPanel ? (
+            <ReviewDecisionPanel
+              task={task}
+              onSuccess={() => {
+                setMobileDecisionOpen(false);
+                void refetch();
+              }}
+            />
+          ) : (
+            <ReadOnlyActionPanel task={task} />
+          )}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
 
-function ReviewerCopilotPanel({ task }: { task: ReviewTaskDetail }) {
+function AiAssistantDrawer({
+  open,
+  task,
+  onOpenChange,
+}: {
+  open: boolean;
+  task: ReviewTaskDetail;
+  onOpenChange: (open: boolean) => void;
+}) {
   return (
-    <SmartbotPanel
-      applicationId={task.application.id}
-      contextScope="reviewer_copilot"
-      pageContext={{ page: "review_task", taskId: task.id, criterion: task.criterion }}
-      compact
-      initialPrompt="Mình có thể hỗ trợ tóm tắt minh chứng và soạn dự thảo yêu cầu bổ sung. Cán bộ cần chỉnh sửa/xác nhận trước khi gửi."
-      defaultPrompts={[
-        "Tóm tắt minh chứng",
-        "Minh chứng còn thiếu gì?",
-        "Tìm case tương tự",
-        "Soạn yêu cầu bổ sung",
-        "Chuyển Resolution Hub",
-      ]}
-    />
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full overflow-y-auto p-4 sm:max-w-2xl">
+        <SheetHeader className="mb-4">
+          <SheetTitle>Trợ lý AI</SheetTitle>
+          <SheetDescription>
+            AI chỉ tạo gợi ý nháp. Cán bộ cần kiểm tra và xác nhận trước khi gửi.
+          </SheetDescription>
+        </SheetHeader>
+        <SmartbotPanel
+          applicationId={task.application.id}
+          contextScope="reviewer_copilot"
+          pageContext={{ page: "review_task", taskId: task.id, criterion: task.criterion }}
+          compact
+          initialPrompt="Mình có thể hỗ trợ tóm tắt minh chứng và soạn dự thảo yêu cầu bổ sung. Cán bộ cần chỉnh sửa/xác nhận trước khi gửi."
+          defaultPrompts={[
+            "Tóm tắt minh chứng",
+            "Minh chứng còn thiếu gì?",
+            "Tìm case tương tự",
+            "Soạn yêu cầu bổ sung",
+          ]}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -328,6 +405,256 @@ function BackToQueueButton() {
     <Button asChild variant="outline">
       <Link to="/app/queue">Quay lại hàng đợi</Link>
     </Button>
+  );
+}
+
+function ApplicationReviewHeader({
+  facultyClass,
+  task,
+}: {
+  facultyClass: string;
+  task: ReviewTaskDetail;
+}) {
+  const student = task.application.student;
+  return (
+    <Card className="border border-[#E5E7EB] bg-white py-4 shadow-none">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-bold tracking-normal text-brand-deep">
+            {student.fullName || fallbackText}
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span className="font-semibold text-slate-700">
+              {student.studentCode || fallbackText}
+            </span>
+            <span>{facultyClass}</span>
+            <span>{task.application.schoolYear || fallbackText}</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <LevelBadge level={task.application.targetLevel} />
+          <CriterionBadge criterion={task.criterion} />
+          <ReviewStatusBadge status={task.status} />
+          <ReviewStatusBadge status={task.application.status} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function CriteriaStatusStrip({
+  task,
+  metrics,
+  evidences,
+  selectedCriterion,
+  onSelectCriterion,
+  onOpenOverview,
+}: {
+  task: ReviewTaskDetail;
+  metrics: ReviewTaskDetail["metrics"];
+  evidences: ReviewTaskEvidence[];
+  selectedCriterion: CoreCriterion;
+  onSelectCriterion: (criterion: CoreCriterion) => void;
+  onOpenOverview: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="grid flex-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {coreCriteria.map((criterion) => {
+            const assessment = evaluateCriterionAgainstMatrix(
+              task.application.targetLevel,
+              criterion.key,
+              { metrics, evidences },
+            );
+            const active = selectedCriterion === criterion.key;
+            const relatedEvidences = getCriterionEvidences(evidences, criterion.key);
+            return (
+              <button
+                key={criterion.key}
+                className={[
+                  "min-h-16 rounded-xl border px-3 py-2 text-left transition-colors",
+                  active
+                    ? "border-[#0057C2] bg-[#F1F7FD] shadow-[inset_0_0_0_1px_rgba(0,87,194,0.14)]"
+                    : "border-[#E5E7EB] bg-white hover:bg-slate-50",
+                ].join(" ")}
+                type="button"
+                onClick={() => onSelectCriterion(criterion.key)}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-bold text-brand-deep">
+                    {criterion.label}
+                  </span>
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {relatedEvidences.length}
+                  </span>
+                </div>
+                <div
+                  className={
+                    active
+                      ? "mt-1 text-xs font-semibold text-[#0057C2]"
+                      : "mt-1 text-xs text-muted-foreground"
+                  }
+                >
+                  {getCriterionTaskStatusLabel(task, criterion.key, assessment.statusLabel)}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <Button
+          className="shrink-0"
+          size="sm"
+          type="button"
+          variant="outline"
+          onClick={onOpenOverview}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Xem tổng quan
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ReviewWorkspaceTabs({
+  task,
+  criterion,
+  metrics,
+  evidences,
+  checklist,
+}: {
+  task: ReviewTaskDetail;
+  criterion: CoreCriterion;
+  metrics: ReviewTaskDetail["metrics"];
+  evidences: ReviewTaskEvidence[];
+  checklist: NonNullable<ReviewTaskDetail["checklist"]>;
+}) {
+  const matrixItem = getCriterionMatrixItem(task.application.targetLevel, criterion);
+  const relatedMetrics = getCriterionMetrics(metrics, criterion);
+  const relatedEvidences = getCriterionEvidences(evidences, criterion);
+  const assessment = evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion, {
+    metrics,
+    evidences,
+  });
+
+  return (
+    <Card className="border border-[#E5E7EB] bg-white shadow-none">
+      <Tabs defaultValue="evidence">
+        <div className="flex flex-col gap-3 border-b pb-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Tiêu chí đang xét
+            </div>
+            <h2 className="mt-1 text-xl font-bold text-brand-deep">
+              {getCriterionLabel(criterion)}
+            </h2>
+          </div>
+          <TabsList className="h-10 w-full justify-start overflow-x-auto rounded-xl bg-[#F1F5F9] lg:w-auto">
+            <TabsTrigger value="evidence">Minh chứng</TabsTrigger>
+            <TabsTrigger value="conditions">Điều kiện xét</TabsTrigger>
+            <TabsTrigger value="reference">Đối chiếu</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="evidence" className="mt-5">
+          <CriterionDocumentsSection
+            assessmentStatus={assessment.status}
+            criterion={criterion}
+            evidences={relatedEvidences}
+            metrics={relatedMetrics}
+            targetLevel={task.application.targetLevel}
+          />
+        </TabsContent>
+        <TabsContent value="conditions" className="mt-5">
+          <CriterionChecklistSection
+            assessmentStatus={assessment.status}
+            checklist={task.criterion === criterion ? checklist : []}
+            criterion={criterion}
+            evidences={relatedEvidences}
+            matrixItem={matrixItem}
+            targetLevel={task.application.targetLevel}
+          />
+        </TabsContent>
+        <TabsContent value="reference" className="mt-5">
+          <ReferenceDataTab
+            criterion={criterion}
+            evidences={relatedEvidences}
+            metrics={relatedMetrics}
+          />
+        </TabsContent>
+      </Tabs>
+    </Card>
+  );
+}
+
+function CriteriaOverviewDialog({
+  open,
+  task,
+  metrics,
+  evidences,
+  selectedCriterion,
+  onOpenChange,
+  onSelectCriterion,
+}: {
+  open: boolean;
+  task: ReviewTaskDetail;
+  metrics: ReviewTaskDetail["metrics"];
+  evidences: ReviewTaskEvidence[];
+  selectedCriterion: CoreCriterion;
+  onOpenChange: (open: boolean) => void;
+  onSelectCriterion: (criterion: CoreCriterion) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[88vh] max-w-5xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Tổng quan 5 tiêu chí</DialogTitle>
+          <DialogDescription>
+            Bảng tổng quan chỉ mở khi cần đối chiếu toàn bộ hồ sơ.
+          </DialogDescription>
+        </DialogHeader>
+        <CriteriaOverviewSection
+          evidences={evidences}
+          metrics={metrics}
+          selectedCriterion={selectedCriterion}
+          task={task}
+          onSelectCriterion={(criterion) => {
+            onSelectCriterion(criterion);
+            onOpenChange(false);
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TechnicalAuditDrawer({
+  open,
+  task,
+  decisionHistory,
+  onOpenChange,
+}: {
+  open: boolean;
+  task: ReviewTaskDetail;
+  decisionHistory: NonNullable<ReviewTaskDetail["decisionHistory"]>;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full overflow-y-auto p-4 sm:max-w-2xl">
+        <SheetHeader className="mb-4">
+          <SheetTitle>Nhật ký kỹ thuật</SheetTitle>
+          <SheetDescription>
+            Dành cho kiểm tra quyền, audit và lịch sử xử lý. Dữ liệu này không nằm trong luồng xét
+            duyệt chính.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="space-y-4">
+          <DecisionHistorySection history={decisionHistory} />
+          <AuditTimeline applicationId={task.application.id} limit={10} taskId={task.id} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -411,17 +738,6 @@ function ReadOnlyActionPanel({ task }: { task: ReviewTaskDetail }) {
         </div>
       </div>
     </Card>
-  );
-}
-
-function HeaderField({ label, value }: { label: string; value?: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-1 text-sm font-semibold text-brand-deep">{value || fallbackText}</div>
-    </div>
   );
 }
 
@@ -613,125 +929,6 @@ function getOfficerNextAction(
   return "Đối chiếu và ra quyết định";
 }
 
-function CriterionTabs({
-  task,
-  metrics,
-  evidences,
-  selectedCriterion,
-  onSelectCriterion,
-}: {
-  task: ReviewTaskDetail;
-  metrics: ReviewTaskDetail["metrics"];
-  evidences: ReviewTaskEvidence[];
-  selectedCriterion: CoreCriterion;
-  onSelectCriterion: (criterion: CoreCriterion) => void;
-}) {
-  return (
-    <Card>
-      <div className="flex flex-wrap gap-2">
-        {coreCriteria.map((criterion) => {
-          const assessment = evaluateCriterionAgainstMatrix(
-            task.application.targetLevel,
-            criterion.key,
-            { metrics, evidences },
-          );
-          const active = selectedCriterion === criterion.key;
-          return (
-            <button
-              key={criterion.key}
-              className={[
-                "flex min-w-[96px] items-center justify-between gap-2 rounded-full border px-3 py-2 text-sm transition",
-                active
-                  ? "border-brand-deep bg-brand-deep text-white"
-                  : "bg-white text-brand-deep hover:bg-muted/40",
-              ].join(" ")}
-              type="button"
-              onClick={() => onSelectCriterion(criterion.key)}
-            >
-              <span className="font-semibold sm:hidden">{criterionShortLabels[criterion.key]}</span>
-              <span className="hidden font-semibold sm:inline">{criterion.label}</span>
-              <span className={active ? "text-xs text-white/80" : "text-xs text-muted-foreground"}>
-                {getCriterionTaskStatusLabel(task, criterion.key, assessment.statusLabel)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
-
-function CriterionWorkspace({
-  task,
-  criterion,
-  metrics,
-  evidences,
-  checklist,
-  decisionHistory,
-}: {
-  task: ReviewTaskDetail;
-  criterion: CoreCriterion;
-  metrics: ReviewTaskDetail["metrics"];
-  evidences: ReviewTaskEvidence[];
-  checklist: NonNullable<ReviewTaskDetail["checklist"]>;
-  decisionHistory: NonNullable<ReviewTaskDetail["decisionHistory"]>;
-}) {
-  const criterionMeta = coreCriteria.find((item) => item.key === criterion) ?? coreCriteria[0];
-  const matrixItem = getCriterionMatrixItem(task.application.targetLevel, criterion);
-  const relatedMetrics = getCriterionMetrics(metrics, criterion);
-  const relatedEvidences = getCriterionEvidences(evidences, criterion);
-  const assessment = evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion, {
-    metrics,
-    evidences,
-  });
-
-  return (
-    <Card>
-      <div className="space-y-5">
-        <div className="flex flex-col gap-3 border-b pb-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Tiêu chí đang xét
-            </div>
-            <h2 className="mt-1 text-xl font-bold text-brand-deep">{criterionMeta.label}</h2>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              {criterionMeta.description}
-            </p>
-          </div>
-          <Badge variant={getCriterionStatusVariant(assessment.status)}>
-            {assessment.statusLabel}
-          </Badge>
-        </div>
-
-        <CriterionDocumentsSection
-          assessmentStatus={assessment.status}
-          criterion={criterion}
-          evidences={relatedEvidences}
-          metrics={relatedMetrics}
-          targetLevel={task.application.targetLevel}
-        />
-
-        <CriterionMetricsSection
-          criterion={criterion}
-          evidences={relatedEvidences}
-          metrics={relatedMetrics}
-        />
-
-        <CriterionChecklistSection
-          assessmentStatus={assessment.status}
-          checklist={task.criterion === criterion ? checklist : []}
-          criterion={criterion}
-          evidences={relatedEvidences}
-          matrixItem={matrixItem}
-          targetLevel={task.application.targetLevel}
-        />
-
-        <DecisionHistorySection history={decisionHistory} />
-      </div>
-    </Card>
-  );
-}
-
 function CriterionDocumentsSection({
   criterion,
   evidences,
@@ -747,6 +944,15 @@ function CriterionDocumentsSection({
 }) {
   const criterionLabel = getCriterionLabel(criterion);
   const hasFiles = evidences.some((evidence) => evidence.files?.length);
+  const [filter, setFilter] = useState<"all" | "review" | "complete" | "missing">("all");
+  const filteredEvidences = evidences.filter((evidence) => {
+    if (filter === "review") return evidenceNeedsOfficerReview(evidence);
+    if (filter === "complete")
+      return evidence.status === "accepted" || evidence.indexingStatus === "indexed";
+    if (filter === "missing")
+      return !evidence.files?.length || evidence.status === "needs_supplement";
+    return true;
+  });
 
   if (!hasFiles) {
     return (
@@ -773,13 +979,37 @@ function CriterionDocumentsSection({
 
   return (
     <section>
-      <SectionHeader
-        icon={<FileText className="h-5 w-5" />}
-        title="Tài liệu / giấy xác nhận tiêu chí này"
-        description="Tài liệu được hiển thị trước để cán bộ đối chiếu ngay trong workspace."
-      />
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <SectionHeader
+          icon={<FileText className="h-5 w-5" />}
+          title="Minh chứng"
+          description="Preview tài liệu được ưu tiên để cán bộ đối chiếu trước khi ra quyết định."
+        />
+        <div className="flex flex-wrap gap-2">
+          {[
+            ["all", "Tất cả"],
+            ["review", "Cần kiểm tra"],
+            ["complete", "Đã đủ"],
+            ["missing", "Thiếu dữ liệu"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              className={[
+                "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                filter === value
+                  ? "border-[#0057C2] bg-[#EAF3FF] text-[#0057C2]"
+                  : "border-[#E5E7EB] bg-white text-slate-600 hover:bg-slate-50",
+              ].join(" ")}
+              type="button"
+              onClick={() => setFilter(value as typeof filter)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="space-y-4">
-        {evidences.map((evidence) => (
+        {filteredEvidences.map((evidence) => (
           <CriterionEvidenceCard
             key={evidence.id}
             criterion={criterion}
@@ -788,8 +1018,23 @@ function CriterionDocumentsSection({
             targetLevel={targetLevel}
           />
         ))}
+        {!filteredEvidences.length ? (
+          <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-sm text-muted-foreground">
+            Không có minh chứng phù hợp với bộ lọc này.
+          </div>
+        ) : null}
       </div>
     </section>
+  );
+}
+
+function evidenceNeedsOfficerReview(evidence: ReviewTaskEvidence) {
+  return (
+    evidence.status === "under_review" ||
+    evidence.status === "needs_supplement" ||
+    evidence.indexingStatus === "needs_manual_review" ||
+    toReadableList(evidence.card?.warningsJson).length > 0 ||
+    !evidence.files?.length
   );
 }
 
@@ -810,8 +1055,8 @@ function CriterionEvidenceCard({
   const studentGpa = getMetricValue(metrics, "gpa");
   const gpaThreshold = getGpaThreshold(targetLevel);
   return (
-    <div className="rounded-md border p-4">
-      <div className="grid gap-4 lg:grid-cols-[minmax(260px,420px)_minmax(0,1fr)]">
+    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-none">
+      <div className="grid gap-4 lg:grid-cols-[minmax(360px,1.25fr)_minmax(320px,0.9fr)]">
         <div className="space-y-3">
           {evidence.files?.length ? (
             evidence.files.map((file) => <PreviewFileAttachment key={file.id} file={file} />)
@@ -823,17 +1068,15 @@ function CriterionEvidenceCard({
         </div>
         <div className="space-y-3">
           <div>
-            <h3 className="text-base font-bold text-brand-deep">
+            <h3 className="line-clamp-2 text-base font-bold text-brand-deep">
               {model.title || getDefaultDocumentName(criterion)}
             </h3>
             <div className="mt-2 flex flex-wrap gap-2">
               <Badge variant="outline">{model.sourceLabel}</Badge>
-              <Badge variant="secondary">{model.readerLabel}</Badge>
-              <CriterionBadge criterion={criterion} />
-              <ReviewStatusBadge status={evidence.status} />
-              <Badge variant={model.matchLabel.startsWith("Khớp") ? "secondary" : "outline"}>
-                {model.matchLabel}
+              <Badge variant={evidenceNeedsOfficerReview(evidence) ? "outline" : "secondary"}>
+                {evidenceNeedsOfficerReview(evidence) ? "Cần cán bộ kiểm tra" : "Đã đủ dữ liệu"}
               </Badge>
+              <CriterionBadge criterion={criterion} />
             </div>
           </div>
           {model.kind === "academic_transcript" ? (
@@ -887,9 +1130,10 @@ function CriterionEvidenceCard({
               </ul>
             </div>
           ) : null}
-          <Button size="sm" type="button" variant="outline">
-            So với tiêu chí
-          </Button>
+          <div className="rounded-xl border border-[#E5E7EB] bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <span className="font-semibold">Đối chiếu nhanh: </span>
+            {model.matchLabel || model.readerLabel}
+          </div>
         </div>
       </div>
     </div>
@@ -996,6 +1240,85 @@ function PreviewFileAttachment({ file }: { file: ReviewTaskEvidenceFile }) {
         </div>
         {error ? <div className="mt-2 text-xs text-destructive">{error}</div> : null}
       </div>
+    </div>
+  );
+}
+
+function ReferenceDataTab({
+  criterion,
+  metrics,
+  evidences,
+}: {
+  criterion: CoreCriterion;
+  metrics: ReviewTaskDetail["metrics"];
+  evidences: ReviewTaskEvidence[];
+}) {
+  return (
+    <div className="space-y-4">
+      <CriterionMetricsSection criterion={criterion} evidences={evidences} metrics={metrics} />
+      <details className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+        <summary className="cursor-pointer text-sm font-bold text-brand-deep">
+          Kết quả OCR/AI đã xử lý
+        </summary>
+        <div className="mt-3 space-y-3 text-sm text-muted-foreground">
+          {evidences.some((evidence) => evidence.card?.aiSummary || evidence.card?.ocrText) ? (
+            evidences.map((evidence) => (
+              <div key={evidence.id} className="rounded-lg border bg-slate-50 p-3">
+                <div className="font-semibold text-slate-800">
+                  {evidence.evidenceName || getDefaultDocumentName(criterion)}
+                </div>
+                <p className="mt-2 whitespace-pre-wrap">
+                  {evidence.card?.aiSummary ||
+                    evidence.card?.ocrText ||
+                    "Chưa có dữ liệu đã xử lý."}
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed bg-slate-50 p-3">
+              Chưa có dữ liệu OCR/AI đã xử lý.
+            </div>
+          )}
+        </div>
+      </details>
+      <details className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+        <summary className="cursor-pointer text-sm font-bold text-brand-deep">
+          Event Registry match
+        </summary>
+        <div className="mt-3 space-y-3 text-sm text-muted-foreground">
+          {evidences.map((evidence) => {
+            const match = evidence.card?.matchingStatus;
+            return (
+              <div key={evidence.id} className="rounded-lg border bg-slate-50 p-3">
+                <div className="font-semibold text-slate-800">
+                  {evidence.evidenceName || getDefaultDocumentName(criterion)}
+                </div>
+                <div className="mt-2">
+                  {match?.matchedEventName ||
+                    evidence.event?.eventName ||
+                    match?.message ||
+                    "Chưa khớp danh sách chính thức."}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </details>
+      <details className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+        <summary className="cursor-pointer text-sm font-bold text-brand-deep">
+          Case tương tự từ Knowledge Base
+        </summary>
+        <div className="mt-3 rounded-lg border border-dashed bg-slate-50 p-3 text-sm text-muted-foreground">
+          Dữ liệu case tương tự sẽ hiển thị ở đây khi backend trả về kết quả đã xử lý.
+        </div>
+      </details>
+      <details className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+        <summary className="cursor-pointer text-sm font-bold text-brand-deep">Gợi ý AI</summary>
+        <div className="mt-3 rounded-lg border border-dashed bg-slate-50 p-3 text-sm text-muted-foreground">
+          Dùng nút “Hỏi trợ lý AI” để tạo gợi ý nháp. Cán bộ vẫn là người xác nhận quyết định cuối
+          cùng.
+        </div>
+      </details>
     </div>
   );
 }
@@ -1167,12 +1490,25 @@ function DecisionHistorySection({
 }
 
 function InfoRow({ label, value }: { label: string; value?: React.ReactNode }) {
+  const missing =
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    (typeof value === "string" && value === fallbackText);
   return (
     <div className="rounded-md bg-muted/40 p-3">
       <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
-      <div className="mt-1 text-sm font-semibold text-brand-deep">{value || fallbackText}</div>
+      <div
+        className={
+          missing
+            ? "mt-1 text-sm font-medium text-slate-400"
+            : "mt-1 text-sm font-semibold text-brand-deep"
+        }
+      >
+        {missing ? fallbackText : value}
+      </div>
     </div>
   );
 }

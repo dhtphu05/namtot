@@ -174,6 +174,15 @@ export type ReviewTaskEvidenceCard = {
   id: string;
   ocrText?: string | null;
   readableSummary?: Record<string, unknown> | null;
+  userProvidedFields?: Record<string, unknown> | null;
+  studentProfileFields?: Record<string, unknown> | null;
+  extractedFields?: Record<string, unknown> | null;
+  normalizedFields?: Record<string, unknown> | null;
+  verifiedFields?: Record<string, unknown> | null;
+  primaryFields?: Record<string, unknown> | null;
+  fieldConfidence?: Record<string, number> | null;
+  metricSuggestions?: Record<string, unknown> | null;
+  academic?: Record<string, unknown> | null;
   extractedFieldsJson?: unknown;
   normalizedFieldsJson?: unknown;
   matchingStatus?: {
