@@ -83,10 +83,14 @@ export type EvidenceCard = {
   evidenceId?: string;
   confidence?: number | null;
   readableSummary?: EvidenceReadableSummary | null;
+  userProvidedFields?: Record<string, unknown> | null;
+  extractedFields?: Record<string, unknown> | null;
+  normalizedFields?: Record<string, unknown> | null;
+  verifiedFields?: Record<string, unknown> | null;
+  fieldConfidence?: Record<string, number> | null;
   matchingStatus?: EvidenceMatchingStatus | null;
   missingFields?: string[] | Array<{ label?: string; message?: string; field?: string }>;
   studentStatus?: EvidenceStudentStatus | null;
-  extractedFields?: Record<string, unknown> | null;
   extractedFieldsJson?: unknown;
   warnings?: string[] | unknown;
   warningsJson?: unknown;
