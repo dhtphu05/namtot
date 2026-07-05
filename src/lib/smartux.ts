@@ -64,7 +64,7 @@ const sensitivePayloadKeys = new Set([
 const smartUXEnv = import.meta.env.VITE_SMARTUX_ENV || "production";
 
 export function isSmartUXEnabled(): boolean {
-  return import.meta.env.VITE_SMARTUX_ENABLED === "true";
+  return import.meta.env.VITE_SMARTUX_ENABLED !== "false";
 }
 
 export function getSmartUXGlobal(): SmartUXTrackable | null {
