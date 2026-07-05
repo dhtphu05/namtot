@@ -7,22 +7,29 @@ import { useEvidenceAudit } from "@/features/evidence/hooks/useEvidence";
 
 type EvidenceAuditButtonProps = {
   evidenceId: string;
+  label?: string;
 };
 
 const actionLabels: Record<string, string> = {
   EVIDENCE_CREATED: "Minh chứng đã được tạo",
-  FILE_UPLOADED: "File đã được tải lên",
-  OCR_JOB_CREATED: "Tác vụ số hoá đã được tạo",
-  SMARTREADER_FILE_UPLOADED: "File đã được gửi đến SmartReader",
-  SMARTREADER_OCR_STARTED: "SmartReader bắt đầu đọc minh chứng",
-  SMARTREADER_OCR_COMPLETED: "SmartReader đã đọc xong",
-  EVIDENCE_CARD_GENERATED: "Thẻ minh chứng đã được tạo",
-  EVIDENCE_NEEDS_MANUAL_REVIEW: "Cần cán bộ kiểm tra",
-  EVIDENCE_INDEXING_FAILED: "Số hoá chưa thành công",
-  EVENT_EVIDENCE_IMPORTED_BY_STUDENT: "Sinh viên đã thêm minh chứng từ sự kiện đã xác nhận",
+  FILE_UPLOADED: "Đã tải file lên",
+  OCR_JOB_CREATED: "Bắt đầu đọc file",
+  SMARTREADER_FILE_UPLOADED: "Đã tải file lên",
+  SMARTREADER_OCR_STARTED: "Bắt đầu đọc file",
+  SMARTREADER_OCR_COMPLETED: "Đã đọc xong file",
+  SMARTREADER_EVIDENCE_READ: "Đã đọc minh chứng",
+  EVIDENCE_MISSING_INFO_DETECTED: "Phát hiện thông tin cần bổ sung",
+  EVIDENCE_CARD_GENERATED: "Đã tạo tóm tắt minh chứng",
+  EVIDENCE_SENT_TO_HUMAN_VERIFICATION: "Chờ cán bộ xác minh",
+  EVIDENCE_NEEDS_MANUAL_REVIEW: "Chờ cán bộ xác minh",
+  EVIDENCE_INDEXING_FAILED: "Chưa đọc được file",
+  EVENT_EVIDENCE_IMPORTED_BY_STUDENT: "Đã thêm từ danh sách chính thức",
 };
 
-export function EvidenceAuditButton({ evidenceId }: EvidenceAuditButtonProps) {
+export function EvidenceAuditButton({
+  evidenceId,
+  label = "Lịch sử xử lý",
+}: EvidenceAuditButtonProps) {
   const [open, setOpen] = useState(false);
   const auditQuery = useEvidenceAudit(evidenceId, open);
   const items = useMemo(
@@ -34,14 +41,14 @@ export function EvidenceAuditButton({ evidenceId }: EvidenceAuditButtonProps) {
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
         <History className="h-4 w-4" />
-        Lịch sử xử lý
+        {label}
       </Button>
       <AuditDrawer
         open={open}
         onOpenChange={setOpen}
         items={items}
         title="Lịch sử xử lý minh chứng"
-        description="Các thao tác chính trong quá trình tải lên, số hoá và tạo thẻ minh chứng."
+        description="Các bước chính, không hiển thị dữ liệu kỹ thuật mặc định."
       />
     </>
   );

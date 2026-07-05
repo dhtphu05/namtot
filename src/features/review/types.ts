@@ -90,12 +90,7 @@ export type ReviewTaskPermissions = {
 };
 
 export type ReviewTaskAvailableAction =
-  | "view"
-  | "decide"
-  | "request_supplement"
-  | "escalate_resolution"
-  | "claim"
-  | "request_support";
+  "view" | "decide" | "request_supplement" | "escalate_resolution" | "claim" | "request_support";
 
 export type ReviewTaskPriorityReason =
   | "overdue"
@@ -178,7 +173,16 @@ export type ReviewTaskEvidenceFile = {
 export type ReviewTaskEvidenceCard = {
   id: string;
   ocrText?: string | null;
+  readableSummary?: Record<string, unknown> | null;
   extractedFieldsJson?: unknown;
+  normalizedFieldsJson?: unknown;
+  matchingStatus?: {
+    code?: string;
+    matchedEventId?: string | null;
+    matchedEventName?: string | null;
+    matchedParticipantId?: string | null;
+    message?: string;
+  } | null;
   warningsJson?: unknown;
   matchedEventId?: string | null;
   matchedKnowledgeItemIds?: unknown;
@@ -207,6 +211,8 @@ export type ReviewTaskEvidence = {
     eventName: string;
     organizer?: string | null;
     organizerLevel?: Level | null;
+    startDate?: string | null;
+    endDate?: string | null;
   } | null;
 };
 

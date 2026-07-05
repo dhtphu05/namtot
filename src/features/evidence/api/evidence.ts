@@ -6,11 +6,18 @@ import type {
   IndexingStatus,
   Evidence,
 } from "@/lib/api/types";
-import type { EvidenceAudit, EvidenceCard, EvidenceDetail } from "@/types/evidence";
+import type {
+  EvidenceAudit,
+  EvidenceCard,
+  EvidenceDetail,
+  EvidenceStudentStatus,
+  EvidenceStudentStatusCode,
+} from "@/types/evidence";
 
 export interface EvidenceResponse extends Evidence {
   fileId?: string;
   jobId?: string;
+  studentStatus?: EvidenceStudentStatus | null;
 }
 
 type EvidenceListPayload =
@@ -36,14 +43,6 @@ type EvidencePayload =
     }
   | null;
 
-type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue | undefined };
-
 function normalizeEvidences(payload: EvidenceListPayload | null): EvidenceResponse[] {
   const rows = Array.isArray(payload)
     ? payload
@@ -51,26 +50,40 @@ function normalizeEvidences(payload: EvidenceListPayload | null): EvidenceRespon
   return rows.map(normalizeEvidence).filter((item): item is EvidenceResponse => Boolean(item?.id));
 }
 
-function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
+export function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
   if (!payload) return payload as EvidenceResponse;
   const wrapper = asRecord(payload);
   const row = asRecord(wrapper?.evidence) ?? wrapper ?? {};
   const file = asRecord(wrapper?.file);
   const fileId = nullableString(row.fileId ?? row.file_id ?? file?.id) ?? undefined;
   const fileName =
-    nullableString(row.fileName ?? row.file_name ?? file?.fileName ?? file?.file_name ?? file?.originalName ?? file?.original_name) ??
-    undefined;
+    nullableString(
+      row.fileName ??
+        row.file_name ??
+        file?.fileName ??
+        file?.file_name ??
+        file?.originalName ??
+        file?.original_name,
+    ) ?? undefined;
   const fallbackFile = fileId
-    ? [{
-        id: fileId,
-        fileName: fileName ?? "Tệp đính kèm",
-        originalName: fileName,
-        mimeType: nullableString(row.mimeType ?? row.mime_type ?? file?.mimeType ?? file?.mime_type) ?? undefined,
-        fileSize: nullableNumber(row.fileSize ?? row.file_size ?? file?.size ?? file?.fileSize ?? file?.file_size) ?? undefined,
-        size: nullableNumber(row.fileSize ?? row.file_size ?? file?.size ?? file?.fileSize ?? file?.file_size) ?? undefined,
-        createdAt: nullableString(row.createdAt ?? row.created_at) ?? "",
-        updatedAt: nullableString(row.updatedAt ?? row.updated_at) ?? "",
-      }]
+    ? [
+        {
+          id: fileId,
+          fileName: fileName ?? "Tệp đính kèm",
+          originalName: fileName,
+          mimeType:
+            nullableString(row.mimeType ?? row.mime_type ?? file?.mimeType ?? file?.mime_type) ??
+            undefined,
+          fileSize:
+            nullableNumber(row.fileSize ?? row.file_size ?? file?.size ?? file?.fileSize) ??
+            undefined,
+          size:
+            nullableNumber(row.fileSize ?? row.file_size ?? file?.size ?? file?.fileSize) ??
+            undefined,
+          createdAt: nullableString(row.createdAt ?? row.created_at) ?? "",
+          updatedAt: nullableString(row.updatedAt ?? row.updated_at) ?? "",
+        },
+      ]
     : [];
 
   return {
@@ -92,16 +105,127 @@ function normalizeEvidence(payload: EvidencePayload): EvidenceResponse {
     description: nullableString(row.description),
     note: nullableString(row.note),
     confidence: nullableNumber(row.confidence),
+    studentStatus: normalizeStudentStatus(row.studentStatus ?? row.student_status),
     files: Array.isArray(row.files) && row.files.length > 0 ? row.files : fallbackFile,
     fileId,
     fileName,
     jobId:
       nullableString(row.jobId ?? row.job_id ?? wrapper?.jobId ?? wrapper?.job_id) ?? undefined,
     uxStatus: asRecord(row.uxStatus ?? row.ux_status),
-    card: row.card,
+    card: normalizeEvidenceCard(row.card),
     createdAt: nullableString(row.createdAt ?? row.created_at) ?? "",
     updatedAt: nullableString(row.updatedAt ?? row.updated_at) ?? "",
   } as EvidenceResponse;
+}
+
+function normalizeEvidenceCard(payload: unknown): EvidenceCard | null {
+  if (!payload) return null;
+  const wrapper = asRecord(payload);
+  const row = asRecord(wrapper?.card) ?? wrapper;
+  if (!row) return null;
+  const readableSummary =
+    asRecord(row.readableSummary ?? row.readable_summary) ??
+    asRecord(row.summary) ??
+    normalizeReadableSummary(
+      row.extractedFields ?? row.extracted_fields ?? row.extractedFieldsJson,
+    );
+  const missingFields = normalizeStringOrObjectArray(
+    row.missingFields ?? row.missing_fields ?? row.missingInfo ?? row.missing_info,
+  );
+
+  return {
+    ...row,
+    id: nullableString(row.id) ?? undefined,
+    evidenceId: nullableString(row.evidenceId ?? row.evidence_id) ?? undefined,
+    readableSummary,
+    matchingStatus: normalizeMatchingStatus(row.matchingStatus ?? row.matching_status),
+    missingFields,
+    studentStatus: normalizeStudentStatus(row.studentStatus ?? row.student_status),
+    extractedFields: asRecord(row.extractedFields ?? row.extracted_fields) ?? null,
+    extractedFieldsJson: row.extractedFieldsJson ?? row.extracted_fields_json,
+    warnings: normalizeStringOrObjectArray(row.warnings ?? row.warningsJson ?? row.warnings_json),
+    warningsJson: row.warningsJson ?? row.warnings_json,
+    ocrText: nullableString(row.ocrText ?? row.ocr_text),
+    ocrTextPreview: nullableString(row.ocrTextPreview ?? row.ocr_text_preview),
+    uxStatus: asRecord(row.uxStatus ?? row.ux_status),
+    createdAt: nullableString(row.createdAt ?? row.created_at) ?? undefined,
+    updatedAt: nullableString(row.updatedAt ?? row.updated_at) ?? undefined,
+  } as EvidenceCard;
+}
+
+function normalizeReadableSummary(value: unknown) {
+  const record = asRecord(value);
+  if (!record) return null;
+
+  return {
+    ...record,
+    eventName: nullableString(record.eventName ?? record.event_name ?? record.certificateName),
+    organizer: nullableString(record.organizer ?? record.organizerName ?? record.organizer_name),
+    activityTime: nullableString(record.activityTime ?? record.activity_time ?? record.time),
+    convertedValue: nullableString(record.convertedValue ?? record.converted_value),
+    convertedUnit: nullableString(record.convertedUnit ?? record.converted_unit),
+    issueDate: nullableString(record.issueDate ?? record.issue_date),
+    studentName: nullableString(record.studentName ?? record.student_name ?? record.fullName),
+    studentCode: nullableString(record.studentCode ?? record.student_code),
+  };
+}
+
+function normalizeMatchingStatus(value: unknown) {
+  const record = asRecord(value);
+  if (!record && typeof value !== "string") return null;
+
+  return {
+    ...(record ?? {}),
+    code: nullableString(record?.code ?? record?.status ?? value),
+    label: nullableString(record?.label),
+    message: nullableString(record?.message),
+    matchedEventName: nullableString(
+      record?.matchedEventName ??
+        record?.matched_event_name ??
+        record?.eventName ??
+        record?.event_name,
+    ),
+  };
+}
+
+function normalizeStudentStatus(value: unknown): EvidenceStudentStatus | null {
+  const record = asRecord(value);
+  const code = nullableString(record?.code ?? record?.status ?? value);
+  if (!code) return null;
+
+  return {
+    ...(record ?? {}),
+    code: code as EvidenceStudentStatusCode,
+    label: nullableString(record?.label),
+    message: nullableString(record?.message),
+    nextAction: nullableString(
+      record?.nextAction ?? record?.next_action,
+    ) as EvidenceStudentStatus["nextAction"],
+    severity: nullableString(record?.severity) as EvidenceStudentStatus["severity"],
+    source: nullableString(record?.source) as EvidenceStudentStatus["source"],
+  };
+}
+
+function normalizeStringOrObjectArray(
+  value: unknown,
+): string[] | Array<{ label?: string; message?: string; field?: string }> {
+  if (!value) return [];
+  if (!Array.isArray(value)) {
+    if (typeof value === "string") return [value];
+    return [];
+  }
+  return value
+    .map((item) => {
+      if (typeof item === "string") return item;
+      const record = asRecord(item);
+      if (!record) return "";
+      return {
+        label: nullableString(record.label) ?? undefined,
+        message: nullableString(record.message) ?? undefined,
+        field: nullableString(record.field ?? record.code ?? record.key) ?? undefined,
+      };
+    })
+    .filter(Boolean) as string[] | Array<{ label?: string; message?: string; field?: string }>;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -139,28 +263,6 @@ function enumString(value: unknown, fallback: string) {
     nullableString(record.step) ??
     fallback
   );
-}
-
-function toJsonObject(value?: Record<string, unknown>): Record<string, JsonValue | undefined> | undefined {
-  if (!value) return undefined;
-  return Object.fromEntries(
-    Object.entries(value).map(([key, item]) => [key, toJsonValue(item)]),
-  );
-}
-
-function toJsonValue(value: unknown): JsonValue | undefined {
-  if (value === null) return null;
-  if (value === undefined) return undefined;
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map(toJsonValue).filter((item): item is JsonValue => item !== undefined);
-  }
-  if (typeof value === "object") {
-    return toJsonObject(value as Record<string, unknown>);
-  }
-  return String(value);
 }
 
 export const evidenceApi = {
@@ -201,17 +303,9 @@ export const evidenceApi = {
       metadata?: Record<string, unknown>;
     },
   ) => {
-    const body: Record<string, JsonValue | undefined> = {
-      evidenceName: input.evidenceName,
-      criterion: input.criterion,
-      sourceType: input.sourceType,
-      description: input.description,
-      note: input.note,
-      metadata: toJsonObject(input.metadata),
-    };
     const res = await apiClient<EvidencePayload>(`/api/applications/${applicationId}/evidences`, {
       method: "POST",
-      body,
+      body: input,
     });
     return { ...res, data: normalizeEvidence(res.data) };
   },
@@ -226,16 +320,9 @@ export const evidenceApi = {
       metadata?: Record<string, unknown>;
     },
   ) => {
-    const body: Record<string, JsonValue | undefined> = {
-      evidenceName: input.evidenceName,
-      criterion: input.criterion,
-      description: input.description,
-      note: input.note,
-      metadata: toJsonObject(input.metadata),
-    };
     const res = await apiClient<EvidencePayload>(`/api/evidences/${evidenceId}`, {
       method: "PATCH",
-      body,
+      body: input,
     });
     return { ...res, data: normalizeEvidence(res.data) };
   },
@@ -280,9 +367,22 @@ export const evidenceApi = {
   },
 
   getEvidenceCard: async (evidenceId: string) => {
-    return apiClient<EvidenceCard>(`/api/evidences/${evidenceId}/card`, {
+    const res = await apiClient<unknown>(`/api/evidences/${evidenceId}/card`, {
       method: "GET",
     });
+    const wrapper = asRecord(res.data);
+    const normalizedCard = normalizeEvidenceCard(wrapper?.card ?? res.data);
+    const normalizedEvidence = wrapper?.evidence ? normalizeEvidence(wrapper.evidence) : null;
+    return {
+      ...res,
+      data: normalizedCard
+        ? {
+            ...normalizedCard,
+            evidence: normalizedEvidence ?? undefined,
+            auditSummary: wrapper?.auditSummary ?? wrapper?.audit_summary,
+          }
+        : null,
+    };
   },
 
   getEvidenceAudit: async (evidenceId: string) => {

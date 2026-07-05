@@ -14,7 +14,6 @@ type ApprovedEvidenceFiltersProps = {
   q: string;
   criterion: Criterion | "all";
   status: "all" | "importable" | "imported";
-  studentCode?: string | null;
   onQueryChange: (value: string) => void;
   onCriterionChange: (value: Criterion | "all") => void;
   onStatusChange: (value: "all" | "importable" | "imported") => void;
@@ -24,7 +23,6 @@ export function ApprovedEvidenceFilters({
   q,
   criterion,
   status,
-  studentCode,
   onQueryChange,
   onCriterionChange,
   onStatusChange,
@@ -72,11 +70,6 @@ export function ApprovedEvidenceFilters({
             <SelectItem value="imported">Đã thêm</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-
-      <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-        MSSV của bạn:{" "}
-        <span className="font-semibold text-foreground">{studentCode || "Chưa có MSSV"}</span>
       </div>
     </div>
   );

@@ -16,7 +16,6 @@ import { useEvidenceCardPolling } from "@/hooks/useEvidenceCardPolling";
 import { useJobPolling } from "@/hooks/useJobPolling";
 import type { EvidenceResponse } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
-import { getEvidenceStudentStatus } from "@/features/student/selectors/student-ui";
 import {
   useEvidenceCard,
   useEvidenceDetail,
@@ -33,6 +32,7 @@ import {
 import { EvidenceCardPanel } from "./EvidenceCardPanel";
 import { EvidenceFilePreview } from "./EvidenceFilePreview";
 import { formatStudentDate, studentCriterionLabel } from "./student-evidence-utils";
+import { getStudentEvidenceStatus } from "../utils/studentEvidenceStatus";
 
 type EvidenceDetailModalProps = {
   evidence: EvidenceResponse | null;
@@ -43,10 +43,6 @@ type EvidenceDetailModalProps = {
 };
 
 type DetailTab = "card" | "files";
-
-const maxFileSize = 10 * 1024 * 1024;
-const acceptedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
-const acceptedMimeTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
 
 export function EvidenceDetailModal({
   evidence,
@@ -68,12 +64,12 @@ export function EvidenceDetailModal({
       !isTerminalEvidenceStatus(activeEvidence?.indexingStatus),
     ),
     initialIntervalMs: 2000,
-    backoffAfterMs: 30000,
+    backoffAfterMs: 20000,
     backoffIntervalMs: 5000,
-    slowAfterMs: 120000,
-    slowIntervalMs: 10000,
     maxElapsedMs: 180000,
-    stopWhen: (card) => isTerminalEvidenceStatus(card?.uxStatus?.step),
+    stopWhen: (card) =>
+      isTerminalEvidenceStatus(card?.uxStatus?.step) ||
+      isTerminalStudentStatus(card?.studentStatus?.code),
   });
   const officialCardQuery = useEvidenceCard(isEventImport ? activeEvidence?.id : undefined);
   const cardQuery = isEventImport ? officialCardQuery : pollingCardQuery;
@@ -84,10 +80,8 @@ export function EvidenceDetailModal({
       jobId && !isEventImport && !isTerminalEvidenceStatus(activeEvidence?.indexingStatus),
     ),
     initialIntervalMs: 2000,
-    backoffAfterMs: 30000,
+    backoffAfterMs: 20000,
     backoffIntervalMs: 5000,
-    slowAfterMs: 120000,
-    slowIntervalMs: 10000,
     maxElapsedMs: 180000,
   });
   const uploadFile = useUploadEvidenceFile(applicationId);
@@ -102,12 +96,6 @@ export function EvidenceDetailModal({
 
   const uploadMore = async (file?: File) => {
     if (!file || !activeEvidence) return;
-    const validationError = validateEvidenceFile(file);
-    if (validationError) {
-      toast.error(validationError);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
     try {
       const uploaded = await uploadFile.mutateAsync({
         evidenceId: activeEvidence.id,
@@ -115,13 +103,9 @@ export function EvidenceDetailModal({
         file,
       });
       if (!uploaded.res?.jobId) {
-        try {
-          await startIndexing.mutateAsync({ evidenceId: activeEvidence.id });
-        } catch {
-          toast.warning("Đã lưu file minh chứng. Hệ thống sẽ kiểm tra lại file sau.");
-        }
+        await startIndexing.mutateAsync({ evidenceId: activeEvidence.id });
       }
-      toast.success("Đã tải file bổ sung.");
+      toast.success("Đã nhận file bổ sung. Hệ thống đang đọc nhanh file.");
       onChanged?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể tải file bổ sung.");
@@ -138,8 +122,8 @@ export function EvidenceDetailModal({
 
   return (
     <Dialog open={Boolean(evidence)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="grid max-h-[calc(100dvh-48px)] max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
-        <DialogHeader className="shrink-0 border-b px-5 py-4">
+      <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto p-0">
+        <DialogHeader className="border-b px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="mb-2 flex flex-wrap gap-2">
@@ -150,17 +134,15 @@ export function EvidenceDetailModal({
                     </Badge>
                     <Badge variant="outline">{sourceTypeCopy[activeEvidence.sourceType]}</Badge>
                     <Badge variant="outline">
-                      {getEvidenceStudentStatus(activeEvidence).label}
+                      {getStudentEvidenceStatus(activeEvidence, card).label}
                     </Badge>
                   </>
                 ) : null}
               </div>
               <DialogTitle className="truncate text-xl">
-                {activeEvidence?.evidenceName ?? "Thẻ minh chứng"}
+                {activeEvidence?.evidenceName ?? "Minh chứng"}
               </DialogTitle>
-              <DialogDescription>
-                Kết quả số hoá chỉ hỗ trợ kiểm tra. Cán bộ/Hội đồng sẽ xác nhận cuối cùng.
-              </DialogDescription>
+              <DialogDescription>Thông tin minh chứng trong hồ sơ của bạn.</DialogDescription>
             </div>
             <button
               type="button"
@@ -179,7 +161,7 @@ export function EvidenceDetailModal({
               size="sm"
               onClick={() => setTab("card")}
             >
-              Kết quả đọc
+              Minh chứng
             </Button>
             <Button
               type="button"
@@ -207,7 +189,7 @@ export function EvidenceDetailModal({
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  accept={acceptedExtensions.join(",")}
+                  accept=".pdf,.jpg,.jpeg,.png"
                   onChange={(event) => void uploadMore(event.target.files?.[0])}
                 />
                 <Button
@@ -229,7 +211,7 @@ export function EvidenceDetailModal({
           </div>
         </DialogHeader>
 
-        <div className="grid min-h-0 gap-0 overflow-y-auto lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
           <aside className="space-y-3 border-b p-5 lg:border-b-0 lg:border-r">
             {detailQuery.isLoading ? (
               <LoadingState label="Đang tải minh chứng..." />
@@ -245,10 +227,6 @@ export function EvidenceDetailModal({
               />
             ) : activeEvidence ? (
               <>
-                <Info
-                  label="Trạng thái xử lý"
-                  value={getEvidenceStudentStatus(activeEvidence).label}
-                />
                 <Info label="Cập nhật" value={formatStudentDate(activeEvidence.updatedAt)} />
                 <Info label="Tạo lúc" value={formatStudentDate(activeEvidence.createdAt)} />
                 <div className="hidden lg:block">
@@ -271,10 +249,10 @@ export function EvidenceDetailModal({
 
             {tab === "card" && activeEvidence ? (
               cardQuery.isLoading && !card ? (
-                <LoadingState label="Đang tải thẻ minh chứng..." />
+                <LoadingState label="Đang tải minh chứng..." />
               ) : cardQuery.isError ? (
                 <ErrorState
-                  title="Không thể tải thẻ minh chứng"
+                  title="Không thể tải minh chứng"
                   message={cardError?.message ?? "Vui lòng thử lại sau."}
                   requestId={cardError?.meta?.requestId}
                   onRetry={() => void cardQuery.refetch()}
@@ -287,6 +265,8 @@ export function EvidenceDetailModal({
                   requestId={cardError?.meta?.requestId}
                   onRetry={retryable ? () => void retry() : undefined}
                   retrying={retryJob.isPending}
+                  onUploadMore={canUploadMore ? () => fileInputRef.current?.click() : undefined}
+                  uploading={uploadFile.isPending || startIndexing.isPending}
                 />
               )
             ) : null}
@@ -297,13 +277,14 @@ export function EvidenceDetailModal({
   );
 }
 
-function validateEvidenceFile(file: File) {
-  const extension = `.${file.name.split(".").pop()?.toLowerCase() ?? ""}`;
-  const validType = acceptedMimeTypes.includes(file.type) || acceptedExtensions.includes(extension);
-  if (!validType) return "Tệp không đúng định dạng. Vui lòng tải PDF, PNG, JPG, JPEG hoặc WEBP.";
-  if (file.size > maxFileSize)
-    return "Tệp vượt quá dung lượng cho phép. Vui lòng chọn file tối đa 10MB.";
-  return "";
+function isTerminalStudentStatus(status?: string | null) {
+  return [
+    "evidence_read",
+    "needs_more_info",
+    "needs_human_verification",
+    "unreadable_file",
+    "recorded_waiting_review",
+  ].includes(status ?? "");
 }
 
 function Info({ label, value }: { label: string; value?: string | null }) {

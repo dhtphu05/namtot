@@ -11,8 +11,8 @@ export const studentEvidenceCriteria = [
 ] as const;
 
 export const sourceTypeCopy: Record<string, string> = {
-  manual_upload: "Tải thủ công",
-  event_import: "Từ sự kiện đã xác nhận",
+  manual_upload: "Upload thủ công",
+  event_import: "Danh sách chính thức",
   metric_input: "Chỉ số",
   collective_import: "Từ hồ sơ tập thể",
 };
@@ -20,15 +20,15 @@ export const sourceTypeCopy: Record<string, string> = {
 export const indexingStatusCopy: Record<string, string> = {
   not_started: "Chưa xử lý",
   uploaded: "Đã nhận file",
-  pending_indexing: "Chờ số hoá",
-  ocr_processing: "Đang số hoá",
+  pending_indexing: "Chờ đọc file",
+  ocr_processing: "Đang đọc file",
   processing: "Đang xử lý",
-  extracting: "Đang tạo thẻ minh chứng",
-  extracting_fields: "Đang tạo thẻ minh chứng",
-  checking_registry: "Đang đối chiếu sự kiện đã xác nhận",
-  indexed: "Đã tạo thẻ minh chứng",
+  extracting: "Đang tạo tóm tắt",
+  extracting_fields: "Đang tạo tóm tắt",
+  checking_registry: "Đang đối chiếu kho minh chứng",
+  indexed: "Đã tạo tóm tắt",
   needs_manual_review: "Cần cán bộ kiểm tra",
-  failed: "Số hoá chưa thành công",
+  failed: "Chưa đọc được file",
 };
 
 export const warningCopy: Record<string, string> = {
@@ -37,7 +37,7 @@ export const warningCopy: Record<string, string> = {
   missing_issue_date: "Chưa nhận diện được ngày cấp/ngày ký",
   missing_organizer: "Chưa nhận diện được đơn vị tổ chức",
   missing_event_name: "Chưa nhận diện rõ tên hoạt động/minh chứng",
-  not_matched_registry: "Chưa tìm thấy minh chứng này trong danh sách đã xác nhận",
+  not_matched_registry: "Chưa tìm thấy minh chứng này trong kho danh sách chính thức",
   ocr_empty_text: "Chưa đọc được nội dung rõ ràng từ file",
   possible_wrong_student: "Thông tin sinh viên có thể chưa khớp",
   smartreader_warning_anh_dau_vao_nghieng: "Ảnh/tài liệu có thể bị nghiêng",
@@ -74,12 +74,12 @@ export function getEvidenceUxStatus(
 
   if (status === "indexed") {
     return {
-      label: "Thẻ minh chứng đã sẵn sàng",
+      label: "Đã đọc minh chứng",
       message: "Hệ thống đã đọc xong minh chứng và rút trích thông tin chính.",
       nextAction: "Kiểm tra lại thông tin trước khi nộp hồ sơ.",
       severity: "success",
       progressPercent: 100,
-      badges: ["Thẻ minh chứng"],
+      badges: ["Đã đọc"],
     };
   }
 
@@ -95,7 +95,7 @@ export function getEvidenceUxStatus(
 
   if (status === "failed") {
     return {
-      label: "Số hoá chưa thành công",
+      label: "Không đọc rõ file",
       message: "Hệ thống chưa đọc được nội dung minh chứng.",
       nextAction: "Thử xử lý lại hoặc tải file rõ hơn.",
       severity: "error",
@@ -105,9 +105,9 @@ export function getEvidenceUxStatus(
 
   if (status === "ocr_processing" || status === "processing") {
     return {
-      label: "Đang số hoá minh chứng",
-      message: "SmartReader đang đọc nội dung trong file. Bạn có thể rời trang và quay lại sau.",
-      nextAction: "Hệ thống sẽ tự cập nhật khi thẻ minh chứng sẵn sàng.",
+      label: "Đang đọc minh chứng",
+      message: "Hệ thống đang đọc nội dung trong file. Bạn có thể rời trang và quay lại sau.",
+      nextAction: "Hệ thống sẽ tự cập nhật khi tóm tắt sẵn sàng.",
       severity: "info",
       badges: ["Đang xử lý"],
     };
@@ -115,18 +115,17 @@ export function getEvidenceUxStatus(
 
   if (status === "extracting" || status === "checking_registry") {
     return {
-      label:
-        status === "checking_registry" ? "Đang đối chiếu sự kiện đã xác nhận" : "Đang tạo thẻ minh chứng",
+      label: status === "checking_registry" ? "Đang đối chiếu Event Hub" : "Đang tạo tóm tắt",
       message: "Hệ thống đang rút trích thông tin chính từ minh chứng.",
       nextAction: "Bạn có thể tiếp tục hoàn thiện hồ sơ trong lúc chờ.",
       severity: "info",
-      badges: ["Thẻ minh chứng"],
+      badges: ["Tóm tắt"],
     };
   }
 
   return {
     label: "File đã được nhận",
-    message: "File đã được nhận. Hệ thống sẽ bắt đầu số hoá trong nền.",
+    message: "File đã được nhận. Hệ thống sẽ bắt đầu đọc file trong nền.",
     nextAction: "Bạn có thể rời trang và quay lại sau.",
     severity: "neutral",
     badges: ["Chờ xử lý"],

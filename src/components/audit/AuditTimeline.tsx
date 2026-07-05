@@ -1,5 +1,7 @@
-import { Clock3, UserRound } from "lucide-react";
+import { ChevronDown, Clock3, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { AuditLogEntry } from "@/types/audit";
 
@@ -73,14 +75,24 @@ function AuditTimelineItem({ item, isLast }: { item: AuditLogEntry; isLast: bool
         </div>
 
         {metadata.length ? (
-          <dl className="mt-3 grid gap-2 rounded-md bg-muted/40 p-3 text-sm sm:grid-cols-[140px_minmax(0,1fr)]">
-            {metadata.map(([key, value]) => (
-              <div key={key} className="contents">
-                <dt className="font-medium text-muted-foreground">{key}</dt>
-                <dd className="break-words text-foreground">{value}</dd>
-              </div>
-            ))}
-          </dl>
+          <Collapsible className="mt-3">
+            <CollapsibleTrigger asChild>
+              <Button type="button" variant="ghost" size="sm" className="h-8 px-0">
+                Xem chi tiết
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <dl className="mt-2 grid gap-2 rounded-md bg-muted/40 p-3 text-sm sm:grid-cols-[140px_minmax(0,1fr)]">
+                {metadata.map(([key, value]) => (
+                  <div key={key} className="contents">
+                    <dt className="font-medium text-muted-foreground">{key}</dt>
+                    <dd className="break-words text-foreground">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </CollapsibleContent>
+          </Collapsible>
         ) : null}
       </div>
     </div>
@@ -102,9 +114,16 @@ function summarizeMetadata(metadata: unknown) {
   }
 
   return Object.entries(metadata)
-    .filter(([, value]) => ["string", "number", "boolean"].includes(typeof value))
+    .filter(([key, value]) => {
+      if (unsafeMetadataKey(key)) return false;
+      return ["string", "number", "boolean"].includes(typeof value);
+    })
     .slice(0, 6)
     .map(([key, value]) => [formatKey(key), String(value)] as const);
+}
+
+function unsafeMetadataKey(key: string) {
+  return /raw|json|token|authorization|signed.*url|vnpt|ocr/i.test(key);
 }
 
 function formatKey(key: string) {

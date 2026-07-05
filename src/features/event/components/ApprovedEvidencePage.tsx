@@ -43,7 +43,7 @@ export function ApprovedEvidencePage() {
       q: debouncedQ,
       status,
     },
-    Boolean(studentCode),
+    true,
   );
   const importEvidence = useImportApprovedEvidence(applicationId);
   const searchError = search.error instanceof ApiError ? search.error : null;
@@ -58,9 +58,9 @@ export function ApprovedEvidencePage() {
     }
 
     return {
-      title: "Chưa tìm thấy sự kiện đã xác nhận",
+      title: "Chưa tìm thấy minh chứng chính thức",
       description:
-        "Hiện chưa có hoạt động đã xác nhận nào khớp với MSSV của bạn. Bạn vẫn có thể tải minh chứng thủ công ở mục Minh chứng của tôi.",
+        "Hiện chưa có hoạt động nào trong danh sách chính thức khớp với hồ sơ của bạn. Bạn vẫn có thể upload minh chứng ở mục Minh chứng của tôi.",
     };
   }, [criterion, debouncedQ, status]);
 
@@ -103,12 +103,12 @@ export function ApprovedEvidencePage() {
     return (
       <>
         <TopBar
-          title="Tìm trong sự kiện đã xác nhận"
-          subtitle="Vui lòng tạo hồ sơ trước khi thêm minh chứng từ sự kiện."
+          title="Kho minh chứng chính thức"
+          subtitle="Vui lòng tạo hồ sơ trước khi thêm minh chứng."
         />
         <EmptyState
           title="Bạn chưa có hồ sơ xét duyệt"
-          description="Hãy tạo hồ sơ để thêm minh chứng từ sự kiện đã xác nhận."
+          description="Hãy tạo hồ sơ để thêm minh chứng từ danh sách chính thức."
           action={
             <Button asChild>
               <Link to="/app/wizard">Tạo hồ sơ ngay</Link>
@@ -119,26 +119,11 @@ export function ApprovedEvidencePage() {
     );
   }
 
-  if (!studentCode) {
-    return (
-      <>
-        <TopBar
-          title="Tìm trong sự kiện đã xác nhận"
-          subtitle="Không tìm thấy MSSV trong tài khoản hiện tại."
-        />
-        <ErrorState
-          title="Thiếu MSSV"
-          message="Tài khoản của bạn chưa có MSSV nên chưa thể tìm minh chứng từ sự kiện đã xác nhận."
-        />
-      </>
-    );
-  }
-
   return (
     <>
       <TopBar
-        title="Tìm trong sự kiện đã xác nhận"
-        subtitle="Các hoạt động và danh sách đã được cán bộ xác nhận. Nếu bạn có tên trong danh sách, bạn có thể thêm vào hồ sơ mà không cần tải lại giấy chứng nhận."
+        title="Kho minh chứng chính thức"
+        subtitle="Các hoạt động và danh sách đã được cán bộ xác nhận. Nếu có tên trong danh sách, bạn có thể thêm vào hồ sơ."
         action={
           <Button asChild variant="outline">
             <Link to="/app/evidence">
@@ -150,15 +135,13 @@ export function ApprovedEvidencePage() {
       />
 
       <div className="mb-4 rounded-md border bg-white p-4 text-sm text-muted-foreground">
-        Minh chứng thêm từ sự kiện đã xác nhận vẫn được cán bộ/Hội đồng kiểm tra trong quá trình xét
-        duyệt.
+        Minh chứng từ danh sách chính thức được thêm trực tiếp vào hồ sơ của bạn.
       </div>
 
       <ApprovedEvidenceFilters
         q={q}
         criterion={criterion}
         status={status}
-        studentCode={studentCode}
         onQueryChange={setQ}
         onCriterionChange={setCriterion}
         onStatusChange={setStatus}
@@ -166,7 +149,7 @@ export function ApprovedEvidencePage() {
 
       <div className="mt-5">
         {search.isLoading ? (
-          <LoadingState label="Đang tải sự kiện đã xác nhận..." />
+          <LoadingState label="Đang tải kho minh chứng chính thức..." />
         ) : search.isError ? (
           <ErrorState
             title={getErrorTitle(searchError)}
@@ -182,7 +165,7 @@ export function ApprovedEvidencePage() {
             action={
               debouncedQ || criterion !== "all" || status !== "all" ? null : (
                 <Button asChild>
-                  <Link to="/app/evidence">Tải minh chứng thủ công</Link>
+                  <Link to="/app/evidence">Upload minh chứng thủ công</Link>
                 </Button>
               )
             }
@@ -253,7 +236,7 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
 function getErrorTitle(error: ApiError | null) {
   if (error?.status === 403) return "Bạn chỉ có thể xem minh chứng của chính mình";
   if (error?.status === 404) return "Không tìm thấy hoạt động hoặc danh sách này";
-  return "Không thể tải sự kiện đã xác nhận";
+  return "Không thể tải kho minh chứng";
 }
 
 function getErrorMessage(error: ApiError | null) {
