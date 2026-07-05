@@ -26,6 +26,7 @@ import {
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useEvidences } from "@/features/evidence/hooks/useEvidence";
 import { useNotifications } from "@/features/notifications/hooks/useNotifications";
+import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 import {
   AppButton,
   EmptyState,
@@ -85,6 +86,7 @@ export function StudentOverview() {
   const evidencesQuery = useEvidences(applicationId, { limit: 100 });
   const notifications = useNotifications({ page: 1, limit: 20 });
   const startApplication = useStartApplication();
+  const { trackClick } = useSmartUXTracking();
 
   const firstName = getFirstName(user?.fullName);
   const evidences = useMemo(() => normalizeEvidences(evidencesQuery.data), [evidencesQuery.data]);
@@ -170,13 +172,18 @@ export function StudentOverview() {
           hasApplication={Boolean(application)}
           isStarting={startApplication.isPending}
           nextActions={nextActions.map((action) => action.title)}
-          onStart={() =>
+          onStart={() => {
+            trackClick("student_start_application", {
+              role: "student",
+              page: "overview",
+              target_level: "school",
+            });
             startApplication.mutate({
               schoolYear: SCHOOL_YEAR,
               targetLevel: "school",
               applicationType: "individual",
-            })
-          }
+            });
+          }}
           summary={summary}
         />
 
@@ -239,13 +246,21 @@ function ApplicationHeroCard({
           <div className="mt-5 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
             {hasApplication ? (
               <AppButton asChild className="sm:w-auto">
-                <Link to={toStudentRoute(summary.primaryAction.route)}>
+                <Link
+                  to={toStudentRoute(summary.primaryAction.route)}
+                  data-smartux-tag="student_continue_application"
+                >
                   {summary.primaryAction.label}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </AppButton>
             ) : (
-              <AppButton onClick={onStart} disabled={isStarting} className="sm:w-auto">
+              <AppButton
+                onClick={onStart}
+                disabled={isStarting}
+                className="sm:w-auto"
+                data-smartux-tag="student_start_application"
+              >
                 {isStarting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -255,7 +270,11 @@ function ApplicationHeroCard({
               </AppButton>
             )}
             <AppButton asChild variant="secondary" className="sm:w-auto">
-              <Link to="/app/assistant" search={assistantSearch}>
+              <Link
+                to="/app/assistant"
+                search={assistantSearch}
+                data-smartux-tag="student_open_chatbot"
+              >
                 <Sparkles className="h-4 w-4" />
                 Hỏi trợ lý
               </Link>
@@ -307,6 +326,7 @@ function CriteriaProgressCards({ criteriaStates }: { criteriaStates: CriteriaSta
                 key={state.key}
                 to="/app/application"
                 search={{ criterion: state.key }}
+                data-smartux-tag="student_open_criterion"
                 className="min-w-0 scroll-ml-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.035)] transition hover:border-[#91BCEB] hover:shadow-sm"
               >
                 <div className="flex min-w-0 items-start justify-between gap-3">
@@ -377,6 +397,7 @@ function ActionRow({ action, index }: { action: NextAction; index: number }) {
         <Link
           to={action.criterionKey ? "/app/application" : toStudentRoute(action.route)}
           search={action.criterionKey ? { criterion: action.criterionKey } : undefined}
+          data-smartux-tag={getStudentActionTag(action)}
         >
           {action.actionLabel}
         </Link>
@@ -470,7 +491,11 @@ function CompactHelpCard({
           </p>
         </div>
         <AppButton asChild variant="secondary" size="sm" className="shrink-0">
-          <Link to="/app/assistant" search={assistantSearch}>
+          <Link
+            to="/app/assistant"
+            search={assistantSearch}
+            data-smartux-tag="student_open_chatbot"
+          >
             <Sparkles className="h-4 w-4" />
             Hỏi trợ lý
           </Link>
@@ -579,6 +604,12 @@ function normalizeEvidences(value: unknown): EvidenceResponse[] {
 
 function toStudentRoute(route: string): StudentOverviewRoute {
   return route === "/app/feedback" ? "/app/feedback" : "/app/application";
+}
+
+function getStudentActionTag(action: NextAction) {
+  if (action.criterionKey) return "student_open_criterion";
+  if (action.route === "/app/feedback") return "student_view_gap_analysis";
+  return "student_continue_application";
 }
 
 function getFirstName(fullName?: string | null) {

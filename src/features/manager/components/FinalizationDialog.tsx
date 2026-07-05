@@ -10,10 +10,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useFinalizeManagerApplication } from "@/features/manager/hooks/useManager";
+import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 import type { ManagerResultItem } from "@/features/manager/types";
 import type { Criterion, ReviewTaskStatus } from "@/features/review/types";
 import type { FinalStatus } from "@/lib/api/types";
-import { ACTIVE_LEVELS_HIGH_TO_LOW, getDownrankReason, getFinalizeActionLabel, getLevelLabel, isLegacyCentral } from "@/lib/levels";
+import {
+  ACTIVE_LEVELS_HIGH_TO_LOW,
+  getDownrankReason,
+  getFinalizeActionLabel,
+  getLevelLabel,
+  isLegacyCentral,
+} from "@/lib/levels";
 import { getApplicationStatusLabel } from "@/lib/status-labels";
 
 const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
@@ -37,6 +44,7 @@ export function FinalizationDialog({
   open: boolean;
 }) {
   const finalizeMutation = useFinalizeManagerApplication();
+  const { trackAction } = useSmartUXTracking();
   const [note, setNote] = useState("");
   const [selectedLevel, setSelectedLevel] = useState<ManagerResultItem["suggestedLevel"]>(null);
 
@@ -75,6 +83,12 @@ export function FinalizationDialog({
 
   const submit = () => {
     if (submitDisabled) return;
+    trackAction("manager_confirm_final_result", {
+      role: "manager",
+      target_level: item.targetLevel,
+      status: decision.finalStatus,
+      result_type: decision.finalLevel ?? "failed",
+    });
     finalizeMutation.mutate(
       {
         applicationId: item.applicationId,
@@ -87,9 +101,24 @@ export function FinalizationDialog({
         },
       },
       {
-        onSuccess: () => onOpenChange(false),
+        onSuccess: () => {
+          trackAction("manager_confirm_final_result", {
+            role: "manager",
+            target_level: item.targetLevel,
+            status: "success",
+            result_type: decision.finalLevel ?? "failed",
+          });
+          onOpenChange(false);
+        },
         onError: (error) => {
-          const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+          trackAction("manager_confirm_final_result", {
+            role: "manager",
+            target_level: item.targetLevel,
+            status: "failed",
+            error_code: "FINALIZE_FAILED",
+          });
+          const code =
+            error && typeof error === "object" && "code" in error ? String(error.code) : "";
           if (code === "FINAL_LEVEL_MISMATCH" || code === "FINAL_STATUS_MISMATCH") {
             onOpenChange(false);
           }
@@ -104,7 +133,8 @@ export function FinalizationDialog({
         <DialogHeader>
           <DialogTitle>Chốt kết quả hồ sơ</DialogTitle>
           <DialogDescription>
-            Hệ thống đưa ra gợi ý để đối chiếu. Quyết định cuối cùng do Hội đồng/Cấp quản lý xác nhận.
+            Hệ thống đưa ra gợi ý để đối chiếu. Quyết định cuối cùng do Hội đồng/Cấp quản lý xác
+            nhận.
           </DialogDescription>
         </DialogHeader>
 
@@ -154,9 +184,14 @@ export function FinalizationDialog({
             {criterionOrder.map((criterion) => {
               const task = item.criterionStatuses?.[criterion];
               return (
-                <div key={criterion} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                <div
+                  key={criterion}
+                  className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs"
+                >
                   <span className="font-semibold text-brand-deep">{criterionLabel[criterion]}</span>
-                  <span className={`rounded-full px-2 py-0.5 font-semibold ${criterionClass(task?.status)}`}>
+                  <span
+                    className={`rounded-full px-2 py-0.5 font-semibold ${criterionClass(task?.status)}`}
+                  >
                     {criterionStatusLabel(task?.status)}
                   </span>
                 </div>
@@ -165,53 +200,65 @@ export function FinalizationDialog({
           </div>
         </div>
 
-          <div className="rounded-lg border p-4">
-            <div className="text-sm font-bold text-brand-deep">Quyết định sẽ gửi</div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {allowedLevels.map((level) => {
-                const selected = selectedLevel === level;
-                const recommended = recommendedDecision.finalLevel === level;
-                return (
-                  <button
-                    key={level}
-                    type="button"
-                    className={`rounded-lg border px-3 py-3 text-left transition-colors ${
-                      selected ? "border-[#0057C2] bg-[#F1F7FD]" : "border-[#DCE7F2] bg-white hover:bg-slate-50"
-                    }`}
-                    onClick={() => setSelectedLevel(level)}
-                  >
-                    <div className="font-bold text-brand-deep">Đạt {getLevelLabel(level)}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {recommended ? "Gợi ý hệ thống" : getDownrankReason(item.targetLevel, level)}
-                    </div>
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                className={`rounded-lg border px-3 py-3 text-left transition-colors ${
-                  selectedLevel === null ? "border-[#0057C2] bg-[#F1F7FD]" : "border-[#DCE7F2] bg-white hover:bg-slate-50"
-                }`}
-                onClick={() => setSelectedLevel(null)}
-              >
-                <div className="font-bold text-brand-deep">Không đạt</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {recommendedDecision.finalStatus === "failed" ? "Gợi ý hệ thống" : "Hội đồng xác nhận không đạt cấp nào"}
-                </div>
-              </button>
-            </div>
-            <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
-              <div className="text-base font-semibold text-brand-deep">
-                {getFinalizeActionLabel(decision.finalLevel)}
+        <div className="rounded-lg border p-4">
+          <div className="text-sm font-bold text-brand-deep">Quyết định sẽ gửi</div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {allowedLevels.map((level) => {
+              const selected = selectedLevel === level;
+              const recommended = recommendedDecision.finalLevel === level;
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  className={`rounded-lg border px-3 py-3 text-left transition-colors ${
+                    selected
+                      ? "border-[#0057C2] bg-[#F1F7FD]"
+                      : "border-[#DCE7F2] bg-white hover:bg-slate-50"
+                  }`}
+                  onClick={() => setSelectedLevel(level)}
+                >
+                  <div className="font-bold text-brand-deep">Đạt {getLevelLabel(level)}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {recommended ? "Gợi ý hệ thống" : getDownrankReason(item.targetLevel, level)}
+                  </div>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              className={`rounded-lg border px-3 py-3 text-left transition-colors ${
+                selectedLevel === null
+                  ? "border-[#0057C2] bg-[#F1F7FD]"
+                  : "border-[#DCE7F2] bg-white hover:bg-slate-50"
+              }`}
+              onClick={() => setSelectedLevel(null)}
+            >
+              <div className="font-bold text-brand-deep">Không đạt</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {recommendedDecision.finalStatus === "failed"
+                  ? "Gợi ý hệ thống"
+                  : "Hội đồng xác nhận không đạt cấp nào"}
               </div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                {decision.finalLevel ? getDownrankReason(item.targetLevel, decision.finalLevel) : "Hội đồng xác nhận hồ sơ không đạt cấp nào."}
-              </div>
+            </button>
+          </div>
+          <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
+            <div className="text-base font-semibold text-brand-deep">
+              {getFinalizeActionLabel(decision.finalLevel)}
             </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {decision.finalLevel
+                ? getDownrankReason(item.targetLevel, decision.finalLevel)
+                : "Hội đồng xác nhận hồ sơ không đạt cấp nào."}
+            </div>
+          </div>
 
-          <div className={`mt-3 rounded-lg border px-3 py-2 text-xs font-medium ${
-            overridesRecommendation ? "border-amber-200 bg-amber-50 text-amber-900" : "border-[#DCE7F2] bg-slate-50 text-muted-foreground"
-          }`}>
+          <div
+            className={`mt-3 rounded-lg border px-3 py-2 text-xs font-medium ${
+              overridesRecommendation
+                ? "border-amber-200 bg-amber-50 text-amber-900"
+                : "border-[#DCE7F2] bg-slate-50 text-muted-foreground"
+            }`}
+          >
             {overridesRecommendation
               ? "Bạn đang chốt khác gợi ý hệ thống. Hệ thống sẽ lưu quyết định người chốt vì các điều kiện nghiệp vụ đã được xử lý."
               : "Quyết định đang khớp với gợi ý hệ thống tại thời điểm mở dialog."}
@@ -225,7 +272,9 @@ export function FinalizationDialog({
               placeholder="Nhập căn cứ và ghi chú chốt kết quả..."
               className="min-h-24 w-full rounded-lg border border-[#DCE7F2] px-3 py-2 outline-none focus:ring-2 focus:ring-[#0057C2]/20"
             />
-            {noteRequired ? <span className="text-xs text-red-600">Ghi chú là bắt buộc.</span> : null}
+            {noteRequired ? (
+              <span className="text-xs text-red-600">Ghi chú là bắt buộc.</span>
+            ) : null}
           </label>
         </div>
 
@@ -233,7 +282,11 @@ export function FinalizationDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Hủy
           </Button>
-          <Button onClick={submit} disabled={submitDisabled}>
+          <Button
+            onClick={submit}
+            disabled={submitDisabled}
+            data-smartux-tag="manager_confirm_final_result"
+          >
             {finalizeMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -256,7 +309,9 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function getDecisionFinalStatus(item: ManagerResultItem): Extract<FinalStatus, "passed" | "failed" | "partially_passed"> {
+function getDecisionFinalStatus(
+  item: ManagerResultItem,
+): Extract<FinalStatus, "passed" | "failed" | "partially_passed"> {
   // The individual finalization endpoint validates against the active cascade snapshot:
   // any eligible suggested level must be confirmed as "passed"; downranking is represented by finalLevel.
   if (item.suggestedLevel) return "passed";
@@ -271,7 +326,9 @@ function getDecisionFinalStatus(item: ManagerResultItem): Extract<FinalStatus, "
 }
 
 function getAllowedFinalLevels(targetLevel: ManagerResultItem["targetLevel"]) {
-  const index = ACTIVE_LEVELS_HIGH_TO_LOW.indexOf(targetLevel as (typeof ACTIVE_LEVELS_HIGH_TO_LOW)[number]);
+  const index = ACTIVE_LEVELS_HIGH_TO_LOW.indexOf(
+    targetLevel as (typeof ACTIVE_LEVELS_HIGH_TO_LOW)[number],
+  );
   if (index < 0) return [];
   return ACTIVE_LEVELS_HIGH_TO_LOW.slice(index);
 }

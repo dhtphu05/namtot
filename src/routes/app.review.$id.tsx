@@ -271,6 +271,7 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
                   type="button"
                   variant="outline"
                   onClick={() => setAiDrawerOpen(true)}
+                  data-smartux-tag="officer_use_ai_draft"
                 >
                   <Bot className="h-4 w-4" />
                   Hỏi trợ lý AI
@@ -292,7 +293,12 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
             <CheckSquare className="h-4 w-4" />
             Ra quyết định
           </Button>
-          <Button type="button" variant="outline" onClick={() => setAiDrawerOpen(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setAiDrawerOpen(true)}
+            data-smartux-tag="officer_use_ai_draft"
+          >
             <MessageSquare className="h-4 w-4" />
             AI
           </Button>
@@ -403,7 +409,9 @@ function AiAssistantDrawer({
 function BackToQueueButton() {
   return (
     <Button asChild variant="outline">
-      <Link to="/app/queue">Quay lại hàng đợi</Link>
+      <Link to="/app/queue" data-smartux-tag="officer_open_queue">
+        Quay lại hàng đợi
+      </Link>
     </Button>
   );
 }
@@ -479,6 +487,7 @@ function CriteriaStatusStrip({
                     : "border-[#E5E7EB] bg-white hover:bg-slate-50",
                 ].join(" ")}
                 type="button"
+                data-smartux-tag="officer_filter_by_criterion"
                 onClick={() => onSelectCriterion(criterion.key)}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -1213,6 +1222,7 @@ function PreviewFileAttachment({ file }: { file: ReviewTaskEvidenceFile }) {
             variant="outline"
             onClick={() => void runAction("preview")}
             disabled={Boolean(loadingAction)}
+            data-smartux-tag="officer_open_evidence_card"
           >
             <Eye className="h-4 w-4" />
             Xem lớn
@@ -1223,6 +1233,7 @@ function PreviewFileAttachment({ file }: { file: ReviewTaskEvidenceFile }) {
             variant="outline"
             onClick={() => void runAction("open")}
             disabled={Boolean(loadingAction)}
+            data-smartux-tag="officer_view_original_file"
           >
             <ExternalLink className="h-4 w-4" />
             Mở tab mới
@@ -1233,6 +1244,7 @@ function PreviewFileAttachment({ file }: { file: ReviewTaskEvidenceFile }) {
             variant="outline"
             onClick={() => void runAction("download")}
             disabled={Boolean(loadingAction)}
+            data-smartux-tag="officer_view_original_file"
           >
             <Download className="h-4 w-4" />
             Tải xuống

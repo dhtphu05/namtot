@@ -76,6 +76,7 @@ import {
   getLevelLabel,
   getTaskStatusLabel,
 } from "@/features/review/utils/formatters";
+import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 
 export const Route = createFileRoute("/app/queue")({
   component: ReviewQueueRoute,
@@ -183,6 +184,7 @@ function ReviewQueueRoute() {
 function ReviewQueueContent({ role }: { role: Role }) {
   const navigate = useNavigate();
   const user = useAuth((state) => state.user);
+  const { trackAction } = useSmartUXTracking();
   const lockedOfficerCriterion = useMemo(
     () => (role === "officer" ? getOfficerLockedCriterion(user) : null),
     [role, user],
@@ -330,6 +332,13 @@ function ReviewQueueContent({ role }: { role: Role }) {
   const canGoNext = pageItems.length >= limit && !isFetching;
 
   const openTask = (taskId: string) => {
+    const task = items.find((item) => item.id === taskId);
+    trackAction("officer_open_task", {
+      role,
+      criterion: task?.criterion,
+      status: task?.status,
+      target_level: task?.targetLevel,
+    });
     navigate({ to: "/app/review/$id", params: { id: taskId } });
   };
 
@@ -940,6 +949,7 @@ function OfficerQueueColumn({
               }`}
               onClick={() => onTabChange(tab.value)}
               title={tab.description}
+              data-smartux-tag="officer_open_queue"
             >
               {tab.label} <span className="ml-1 text-[11px] opacity-70">{count}</span>
             </button>

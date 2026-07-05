@@ -44,6 +44,7 @@ import {
   getFinalStatusLabel,
   getStudentApplicationStatusLabel,
 } from "@/lib/status-labels";
+import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 import {
   coreCriteria,
   criteriaLevelSummaries,
@@ -170,6 +171,7 @@ export function StudentApplicationWorkspace({
   const deleteEvidence = useDeleteEvidence();
   const runPrecheck = usePrecheck();
   const submitApplication = useSubmitApplication();
+  const { trackAction, trackClick } = useSmartUXTracking();
 
   const rawApplication = current.data?.application as ApplicationWithDetails | null | undefined;
   const application = rawApplication ? normalizeApplicationLevels(rawApplication) : rawApplication;
@@ -540,11 +542,22 @@ export function StudentApplicationWorkspace({
     }
   };
   const precheckNow = () => {
+    trackClick("student_run_precheck", {
+      role: "student",
+      page: "application",
+      target_level: application.targetLevel,
+    });
     runPrecheck.mutate({ id: application.id, level: application.targetLevel });
     actionSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const submitNow = () => {
+    trackClick("student_submit_application", {
+      role: "student",
+      page: "application",
+      status: application.status,
+      target_level: application.targetLevel,
+    });
     if (!isSupplementMode && checklistItems.length > 0) {
       toast.error("Bạn cần hoàn thiện phần còn thiếu trước khi nộp hồ sơ.");
       handleFirstMissingAction();
@@ -573,8 +586,26 @@ export function StudentApplicationWorkspace({
       },
       {
         onSuccess: () => {
+          trackAction(
+            isSupplement ? "student_submit_supplement" : "student_submit_application_success",
+            {
+              role: "student",
+              page: "application",
+              status: application.status,
+              target_level: application.targetLevel,
+            },
+          );
           setConfirmSubmitOpen(false);
           trackingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        },
+        onError: () => {
+          trackAction("student_submit_application_failed", {
+            role: "student",
+            page: "application",
+            status: application.status,
+            target_level: application.targetLevel,
+            error_code: "SUBMIT_FAILED",
+          });
         },
       },
     );
@@ -791,6 +822,7 @@ export function StudentApplicationWorkspace({
                   <Button
                     disabled={!canSubmitApplication || submitApplication.isPending}
                     onClick={submitNow}
+                    data-smartux-tag="student_submit_application"
                   >
                     {submitApplication.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1460,7 +1492,11 @@ export function StudentApplicationWorkspace({
                     <p className="mt-2 text-sm text-muted-foreground">{nextBestAction}</p>
                   </div>
                   {canEditApplication ? (
-                    <Button onClick={precheckNow} disabled={runPrecheck.isPending}>
+                    <Button
+                      onClick={precheckNow}
+                      disabled={runPrecheck.isPending}
+                      data-smartux-tag="student_run_precheck"
+                    >
                       {runPrecheck.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
@@ -1570,6 +1606,7 @@ export function StudentApplicationWorkspace({
                     className="mt-5 w-full"
                     disabled={!canSubmitApplication || submitApplication.isPending}
                     onClick={submitNow}
+                    data-smartux-tag="student_submit_application"
                   >
                     {submitApplication.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1647,7 +1684,12 @@ export function StudentApplicationWorkspace({
                 chưa có minh chứng.
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" disabled={runPrecheck.isPending} onClick={precheckNow}>
+                <Button
+                  variant="secondary"
+                  disabled={runPrecheck.isPending}
+                  onClick={precheckNow}
+                  data-smartux-tag="student_run_precheck"
+                >
                   {runPrecheck.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -1659,6 +1701,7 @@ export function StudentApplicationWorkspace({
                   <Button
                     disabled={!canSubmitApplication || submitApplication.isPending}
                     onClick={submitNow}
+                    data-smartux-tag="student_submit_application"
                   >
                     {submitApplication.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -2146,6 +2189,7 @@ export function StudentApplicationWorkspace({
                   <Button
                     disabled={!canSubmitApplication || submitApplication.isPending}
                     onClick={submitNow}
+                    data-smartux-tag="student_submit_application"
                   >
                     {submitApplication.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -2156,7 +2200,11 @@ export function StudentApplicationWorkspace({
                   </Button>
                 </>
               ) : (
-                <Button disabled={runPrecheck.isPending} onClick={precheckNow}>
+                <Button
+                  disabled={runPrecheck.isPending}
+                  onClick={precheckNow}
+                  data-smartux-tag="student_run_precheck"
+                >
                   {runPrecheck.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -2261,6 +2309,7 @@ export function StudentApplicationWorkspace({
                   <Button
                     disabled={!canSubmitApplication || submitApplication.isPending}
                     onClick={submitNow}
+                    data-smartux-tag="student_submit_application"
                   >
                     {submitApplication.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -2271,7 +2320,11 @@ export function StudentApplicationWorkspace({
                   </Button>
                 </>
               ) : (
-                <Button disabled={runPrecheck.isPending} onClick={precheckNow}>
+                <Button
+                  disabled={runPrecheck.isPending}
+                  onClick={precheckNow}
+                  data-smartux-tag="student_run_precheck"
+                >
                   Kiểm tra hồ sơ
                 </Button>
               )}

@@ -260,105 +260,16 @@ function ManagerResultsContent({ role }: { role: Role }) {
           </div>
         </Card>
       ) : (
-        <Card className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead className="border-b bg-[#F6F9FC] text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Sinh viên</th>
-                  <th className="px-4 py-3">MSSV</th>
-                  <th className="px-4 py-3">Lớp</th>
-                  <th className="px-4 py-3">Khoa</th>
-                  <th className="px-4 py-3">Cấp đăng ký</th>
-                  <th className="px-4 py-3">Đề xuất cấp đạt</th>
-                  <th className="px-4 py-3">Kết quả cuối</th>
-                  <th className="px-4 py-3">Cấp đạt</th>
-                  <th className="px-4 py-3">5 tiêu chí</th>
-                  <th className="px-4 py-3">Lý do</th>
-                  <th className="px-4 py-3">Trạng thái hồ sơ</th>
-                  <th className="px-4 py-3">Tiến độ task</th>
-                  <th className="px-4 py-3">Cập nhật lần cuối</th>
-                  <th className="px-4 py-3 text-right">Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
-                  const finalized = item.finalStatus !== "pending" && Boolean(item.finalizedAt);
-                  const blockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
-                  const legacyCentral = isLegacyCentral(item.targetLevel);
-                  const finalizeDisabled = !canFinalize || finalized || !item.canFinalize || legacyCentral;
-                  const finalizeTitle = !canFinalize
-                    ? "Chỉ Hội đồng/Cấp quản lý được chốt kết quả."
-                    : finalized
-                      ? "Hồ sơ đã có kết quả cuối."
-                      : legacyCentral
-                        ? "Scope Trung ương không nằm trong flow chính hiện tại."
-                      : !item.canFinalize
-                        ? blockedReason
-                        : "Chốt kết quả hồ sơ";
-                  const downrankReason =
-                    item.topBlockerReason ??
-                    getDownrankReason(item.targetLevel, item.suggestedLevel, item.blockingReasons);
-                  return (
-                    <tr key={item.applicationId} className="border-b last:border-0">
-                      <td className="px-4 py-3 font-semibold text-brand-deep">{item.studentName}</td>
-                      <td className="px-4 py-3">{item.studentCode ?? "--"}</td>
-                      <td className="px-4 py-3">{item.className ?? "--"}</td>
-                      <td className="px-4 py-3">{item.faculty ?? "--"}</td>
-                      <td className="px-4 py-3">{getLevelLabel(item.targetLevel)}</td>
-                      <td className="px-4 py-3">
-                        {item.suggestedLevel ? getLevelLabel(item.suggestedLevel) : "--"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <FinalStatusChip status={item.finalStatus} />
-                      </td>
-                      <td className="px-4 py-3">
-                        {item.finalLevel ? getLevelLabel(item.finalLevel) : "--"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <CriterionStatusStrip item={item} />
-                      </td>
-                      <td className="max-w-64 px-4 py-3 text-xs text-muted-foreground">
-                        {downrankReason}
-                      </td>
-                      <td className="px-4 py-3">
-                        {getApplicationStatusLabel(item.applicationStatus)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Chip tone="brand">
-                          {item.taskProgress?.accepted ?? item.reviewTaskSummary.accepted}/{item.taskProgress?.total ?? item.reviewTaskSummary.total} đạt
-                        </Chip>
-                      </td>
-                      <td className="px-4 py-3">
-                        {formatDateTime(item.lastActivityAt ?? item.updatedAt)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-2">
-                          <Button asChild size="sm" variant="ghost">
-                            <Link to="/app/manager/results/$applicationId" params={{ applicationId: item.applicationId }}>
-                              Xem chi tiết
-                            </Link>
-                          </Button>
-                          <Button
-                            size="sm"
-                            disabled={finalizeDisabled}
-                            title={finalizeTitle}
-                            onClick={() => setSelected(item)}
-                          >
-                            {getFinalizeActionLabel(item.suggestedLevel)}
-                          </Button>
-                          {canFinalize && !finalized && !item.canFinalize ? (
-                            <div className="max-w-44 text-right text-[11px] font-medium text-amber-700">
-                              {blockedReason}
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <Card className="overflow-hidden p-0">
+          <div className="divide-y">
+            {items.map((item) => (
+              <ResultSummaryCard
+                key={item.applicationId}
+                item={item}
+                canFinalize={canFinalize}
+                onFinalize={setSelected}
+              />
+            ))}
           </div>
           <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
             <div>
@@ -408,6 +319,121 @@ function ManagerResultsContent({ role }: { role: Role }) {
         }}
       />
     </>
+  );
+}
+
+function ResultSummaryCard({
+  item,
+  canFinalize,
+  onFinalize,
+}: {
+  item: ManagerResultItem;
+  canFinalize: boolean;
+  onFinalize: (item: ManagerResultItem) => void;
+}) {
+  const finalized = item.finalStatus !== "pending" && Boolean(item.finalizedAt);
+  const blockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
+  const legacyCentral = isLegacyCentral(item.targetLevel);
+  const finalizeDisabled = !canFinalize || finalized || !item.canFinalize || legacyCentral;
+  const finalizeTitle = !canFinalize
+    ? "Chỉ Hội đồng/Cấp quản lý được chốt kết quả."
+    : finalized
+      ? "Hồ sơ đã có kết quả cuối."
+      : legacyCentral
+        ? "Scope Trung ương không nằm trong flow chính hiện tại."
+        : !item.canFinalize
+          ? blockedReason
+          : "Chốt kết quả hồ sơ";
+  const downrankReason =
+    item.topBlockerReason ??
+    getDownrankReason(item.targetLevel, item.suggestedLevel, item.blockingReasons);
+  const acceptedCount = item.taskProgress?.accepted ?? item.reviewTaskSummary.accepted;
+  const totalCount = item.taskProgress?.total ?? item.reviewTaskSummary.total;
+
+  return (
+    <article className="bg-white p-4 transition hover:bg-slate-50/70 lg:p-5">
+      <div className="grid gap-4 xl:grid-cols-[minmax(260px,1fr)_minmax(420px,1.5fr)_minmax(260px,0.85fr)] xl:items-start">
+        <section className="min-w-0">
+          <Link
+            to="/app/manager/results/$applicationId"
+            params={{ applicationId: item.applicationId }}
+            className="line-clamp-2 text-base font-bold leading-snug text-[#0057C2] hover:underline"
+          >
+            {item.studentName}
+          </Link>
+          <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            <span>{item.studentCode ?? "--"}</span>
+            <span>•</span>
+            <span>{item.className ?? "--"}</span>
+            <span>•</span>
+            <span className="max-w-full truncate">{item.faculty ?? "--"}</span>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <SmallInfo label="Cấp đăng ký" value={getLevelLabel(item.targetLevel)} />
+            <SmallInfo
+              label="Đề xuất"
+              value={item.suggestedLevel ? getLevelLabel(item.suggestedLevel) : "--"}
+            />
+          </div>
+        </section>
+
+        <section className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <FinalStatusChip status={item.finalStatus} />
+            <Chip tone={item.finalLevel ? "brand" : "muted"}>
+              Cấp đạt: {item.finalLevel ? getLevelLabel(item.finalLevel) : "--"}
+            </Chip>
+            <Chip tone="brand">
+              {acceptedCount}/{totalCount} task đạt
+            </Chip>
+          </div>
+          <CriterionStatusStrip item={item} />
+          <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-600">
+            <span className="font-semibold text-brand-deep">Lý do: </span>
+            {downrankReason}
+          </div>
+        </section>
+
+        <section className="flex min-w-0 flex-col gap-3 xl:items-end">
+          <div className="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-1">
+            <SmallInfo label="Trạng thái" value={getApplicationStatusLabel(item.applicationStatus)} />
+            <SmallInfo label="Cập nhật" value={formatDateTime(item.lastActivityAt ?? item.updatedAt)} />
+          </div>
+          <div className="flex w-full flex-wrap gap-2 xl:justify-end">
+            <Button asChild size="sm" variant="outline">
+              <Link
+                to="/app/manager/results/$applicationId"
+                params={{ applicationId: item.applicationId }}
+              >
+                Xem chi tiết
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              disabled={finalizeDisabled}
+              title={finalizeTitle}
+              onClick={() => onFinalize(item)}
+            >
+              {getFinalizeActionLabel(item.suggestedLevel)}
+            </Button>
+          </div>
+          {canFinalize && !finalized && !item.canFinalize ? (
+            <div className="w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium leading-relaxed text-amber-800">
+              {blockedReason}
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </article>
+  );
+}
+
+function SmallInfo({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="min-w-0 rounded-lg border bg-white px-3 py-2">
+      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-1 truncate text-sm font-semibold text-brand-deep">{value}</div>
+    </div>
   );
 }
 
