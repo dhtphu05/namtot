@@ -1,8 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Chatbot } from "@/features/ai/components/Chatbot";
-import { StudentRoleSurface } from "@/features/core/components/StudentRoleSurface";
-import { StudentSupport } from "@/features/core/components/StudentSupport";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/app/chatbot")({
-  component: () => <StudentRoleSurface student={<StudentSupport />} fallback={<Chatbot />} />,
+  beforeLoad: () => {
+    throw redirect({ to: "/app/assistant" });
+  },
 });

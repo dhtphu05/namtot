@@ -16,6 +16,7 @@ import { useEvidenceCardPolling } from "@/hooks/useEvidenceCardPolling";
 import { useJobPolling } from "@/hooks/useJobPolling";
 import type { EvidenceResponse } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
+import { getEvidenceStudentStatus } from "@/features/student/selectors/student-ui";
 import {
   useEvidenceCard,
   useEvidenceDetail,
@@ -25,12 +26,10 @@ import {
 } from "@/features/evidence/hooks/useEvidence";
 import {
   canRetryEvidence,
-  getEvidenceUxStatus,
   isTerminalEvidenceStatus,
   normalizeEvidenceCard,
   sourceTypeCopy,
 } from "./evidence-card-utils";
-import { EvidenceAuditButton } from "./EvidenceAuditButton";
 import { EvidenceCardPanel } from "./EvidenceCardPanel";
 import { EvidenceFilePreview } from "./EvidenceFilePreview";
 import { formatStudentDate, studentCriterionLabel } from "./student-evidence-utils";
@@ -139,8 +138,8 @@ export function EvidenceDetailModal({
 
   return (
     <Dialog open={Boolean(evidence)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto p-0">
-        <DialogHeader className="border-b px-5 py-4">
+      <DialogContent className="grid max-h-[calc(100dvh-48px)] max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="mb-2 flex flex-wrap gap-2">
@@ -151,7 +150,7 @@ export function EvidenceDetailModal({
                     </Badge>
                     <Badge variant="outline">{sourceTypeCopy[activeEvidence.sourceType]}</Badge>
                     <Badge variant="outline">
-                      {getEvidenceUxStatus(activeEvidence, card).label}
+                      {getEvidenceStudentStatus(activeEvidence).label}
                     </Badge>
                   </>
                 ) : null}
@@ -190,7 +189,6 @@ export function EvidenceDetailModal({
             >
               File
             </Button>
-            {activeEvidence ? <EvidenceAuditButton evidenceId={activeEvidence.id} /> : null}
             {retryable ? (
               <Button
                 type="button"
@@ -231,7 +229,7 @@ export function EvidenceDetailModal({
           </div>
         </DialogHeader>
 
-        <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid min-h-0 gap-0 overflow-y-auto lg:grid-cols-[0.9fr_1.1fr]">
           <aside className="space-y-3 border-b p-5 lg:border-b-0 lg:border-r">
             {detailQuery.isLoading ? (
               <LoadingState label="Đang tải minh chứng..." />
@@ -247,7 +245,10 @@ export function EvidenceDetailModal({
               />
             ) : activeEvidence ? (
               <>
-                <Info label="Trạng thái xử lý" value={activeEvidence.indexingStatus} />
+                <Info
+                  label="Trạng thái xử lý"
+                  value={getEvidenceStudentStatus(activeEvidence).label}
+                />
                 <Info label="Cập nhật" value={formatStudentDate(activeEvidence.updatedAt)} />
                 <Info label="Tạo lúc" value={formatStudentDate(activeEvidence.createdAt)} />
                 <div className="hidden lg:block">
@@ -300,7 +301,8 @@ function validateEvidenceFile(file: File) {
   const extension = `.${file.name.split(".").pop()?.toLowerCase() ?? ""}`;
   const validType = acceptedMimeTypes.includes(file.type) || acceptedExtensions.includes(extension);
   if (!validType) return "Tệp không đúng định dạng. Vui lòng tải PDF, PNG, JPG, JPEG hoặc WEBP.";
-  if (file.size > maxFileSize) return "Tệp vượt quá dung lượng cho phép. Vui lòng chọn file tối đa 10MB.";
+  if (file.size > maxFileSize)
+    return "Tệp vượt quá dung lượng cho phép. Vui lòng chọn file tối đa 10MB.";
   return "";
 }
 

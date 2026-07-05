@@ -17,10 +17,10 @@ export const studentCriterionLabel: Record<Criterion, string> = {
 };
 
 export const sourceTypeLabel: Record<EvidenceSourceType, string> = {
-  manual_upload: "Upload thủ công",
-  event_import: "Sự kiện đã xác nhận",
-  metric_input: "Nhập chỉ số",
-  collective_import: "Minh chứng tập thể",
+  manual_upload: "Tải lên",
+  event_import: "Danh sách đã xác nhận",
+  metric_input: "Chỉ số đã nhập",
+  collective_import: "Dữ liệu tập thể",
 };
 
 export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
@@ -81,19 +81,27 @@ export function getEvidenceFiles(evidence: EvidenceResponse): StudentEvidenceFil
   if (Array.isArray(raw) && raw.length > 0) return raw as StudentEvidenceFile[];
 
   const fileId = typeof evidence.fileId === "string" ? evidence.fileId : "";
-  const fileName = getStringValue(evidence.fileName) || getStringValue(evidence.originalName) || getStringValue(evidence.file_name);
+  const fileName =
+    getStringValue(evidence.fileName) ||
+    getStringValue(evidence.originalName) ||
+    getStringValue(evidence.file_name);
   if (!fileId && !fileName) return [];
 
-  return [{
-    id: fileId || undefined,
-    fileName: fileName || "Tệp đính kèm",
-    originalName: fileName || undefined,
-    mimeType: getStringValue(evidence.mimeType) || getStringValue(evidence.mime_type) || inferMimeType(fileName),
-    fileSize: getNumberValue(evidence.fileSize ?? evidence.file_size ?? evidence.size),
-    size: getNumberValue(evidence.fileSize ?? evidence.file_size ?? evidence.size),
-    uploadedAt: getStringValue(evidence.uploadedAt ?? evidence.uploaded_at),
-    createdAt: evidence.createdAt,
-  }];
+  return [
+    {
+      id: fileId || undefined,
+      fileName: fileName || "Tệp đính kèm",
+      originalName: fileName || undefined,
+      mimeType:
+        getStringValue(evidence.mimeType) ||
+        getStringValue(evidence.mime_type) ||
+        inferMimeType(fileName),
+      fileSize: getNumberValue(evidence.fileSize ?? evidence.file_size ?? evidence.size),
+      size: getNumberValue(evidence.fileSize ?? evidence.file_size ?? evidence.size),
+      uploadedAt: getStringValue(evidence.uploadedAt ?? evidence.uploaded_at),
+      createdAt: evidence.createdAt,
+    },
+  ];
 }
 
 export function getPrimaryFile(evidence: EvidenceResponse) {

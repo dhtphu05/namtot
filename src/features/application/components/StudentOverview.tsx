@@ -1,513 +1,572 @@
 import { Link } from "@tanstack/react-router";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
-  Bell,
+  BookOpenCheck,
   CheckCircle2,
   CircleAlert,
+  Clock3,
+  Dumbbell,
   FileText,
+  Globe2,
+  GraduationCap,
+  HeartHandshake,
   Loader2,
+  MessageSquareText,
   Plus,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
-import { motion } from "framer-motion";
-import { TopBar } from "@/components/layout/TopBar";
-import { Button, Card, Chip, Progress } from "@/components/ui-kit";
-import { useAuth } from "@/features/auth/store/auth-store";
+import { useMemo } from "react";
 import {
   useCurrentApplication,
   useLatestPrecheck,
   useStartApplication,
 } from "@/features/application/hooks/useApplication";
-import { StudentFlowStepper } from "@/features/application/components/StudentFlowStepper";
+import { useAuth } from "@/features/auth/store/auth-store";
+import { useEvidences } from "@/features/evidence/hooks/useEvidence";
+import { useNotifications } from "@/features/notifications/hooks/useNotifications";
+import {
+  AppButton,
+  EmptyState,
+  PageHeader,
+  SectionCard,
+  StatusBadge,
+} from "@/features/student/components/primitives";
+import {
+  coreStudentCriteria,
+  criterionLabels,
+  getCriteriaUiState,
+  getFeedbackUiItems,
+  getNextActions,
+  getStudentApplicationSummary,
+} from "@/features/student/selectors/student-ui";
+import { cn } from "@/lib/utils";
 import type {
   ApplicationState,
-  ApplicationStatus,
   Criterion,
-  Level,
-  PrecheckCriterionResult,
-  PrecheckMissingItem,
+  EvidenceResponse,
+  PrecheckResult,
 } from "@/lib/api/types";
-import { finalStatusTone, getFinalStatusLabel, getStudentApplicationStatusLabel } from "@/lib/status-labels";
-import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
 
 const SCHOOL_YEAR = "2025-2026";
 
-const levelLabel: Record<Level, string> = {
-  school: "Cấp Trường",
-  university: "Cấp ĐHĐN",
-  city: "Cấp Thành phố",
-  central: "Cấp Trung ương",
-};
-
-const criteria: Array<{ key: Criterion; label: string; color: string }> = [
-  { key: "ethics", label: "Đạo đức tốt", color: "#EF4444" },
-  { key: "academic", label: "Học tập tốt", color: "#0EA5E9" },
-  { key: "physical", label: "Thể lực tốt", color: "#22C55E" },
-  { key: "volunteer", label: "Tình nguyện tốt", color: "#F59E0B" },
-  { key: "integration", label: "Hội nhập tốt", color: "#0057C2" },
-];
-
-type ApplicationWithSummary = ApplicationState & {
-  updatedAt?: string;
-  finalStatus?: string | null;
-  finalLevel?: Level | null;
-  finalNote?: string | null;
-  finalizedAt?: string | null;
-  finalizedBy?: {
-    id: string;
-    fullName: string;
-  } | null;
-  metrics?: unknown[];
+type ApplicationWithDashboardData = ApplicationState & {
+  deadline?: string | null;
+  submitDeadline?: string | null;
+  dueDate?: string | null;
   summary?: {
+    deadline?: string | null;
     totalEvidences?: number;
     evidenceByCriterion?: Partial<Record<Criterion, number>>;
-    metricsCompletion?: { completed?: number; required?: number };
   };
-  latestPrecheckResult?: {
-    readinessScore?: number;
-    criteriaResults?: PrecheckCriterionResult[];
-    missingItems?: PrecheckMissingItem[];
-    nextBestAction?: string;
-  } | null;
+  evidences?: EvidenceResponse[];
+  latestPrecheckResult?: PrecheckResult | null;
+};
+
+type CriteriaState = ReturnType<typeof getCriteriaUiState>;
+type FeedbackItem = ReturnType<typeof getFeedbackUiItems>[number];
+type NextAction = ReturnType<typeof getNextActions>[number];
+
+const criterionIcons: Partial<Record<Criterion, LucideIcon>> = {
+  ethics: ShieldCheck,
+  academic: GraduationCap,
+  physical: Dumbbell,
+  volunteer: HeartHandshake,
+  integration: Globe2,
 };
 
 export function StudentOverview() {
-  const user = useAuth((s) => s.user);
-  const { data, isLoading, isError } = useCurrentApplication(SCHOOL_YEAR);
-  const apiUnavailable = isError;
-  const application = (data?.application ??
-    (apiUnavailable ? buildDemoApplication(user?.id) : null)) as ApplicationWithSummary | null | undefined;
-  const appId = apiUnavailable ? undefined : application?.id;
-  const latestPrecheck = useLatestPrecheck(appId);
-  const startMutation = useStartApplication();
+  const user = useAuth((state) => state.user);
+  const current = useCurrentApplication(SCHOOL_YEAR);
+  const application = current.data?.application as ApplicationWithDashboardData | null | undefined;
+  const applicationId = application?.id;
+  const latestPrecheck = useLatestPrecheck(applicationId);
+  const evidencesQuery = useEvidences(applicationId, { limit: 100 });
+  const notifications = useNotifications({ page: 1, limit: 20 });
+  const startApplication = useStartApplication();
 
-  const firstName = user?.fullName?.trim().split(/\s+/).slice(-1)[0] ?? "bạn";
+  const firstName = getFirstName(user?.fullName);
+  const evidences = useMemo(() => normalizeEvidences(evidencesQuery.data), [evidencesQuery.data]);
+  const feedbackItems = useMemo(() => getFeedbackUiItems(notifications.data), [notifications.data]);
+  const precheck = (latestPrecheck.data ??
+    application?.latestPrecheckResult ??
+    null) as PrecheckResult | null;
+  const applicationForSummary = useMemo(
+    () => (application ? { ...application, evidences } : null),
+    [application, evidences],
+  );
+  const summary = getStudentApplicationSummary(
+    applicationForSummary,
+    precheck,
+    null,
+    feedbackItems,
+  );
+  const criteriaStates = useMemo(
+    () =>
+      application
+        ? coreStudentCriteria.map((criterion) =>
+            getCriteriaUiState(criterion, evidences, precheck, feedbackItems),
+          )
+        : [],
+    [application, evidences, precheck, feedbackItems],
+  );
+  const nextActions = useMemo(
+    () => getNextActions(applicationForSummary, criteriaStates, feedbackItems, precheck),
+    [applicationForSummary, criteriaStates, feedbackItems, precheck],
+  );
+  const actionableFeedback = useMemo(
+    () => feedbackItems.filter((item) => item.isActionable).slice(0, 2),
+    [feedbackItems],
+  );
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0057C2]" />
-      </div>
-    );
-  }
+  const isInitialLoading = current.isLoading;
+  const isDashboardError = current.isError;
 
-  if (!application) {
+  if (isInitialLoading) {
     return (
       <>
-        <TopBar
+        <PageHeader
           title={`Xin chào, ${firstName}`}
-          subtitle="Tài khoản này chưa có hồ sơ Sinh viên 5 tốt cho năm học hiện tại."
+          description="Hoàn thiện hồ sơ Sinh viên 5 tốt của bạn theo từng bước đơn giản."
         />
-        <Card className="overflow-hidden !p-0">
-          <div className="bg-[#0057C2] p-7 text-white">
-            <Chip tone="brand">
-              <FileText className="h-3 w-3" /> Hồ sơ mới
-            </Chip>
-            <h2 className="mt-4 text-2xl font-bold md:text-3xl">
-              Chưa có hồ sơ Sinh viên 5 tốt năm học {SCHOOL_YEAR}
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-white/85">
-              Tạo hồ sơ để bắt đầu đi qua các bước: hoàn thiện 5 tiêu chí, kiểm tra hồ sơ,
-              nộp hồ sơ và theo dõi kết quả.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Button
-                className="bg-white !text-[#0057C2] hover:bg-[#F1F7FD]"
-                disabled={startMutation.isPending}
-                onClick={() => startMutation.mutate({ schoolYear: SCHOOL_YEAR, targetLevel: "school" })}
-              >
-                {startMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                Bắt đầu tạo hồ sơ
-              </Button>
-              <Link to="/app/drafts">
-                <Button variant="ghost" className="!text-white hover:!bg-white/10">
-                  Mở trang hồ sơ
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </Card>
-        <div className="mt-5">
-          <StudentFlowStepper
-            state={{
-              applicationExists: false,
-              applicationStatus: "not_started",
-              evidenceCount: 0,
-              latestPrecheck: null,
-            }}
-            busy={startMutation.isPending}
-            onCreate={() => startMutation.mutate({ schoolYear: SCHOOL_YEAR, targetLevel: "school" })}
-          />
-        </div>
+        <OverviewSkeleton />
       </>
     );
   }
 
-  const precheck = latestPrecheck.data ?? application.latestPrecheckResult ?? null;
-  const readinessScore = precheck?.readinessScore ?? application.readinessScore ?? 0;
-  const status = application.status;
-  const metricsCompleted = application.summary?.metricsCompletion?.completed ?? application.metrics?.length ?? 0;
-  const metricsRequired = application.summary?.metricsCompletion?.required ?? 5;
-  const evidenceByCriterion = application.summary?.evidenceByCriterion ?? {};
-  const evidenceCount = application.summary?.totalEvidences ?? Object.values(evidenceByCriterion).reduce((sum, count) => sum + (count ?? 0), 0);
-  const nextActions = buildNextActions(application, precheck?.criteriaResults, precheck?.missingItems);
-  const updatedAt = formatDateTime(application.lastUpdatedAt ?? application.updatedAt);
-  const primaryActionPath = getPrimaryActionPath(status);
-  const missingCriteriaCount = criteria.filter((criterion) => (evidenceByCriterion[criterion.key] ?? 0) === 0).length;
-  const missingWorkCount = getMissingWorkCount({
-    missingCriteriaCount,
-    missingItemsCount: precheck?.missingItems?.length ?? 0,
-    metricsCompleted,
-    metricsRequired,
-  });
-  const headline = getOverviewHeadline(status, missingCriteriaCount, missingWorkCount, Boolean(precheck));
-  const ctaLabel = getOverviewCta(status, missingWorkCount, Boolean(precheck));
-  const finalStatus = application.finalStatus ?? "pending";
-  const hasFinalResult = finalStatus !== "pending" && Boolean(application.finalizedAt);
+  if (isDashboardError) {
+    return (
+      <>
+        <PageHeader
+          title={`Xin chào, ${firstName}`}
+          description="Hoàn thiện hồ sơ Sinh viên 5 tốt của bạn theo từng bước đơn giản."
+        />
+        <EmptyState
+          variant="error"
+          title="Chưa tải được tổng quan hồ sơ"
+          description="Dữ liệu có thể đang mất kết nối tạm thời. Vui lòng thử lại."
+          primaryAction={
+            <AppButton onClick={() => current.refetch()} size="sm">
+              Thử tải lại
+            </AppButton>
+          }
+        />
+      </>
+    );
+  }
 
   return (
     <>
-      <TopBar
+      <PageHeader
         title={`Xin chào, ${firstName}`}
-        subtitle="Dữ liệu bên dưới được tải theo tài khoản đang đăng nhập, không dùng dữ liệu demo."
+        description="Hoàn thiện hồ sơ Sinh viên 5 tốt của bạn theo từng bước đơn giản."
       />
 
-      <Card className="mb-5 overflow-hidden !p-0">
-        <div className="bg-[#0057C2] p-6 text-white md:p-7">
-          <div className="flex flex-wrap items-center gap-2">
-            <Chip tone="brand">
-              <FileText className="h-3 w-3" /> Hồ sơ của tôi
-            </Chip>
-            <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold">
-              {getStudentApplicationStatusLabel(status)}
-            </span>
-            {apiUnavailable && (
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-900">
-                Demo fallback
-              </span>
-            )}
-          </div>
-          <div className="mt-4 grid gap-5 lg:grid-cols-3 lg:items-end">
-            <div className="lg:col-span-2">
-              <h2 className="text-2xl font-bold leading-tight md:text-3xl">
-                {headline}
-              </h2>
-              <div className="mt-3 grid gap-2 text-sm text-white/85 sm:grid-cols-2">
-                <div>
-                  Năm học: <b className="text-white">{application.schoolYear}</b>
-                </div>
-                <div>
-                  Cấp đăng ký: <b className="text-white">{levelLabel[application.targetLevel]}</b>
-                </div>
-                <div>
-                  Trạng thái: <b className="text-white">{getStudentApplicationStatusLabel(status)}</b>
-                </div>
-                <div>
-                  Cập nhật lần cuối: <b className="text-white">{updatedAt}</b>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-lg bg-white/15 p-4">
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span>Việc cần làm</span>
-                <b>{missingWorkCount > 0 ? `Còn ${missingWorkCount} việc` : "Đủ dữ liệu cơ bản"}</b>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/20">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${readinessScore}%` }}
-                  transition={{ duration: 0.7 }}
-                  className="h-full rounded-full bg-white"
-                />
-              </div>
-              <Link to={primaryActionPath} className="mt-4 block">
-                <Button className="w-full bg-white !text-[#0057C2] hover:bg-[#F1F7FD]">
-                  {ctaLabel} <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <div className="space-y-5 pb-6">
+        <ApplicationHeroCard
+          applicationId={application?.id}
+          applicationStatus={application?.status}
+          hasApplication={Boolean(application)}
+          isStarting={startApplication.isPending}
+          nextActions={nextActions.map((action) => action.title)}
+          onStart={() =>
+            startApplication.mutate({
+              schoolYear: SCHOOL_YEAR,
+              targetLevel: "school",
+              applicationType: "individual",
+            })
+          }
+          summary={summary}
+        />
 
-      {hasFinalResult || application.finalNote ? (
-        <div className="mb-5 rounded-xl border border-[#E3ECF6] bg-white/85 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Kết quả cuối</span>
-                <Chip tone={getFinalTone(finalStatus)}>{getFinalStatusLabel(finalStatus)}</Chip>
-                {application.finalLevel ? <Chip tone="brand">{levelLabel[application.finalLevel]}</Chip> : null}
-              </div>
-              {application.finalNote ? (
-                <p className="mt-1 max-w-3xl text-sm text-slate-700">{application.finalNote}</p>
-              ) : (
-                <p className="mt-1 text-sm text-muted-foreground">Kết quả đã được hội đồng xác nhận và ghi nhận trong hệ thống.</p>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span>Chốt: {formatFinalDate(application.finalizedAt)}</span>
-              <span>Người chốt: {application.finalizedBy?.fullName ?? "--"}</span>
-            </div>
-          </div>
-        </div>
-      ) : null}
+        {application ? <CriteriaProgressCards criteriaStates={criteriaStates} /> : null}
 
-      <div className="mb-5">
-        <StudentFlowStepper
-          state={{
-            applicationExists: true,
-            applicationStatus: status,
-            evidenceCount,
-            latestPrecheck: precheck,
-          }}
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <NextActionsCard actions={nextActions} />
+          <LatestFeedbackCard feedbackItems={actionableFeedback} hasFeedbackRoute />
+        </div>
+
+        <CompactHelpCard
+          applicationId={application?.id}
+          applicationStatus={application?.status}
+          nextActions={nextActions.map((action) => action.title)}
         />
       </div>
-
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card>
-          <h3 className="flex items-center gap-2 font-bold text-brand-deep">
-            <CircleAlert className="h-4 w-4" /> Việc cần làm tiếp theo
-          </h3>
-          <div className="mt-3 space-y-2">
-            {nextActions.map((item) => (
-              <Link
-                key={item}
-                to={primaryActionPath}
-                className="flex gap-3 rounded-lg bg-[#F6F9FC] px-3 py-3 text-sm hover:bg-[#EEF9FF]"
-              >
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#0057C2]" />
-                <span className="text-muted-foreground">{item}</span>
-              </Link>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <h3 className="font-bold text-brand-deep">Tiến độ 5 tiêu chí</h3>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            {criteria.map((criterion) => {
-              const result = precheck?.criteriaResults?.find((item: PrecheckCriterionResult) => item.criterion === criterion.key);
-              const progress = typeof result?.score === "number" ? result.score : 0;
-              const evidenceCount = evidenceByCriterion[criterion.key] ?? 0;
-              const needsWork = progress < 60 || evidenceCount === 0;
-              return (
-                <Link
-                  key={criterion.key}
-                  to="/app/drafts"
-                  className="rounded-lg border border-[#E3ECF6] p-3 hover:bg-[#F6F9FC]"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="h-8 w-8 rounded-lg" style={{ background: criterion.color }} />
-                    <Chip tone={needsWork ? "warning" : "success"}>
-                      {needsWork ? "Cần bổ sung" : "Tạm ổn"}
-                    </Chip>
-                  </div>
-                  <div className="mt-3 text-sm font-bold text-brand-deep">{criterion.label}</div>
-                  <div className="mt-1 min-h-8 text-xs text-muted-foreground">
-                    {getUserFacingText(result?.explanation, "Chưa có kết quả kiểm tra hồ sơ.")}
-                  </div>
-                  <div className="mt-3">
-                    <Progress value={progress} tint={criterion.color} />
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">{evidenceCount} minh chứng</div>
-                </Link>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
-
-      <Card className="mt-5">
-        <h3 className="flex items-center gap-2 font-bold text-brand-deep">
-          <Bell className="h-4 w-4" /> Tóm tắt dữ liệu thật
-        </h3>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div className="rounded-lg bg-[#F6F9FC] px-3 py-3">
-            <div className="text-sm font-semibold text-brand-deep">Chỉ số đã nhập</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {metricsCompleted}/{metricsRequired} chỉ số bắt buộc
-            </div>
-          </div>
-          <div className="rounded-lg bg-[#F6F9FC] px-3 py-3">
-            <div className="text-sm font-semibold text-brand-deep">Minh chứng</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {application.summary?.totalEvidences ?? 0} minh chứng thuộc hồ sơ này
-            </div>
-          </div>
-          <div className="rounded-lg bg-[#F6F9FC] px-3 py-3">
-            <div className="text-sm font-semibold text-brand-deep">Kiểm tra hồ sơ</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {getUserFacingText(precheck?.nextBestAction, "Chưa tự kiểm tra hồ sơ trên hệ thống.")}
-            </div>
-          </div>
-        </div>
-      </Card>
     </>
   );
 }
 
-function buildDemoApplication(userId?: string): ApplicationWithSummary {
-  const now = new Date().toISOString();
-  return {
-    id: "demo-app-2025-2026",
-    studentId: userId ?? "demo-student",
-    schoolYear: SCHOOL_YEAR,
-    applicationType: "individual",
-    targetLevel: "city",
-    status: "draft",
-    finalStatus: "pending",
-    readinessScore: 68,
-    currentDraftVersion: 1,
-    submittedAt: null,
-    createdAt: now,
-    updatedAt: now,
-    lastUpdatedAt: now,
-    metrics: [],
-    summary: {
-      totalEvidences: 5,
-      evidenceByCriterion: {
-        ethics: 1,
-        academic: 1,
-        physical: 1,
-        volunteer: 1,
-        integration: 1,
-      },
-      metricsCompletion: {
-        completed: 3,
-        required: 5,
-      },
-    },
-    latestPrecheckResult: {
-      readinessScore: 68,
-      nextBestAction: "Demo fallback: kiem tra backend API de tai du lieu that.",
-      missingItems: [
-        { criterion: "volunteer", message: "Bo sung them minh chung tinh nguyen." },
-        { criterion: "integration", message: "Xac minh chung chi hoi nhap." },
-      ],
-      criteriaResults: [
-        { criterion: "ethics", status: "passed", score: 80, explanation: "Demo: dat co ban." },
-        { criterion: "academic", status: "passed", score: 75, explanation: "Demo: can xac minh bang diem." },
-        { criterion: "physical", status: "passed", score: 70, explanation: "Demo: da co minh chung." },
-        { criterion: "volunteer", status: "pending", score: 55, explanation: "Demo: can bo sung." },
-        { criterion: "integration", status: "pending", score: 60, explanation: "Demo: cho xac minh." },
-      ],
-    },
-  };
-}
-
-function buildNextActions(
-  application: ApplicationWithSummary,
-  criteriaResults?: PrecheckCriterionResult[],
-  missingItems?: PrecheckMissingItem[],
-) {
-  if (application.status === "completed") {
-    return ["Hồ sơ đã hoàn tất. Bạn có thể xem kết quả xét duyệt."];
-  }
-
-  if (!criteriaResults?.length) {
-    return [
-      "Nhập đủ các chỉ số cơ bản trong Hồ sơ của tôi.",
-      "Thêm minh chứng cho 5 tiêu chí.",
-      "Kiểm tra hồ sơ trước khi nộp.",
-    ];
-  }
-
-  const fromMissing = missingItems
-    ?.map((item) => getPrecheckMissingMessage(item).description)
-    .filter((item): item is string => Boolean(item))
-    .slice(0, 3);
-
-  if (fromMissing?.length) {
-    return fromMissing;
-  }
-
-  if (application.status === "draft" || application.status === "prechecked") {
-    return ["Hồ sơ đã có dữ liệu cơ bản. Kiểm tra lại minh chứng rồi nộp xét duyệt."];
-  }
-
-  return ["Theo dõi trạng thái xét duyệt và phản hồi yêu cầu bổ sung nếu có."];
-}
-
-function getPrimaryActionPath(status: ApplicationStatus) {
-  if (status === "submitted" || status === "under_review" || status === "resolution_needed") return "/app/cascade";
-  if (status === "completed" || status === "rejected") return "/app/cascade";
-  if (status === "supplement_required") return "/app/drafts";
-  return "/app/drafts";
-}
-
-function getMissingWorkCount({
-  missingCriteriaCount,
-  missingItemsCount,
-  metricsCompleted,
-  metricsRequired,
+function ApplicationHeroCard({
+  applicationId,
+  applicationStatus,
+  hasApplication,
+  isStarting,
+  nextActions,
+  onStart,
+  summary,
 }: {
-  missingCriteriaCount: number;
-  missingItemsCount: number;
-  metricsCompleted: number;
-  metricsRequired: number;
+  applicationId?: string;
+  applicationStatus?: string;
+  hasApplication: boolean;
+  isStarting: boolean;
+  nextActions: string[];
+  onStart: () => void;
+  summary: ReturnType<typeof getStudentApplicationSummary>;
 }) {
-  const missingMetrics = Math.max(0, metricsRequired - metricsCompleted);
-  return Math.max(missingCriteriaCount, missingItemsCount, missingMetrics);
-}
+  const assistantHref = buildAssistantHref({
+    applicationId,
+    nextActions,
+    source: "overview",
+    status: applicationStatus ?? summary.statusBadge.label,
+  });
 
-function getOverviewHeadline(
-  status: ApplicationStatus,
-  missingCriteriaCount: number,
-  missingWorkCount: number,
-  hasPrecheck: boolean,
-) {
-  if (status === "submitted" || status === "under_review" || status === "resolution_needed") {
-    return "Hồ sơ đã nộp, theo dõi kết quả tại đây";
-  }
-  if (status === "completed" || status === "rejected") return "Đã có kết quả hồ sơ";
-  if (status === "supplement_required") {
-    return missingWorkCount > 0 ? `Bạn còn ${missingWorkCount} việc cần bổ sung` : "Bạn cần gửi lại hồ sơ bổ sung";
-  }
-  if (missingCriteriaCount > 0) return `Còn ${missingCriteriaCount}/5 tiêu chí cần bổ sung`;
-  if (!hasPrecheck) return "Đã đủ dữ liệu cơ bản để kiểm tra hồ sơ";
-  if (missingWorkCount > 0) return `Bạn còn ${missingWorkCount} việc cần hoàn thành`;
-  return "Đã đủ dữ liệu cơ bản để nộp hồ sơ";
-}
-
-function getOverviewCta(status: ApplicationStatus, missingWorkCount: number, hasPrecheck: boolean) {
-  if (status === "submitted" || status === "under_review" || status === "resolution_needed") return "Theo dõi hồ sơ";
-  if (status === "completed" || status === "rejected") return "Xem kết quả";
-  if (status === "supplement_required" || missingWorkCount > 0) return "Tiếp tục hoàn thiện";
-  if (!hasPrecheck) return "Kiểm tra hồ sơ";
-  return "Nộp hồ sơ";
-}
-
-function ResultMeta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[#E3ECF6] px-3 py-2">
-      <div className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</div>
-      <div className="mt-1 font-semibold text-brand-deep">{value}</div>
+    <SectionCard className="overflow-hidden border-[#BBD7F3] bg-[#F8FBFE] p-0">
+      <div className="grid min-w-0 gap-5 p-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-center md:p-6">
+        <div className="min-w-0">
+          <StatusBadge tone={summary.statusBadge.tone} label={summary.statusBadge.label} />
+          <h2 className="mt-3 max-w-3xl text-2xl font-bold leading-tight text-[var(--text-primary)] md:text-3xl">
+            {summary.headline}
+          </h2>
+          <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+            {summary.description}
+          </p>
+          <p className="mt-3 line-clamp-2 text-sm font-medium text-slate-600">
+            {summary.metadataLine}
+          </p>
+
+          <div className="mt-5 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {hasApplication ? (
+              <AppButton asChild className="sm:w-auto">
+                <a href={summary.primaryAction.route}>
+                  {summary.primaryAction.label}
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </AppButton>
+            ) : (
+              <AppButton onClick={onStart} disabled={isStarting} className="sm:w-auto">
+                {isStarting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {summary.primaryAction.label}
+              </AppButton>
+            )}
+            <AppButton asChild variant="secondary" className="sm:w-auto">
+              <a href={assistantHref}>
+                <Sparkles className="h-4 w-4" />
+                Hỏi trợ lý
+              </a>
+            </AppButton>
+          </div>
+        </div>
+
+        <div className="min-w-0 rounded-2xl border border-white bg-white/80 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            Tiến độ tiêu chí
+          </div>
+          <div className="mt-3 flex items-end gap-1">
+            <span className="text-4xl font-bold text-[#0057C2]">
+              {summary.completedCriteriaCount}
+            </span>
+            <span className="pb-1 text-sm font-semibold text-slate-500">
+              /{summary.totalCriteriaCount} tiêu chí
+            </span>
+          </div>
+          <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
+            {summary.pendingActionCount > 0
+              ? `${summary.pendingActionCount} mục cần bạn xem tiếp.`
+              : "Không có mục cần xử lý ngay."}
+          </p>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+function CriteriaProgressCards({ criteriaStates }: { criteriaStates: CriteriaState[] }) {
+  return (
+    <section className="min-w-0">
+      <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
+        <h2 className="truncate text-base font-bold text-[var(--text-primary)]">
+          Tiến độ 5 tiêu chí
+        </h2>
+        <AppButton asChild variant="ghost" size="sm">
+          <Link to="/app/application">Mở hồ sơ</Link>
+        </AppButton>
+      </div>
+      <div className="min-w-0 overflow-x-auto pb-1 [scrollbar-width:thin]">
+        <div className="grid min-w-[760px] grid-cols-5 gap-3 md:min-w-0">
+          {criteriaStates.map((state) => {
+            const Icon = criterionIcons[state.key] ?? FileText;
+            return (
+              <a
+                key={state.key}
+                href={criterionHref(state.key)}
+                className="min-w-0 scroll-ml-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.035)] transition hover:border-[#91BCEB] hover:shadow-sm"
+              >
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F1F7FD] text-[#0057C2]">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <StatusBadge tone={state.tone} label={state.statusLabel} />
+                </div>
+                <h3 className="mt-3 truncate text-sm font-bold text-[var(--text-primary)]">
+                  {state.label}
+                </h3>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  {state.evidenceCount} minh chứng
+                </p>
+                {state.warningCount > 0 ? (
+                  <p className="mt-2 line-clamp-1 text-xs font-semibold text-amber-700">
+                    {state.warningCount} cần xem
+                  </p>
+                ) : (
+                  <p className="mt-2 line-clamp-1 text-xs text-slate-500">Đang theo dõi</p>
+                )}
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NextActionsCard({ actions }: { actions: NextAction[] }) {
+  return (
+    <SectionCard title="Việc cần làm" className="h-full">
+      {actions.length ? (
+        <div className="space-y-3">
+          {actions.slice(0, 3).map((action, index) => (
+            <ActionRow action={action} index={index} key={`${action.title}-${index}`} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          variant="noData"
+          title="Bạn chưa có việc cần xử lý"
+          description="Khi hồ sơ cần bổ sung hoặc có phản hồi mới, hệ thống sẽ hiển thị tại đây."
+        />
+      )}
+    </SectionCard>
+  );
+}
+
+function ActionRow({ action, index }: { action: NextAction; index: number }) {
+  const Icon = index === 0 ? CircleAlert : index === 1 ? Clock3 : BookOpenCheck;
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+          index === 0 ? "bg-amber-100 text-amber-700" : "bg-white text-[#0057C2]",
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-sm font-bold text-[var(--text-primary)]">{action.title}</h3>
+        <p className="line-clamp-1 text-sm text-[var(--text-secondary)]">{action.description}</p>
+      </div>
+      <AppButton asChild size="sm" variant={index === 0 ? "primary" : "secondary"}>
+        <a href={actionHref(action)}>{action.actionLabel}</a>
+      </AppButton>
     </div>
   );
 }
 
-function getFinalTone(status?: string | null) {
-  return finalStatusTone[status as keyof typeof finalStatusTone] ?? "warning";
+function LatestFeedbackCard({
+  feedbackItems,
+  hasFeedbackRoute,
+}: {
+  feedbackItems: FeedbackItem[];
+  hasFeedbackRoute: boolean;
+}) {
+  return (
+    <SectionCard
+      title="Phản hồi mới nhất"
+      footer={
+        hasFeedbackRoute ? (
+          <AppButton asChild variant="ghost" size="sm">
+            <Link to="/app/feedback">Xem tất cả phản hồi</Link>
+          </AppButton>
+        ) : null
+      }
+      className="h-full"
+    >
+      {feedbackItems.length ? (
+        <div className="space-y-3">
+          {feedbackItems.map((item) => (
+            <div key={item.id} className="min-w-0 rounded-2xl border border-slate-100 p-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <MessageSquareText className="h-4 w-4 shrink-0 text-[#0057C2]" />
+                <h3 className="truncate text-sm font-bold text-[var(--text-primary)]">
+                  {item.title}
+                </h3>
+                {item.criterionKey ? (
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
+                    {criterionLabels[item.criterionKey]}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-2 line-clamp-2 text-sm leading-5 text-[var(--text-secondary)]">
+                {item.message}
+              </p>
+              <div className="mt-3">
+                <AppButton asChild size="sm" variant="secondary">
+                  <a href={feedbackHref(item)}>
+                    {item.criterionKey ? "Đi đến tiêu chí" : "Xem phản hồi"}
+                  </a>
+                </AppButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-[var(--text-secondary)]">
+          Không có phản hồi cần xử lý.
+        </p>
+      )}
+    </SectionCard>
+  );
 }
 
-function formatFinalDate(value?: string | null) {
-  if (!value) return "Chưa chốt";
-  return formatDateTime(value);
+function CompactHelpCard({
+  applicationId,
+  applicationStatus,
+  nextActions,
+}: {
+  applicationId?: string;
+  applicationStatus?: string;
+  nextActions: string[];
+}) {
+  const assistantHref = buildAssistantHref({
+    applicationId,
+    nextActions,
+    source: "overview",
+    status: applicationStatus,
+  });
+
+  return (
+    <SectionCard className="bg-white">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="truncate text-base font-bold text-[var(--text-primary)]">Cần hỗ trợ?</h2>
+          <p className="line-clamp-2 text-sm leading-5 text-[var(--text-secondary)]">
+            Trợ lý có thể giúp bạn tìm bước tiếp theo trong hồ sơ.
+          </p>
+        </div>
+        <AppButton asChild variant="secondary" size="sm" className="shrink-0">
+          <a href={assistantHref}>
+            <Sparkles className="h-4 w-4" />
+            Hỏi trợ lý
+          </a>
+        </AppButton>
+      </div>
+    </SectionCard>
+  );
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "Chưa cập nhật";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Chưa cập nhật";
-  return new Intl.DateTimeFormat("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
+function buildAssistantHref({
+  applicationId,
+  criterionKey,
+  criterionLabel,
+  feedbackId,
+  message,
+  nextActions,
+  source,
+  status,
+}: {
+  applicationId?: string;
+  criterionKey?: string;
+  criterionLabel?: string;
+  feedbackId?: string;
+  message?: string;
+  nextActions?: string[];
+  source: "overview" | "criterion" | "feedback";
+  status?: string;
+}) {
+  const params = new URLSearchParams({ source });
+  if (applicationId) params.set("applicationId", applicationId);
+  if (status) params.set("status", status);
+  if (criterionKey) params.set("criterionKey", criterionKey);
+  if (criterionLabel) params.set("criterionLabel", criterionLabel);
+  if (feedbackId) params.set("feedbackId", feedbackId);
+  if (message) params.set("message", message);
+  if (nextActions?.length) params.set("nextActions", nextActions.slice(0, 3).join("|"));
+  return `/app/assistant?${params.toString()}`;
+}
+
+function OverviewSkeleton() {
+  return (
+    <div className="space-y-5 pb-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+        <SkeletonLine className="h-5 w-28" />
+        <SkeletonLine className="mt-4 h-8 w-3/4" />
+        <SkeletonLine className="mt-3 h-4 w-1/2" />
+        <div className="mt-5 flex gap-2">
+          <SkeletonLine className="h-10 w-36" />
+          <SkeletonLine className="h-10 w-28" />
+        </div>
+      </div>
+      <div className="grid min-w-0 gap-3 md:grid-cols-5">
+        {coreStudentCriteria.map((criterion) => (
+          <div key={criterion} className="rounded-2xl border border-slate-200 bg-white p-4">
+            <SkeletonLine className="h-9 w-9 rounded-xl" />
+            <SkeletonLine className="mt-4 h-4 w-24" />
+            <SkeletonLine className="mt-2 h-4 w-16" />
+          </div>
+        ))}
+      </div>
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <SkeletonLine className="h-5 w-28" />
+          <SkeletonLine className="mt-4 h-12 w-full" />
+          <SkeletonLine className="mt-3 h-12 w-full" />
+          <SkeletonLine className="mt-3 h-12 w-full" />
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <SkeletonLine className="h-5 w-32" />
+          <SkeletonLine className="mt-4 h-20 w-full" />
+          <SkeletonLine className="mt-3 h-20 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonLine({ className }: { className?: string }) {
+  return <div className={cn("animate-pulse rounded-full bg-slate-200", className)} />;
+}
+
+function normalizeEvidences(value: unknown): EvidenceResponse[] {
+  if (Array.isArray(value)) return value as EvidenceResponse[];
+  if (value && typeof value === "object") {
+    const record = value as { evidences?: unknown; items?: unknown; data?: unknown };
+    if (Array.isArray(record.evidences)) return record.evidences as EvidenceResponse[];
+    if (Array.isArray(record.items)) return record.items as EvidenceResponse[];
+    if (Array.isArray(record.data)) return record.data as EvidenceResponse[];
+  }
+  return [];
+}
+
+function criterionHref(criterion: Criterion) {
+  return `/app/application?criterion=${encodeURIComponent(criterion)}`;
+}
+
+function actionHref(action: NextAction) {
+  return action.criterionKey ? criterionHref(action.criterionKey) : action.route;
+}
+
+function feedbackHref(item: FeedbackItem) {
+  return item.criterionKey ? criterionHref(item.criterionKey) : "/app/feedback";
+}
+
+function getFirstName(fullName?: string | null) {
+  const parts = fullName?.trim().split(/\s+/).filter(Boolean) ?? [];
+  return parts.at(-1) ?? "bạn";
 }

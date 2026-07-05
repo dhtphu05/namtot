@@ -7,6 +7,12 @@ import { useApp } from "@/lib/store";
 import type { Role, SafeUser } from "@/lib/api/types";
 
 const studentRoutes = [
+  "/app/overview",
+  "/app/application",
+  "/app/my-application",
+  "/app/profile",
+  "/app/feedback",
+  "/app/assistant",
   "/app/drafts",
   "/app/upload",
   "/app/ai-precheck",

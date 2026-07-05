@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
-import { Bot, Bell, BookOpenCheck, ClipboardCheck, FileQuestion, Send, User } from "lucide-react";
+import { Bell, BookOpenCheck, Bot, ClipboardCheck, FileQuestion, Send, User } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip } from "@/components/ui-kit";
 import { useApp } from "@/lib/store";
@@ -12,25 +13,50 @@ interface Message {
   text: string;
 }
 
-const suggestions = [
-  "Em còn thiếu gì để nộp hồ sơ?",
-  "Minh chứng tình nguyện như thế nào là hợp lệ?",
-  "Em có thể import sự kiện nào vào hồ sơ?",
+type AssistantContext = {
+  applicationId?: string;
+  criterionKey?: string;
+  criterionLabel?: string;
+  feedbackId?: string;
+  message?: string;
+  nextActions?: string[];
+  source: "overview" | "criterion" | "feedback" | "default";
+  status?: string;
+};
+
+const defaultSuggestions = [
+  "Hồ sơ của em còn thiếu gì?",
+  "Minh chứng nào hợp lệ cho tiêu chí này?",
+  "Em nên sửa hồ sơ ở đâu?",
   "Hạn bổ sung minh chứng là khi nào?",
 ];
 
-const answers: Record<string, string> = {
-  "Em còn thiếu gì để nộp hồ sơ?": "Hồ sơ của em còn cần bổ sung 2 ngày tình nguyện nếu giữ aim Cấp Thành phố, xác minh minh chứng thể lực và kiểm tra ngày cấp chứng chỉ ngoại ngữ.",
-  "Minh chứng tình nguyện như thế nào là hợp lệ?": "Minh chứng nên có tên hoạt động, số ngày tham gia, đơn vị tổ chức và xác nhận của Đoàn - Hội hoặc đơn vị phụ trách.",
-  "Em có thể import sự kiện nào vào hồ sơ?": "Em có thể kiểm tra Mùa hè xanh, Sinh viên khỏe hoặc các sự kiện đã có danh sách tham gia trong Kho minh chứng.",
-  "Hạn bổ sung minh chứng là khi nào?": "Các hạn bổ sung sẽ hiển thị trong thông báo mới nhất và trên thẻ yêu cầu bổ sung sau khi cán bộ xét hồ sơ.",
+const suggestionsBySource: Record<AssistantContext["source"], string[]> = {
+  overview: [
+    "Hồ sơ của em còn thiếu gì?",
+    "Em cần làm gì trước khi nộp?",
+    "Khi nào em có thể nộp hồ sơ?",
+  ],
+  criterion: [
+    "Minh chứng nào hợp lệ cho tiêu chí này?",
+    "Tiêu chí này còn thiếu gì?",
+    "Em nên bổ sung loại minh chứng nào?",
+  ],
+  feedback: ["Cán bộ yêu cầu bổ sung gì?", "Em nên sửa hồ sơ ở đâu?"],
+  default: defaultSuggestions,
 };
 
 export function StudentSupport() {
   const nav = useNavigate();
   const notifications = useApp((s) => s.notifications);
+  const context = useMemo(readAssistantContext, []);
+  const suggestions = suggestionsBySource[context.source] ?? defaultSuggestions;
   const [messages, setMessages] = useState<Message[]>([
-    { id: "m-0", from: "bot", text: "Mình có thể giúp em kiểm tra hồ sơ, minh chứng, hạn bổ sung và cách chuẩn bị trước khi nộp." },
+    {
+      id: "m-0",
+      from: "bot",
+      text: getInitialMessage(context),
+    },
   ]);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -46,36 +72,46 @@ export function StudentSupport() {
     setMessages((current) => [
       ...current,
       { id: `u-${Date.now()}`, from: "user", text: clean },
-      { id: `b-${Date.now()}`, from: "bot", text: answers[clean] ?? "Mình đã ghi nhận câu hỏi. Với hồ sơ cụ thể, em nên mở Hồ sơ của tôi để xem việc cần làm tiếp theo." },
+      {
+        id: `b-${Date.now()}`,
+        from: "bot",
+        text: getAssistantAnswer(clean, context),
+      },
     ]);
   };
 
   return (
     <>
       <TopBar
-        title="Hỗ trợ"
-        subtitle="Hỏi nhanh về hồ sơ, xem câu hỏi thường gặp, thông báo mới và hướng dẫn chuẩn bị."
+        title="Trợ lý"
+        subtitle="Hỏi nhanh theo ngữ cảnh hồ sơ, tiêu chí hoặc phản hồi bạn đang xử lý."
       />
 
-      <div className="grid gap-5 lg:grid-cols-5">
-        <Card className="lg:col-span-3 flex min-h-[620px] flex-col !p-0 overflow-hidden">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-5">
+        <Card className="flex min-h-[560px] min-w-0 flex-col overflow-hidden !p-0 lg:col-span-3">
           <div className="border-b border-[#EEF2F7] px-5 py-4">
-            <div className="flex items-center gap-2 font-bold text-brand-deep">
-              <Bot className="h-4 w-4" /> Trợ lý hồ sơ SV5T
+            <div className="flex min-w-0 items-center gap-2 font-bold text-brand-deep">
+              <Bot className="h-4 w-4 shrink-0" /> Trợ lý hồ sơ SV5T
             </div>
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-5">
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-5">
             <div className="space-y-4">
               {messages.map((message) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex gap-3 ${message.from === "user" ? "justify-end" : ""}`}
+                  className={`flex min-w-0 gap-3 ${message.from === "user" ? "justify-end" : ""}`}
                 >
                   {message.from === "bot" && <Avatar icon={<Bot className="h-4 w-4" />} />}
-                  <div className={`max-w-[80%] rounded-lg px-4 py-3 text-sm ${message.from === "user" ? "bg-[#0057C2] text-white" : "bg-[#F4FAFF] text-foreground"}`}>
+                  <div
+                    className={`min-w-0 max-w-[82%] rounded-lg px-4 py-3 text-sm leading-6 ${
+                      message.from === "user"
+                        ? "bg-[#0057C2] text-white"
+                        : "bg-[#F4FAFF] text-foreground"
+                    }`}
+                  >
                     {message.text}
                   </div>
                   {message.from === "user" && <Avatar icon={<User className="h-4 w-4" />} />}
@@ -85,27 +121,29 @@ export function StudentSupport() {
           </div>
 
           <div className="border-t border-[#EEF2F7] bg-white p-4">
-            <div className="mb-3 flex flex-wrap gap-2">
+            <div className="mb-3 flex min-w-0 flex-wrap gap-2">
               {suggestions.map((item) => (
                 <button key={item} onClick={() => send(item)} className="chip hover:bg-[#E5EFFA]">
                   {item}
                 </button>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
               <input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={(event) => event.key === "Enter" && send(input)}
-                placeholder="Hỏi về hồ sơ, minh chứng hoặc hạn bổ sung..."
-                className="flex-1 rounded-lg bg-[#F6F9FC] px-4 py-3 text-sm outline-none ring-[#0057C2]/30 focus:ring-2"
+                placeholder="Hỏi về hồ sơ, minh chứng hoặc phản hồi..."
+                className="min-w-0 flex-1 rounded-lg bg-[#F6F9FC] px-4 py-3 text-sm outline-none ring-[#0057C2]/30 focus:ring-2"
               />
-              <Button onClick={() => send(input)}><Send className="h-4 w-4" /> Gửi</Button>
+              <Button onClick={() => send(input)} className="shrink-0">
+                <Send className="h-4 w-4" /> Gửi
+              </Button>
             </div>
           </div>
         </Card>
 
-        <div className="space-y-5 lg:col-span-2">
+        <div className="min-w-0 space-y-5 lg:col-span-2">
           <Card>
             <div className="flex items-center gap-2 font-bold text-brand-deep">
               <FileQuestion className="h-4 w-4" /> Câu hỏi thường gặp
@@ -117,8 +155,12 @@ export function StudentSupport() {
                 "Khi nào cán bộ yêu cầu bổ sung?",
               ].map((item) => (
                 <details key={item} className="rounded-lg bg-[#F6F9FC] px-3 py-2">
-                  <summary className="cursor-pointer text-sm font-semibold text-brand-deep">{item}</summary>
-                  <p className="mt-2 text-sm text-muted-foreground">5TOT sẽ hướng dẫn trong Hồ sơ của tôi và cán bộ xác nhận quyết định cuối cùng.</p>
+                  <summary className="cursor-pointer text-sm font-semibold text-brand-deep">
+                    {item}
+                  </summary>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    Hệ thống ghi nhận thông tin trong hồ sơ, còn cán bộ sẽ xác nhận cuối cùng.
+                  </p>
                 </details>
               ))}
             </div>
@@ -126,16 +168,20 @@ export function StudentSupport() {
 
           <Card>
             <div className="flex items-center gap-2 font-bold text-brand-deep">
-              <Bell className="h-4 w-4" /> Thông báo mới
+              <Bell className="h-4 w-4" /> Phản hồi mới
             </div>
             <div className="mt-3 space-y-2">
               {notifications.slice(0, 3).map((item) => (
-                <div key={item.id} className="rounded-lg bg-[#F6F9FC] px-3 py-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-brand-deep">{item.title}</div>
+                <div key={item.id} className="min-w-0 rounded-lg bg-[#F6F9FC] px-3 py-2">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <div className="truncate text-sm font-semibold text-brand-deep">
+                      {item.title}
+                    </div>
                     {!item.read && <Chip tone="brand">Mới</Chip>}
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">{item.desc}</div>
+                  <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                    {item.desc}
+                  </div>
                 </div>
               ))}
             </div>
@@ -145,14 +191,18 @@ export function StudentSupport() {
             <div className="flex items-center gap-2 font-bold text-brand-deep">
               <ClipboardCheck className="h-4 w-4" /> Chuẩn bị nộp
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Mở hồ sơ để kiểm tra các tiêu chí, chạy tiền kiểm và xem điều kiện nộp.
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-              <Button className="w-full" onClick={() => nav({ to: "/app/drafts" })}>
-                Hồ sơ của tôi
+              <Button className="w-full" onClick={() => nav({ to: "/app/application" })}>
+                Hồ sơ & minh chứng
               </Button>
-              <Button variant="secondary" className="w-full" onClick={() => nav({ to: "/app/ai-precheck" })}>
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => nav({ to: "/app/application" })}
+              >
                 Tiền kiểm
               </Button>
             </div>
@@ -163,9 +213,15 @@ export function StudentSupport() {
               <BookOpenCheck className="h-4 w-4" /> Hướng dẫn chuẩn bị hồ sơ
             </div>
             <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <div className="rounded-lg bg-[#F6F9FC] px-3 py-2">Kiểm tra thông tin cá nhân và cấp aim.</div>
-              <div className="rounded-lg bg-[#F6F9FC] px-3 py-2">Thêm minh chứng cho từng tiêu chí chính.</div>
-              <div className="rounded-lg bg-[#F6F9FC] px-3 py-2">Xem tiền kiểm trước khi nộp hồ sơ.</div>
+              <div className="rounded-lg bg-[#F6F9FC] px-3 py-2">
+                Kiểm tra thông tin cá nhân và cấp đăng ký.
+              </div>
+              <div className="rounded-lg bg-[#F6F9FC] px-3 py-2">
+                Thêm minh chứng cho từng tiêu chí chính.
+              </div>
+              <div className="rounded-lg bg-[#F6F9FC] px-3 py-2">
+                Xem tiền kiểm trước khi nộp hồ sơ.
+              </div>
             </div>
           </Card>
         </div>
@@ -174,6 +230,76 @@ export function StudentSupport() {
   );
 }
 
-function Avatar({ icon }: { icon: React.ReactNode }) {
-  return <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0057C2] text-white">{icon}</div>;
+function readAssistantContext(): AssistantContext {
+  if (typeof window === "undefined") return { source: "default" };
+  const params = new URLSearchParams(window.location.search);
+  const rawSource = params.get("source");
+  const source =
+    rawSource === "overview" || rawSource === "criterion" || rawSource === "feedback"
+      ? rawSource
+      : "default";
+
+  return {
+    source,
+    applicationId: params.get("applicationId") ?? undefined,
+    criterionKey: params.get("criterionKey") ?? undefined,
+    criterionLabel: params.get("criterionLabel") ?? undefined,
+    feedbackId: params.get("feedbackId") ?? undefined,
+    message: params.get("message") ?? undefined,
+    nextActions: params.get("nextActions")?.split("|").filter(Boolean),
+    status: params.get("status") ?? undefined,
+  };
+}
+
+function getInitialMessage(context: AssistantContext) {
+  if (context.source === "overview") {
+    return "Mình có thể giúp bạn xem hồ sơ còn thiếu gì, bước tiếp theo và thời điểm có thể nộp. Cán bộ sẽ xác nhận cuối cùng.";
+  }
+  if (context.source === "criterion") {
+    return `Mình có thể giúp bạn tìm minh chứng phù hợp cho ${context.criterionLabel || "tiêu chí này"}. Cán bộ sẽ xác nhận cuối cùng.`;
+  }
+  if (context.source === "feedback") {
+    return "Mình có thể giúp bạn hiểu phản hồi và tìm đúng nơi để bổ sung. Cán bộ sẽ xác nhận cuối cùng.";
+  }
+  return "Mình có thể giúp bạn kiểm tra hồ sơ, minh chứng, hạn bổ sung và cách chuẩn bị trước khi nộp.";
+}
+
+function getAssistantAnswer(question: string, context: AssistantContext) {
+  if (question.includes("Cán bộ yêu cầu bổ sung gì")) {
+    return context.message
+      ? `Hệ thống ghi nhận phản hồi: "${context.message}". Bạn có thể cần bổ sung đúng tiêu chí liên quan rồi quay lại kiểm tra hồ sơ.`
+      : "Hệ thống ghi nhận phản hồi trong mục Phản hồi. Bạn có thể mở từng phản hồi để xem tiêu chí, lý do và hạn bổ sung nếu có.";
+  }
+  if (question.includes("sửa hồ sơ ở đâu")) {
+    return context.criterionKey
+      ? `Bạn có thể vào Hồ sơ & minh chứng, tiêu chí ${context.criterionLabel || context.criterionKey} để bổ sung hoặc chỉnh minh chứng liên quan.`
+      : "Bạn có thể vào Hồ sơ & minh chứng, chọn tiêu chí đang được nhắc trong phản hồi rồi bổ sung minh chứng phù hợp.";
+  }
+  if (question.includes("còn thiếu gì") || question.includes("làm gì trước khi nộp")) {
+    const actions = context.nextActions?.slice(0, 3).join("; ");
+    return actions
+      ? `Hệ thống ghi nhận các việc nên ưu tiên: ${actions}. Bạn có thể xử lý từng mục trong Hồ sơ & minh chứng trước khi nộp.`
+      : "Bạn có thể cần kiểm tra 5 tiêu chí, bổ sung minh chứng còn thiếu và chạy tiền kiểm trước khi nộp. Cán bộ sẽ xác nhận cuối cùng.";
+  }
+  if (question.includes("Khi nào em có thể nộp")) {
+    return "Bạn có thể nộp khi hồ sơ ở trạng thái sẵn sàng, các tiêu chí chính đã có minh chứng phù hợp và tiền kiểm không còn cảnh báo quan trọng.";
+  }
+  if (question.includes("Minh chứng nào hợp lệ") || question.includes("bổ sung loại minh chứng")) {
+    return `Minh chứng nên thể hiện rõ tên hoạt động hoặc kết quả, thời gian trong năm xét, đơn vị xác nhận và liên quan trực tiếp đến ${context.criterionLabel || "tiêu chí đang chọn"}.`;
+  }
+  if (question.includes("Tiêu chí này còn thiếu gì")) {
+    return "Bạn có thể cần xem trạng thái tiêu chí, số minh chứng đã có và cảnh báo tiền kiểm. Mình có thể giúp bạn tìm đúng nơi để bổ sung.";
+  }
+  if (question.includes("Hạn bổ sung")) {
+    return "Hạn bổ sung sẽ hiển thị trực tiếp trên phản hồi nếu cán bộ đặt thời hạn. Bạn nên ưu tiên xử lý phản hồi có hạn gần nhất.";
+  }
+  return "Mình đã ghi nhận câu hỏi. Bạn có thể mở Hồ sơ & minh chứng để xử lý minh chứng, hoặc mở Phản hồi để xem yêu cầu từ cán bộ.";
+}
+
+function Avatar({ icon }: { icon: ReactNode }) {
+  return (
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0057C2] text-white">
+      {icon}
+    </div>
+  );
 }

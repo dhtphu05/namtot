@@ -1,9 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { EvidenceWorkspaceSafe } from "@/features/evidence/components/EvidenceWorkspace";
-import { StudentRoleSurface } from "@/features/core/components/StudentRoleSurface";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/app/evidence")({
-  component: () => (
-    <StudentRoleSurface student={<EvidenceWorkspaceSafe />} fallback={<EvidenceWorkspaceSafe />} />
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: "/app/application" });
+  },
 });

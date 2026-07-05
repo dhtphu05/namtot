@@ -32,9 +32,18 @@ import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDeta
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import { StudentEvidenceCard } from "@/features/evidence/components/StudentEvidenceCard";
 import { AddEvidenceDrawer } from "@/features/evidence/components/AddEvidenceDrawer";
-import { useCreateEvidence, useDeleteEvidence, useEvidences, useUploadAndIndex } from "@/features/evidence/hooks/useEvidence";
+import {
+  useCreateEvidence,
+  useDeleteEvidence,
+  useEvidences,
+  useUploadAndIndex,
+} from "@/features/evidence/hooks/useEvidence";
 import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
-import { finalStatusTone, getFinalStatusLabel, getStudentApplicationStatusLabel } from "@/lib/status-labels";
+import {
+  finalStatusTone,
+  getFinalStatusLabel,
+  getStudentApplicationStatusLabel,
+} from "@/lib/status-labels";
 import {
   coreCriteria,
   criteriaLevelSummaries,
@@ -55,6 +64,7 @@ import type {
   Level,
   MetricType,
   PrecheckCriterionResult,
+  PrecheckMissingItem,
   PrecheckResult,
 } from "@/lib/api/types";
 
@@ -107,7 +117,11 @@ const levels = Object.values(criteriaLevelSummaries).map((level) => ({
   desc: level.description,
 }));
 const criteria = coreCriteria;
-export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTab?: WorkspaceTab }) {
+export function StudentApplicationWorkspace({
+  initialTab = "info",
+}: {
+  initialTab?: WorkspaceTab;
+}) {
   const user = useAuth((s) => s.user);
   const setUser = useAuth((s) => s.setUser);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -134,15 +148,17 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const [optimisticEvidences, setOptimisticEvidences] = useState<EvidenceResponse[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<Level>("school");
   const [evidenceSort, setEvidenceSort] = useState<EvidenceSort>("newest");
-  const [criterionDrafts, setCriterionDrafts] = useState<Record<Criterion, Record<string, string>>>({
-    ethics: {},
-    academic: {},
-    physical: {},
-    volunteer: {},
-    integration: {},
-    priority: {},
-    collective: {},
-  });
+  const [criterionDrafts, setCriterionDrafts] = useState<Record<Criterion, Record<string, string>>>(
+    {
+      ethics: {},
+      academic: {},
+      physical: {},
+      volunteer: {},
+      integration: {},
+      priority: {},
+      collective: {},
+    },
+  );
   const lastAutoCheckKeyRef = useRef<string>("");
 
   const current = useCurrentApplication(SCHOOL_YEAR);
@@ -161,7 +177,10 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const evidencesQuery = useEvidences(appId, { limit: 100 });
   const latestPrecheck = useLatestPrecheck(appId);
 
-  const serverEvidences = useMemo(() => normalizeEvidences(evidencesQuery.data), [evidencesQuery.data]);
+  const serverEvidences = useMemo(
+    () => normalizeEvidences(evidencesQuery.data),
+    [evidencesQuery.data],
+  );
   const evidences = useMemo(
     () => mergeOptimisticEvidences(serverEvidences, optimisticEvidences, appId),
     [appId, optimisticEvidences, serverEvidences],
@@ -169,20 +188,36 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
   const precheck = (latestPrecheck.data ?? null) as PrecheckResult | null;
   const metrics = useMemo(() => application?.metrics ?? [], [application?.metrics]);
   const isReadOnlyMode = Boolean(
-    application && ["submitted", "under_review", "resolution_needed", "completed", "rejected"].includes(application.status),
+    application &&
+    ["submitted", "under_review", "resolution_needed", "completed", "rejected"].includes(
+      application.status,
+    ),
   );
   const canEditApplication = application
-    ? !isReadOnlyMode && ["draft", "prechecked", "ready_to_submit", "supplement_required", "draft_supplement"].includes(application.status)
+    ? !isReadOnlyMode &&
+      [
+        "draft",
+        "prechecked",
+        "ready_to_submit",
+        "supplement_required",
+        "draft_supplement",
+      ].includes(application.status)
     : false;
   const canSubmitApplication = application
-    ? !["submitted", "under_review", "completed", "rejected", "resolution_needed"].includes(application.status)
+    ? !["submitted", "under_review", "completed", "rejected", "resolution_needed"].includes(
+        application.status,
+      )
     : false;
-  const isSupplementMode = application?.status === "supplement_required" || String(application?.status) === "draft_supplement";
+  const isSupplementMode =
+    application?.status === "supplement_required" ||
+    String(application?.status) === "draft_supplement";
   const hasSubmittedApplication = Boolean(
     application &&
-      (application.submittedAt ||
-        isSupplementMode ||
-        ["submitted", "under_review", "resolution_needed", "completed", "rejected"].includes(application.status)),
+    (application.submittedAt ||
+      isSupplementMode ||
+      ["submitted", "under_review", "resolution_needed", "completed", "rejected"].includes(
+        application.status,
+      )),
   );
   const avatarSrc = useResolvedAvatarUrl(user?.avatarUrl);
   const nextBestAction = getUserFacingText(
@@ -218,8 +253,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     const key = [
       application.id,
       application.targetLevel,
-      metrics.map((item) => `${item.metricType}:${item.value}`).sort().join("|"),
-      evidences.map((item) => `${item.id}:${item.updatedAt ?? item.createdAt}`).sort().join("|"),
+      metrics
+        .map((item) => `${item.metricType}:${item.value}`)
+        .sort()
+        .join("|"),
+      evidences
+        .map((item) => `${item.id}:${item.updatedAt ?? item.createdAt}`)
+        .sort()
+        .join("|"),
     ].join("::");
     if (lastAutoCheckKeyRef.current === key) return;
 
@@ -229,7 +270,14 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [application?.id, application?.targetLevel, canEditApplication, evidences, metrics, runPrecheck]);
+  }, [
+    application?.id,
+    application?.targetLevel,
+    canEditApplication,
+    evidences,
+    metrics,
+    runPrecheck,
+  ]);
 
   const supplementRequests = useMemo(
     () =>
@@ -336,9 +384,15 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
           <Button
             className="mt-6"
             disabled={startApplication.isPending}
-            onClick={() => startApplication.mutate({ schoolYear: SCHOOL_YEAR, targetLevel: "school" })}
+            onClick={() =>
+              startApplication.mutate({ schoolYear: SCHOOL_YEAR, targetLevel: "school" })
+            }
           >
-            {startApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {startApplication.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
             Bắt đầu tạo hồ sơ
           </Button>
         </Card>
@@ -348,16 +402,24 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
 
   const readinessScore = precheck?.readinessScore ?? application.readinessScore ?? 0;
   const supplementCriteria = new Set(supplementRequests.map((item) => item.criterion));
-  const criteriaWithEvidence = criteria.filter((criterion) => (evidenceByCriterion[criterion.key]?.length ?? 0) > 0).length;
-  const missingCriteriaCount = Math.max(0, 5 - criteriaWithEvidence);
-  const metricsRequired = application.summary?.metricsCompletion?.required ?? 5;
-  const metricsCompleted = application.summary?.metricsCompletion?.completed ?? metrics.length;
-  const missingWorkCount = getWorkspaceMissingWorkCount({
-    missingCriteriaCount,
-    missingItemsCount: precheck?.missingItems?.length ?? 0,
-    metricsCompleted,
-    metricsRequired,
+  const criteriaWithEvidence = criteria.filter(
+    (criterion) => (evidenceByCriterion[criterion.key]?.length ?? 0) > 0,
+  ).length;
+  const actionablePrecheckMissingItems = getActionablePrecheckMissingItems(
+    precheck?.missingItems ?? [],
+    evidenceByCriterion,
+    metrics,
+    application.status,
+  );
+  const checklistItems = buildGuidedChecklist({
+    criteria,
+    evidenceByCriterion,
+    metrics,
+    precheckMissingItems: actionablePrecheckMissingItems,
+    supplementRequests,
   });
+  const missingCriteriaCount = Math.max(0, 5 - criteriaWithEvidence);
+  const missingWorkCount = checklistItems.length;
   const primaryAction = getPrimaryWorkspaceAction({
     status: application.status,
     criteriaWithEvidence,
@@ -365,7 +427,12 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     isSupplementMode,
     readinessScore,
   });
-  const workspaceHeadline = getWorkspaceHeadline(application.status, missingCriteriaCount, missingWorkCount, Boolean(precheck));
+  const workspaceHeadline = getWorkspaceHeadline(
+    application.status,
+    missingCriteriaCount,
+    missingWorkCount,
+    Boolean(precheck),
+  );
   const canShowSubmitCta = primaryAction.action === "submit" || isSupplementMode;
 
   const isCriterionLockedForSupplement = (criterion: Criterion) =>
@@ -379,12 +446,17 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
       if (focusAddEvidence) {
         document.querySelector<HTMLButtonElement>(`[data-add-evidence="${criterion}"]`)?.focus();
       } else {
-        criterionRefs.current[criterion]?.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-          "input:not([type='hidden']), select, textarea",
-        )?.focus();
+        criterionRefs.current[criterion]
+          ?.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+            "input:not([type='hidden']), select, textarea",
+          )
+          ?.focus();
       }
     }, 120);
-    window.setTimeout(() => setHighlightedCriterion((current) => (current === criterion ? null : current)), 2800);
+    window.setTimeout(
+      () => setHighlightedCriterion((current) => (current === criterion ? null : current)),
+      2800,
+    );
   };
 
   const openEvidenceForm = (criterion: Criterion, evidenceName: string) => {
@@ -408,14 +480,6 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
     scrollToCriterion(target, true);
   };
 
-  const checklistItems = buildGuidedChecklist({
-    criteria,
-    evidenceByCriterion,
-    metrics,
-    precheck,
-    supplementRequests,
-  });
-
   const runChecklistAction = (item: GuidedChecklistItem) => {
     if (item.action === "add_evidence") {
       openEvidenceForm(item.criterion, getDefaultEvidenceName(item.criterion));
@@ -432,7 +496,9 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
       runChecklistAction(firstItem);
       return;
     }
-    const firstMissingCriterion = criteria.find((criterion) => (evidenceByCriterion[criterion.key]?.length ?? 0) === 0);
+    const firstMissingCriterion = criteria.find(
+      (criterion) => (evidenceByCriterion[criterion.key]?.length ?? 0) === 0,
+    );
     if (firstMissingCriterion) {
       scrollToCriterion(firstMissingCriterion.key, true);
       return;
@@ -573,7 +639,11 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
             <div className="flex min-w-0 gap-4">
               <div className="h-16 w-16 flex-none overflow-hidden rounded-xl border border-[#DDE8F5] bg-[#EAF3FF]">
                 {avatarSrc ? (
-                  <img src={avatarSrc} alt={user?.fullName ?? "Ảnh hồ sơ"} className="h-full w-full object-cover" />
+                  <img
+                    src={avatarSrc}
+                    alt={user?.fullName ?? "Ảnh hồ sơ"}
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#0057C2]">
                     {getInitials(user?.fullName)}
@@ -616,20 +686,31 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                     Cập nhật: {formatDate(application.lastUpdatedAt ?? application.updatedAt)}
                   </span>
                   {canEditApplication ? (
-                  <>
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    onChange={(event) => void handleAvatarSelected(event.target.files?.[0])}
-                  />
-                  <Button size="sm" variant="outline" disabled={avatarUploading} onClick={() => avatarInputRef.current?.click()}>
-                    {avatarUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    Cập nhật ảnh
-                  </Button>
-                  <span className="text-xs text-muted-foreground">JPG, PNG, WEBP tối đa 5MB.</span>
-                  </>
+                    <>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(event) => void handleAvatarSelected(event.target.files?.[0])}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={avatarUploading}
+                        onClick={() => avatarInputRef.current?.click()}
+                      >
+                        {avatarUploading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4" />
+                        )}
+                        Cập nhật ảnh
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        JPG, PNG, WEBP tối đa 5MB.
+                      </span>
+                    </>
                   ) : null}
                 </div>
               </div>
@@ -648,818 +729,1092 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
         </Card>
 
         <div className="hidden">
-        <Card className="mb-4 bg-[#F8FBFE]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                Bước tiếp theo
-              </div>
-              <h3 className="mt-1 text-xl font-bold text-brand-deep">{primaryAction.label}</h3>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{primaryAction.description}</p>
-              <div className="mt-3 max-w-md">
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{criteriaWithEvidence}/5 tiêu chí có minh chứng</span>
-                  <b className="text-brand-deep">
-                    {missingWorkCount > 0 ? `Còn ${missingWorkCount} việc` : "Đủ dữ liệu để nộp"}
-                  </b>
+          <Card className="mb-4 bg-[#F8FBFE]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Bước tiếp theo
                 </div>
-                <Progress value={(criteriaWithEvidence / 5) * 100} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
-              <Button onClick={handlePrimaryWorkspaceAction} disabled={runPrecheck.isPending || submitApplication.isPending}>
-                {runPrecheck.isPending || submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : primaryAction.icon}
-                {primaryAction.cta}
-              </Button>
-              <Button variant="secondary" onClick={() => setTab("criteria")}>
-                Xem điều kiện 5 tiêu chí
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        {isSupplementMode && (
-          <Card className="mb-4 border-amber-200 bg-amber-50">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <Chip tone="warning">
-                  <CircleAlert className="h-3 w-3" /> Cần bổ sung
-                </Chip>
-                <h3 className="mt-3 text-lg font-bold text-amber-950">
-                  Cán bộ đã gửi yêu cầu bổ sung, vui lòng bổ sung rồi gửi lại hồ sơ.
-                </h3>
-                <p className="mt-1 text-sm text-amber-900">
-                  Sau khi gửi lại, cán bộ sẽ tiếp tục kiểm tra các tiêu chí được yêu cầu bổ sung.
+                <h3 className="mt-1 text-xl font-bold text-brand-deep">{primaryAction.label}</h3>
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                  {primaryAction.description}
                 </p>
+                <div className="mt-3 max-w-md">
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      {criteriaWithEvidence}/5 tiêu chí có minh chứng
+                    </span>
+                    <b className="text-brand-deep">
+                      {missingWorkCount > 0 ? `Còn ${missingWorkCount} việc` : "Đủ dữ liệu để nộp"}
+                    </b>
+                  </div>
+                  <Progress value={(criteriaWithEvidence / 5) * 100} />
+                </div>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
-                <Button variant="secondary" onClick={goToSupplementCriterion}>
-                  <Upload className="h-4 w-4" /> Đi tới tiêu chí cần bổ sung
+                <Button
+                  onClick={handlePrimaryWorkspaceAction}
+                  disabled={runPrecheck.isPending || submitApplication.isPending}
+                >
+                  {runPrecheck.isPending || submitApplication.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    primaryAction.icon
+                  )}
+                  {primaryAction.cta}
                 </Button>
-                <Button disabled={!canSubmitApplication || submitApplication.isPending} onClick={submitNow}>
-                  {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  Gửi lại hồ sơ
+                <Button variant="secondary" onClick={() => setTab("criteria")}>
+                  Xem điều kiện 5 tiêu chí
                 </Button>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {supplementRequests.length ? (
-                supplementRequests.map((item) => (
-                  <div key={item.id} className="rounded-lg border border-amber-200 bg-white px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-bold text-brand-deep">{item.label}</div>
-                      {item.deadline ? (
-                        <Chip tone="warning">Hạn: {formatDate(item.deadline)}</Chip>
-                      ) : null}
-                    </div>
-                    <p className="mt-2 text-sm text-slate-700">{item.reason}</p>
-                    {item.requestedFields.length ? (
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        Mục cần bổ sung: {item.requestedFields.join(", ")}
-                      </div>
-                    ) : null}
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-lg border border-amber-200 bg-white px-4 py-3 text-sm text-amber-900">
-                  Bạn có thể bổ sung minh chứng liên quan rồi gửi lại hồ sơ.
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
-
-        <div className="mb-4">
-          <StudentFlowStepper
-            state={{
-              applicationExists: true,
-              applicationStatus: application.status,
-              evidenceCount: evidences.length,
-              criteriaTouched: metrics.length > 0,
-              latestPrecheck: precheck,
-              missingWorkCount: checklistItems.length,
-            }}
-            busy={startApplication.isPending || runPrecheck.isPending || submitApplication.isPending}
-            onUpload={() => setTab("criteria")}
-            onPrecheck={precheckNow}
-            onSubmit={submitNow}
-            onTrack={() => setTab("tracking")}
-          />
-        </div>
-
-        {isReadOnlyMode && (
-          <Card className="mb-4 border-[#DCE7F2] bg-[#F8FBFE]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <Chip tone={application.status === "completed" ? "success" : "brand"}>
-                  {getStudentApplicationStatusLabel(application.status)}
-                </Chip>
-                <h3 className="mt-3 text-lg font-bold text-brand-deep">Hồ sơ đã được gửi, bạn đang ở chế độ chỉ xem.</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Bạn có thể theo dõi quá trình xét duyệt, xem lại hồ sơ đã nộp hoặc kiểm tra thông báo mới.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setTab("tracking")}>Theo dõi xét duyệt</Button>
-                <Button variant="secondary" onClick={() => setTab("criteria")}>Xem hồ sơ đã nộp</Button>
-                <Link to="/app/notifications">
-                  <Button variant="outline">Xem thông báo</Button>
-                </Link>
               </div>
             </div>
           </Card>
-        )}
 
-        <div className="mb-5 flex min-w-0 flex-wrap gap-2 rounded-lg border border-[#E3ECF6] bg-white p-1">
-          {(Object.keys(tabLabels) as WorkspaceTab[]).map((key) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`min-w-[min(100%,7rem)] rounded-md px-3 py-2 text-[13px] font-semibold transition-colors ${
-                tab === key ? "bg-[#0057C2] text-white" : "text-slate-600 hover:bg-[#F1F7FD] hover:text-brand-deep"
-              }`}
-            >
-              {tabLabels[key]}
-            </button>
-          ))}
-        </div>
-
-        {tab === "info" && (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <Card className="bg-white/90">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+          {isSupplementMode && (
+            <Card className="mb-4 border-amber-200 bg-amber-50">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h3 className="flex items-center gap-2 font-bold text-brand-deep">
-                    <Target className="h-4 w-4" /> Hoàn thiện 5 tiêu chí
+                  <Chip tone="warning">
+                    <CircleAlert className="h-3 w-3" /> Cần bổ sung
+                  </Chip>
+                  <h3 className="mt-3 text-lg font-bold text-amber-950">
+                    Cán bộ đã gửi yêu cầu bổ sung, vui lòng bổ sung rồi gửi lại hồ sơ.
                   </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Đang xem điều kiện {levelLabel[selectedLevel]}. Chọn từng tiêu chí để nhập dữ liệu và tải minh chứng.
+                  <p className="mt-1 text-sm text-amber-900">
+                    Sau khi gửi lại, cán bộ sẽ tiếp tục kiểm tra các tiêu chí được yêu cầu bổ sung.
                   </p>
                 </div>
-                <Chip tone={selectedLevelSuitability.status === "met" ? "success" : selectedLevelSuitability.status === "not_suitable" ? "error" : "warning"}>
-                  {selectedLevelSuitability.statusLabel}
-                </Chip>
+                <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
+                  <Button variant="secondary" onClick={goToSupplementCriterion}>
+                    <Upload className="h-4 w-4" /> Đi tới tiêu chí cần bổ sung
+                  </Button>
+                  <Button
+                    disabled={!canSubmitApplication || submitApplication.isPending}
+                    onClick={submitNow}
+                  >
+                    {submitApplication.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    Gửi lại hồ sơ
+                  </Button>
+                </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {criteriaLevelSummaries[selectedLevel].overallRequirements.map((item) => (
-                  <span key={item} className="rounded-full bg-[#F1F7FD] px-3 py-1 text-xs font-semibold text-brand-deep">
-                    {item}
-                  </span>
-                ))}
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {getLevelCriteria(selectedLevel).map((item, index) => {
-                  const criterion = criteria.find((entry) => entry.key === item.criterion);
-                  const assessment = selectedLevelSuitability.criteria.find((entry) => entry.criterion === item.criterion);
-                  const evidenceCount = evidenceByCriterion[item.criterion]?.length ?? 0;
-                  return (
-                    <button
-                      key={item.criterion}
-                      className="group w-full rounded-xl border border-[#E3ECF6] bg-[#F8FBFE] px-4 py-3 text-left transition-colors hover:border-[#B8CEE8] hover:bg-white"
-                      onClick={() => {
-                        setActiveCriterion(item.criterion);
-                        setTab("criteria");
-                      }}
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {supplementRequests.length ? (
+                  supplementRequests.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-amber-200 bg-white px-4 py-3"
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-[#0057C2]">
-                              {index + 1}
-                            </span>
-                            <div className="font-bold text-brand-deep">{criterion?.label}</div>
-                          </div>
-                          <p className="mt-2 text-sm text-muted-foreground">{criterion?.description}</p>
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {item.hardRequirements.slice(0, 3).map((requirement) => (
-                              <span key={requirement} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
-                                {requirement}
-                              </span>
-                            ))}
-                          </div>
-                          {item.suggestedEvidenceTypes.length ? (
-                            <div className="mt-2 text-xs text-muted-foreground">
-                              Minh chứng nên có: {item.suggestedEvidenceTypes.slice(0, 3).join(", ")}
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-2">
-                          {assessment ? (
-                            <Chip tone={assessment.status === "met" ? "success" : assessment.status === "not_suitable" ? "error" : "warning"}>
-                              {assessment.statusLabel}
-                            </Chip>
-                          ) : null}
-                          <span className="text-xs font-semibold text-muted-foreground">{evidenceCount} minh chứng</span>
-                        </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="font-bold text-brand-deep">{item.label}</div>
+                        {item.deadline ? (
+                          <Chip tone="warning">Hạn: {formatDate(item.deadline)}</Chip>
+                        ) : null}
                       </div>
-                    </button>
-                  );
-                })}
+                      <p className="mt-2 text-sm text-slate-700">{item.reason}</p>
+                      {item.requestedFields.length ? (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Mục cần bổ sung: {item.requestedFields.join(", ")}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-amber-200 bg-white px-4 py-3 text-sm text-amber-900">
+                    Bạn có thể bổ sung minh chứng liên quan rồi gửi lại hồ sơ.
+                  </div>
+                )}
               </div>
             </Card>
+          )}
 
-            <aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">
+          <div className="mb-4">
+            <StudentFlowStepper
+              state={{
+                applicationExists: true,
+                applicationStatus: application.status,
+                evidenceCount: evidences.length,
+                criteriaTouched: metrics.length > 0,
+                latestPrecheck: precheck,
+                missingWorkCount: checklistItems.length,
+              }}
+              busy={
+                startApplication.isPending || runPrecheck.isPending || submitApplication.isPending
+              }
+              onUpload={() => setTab("criteria")}
+              onPrecheck={precheckNow}
+              onSubmit={submitNow}
+              onTrack={() => setTab("tracking")}
+            />
+          </div>
+
+          {isReadOnlyMode && (
+            <Card className="mb-4 border-[#DCE7F2] bg-[#F8FBFE]">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <Chip tone={application.status === "completed" ? "success" : "brand"}>
+                    {getStudentApplicationStatusLabel(application.status)}
+                  </Chip>
+                  <h3 className="mt-3 text-lg font-bold text-brand-deep">
+                    Hồ sơ đã được gửi, bạn đang ở chế độ chỉ xem.
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Bạn có thể theo dõi quá trình xét duyệt, xem lại hồ sơ đã nộp hoặc kiểm tra
+                    thông báo mới.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => setTab("tracking")}>Theo dõi xét duyệt</Button>
+                  <Button variant="secondary" onClick={() => setTab("criteria")}>
+                    Xem hồ sơ đã nộp
+                  </Button>
+                  <Link to="/app/notifications">
+                    <Button variant="outline">Xem thông báo</Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          <div className="mb-5 flex min-w-0 flex-wrap gap-2 rounded-lg border border-[#E3ECF6] bg-white p-1">
+            {(Object.keys(tabLabels) as WorkspaceTab[]).map((key) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`min-w-[min(100%,7rem)] rounded-md px-3 py-2 text-[13px] font-semibold transition-colors ${
+                  tab === key
+                    ? "bg-[#0057C2] text-white"
+                    : "text-slate-600 hover:bg-[#F1F7FD] hover:text-brand-deep"
+                }`}
+              >
+                {tabLabels[key]}
+              </button>
+            ))}
+          </div>
+
+          {tab === "info" && (
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
               <Card className="bg-white/90">
-                <h3 className="flex items-center gap-2 font-bold text-brand-deep">
-                  <Target className="h-4 w-4" /> Khả năng đạt cấp xét
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Xem hồ sơ hiện tại đang phù hợp với cấp nào, sau đó xác nhận nếu muốn đổi cấp đăng ký.
-                </p>
-                <div className="mt-3 space-y-2">
-                  {levels.map((level) => {
-                    const active = level.key === application.targetLevel;
-                    const selected = level.key === selectedLevel;
-                    const assessment = evaluateLevelAgainstMatrix(level.key, { metrics, evidences });
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="flex items-center gap-2 font-bold text-brand-deep">
+                      <Target className="h-4 w-4" /> Hoàn thiện 5 tiêu chí
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Đang xem điều kiện {levelLabel[selectedLevel]}. Chọn từng tiêu chí để nhập dữ
+                      liệu và tải minh chứng.
+                    </p>
+                  </div>
+                  <Chip
+                    tone={
+                      selectedLevelSuitability.status === "met"
+                        ? "success"
+                        : selectedLevelSuitability.status === "not_suitable"
+                          ? "error"
+                          : "warning"
+                    }
+                  >
+                    {selectedLevelSuitability.statusLabel}
+                  </Chip>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {criteriaLevelSummaries[selectedLevel].overallRequirements.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full bg-[#F1F7FD] px-3 py-1 text-xs font-semibold text-brand-deep"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {getLevelCriteria(selectedLevel).map((item, index) => {
+                    const criterion = criteria.find((entry) => entry.key === item.criterion);
+                    const assessment = selectedLevelSuitability.criteria.find(
+                      (entry) => entry.criterion === item.criterion,
+                    );
+                    const evidenceCount = evidenceByCriterion[item.criterion]?.length ?? 0;
                     return (
                       <button
-                        key={level.key}
-                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                          selected ? "border-[#0057C2] bg-[#F1F7FD]" : "border-[#E3ECF6] bg-white hover:bg-[#F6F9FC]"
-                        }`}
-                        onClick={() => setSelectedLevel(level.key)}
+                        key={item.criterion}
+                        className="group w-full rounded-xl border border-[#E3ECF6] bg-[#F8FBFE] px-4 py-3 text-left transition-colors hover:border-[#B8CEE8] hover:bg-white"
+                        onClick={() => {
+                          setActiveCriterion(item.criterion);
+                          setTab("criteria");
+                        }}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="font-bold text-brand-deep">{level.label}</div>
-                          <Chip tone={assessment.status === "met" ? "success" : assessment.status === "not_suitable" ? "error" : "warning"}>
-                            {assessment.statusLabel}
-                          </Chip>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-[#0057C2]">
+                                {index + 1}
+                              </span>
+                              <div className="font-bold text-brand-deep">{criterion?.label}</div>
+                            </div>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              {criterion?.description}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {item.hardRequirements.slice(0, 3).map((requirement) => (
+                                <span
+                                  key={requirement}
+                                  className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700"
+                                >
+                                  {requirement}
+                                </span>
+                              ))}
+                            </div>
+                            {item.suggestedEvidenceTypes.length ? (
+                              <div className="mt-2 text-xs text-muted-foreground">
+                                Minh chứng nên có:{" "}
+                                {item.suggestedEvidenceTypes.slice(0, 3).join(", ")}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            {assessment ? (
+                              <Chip
+                                tone={
+                                  assessment.status === "met"
+                                    ? "success"
+                                    : assessment.status === "not_suitable"
+                                      ? "error"
+                                      : "warning"
+                                }
+                              >
+                                {assessment.statusLabel}
+                              </Chip>
+                            ) : null}
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              {evidenceCount} minh chứng
+                            </span>
+                          </div>
                         </div>
-                        <div className="mt-1 text-xs text-muted-foreground">{level.desc}</div>
-                        {active ? <div className="mt-1 text-xs font-bold text-[#0057C2]">Đang chọn trong hồ sơ</div> : null}
                       </button>
                     );
                   })}
                 </div>
-                {canEditApplication ? (
-                  <Button
-                    className="mt-3 w-full"
-                    disabled={selectedLevel === application.targetLevel || updateTargetLevel.isPending}
-                    onClick={() => updateTargetLevel.mutate({ id: application.id, targetLevel: selectedLevel })}
-                  >
-                    {updateTargetLevel.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
-                    Chọn cấp này
-                  </Button>
-                ) : null}
               </Card>
 
-              <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-                <div className="font-semibold">So với hồ sơ hiện tại</div>
-                <div className="mt-1">{getMissingSummaryForLevel(selectedLevel, selectedLevelSuitability)}</div>
-              </div>
+              <aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">
+                <Card className="bg-white/90">
+                  <h3 className="flex items-center gap-2 font-bold text-brand-deep">
+                    <Target className="h-4 w-4" /> Khả năng đạt cấp xét
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Xem hồ sơ hiện tại đang phù hợp với cấp nào, sau đó xác nhận nếu muốn đổi cấp
+                    đăng ký.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {levels.map((level) => {
+                      const active = level.key === application.targetLevel;
+                      const selected = level.key === selectedLevel;
+                      const assessment = evaluateLevelAgainstMatrix(level.key, {
+                        metrics,
+                        evidences,
+                      });
+                      return (
+                        <button
+                          key={level.key}
+                          className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                            selected
+                              ? "border-[#0057C2] bg-[#F1F7FD]"
+                              : "border-[#E3ECF6] bg-white hover:bg-[#F6F9FC]"
+                          }`}
+                          onClick={() => setSelectedLevel(level.key)}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-bold text-brand-deep">{level.label}</div>
+                            <Chip
+                              tone={
+                                assessment.status === "met"
+                                  ? "success"
+                                  : assessment.status === "not_suitable"
+                                    ? "error"
+                                    : "warning"
+                              }
+                            >
+                              {assessment.statusLabel}
+                            </Chip>
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">{level.desc}</div>
+                          {active ? (
+                            <div className="mt-1 text-xs font-bold text-[#0057C2]">
+                              Đang chọn trong hồ sơ
+                            </div>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {canEditApplication ? (
+                    <Button
+                      className="mt-3 w-full"
+                      disabled={
+                        selectedLevel === application.targetLevel || updateTargetLevel.isPending
+                      }
+                      onClick={() =>
+                        updateTargetLevel.mutate({ id: application.id, targetLevel: selectedLevel })
+                      }
+                    >
+                      {updateTargetLevel.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Target className="h-4 w-4" />
+                      )}
+                      Chọn cấp này
+                    </Button>
+                  ) : null}
+                </Card>
 
-              <div className="rounded-xl border border-[#E3ECF6] bg-white/80 px-4 py-3 text-sm">
-                <div className="font-semibold text-brand-deep">{priorityAchievementGroup.label}</div>
-                <div className="mt-1 text-muted-foreground">
-                  Ghi nhận thêm nếu có: {priorityAchievementGroup.examples.join(", ")}.
+                <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+                  <div className="font-semibold">So với hồ sơ hiện tại</div>
+                  <div className="mt-1">
+                    {getMissingSummaryForLevel(selectedLevel, selectedLevelSuitability)}
+                  </div>
                 </div>
-              </div>
-            </aside>
-          </div>
-        )}
 
-        {tab === "criteria" && (
-          <div className="space-y-3">
-            <div className="flex min-w-0 flex-wrap gap-2 rounded-xl border border-[#E3ECF6] bg-white p-1">
-              {criteria.map((criterion) => (
-                <button
-                  key={criterion.key}
-                  onClick={() => setActiveCriterion(criterion.key)}
-                  className={`min-w-[min(100%,7rem)] rounded-lg px-3 py-2 text-sm font-bold transition-colors ${
-                    activeCriterion === criterion.key ? "bg-[#0057C2] text-white" : "text-slate-600 hover:bg-[#F1F7FD]"
-                  }`}
-                >
-                  {criterion.label}
-                </button>
-              ))}
+                <div className="rounded-xl border border-[#E3ECF6] bg-white/80 px-4 py-3 text-sm">
+                  <div className="font-semibold text-brand-deep">
+                    {priorityAchievementGroup.label}
+                  </div>
+                  <div className="mt-1 text-muted-foreground">
+                    Ghi nhận thêm nếu có: {priorityAchievementGroup.examples.join(", ")}.
+                  </div>
+                </div>
+              </aside>
             </div>
+          )}
 
-            {(() => {
-              const criterion = criteria.find((item) => item.key === activeCriterion) ?? criteria[0];
-              const items = evidenceByCriterion[criterion.key] ?? [];
-              const sortedItems = sortEvidences(items, evidenceSort);
-              const result = precheck?.criteriaResults?.find((item) => item.criterion === criterion.key);
-              const score = typeof result?.score === "number" ? result.score : 0;
-              const supplementRequest = supplementRequests.find((item) => item.criterion === criterion.key);
-              const isLockedForSupplement = isCriterionLockedForSupplement(criterion.key);
-              const activeIndex = criteria.findIndex((item) => item.key === criterion.key);
-              const isLastCriterion = activeIndex >= criteria.length - 1;
-              const nextCriterion = criteria[Math.min(activeIndex + 1, criteria.length - 1)];
-              const matrixItem = getCriterionMatrixItem(application.targetLevel, criterion.key);
-              const criterionAssessment = targetLevelSuitability.criteria.find((item) => item.criterion === criterion.key);
-
-              return (
-                <div
-                  ref={(node) => {
-                    criterionRefs.current[criterion.key] = node;
-                  }}
-                  className="scroll-mt-24"
-                >
-                  <Card
-                    className={`transition-colors ${
-                      highlightedCriterion === criterion.key
-                        ? "border-amber-300 bg-amber-50/70 ring-2 ring-amber-200"
-                        : isLockedForSupplement
-                          ? "bg-slate-50 opacity-75"
-                          : ""
+          {tab === "criteria" && (
+            <div className="space-y-3">
+              <div className="flex min-w-0 flex-wrap gap-2 rounded-xl border border-[#E3ECF6] bg-white p-1">
+                {criteria.map((criterion) => (
+                  <button
+                    key={criterion.key}
+                    onClick={() => setActiveCriterion(criterion.key)}
+                    className={`min-w-[min(100%,7rem)] rounded-lg px-3 py-2 text-sm font-bold transition-colors ${
+                      activeCriterion === criterion.key
+                        ? "bg-[#0057C2] text-white"
+                        : "text-slate-600 hover:bg-[#F1F7FD]"
                     }`}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="h-8 w-8 rounded-lg" style={{ background: criterion.color }} />
-                          <h3 className="text-xl font-bold text-brand-deep">{criterion.label}</h3>
-                          {supplementRequest ? <Chip tone="warning">Cần bổ sung</Chip> : null}
-                          <Chip tone={items.length > 0 ? "success" : "warning"}>
-                            {items.length > 0 ? `${items.length} minh chứng` : "Chưa có minh chứng cho tiêu chí này"}
-                          </Chip>
-                        </div>
-                        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{criterion.description}</p>
-                      </div>
-                      {canEditApplication && !isLockedForSupplement ? (
-                        <Button
-                          data-add-evidence={criterion.key}
-                          variant="secondary"
-                          disabled={createEvidence.isPending || uploadAndIndex.isPending}
-                          onClick={() => openEvidenceForm(criterion.key, getDefaultEvidenceName(criterion.key))}
-                        >
-                          <Upload className="h-4 w-4" /> Thêm minh chứng
-                        </Button>
-                      ) : null}
-                    </div>
+                    {criterion.label}
+                  </button>
+                ))}
+              </div>
 
-                    <div className="mt-5 space-y-4">
-                      <div className="rounded-xl border border-[#E3ECF6] bg-[#F8FBFE] p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                              Điều kiện của {levelLabel[application.targetLevel]}
-                            </div>
-                            <div className="mt-1 text-sm text-muted-foreground">
-                              {matrixItem?.sourceLabel}
-                            </div>
-                          </div>
-                          {criterionAssessment ? (
-                            <Chip tone={criterionAssessment.status === "met" ? "success" : criterionAssessment.status === "not_suitable" ? "error" : "warning"}>
-                              {criterionAssessment.statusLabel}
+              {(() => {
+                const criterion =
+                  criteria.find((item) => item.key === activeCriterion) ?? criteria[0];
+                const items = evidenceByCriterion[criterion.key] ?? [];
+                const sortedItems = sortEvidences(items, evidenceSort);
+                const result = precheck?.criteriaResults?.find(
+                  (item) => item.criterion === criterion.key,
+                );
+                const score = typeof result?.score === "number" ? result.score : 0;
+                const supplementRequest = supplementRequests.find(
+                  (item) => item.criterion === criterion.key,
+                );
+                const isLockedForSupplement = isCriterionLockedForSupplement(criterion.key);
+                const activeIndex = criteria.findIndex((item) => item.key === criterion.key);
+                const isLastCriterion = activeIndex >= criteria.length - 1;
+                const nextCriterion = criteria[Math.min(activeIndex + 1, criteria.length - 1)];
+                const matrixItem = getCriterionMatrixItem(application.targetLevel, criterion.key);
+                const criterionAssessment = targetLevelSuitability.criteria.find(
+                  (item) => item.criterion === criterion.key,
+                );
+
+                return (
+                  <div
+                    ref={(node) => {
+                      criterionRefs.current[criterion.key] = node;
+                    }}
+                    className="scroll-mt-24"
+                  >
+                    <Card
+                      className={`transition-colors ${
+                        highlightedCriterion === criterion.key
+                          ? "border-amber-300 bg-amber-50/70 ring-2 ring-amber-200"
+                          : isLockedForSupplement
+                            ? "bg-slate-50 opacity-75"
+                            : ""
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className="h-8 w-8 rounded-lg"
+                              style={{ background: criterion.color }}
+                            />
+                            <h3 className="text-xl font-bold text-brand-deep">{criterion.label}</h3>
+                            {supplementRequest ? <Chip tone="warning">Cần bổ sung</Chip> : null}
+                            <Chip tone={items.length > 0 ? "success" : "warning"}>
+                              {items.length > 0
+                                ? `${items.length} minh chứng`
+                                : "Chưa có minh chứng cho tiêu chí này"}
                             </Chip>
-                          ) : null}
-                        </div>
-                        <ul className="mt-3 space-y-2 text-sm font-semibold text-brand-deep">
-                          {(matrixItem?.hardRequirements ?? []).map((requirement) => (
-                            <li key={requirement}>{requirement}</li>
-                          ))}
-                        </ul>
-                        {matrixItem?.additionalRequirements.length ? (
-                          <div className="mt-3 rounded-lg bg-white px-3 py-2 text-sm text-slate-700">
-                            {matrixItem.additionalRequirements.join(" ")}
                           </div>
-                        ) : null}
-                        {matrixItem?.suggestedEvidenceTypes.length ? (
-                          <div className="mt-3 text-xs text-muted-foreground">
-                            Minh chứng nên có: {matrixItem.suggestedEvidenceTypes.join(", ")}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {canEditApplication && !isLockedForSupplement ? (
-                        <StructuredCriterionInputs
-                          criterion={criterion.key}
-                          metrics={metrics}
-                          metricValues={metricValues}
-                          metricErrors={metricErrors}
-                          savingMetrics={savingMetrics}
-                          canEdit={canEditApplication && !isLockedForSupplement}
-                          drafts={criterionDrafts[criterion.key] ?? {}}
-                          onDraftChange={(field, value) =>
-                            setCriterionDrafts((current) => ({
-                              ...current,
-                              [criterion.key]: { ...(current[criterion.key] ?? {}), [field]: value },
-                            }))
-                          }
-                          onMetricChange={(metric, value) => {
-                            setMetricValues((prev) => ({ ...prev, [metric.key]: value }));
-                            const numericValue = Number(value);
-                            setMetricErrors((prev) => ({
-                              ...prev,
-                              [metric.key]:
-                                value && Number.isFinite(numericValue)
-                                  ? validateMetricValue(metric.key, numericValue, metric.scale) ?? undefined
-                                  : undefined,
-                            }));
-                          }}
-                          onSaveMetric={saveMetric}
-                        />
-                      ) : (
-                        <ReadOnlyCriterionData criterion={criterion.key} metrics={metrics} drafts={criterionDrafts[criterion.key] ?? {}} />
-                      )}
-                    </div>
-
-                    <div className="mt-5 rounded-xl border border-[#E3ECF6] bg-white p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <h4 className="font-bold text-brand-deep">Minh chứng liên quan</h4>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Tài liệu được xem ngay trong card, không cần mở chi tiết để kiểm tra nhanh.
+                          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+                            {criterion.description}
                           </p>
                         </div>
-                        <select
-                          value={evidenceSort}
-                          onChange={(event) => setEvidenceSort(event.target.value as EvidenceSort)}
-                          className="rounded-lg border border-[#DCE7F2] bg-white px-3 py-2 text-sm font-semibold text-brand-deep outline-none"
-                        >
-                          <option value="newest">M:i nhất</option>
-                          <option value="oldest">Cũ nhất</option>
-                          <option value="name">Theo tên A-Z</option>
-                          <option value="criterion">Theo tiêu chí</option>
-                          <option value="status">Theo trạng thái</option>
-                          <option value="review">Theo mức cần kiểm tra</option>
-                        </select>
-                      </div>
-
-                      <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        {sortedItems.length === 0 ? (
-                          <div className="rounded-lg border border-dashed border-[#B8CEE8] bg-[#F6F9FC] px-3 py-3 text-sm text-muted-foreground">
-                            Bạn chưa có minh chứng cho tiêu chí này.
-                            {canEditApplication && !isLockedForSupplement ? (
-                            <div className="mt-2">
-                              <Button
-                                data-add-evidence={criterion.key}
-                                size="sm"
-                                variant="secondary"
-                                disabled={!canEditApplication || isLockedForSupplement || createEvidence.isPending || uploadAndIndex.isPending}
-                                onClick={() => openEvidenceForm(criterion.key, getDefaultEvidenceName(criterion.key))}
-                              >
-                                <Upload className="h-4 w-4" /> Thêm minh chứng
-                              </Button>
-                            </div>
-                            ) : null}
-                          </div>
-                        ) : (
-                          sortedItems.map((item) => (
-                            <StudentEvidenceCard
-                              key={item.id}
-                              evidence={item}
-                              applicationId={application.id}
-                              canEdit={canEditApplication && !isLockedForSupplement}
-                              profile={{ fullName: user?.fullName, studentCode: user?.studentCode }}
-                              onViewDetails={setSelectedEvidence}
-                              onDelete={(target) => {
-                                if (isLockedForSupplement) {
-                                  toast.error("Tiêu chí này không được mở bổ sung trong đợt này.");
-                                  return;
-                                }
-                                setOptimisticEvidences((current) => current.filter((item) => item.id !== target.id));
-                                deleteEvidence.mutate({ id: target.id, applicationId: application.id });
-                              }}
-                            />
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-5 rounded-xl border border-[#E3ECF6] bg-[#F8FBFE] p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                            Kết quả kiểm tra hồ sơ
-                          </div>
-                          <div className="mt-1 text-lg font-bold text-brand-deep">
-                            {getCriterionCheckSummary(items.length, result)}
-                          </div>
-                        </div>
-                        <Chip tone={runPrecheck.isPending ? "brand" : result?.warnings?.length ? "warning" : "success"}>
-                          {runPrecheck.isPending ? "Đang kiểm tra" : result?.warnings?.length ? "Cần kiểm tra thêm" : "Đã kiểm tra"}
-                        </Chip>
-                      </div>
-                      <Progress value={score || readinessScore} tint={criterion.color} />
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        {runPrecheck.isPending ? "Đang cập nhật sau thay đổi mới nhất" : "Vừa kiểm tra " + formatRelativeCheckTime(precheck?.createdAt) + " trước"}
-                      </div>
-                      {supplementRequest ? (
-                        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                          <div className="font-semibold">Cần bổ sung</div>
-                          <div className="mt-1">{supplementRequest.reason}</div>
-                          {supplementRequest.deadline ? (
-                            <div className="mt-1 text-xs">Hạn bổ sung: {formatDate(supplementRequest.deadline)}</div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      <CriterionChecklist
-                        criterion={criterion.key}
-                        evidenceCount={items.length}
-                        result={result}
-                      />
-                    </div>
-
-                    {canEditApplication && !isLockedForSupplement ? (
-                    <div className="mt-5 flex flex-wrap justify-end gap-2">
-                      <Button variant="secondary" onClick={() => savePrimaryMetricForCriterion(criterion.key, saveMetric)}>
-                        Lưu
-                      </Button>
-                      <Button
-                        variant="outline"
-                        disabled={runPrecheck.isPending}
-                        onClick={precheckNow}
-                      >
-                        {runPrecheck.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
-                        Kiểm tra lại
-                      </Button>
-                      <Button onClick={() => {
-                        if (isLastCriterion) {
-                          precheckNow();
-                        } else {
-                          setActiveCriterion(nextCriterion.key);
-                        }
-                      }}>
-                        {isLastCriterion ? "Tiếp tục đến bước kiểm tra" : "Sang tiêu chí tiếp theo"}
-                      </Button>
-                    </div>
-                    ) : null}
-                  </Card>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
-        {tab === "precheck" && (
-          <div className="grid gap-5 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <Chip tone="brand">
-                    <ClipboardCheck className="h-3 w-3" /> Kiểm tra hồ sơ tự động
-                  </Chip>
-                  <h3 className="mt-3 text-2xl font-bold text-brand-deep">
-                    {getPrecheckHeadline(precheck, missingCriteriaCount, missingWorkCount)}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {nextBestAction}
-                  </p>
-                </div>
-                {canEditApplication ? (
-                <Button onClick={precheckNow} disabled={runPrecheck.isPending}>
-                  {runPrecheck.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
-                  Kiểm tra lại
-                </Button>
-                ) : null}
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                {criteria.map((criterion) => {
-                  const result = precheck?.criteriaResults?.find((item) => item.criterion === criterion.key);
-                  const evidenceCount = evidenceByCriterion[criterion.key]?.length ?? 0;
-                  const summary = getCriterionCheckSummary(evidenceCount, result);
-                  return (
-                    <div key={criterion.key} className="rounded-lg border border-[#E3ECF6] p-3">
-                      <div className="text-sm font-bold text-brand-deep">{criterion.label}</div>
-                      <div className="mt-2 text-base font-bold text-brand-deep">
-                        {summary}
-                      </div>
-                      <div className="mt-2">
-                        <Progress value={typeof result?.score === "number" ? result.score : 0} tint={criterion.color} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {!precheck && (
-                <div className="mt-5 rounded-lg border border-dashed border-[#B8CEE8] bg-[#F6F9FC] p-4 text-sm text-muted-foreground">
-                  Hệ thống sẽ tự cập nhật sau khi bạn nhập dữ liệu hoặc thêm minh chứng. Bạn cũng có thể bấm Kiểm tra lại.
-                </div>
-              )}
-              {precheck?.missingItems?.length ? (
-                <div className="mt-5">
-                  <h4 className="font-bold text-brand-deep">Những điểm còn thiếu</h4>
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
-                    {precheck.missingItems.map((item, index) => {
-                      const criterion = item.criterion && criteria.some((entry) => entry.key === item.criterion)
-                        ? item.criterion
-                        : "academic";
-                      const criterionLabel = criteria.find((entry) => entry.key === criterion)?.label ?? "Hồ sơ";
-                      const message = getPrecheckMissingMessage(item);
-                      return (
-                        <div key={String(item.code ?? index)} className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="text-sm font-bold text-amber-950">{message.description}</div>
-                            <Chip tone={item.severity === "error" ? "warning" : "muted"}>
-                              {item.severity === "error" ? "Bắt buộc" : item.severity === "warning" ? "Nên bổ sung" : "Chờ cán bộ kiểm tra sau khi nộp"}
-                            </Chip>
-                          </div>
-                          <div className="mt-1 text-xs text-amber-800">{criterionLabel}</div>
-                          {canEditApplication ? (
+                        {canEditApplication && !isLockedForSupplement ? (
                           <Button
-                            className="mt-3"
-                            size="sm"
+                            data-add-evidence={criterion.key}
                             variant="secondary"
+                            disabled={createEvidence.isPending || uploadAndIndex.isPending}
                             onClick={() =>
-                              openEvidenceForm(
-                                criterion,
-                                `${criterionLabel} - minh chứng bổ sung`,
-                              )
+                              openEvidenceForm(criterion.key, getDefaultEvidenceName(criterion.key))
                             }
                           >
                             <Upload className="h-4 w-4" /> Thêm minh chứng
                           </Button>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-5 space-y-4">
+                        <div className="rounded-xl border border-[#E3ECF6] bg-[#F8FBFE] p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                                Điều kiện của {levelLabel[application.targetLevel]}
+                              </div>
+                              <div className="mt-1 text-sm text-muted-foreground">
+                                {matrixItem?.sourceLabel}
+                              </div>
+                            </div>
+                            {criterionAssessment ? (
+                              <Chip
+                                tone={
+                                  criterionAssessment.status === "met"
+                                    ? "success"
+                                    : criterionAssessment.status === "not_suitable"
+                                      ? "error"
+                                      : "warning"
+                                }
+                              >
+                                {criterionAssessment.statusLabel}
+                              </Chip>
+                            ) : null}
+                          </div>
+                          <ul className="mt-3 space-y-2 text-sm font-semibold text-brand-deep">
+                            {(matrixItem?.hardRequirements ?? []).map((requirement) => (
+                              <li key={requirement}>{requirement}</li>
+                            ))}
+                          </ul>
+                          {matrixItem?.additionalRequirements.length ? (
+                            <div className="mt-3 rounded-lg bg-white px-3 py-2 text-sm text-slate-700">
+                              {matrixItem.additionalRequirements.join(" ")}
+                            </div>
+                          ) : null}
+                          {matrixItem?.suggestedEvidenceTypes.length ? (
+                            <div className="mt-3 text-xs text-muted-foreground">
+                              Minh chứng nên có: {matrixItem.suggestedEvidenceTypes.join(", ")}
+                            </div>
                           ) : null}
                         </div>
-                      );
-                    })}
+
+                        {canEditApplication && !isLockedForSupplement ? (
+                          <StructuredCriterionInputs
+                            criterion={criterion.key}
+                            metrics={metrics}
+                            metricValues={metricValues}
+                            metricErrors={metricErrors}
+                            savingMetrics={savingMetrics}
+                            canEdit={canEditApplication && !isLockedForSupplement}
+                            drafts={criterionDrafts[criterion.key] ?? {}}
+                            onDraftChange={(field, value) =>
+                              setCriterionDrafts((current) => ({
+                                ...current,
+                                [criterion.key]: {
+                                  ...(current[criterion.key] ?? {}),
+                                  [field]: value,
+                                },
+                              }))
+                            }
+                            onMetricChange={(metric, value) => {
+                              setMetricValues((prev) => ({ ...prev, [metric.key]: value }));
+                              const numericValue = Number(value);
+                              setMetricErrors((prev) => ({
+                                ...prev,
+                                [metric.key]:
+                                  value && Number.isFinite(numericValue)
+                                    ? (validateMetricValue(
+                                        metric.key,
+                                        numericValue,
+                                        metric.scale,
+                                      ) ?? undefined)
+                                    : undefined,
+                              }));
+                            }}
+                            onSaveMetric={saveMetric}
+                          />
+                        ) : (
+                          <ReadOnlyCriterionData
+                            criterion={criterion.key}
+                            metrics={metrics}
+                            drafts={criterionDrafts[criterion.key] ?? {}}
+                          />
+                        )}
+                      </div>
+
+                      <div className="mt-5 rounded-xl border border-[#E3ECF6] bg-white p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h4 className="font-bold text-brand-deep">Minh chứng liên quan</h4>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Tài liệu được xem ngay trong card, không cần mở chi tiết để kiểm tra
+                              nhanh.
+                            </p>
+                          </div>
+                          <select
+                            value={evidenceSort}
+                            onChange={(event) =>
+                              setEvidenceSort(event.target.value as EvidenceSort)
+                            }
+                            className="rounded-lg border border-[#DCE7F2] bg-white px-3 py-2 text-sm font-semibold text-brand-deep outline-none"
+                          >
+                            <option value="newest">M:i nhất</option>
+                            <option value="oldest">Cũ nhất</option>
+                            <option value="name">Theo tên A-Z</option>
+                            <option value="criterion">Theo tiêu chí</option>
+                            <option value="status">Theo trạng thái</option>
+                            <option value="review">Theo mức cần kiểm tra</option>
+                          </select>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                          {sortedItems.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-[#B8CEE8] bg-[#F6F9FC] px-3 py-3 text-sm text-muted-foreground">
+                              Bạn chưa có minh chứng cho tiêu chí này.
+                              {canEditApplication && !isLockedForSupplement ? (
+                                <div className="mt-2">
+                                  <Button
+                                    data-add-evidence={criterion.key}
+                                    size="sm"
+                                    variant="secondary"
+                                    disabled={
+                                      !canEditApplication ||
+                                      isLockedForSupplement ||
+                                      createEvidence.isPending ||
+                                      uploadAndIndex.isPending
+                                    }
+                                    onClick={() =>
+                                      openEvidenceForm(
+                                        criterion.key,
+                                        getDefaultEvidenceName(criterion.key),
+                                      )
+                                    }
+                                  >
+                                    <Upload className="h-4 w-4" /> Thêm minh chứng
+                                  </Button>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : (
+                            sortedItems.map((item) => (
+                              <StudentEvidenceCard
+                                key={item.id}
+                                evidence={item}
+                                applicationId={application.id}
+                                canEdit={canEditApplication && !isLockedForSupplement}
+                                profile={{
+                                  fullName: user?.fullName,
+                                  studentCode: user?.studentCode,
+                                }}
+                                onViewDetails={setSelectedEvidence}
+                                onDelete={(target) => {
+                                  if (isLockedForSupplement) {
+                                    toast.error(
+                                      "Tiêu chí này không được mở bổ sung trong đợt này.",
+                                    );
+                                    return;
+                                  }
+                                  setOptimisticEvidences((current) =>
+                                    current.filter((item) => item.id !== target.id),
+                                  );
+                                  deleteEvidence.mutate({
+                                    id: target.id,
+                                    applicationId: application.id,
+                                  });
+                                }}
+                              />
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 rounded-xl border border-[#E3ECF6] bg-[#F8FBFE] p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                              Kết quả kiểm tra hồ sơ
+                            </div>
+                            <div className="mt-1 text-lg font-bold text-brand-deep">
+                              {getCriterionCheckSummary(items.length, result)}
+                            </div>
+                          </div>
+                          <Chip
+                            tone={
+                              runPrecheck.isPending
+                                ? "brand"
+                                : result?.warnings?.length
+                                  ? "warning"
+                                  : "success"
+                            }
+                          >
+                            {runPrecheck.isPending
+                              ? "Đang kiểm tra"
+                              : result?.warnings?.length
+                                ? "Cần kiểm tra thêm"
+                                : "Đã kiểm tra"}
+                          </Chip>
+                        </div>
+                        <Progress value={score || readinessScore} tint={criterion.color} />
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {runPrecheck.isPending
+                            ? "Đang cập nhật sau thay đổi mới nhất"
+                            : "Vừa kiểm tra " +
+                              formatRelativeCheckTime(precheck?.createdAt) +
+                              " trước"}
+                        </div>
+                        {supplementRequest ? (
+                          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                            <div className="font-semibold">Cần bổ sung</div>
+                            <div className="mt-1">{supplementRequest.reason}</div>
+                            {supplementRequest.deadline ? (
+                              <div className="mt-1 text-xs">
+                                Hạn bổ sung: {formatDate(supplementRequest.deadline)}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <CriterionChecklist
+                          criterion={criterion.key}
+                          evidenceCount={items.length}
+                          result={result}
+                        />
+                      </div>
+
+                      {canEditApplication && !isLockedForSupplement ? (
+                        <div className="mt-5 flex flex-wrap justify-end gap-2">
+                          <Button
+                            variant="secondary"
+                            onClick={() => savePrimaryMetricForCriterion(criterion.key, saveMetric)}
+                          >
+                            Lưu
+                          </Button>
+                          <Button
+                            variant="outline"
+                            disabled={runPrecheck.isPending}
+                            onClick={precheckNow}
+                          >
+                            {runPrecheck.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <ClipboardCheck className="h-4 w-4" />
+                            )}
+                            Kiểm tra lại
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              if (isLastCriterion) {
+                                precheckNow();
+                              } else {
+                                setActiveCriterion(nextCriterion.key);
+                              }
+                            }}
+                          >
+                            {isLastCriterion
+                              ? "Tiếp tục đến bước kiểm tra"
+                              : "Sang tiêu chí tiếp theo"}
+                          </Button>
+                        </div>
+                      ) : null}
+                    </Card>
                   </div>
-                </div>
-              ) : null}
-            </Card>
+                );
+              })()}
+            </div>
+          )}
 
-            <Card>
-              <h3 className="font-bold text-brand-deep">
-                {canShowSubmitCta ? (isSupplementMode ? "Gửi lại hồ sơ bổ sung" : "Nộp hồ sơ") : "Chưa nên nộp hồ sơ"}
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {!canShowSubmitCta
-                  ? "Hãy hoàn thiện các tiêu chí còn thiếu và kiểm tra hồ sơ trước khi nộp."
-                  : isSupplementMode
-                  ? "Hồ sơ sẽ được gửi lại để cán bộ tiếp tục kiểm tra."
-                  : "Hồ sơ sẽ được gửi để cán bộ xét duyệt theo từng tiêu chí."}
-              </p>
-              {canEditApplication && canShowSubmitCta ? (
-              <Button className="mt-5 w-full" disabled={!canSubmitApplication || submitApplication.isPending} onClick={submitNow}>
-                {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {isSupplementMode ? "Gửi lại hồ sơ bổ sung" : "Nộp hồ sơ"}
-              </Button>
-              ) : canEditApplication ? (
-                <Button className="mt-5 w-full" variant="secondary" onClick={() => setTab("criteria")}>
-                  Tiếp tục hoàn thiện
-                </Button>
-              ) : null}
-            </Card>
-          </div>
-        )}
-
-        {tab === "tracking" && (
-          <Card>
-            <div className="flex items-start gap-3">
-              {application.status === "completed" ? (
-                <CheckCircle2 className="mt-1 h-6 w-6 text-emerald-600" />
-              ) : (
-                <CircleAlert className="mt-1 h-6 w-6 text-[#0057C2]" />
-              )}
-              <div>
-                <h3 className="text-xl font-bold text-brand-deep">{getStudentApplicationStatusLabel(application.status)}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Bạn có thể theo dõi trạng thái hồ sơ và phản hồi yêu cầu bổ sung nếu có.
-                </p>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Chip tone={getFinalTone(application.finalStatus)}>
-                    {getFinalStatusLabel(application.finalStatus ?? "pending")}
-                  </Chip>
-                  {application.finalLevel ? (
-                    <Chip tone="brand">{levelLabel[application.finalLevel]}</Chip>
+          {tab === "precheck" && (
+            <div className="grid gap-5 lg:grid-cols-3">
+              <Card className="lg:col-span-2">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <Chip tone="brand">
+                      <ClipboardCheck className="h-3 w-3" /> Kiểm tra hồ sơ tự động
+                    </Chip>
+                    <h3 className="mt-3 text-2xl font-bold text-brand-deep">
+                      {getPrecheckHeadline(precheck, missingCriteriaCount, missingWorkCount)}
+                    </h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{nextBestAction}</p>
+                  </div>
+                  {canEditApplication ? (
+                    <Button onClick={precheckNow} disabled={runPrecheck.isPending}>
+                      {runPrecheck.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ClipboardCheck className="h-4 w-4" />
+                      )}
+                      Kiểm tra lại
+                    </Button>
                   ) : null}
                 </div>
-                {application.finalNote ? (
-                  <p className="mt-4 max-w-2xl rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-                    {application.finalNote}
-                  </p>
-                ) : null}
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <InfoBlock label="Thời điểm nộp" value={formatDate(application.submittedAt)} />
-                  <InfoBlock label="Thời điểm chốt" value={formatFinalDate(application.finalizedAt)} />
-                  <InfoBlock label="Người chốt" value={application.finalizedBy?.fullName ?? "--"} />
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                  {criteria.map((criterion) => {
+                    const result = precheck?.criteriaResults?.find(
+                      (item) => item.criterion === criterion.key,
+                    );
+                    const evidenceCount = evidenceByCriterion[criterion.key]?.length ?? 0;
+                    const summary = getCriterionCheckSummary(evidenceCount, result);
+                    return (
+                      <div key={criterion.key} className="rounded-lg border border-[#E3ECF6] p-3">
+                        <div className="text-sm font-bold text-brand-deep">{criterion.label}</div>
+                        <div className="mt-2 text-base font-bold text-brand-deep">{summary}</div>
+                        <div className="mt-2">
+                          <Progress
+                            value={typeof result?.score === "number" ? result.score : 0}
+                            tint={criterion.color}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <Link to="/app" className="mt-5 inline-block">
-                  <Button variant="secondary">Quay lại tổng quan</Button>
-                </Link>
+                {!precheck && (
+                  <div className="mt-5 rounded-lg border border-dashed border-[#B8CEE8] bg-[#F6F9FC] p-4 text-sm text-muted-foreground">
+                    Hệ thống sẽ tự cập nhật sau khi bạn nhập dữ liệu hoặc thêm minh chứng. Bạn cũng
+                    có thể bấm Kiểm tra lại.
+                  </div>
+                )}
+                {actionablePrecheckMissingItems.length ? (
+                  <div className="mt-5">
+                    <h4 className="font-bold text-brand-deep">Những điểm còn thiếu</h4>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      {actionablePrecheckMissingItems.map((item, index) => {
+                        const criterion =
+                          item.criterion && criteria.some((entry) => entry.key === item.criterion)
+                            ? item.criterion
+                            : "academic";
+                        const criterionLabel =
+                          criteria.find((entry) => entry.key === criterion)?.label ?? "Hồ sơ";
+                        const message = getPrecheckMissingMessage(item);
+                        return (
+                          <div
+                            key={String(item.code ?? index)}
+                            className="rounded-lg border border-amber-200 bg-amber-50 p-3"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-sm font-bold text-amber-950">
+                                {message.description}
+                              </div>
+                              <Chip tone={item.severity === "error" ? "warning" : "muted"}>
+                                {item.severity === "error"
+                                  ? "Bắt buộc"
+                                  : item.severity === "warning"
+                                    ? "Nên bổ sung"
+                                    : "Chờ cán bộ kiểm tra sau khi nộp"}
+                              </Chip>
+                            </div>
+                            <div className="mt-1 text-xs text-amber-800">{criterionLabel}</div>
+                            {canEditApplication ? (
+                              <Button
+                                className="mt-3"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() =>
+                                  openEvidenceForm(
+                                    criterion,
+                                    `${criterionLabel} - minh chứng bổ sung`,
+                                  )
+                                }
+                              >
+                                <Upload className="h-4 w-4" /> Thêm minh chứng
+                              </Button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </Card>
+
+              <Card>
+                <h3 className="font-bold text-brand-deep">
+                  {canShowSubmitCta
+                    ? isSupplementMode
+                      ? "Gửi lại hồ sơ bổ sung"
+                      : "Nộp hồ sơ"
+                    : "Chưa nên nộp hồ sơ"}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {!canShowSubmitCta
+                    ? "Hãy hoàn thiện các tiêu chí còn thiếu và kiểm tra hồ sơ trước khi nộp."
+                    : isSupplementMode
+                      ? "Hồ sơ sẽ được gửi lại để cán bộ tiếp tục kiểm tra."
+                      : "Hồ sơ sẽ được gửi để cán bộ xét duyệt theo từng tiêu chí."}
+                </p>
+                {canEditApplication && canShowSubmitCta ? (
+                  <Button
+                    className="mt-5 w-full"
+                    disabled={!canSubmitApplication || submitApplication.isPending}
+                    onClick={submitNow}
+                  >
+                    {submitApplication.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    {isSupplementMode ? "Gửi lại hồ sơ bổ sung" : "Nộp hồ sơ"}
+                  </Button>
+                ) : canEditApplication ? (
+                  <Button
+                    className="mt-5 w-full"
+                    variant="secondary"
+                    onClick={() => setTab("criteria")}
+                  >
+                    Tiếp tục hoàn thiện
+                  </Button>
+                ) : null}
+              </Card>
+            </div>
+          )}
+
+          {tab === "tracking" && (
+            <Card>
+              <div className="flex items-start gap-3">
+                {application.status === "completed" ? (
+                  <CheckCircle2 className="mt-1 h-6 w-6 text-emerald-600" />
+                ) : (
+                  <CircleAlert className="mt-1 h-6 w-6 text-[#0057C2]" />
+                )}
+                <div>
+                  <h3 className="text-xl font-bold text-brand-deep">
+                    {getStudentApplicationStatusLabel(application.status)}
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Bạn có thể theo dõi trạng thái hồ sơ và phản hồi yêu cầu bổ sung nếu có.
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <Chip tone={getFinalTone(application.finalStatus)}>
+                      {getFinalStatusLabel(application.finalStatus ?? "pending")}
+                    </Chip>
+                    {application.finalLevel ? (
+                      <Chip tone="brand">{levelLabel[application.finalLevel]}</Chip>
+                    ) : null}
+                  </div>
+                  {application.finalNote ? (
+                    <p className="mt-4 max-w-2xl rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                      {application.finalNote}
+                    </p>
+                  ) : null}
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <InfoBlock label="Thời điểm nộp" value={formatDate(application.submittedAt)} />
+                    <InfoBlock
+                      label="Thời điểm chốt"
+                      value={formatFinalDate(application.finalizedAt)}
+                    />
+                    <InfoBlock
+                      label="Người chốt"
+                      value={application.finalizedBy?.fullName ?? "--"}
+                    />
+                  </div>
+                  <Link to="/app" className="mt-5 inline-block">
+                    <Button variant="secondary">Quay lại tổng quan</Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {canEditApplication ? (
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E3ECF6] bg-white/95 px-4 py-3 shadow-[0_-12px_36px_-28px_rgba(15,23,42,0.55)] backdrop-blur">
+            <div className="mx-auto flex max-w-[1280px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-muted-foreground">
+                Hồ sơ đã lưu trong hệ thống. Còn {Math.max(0, 5 - criteriaWithEvidence)} tiêu chí
+                chưa có minh chứng.
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" disabled={runPrecheck.isPending} onClick={precheckNow}>
+                  {runPrecheck.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ClipboardCheck className="h-4 w-4" />
+                  )}
+                  Kiểm tra hồ sơ
+                </Button>
+                {canShowSubmitCta ? (
+                  <Button
+                    disabled={!canSubmitApplication || submitApplication.isPending}
+                    onClick={submitNow}
+                  >
+                    {submitApplication.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    {isSupplementMode ? "Gửi lại hồ sơ" : "Nộp hồ sơ"}
+                  </Button>
+                ) : null}
               </div>
             </div>
-          </Card>
-        )}
+          </div>
+        ) : null}
       </div>
 
-      {canEditApplication ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E3ECF6] bg-white/95 px-4 py-3 shadow-[0_-12px_36px_-28px_rgba(15,23,42,0.55)] backdrop-blur">
-          <div className="mx-auto flex max-w-[1280px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs text-muted-foreground">
-              Hồ sơ đã lưu trong hệ thống. Còn {Math.max(0, 5 - criteriaWithEvidence)} tiêu chí chưa có minh chứng.
+      <section className="mb-5" aria-labelledby="criteria-title">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              5 tiêu chí cần hoàn thiện
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" disabled={runPrecheck.isPending} onClick={precheckNow}>
-                {runPrecheck.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
-                Kiểm tra hồ sơ
+            <h3 id="criteria-title" className="mt-1 text-xl font-bold text-brand-deep">
+              Hoàn thiện từng tiêu chí
+            </h3>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-muted-foreground">
+              {checklistItems.length > 0
+                ? `Còn ${checklistItems.length} việc cần làm`
+                : "Đã đủ dữ liệu cơ bản"}
+            </span>
+            {checklistItems.length > 0 ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setNextActionsOpen((current) => !current)}
+              >
+                {nextActionsOpen ? "Ẩn việc cần làm" : "Xem việc cần làm"}
               </Button>
-              {canShowSubmitCta ? (
-                <Button disabled={!canSubmitApplication || submitApplication.isPending} onClick={submitNow}>
-                  {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  {isSupplementMode ? "Gửi lại hồ sơ" : "Nộp hồ sơ"}
-                </Button>
-              ) : null}
-            </div>
+            ) : null}
           </div>
         </div>
-      ) : null}
-        </div>
 
-        <section className="mb-5" aria-labelledby="criteria-title">
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                5 tiêu chí cần hoàn thiện
-              </div>
-              <h3 id="criteria-title" className="mt-1 text-xl font-bold text-brand-deep">
-                Hoàn thiện từng tiêu chí
-              </h3>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-muted-foreground">
-                {checklistItems.length > 0 ? `Còn ${checklistItems.length} việc cần làm` : "Đã đủ dữ liệu cơ bản"}
-              </span>
-              {checklistItems.length > 0 ? (
-                <Button size="sm" variant="outline" onClick={() => setNextActionsOpen((current) => !current)}>
-                  {nextActionsOpen ? "Ẩn việc cần làm" : "Xem việc cần làm"}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-
-          {nextActionsOpen && checklistItems.length > 0 ? (
-            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
-              <div className="grid gap-2 md:grid-cols-2">
-                {checklistItems.slice(0, 6).map((item) => (
-                  <div
-                    key={item.id}
-                    className="grid gap-2 rounded-lg bg-white px-3 py-2 text-sm sm:grid-cols-[1fr_auto] sm:items-center"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-bold text-amber-950">{item.title}</div>
-                      <div className="mt-0.5 text-xs text-amber-900">
-                        {item.criterionLabel} · {item.reason}
-                      </div>
+        {nextActionsOpen && checklistItems.length > 0 ? (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+            <div className="grid gap-2 md:grid-cols-2">
+              {checklistItems.slice(0, 6).map((item) => (
+                <div
+                  key={item.id}
+                  className="grid gap-2 rounded-lg bg-white px-3 py-2 text-sm sm:grid-cols-[1fr_auto] sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="font-bold text-amber-950">{item.title}</div>
+                    <div className="mt-0.5 text-xs text-amber-900">
+                      {item.criterionLabel} · {item.reason}
                     </div>
-                    <Button size="sm" variant="secondary" onClick={() => runChecklistAction(item)}>
-                      Làm ngay
-                    </Button>
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="-mx-1 overflow-x-auto pb-1">
-            <div className="flex min-w-max gap-2 px-1 lg:min-w-0">
-              {criteria.map((criterion) => {
-                const items = evidenceByCriterion[criterion.key] ?? [];
-                const result = precheck?.criteriaResults?.find((item) => item.criterion === criterion.key);
-                const assessment = targetLevelSuitability.criteria.find((item) => item.criterion === criterion.key);
-                const supplementRequest = supplementRequests.find((item) => item.criterion === criterion.key);
-                const status = getGuidedCriterionStatus(items.length, result, assessment, Boolean(supplementRequest));
-                const selected = activeCriterion === criterion.key;
-
-                return (
-                  <button
-                    key={criterion.key}
-                    type="button"
-                    onClick={() => {
-                      setActiveCriterion(criterion.key);
-                      window.setTimeout(() => criterionRefs.current[criterion.key]?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
-                    }}
-                    className={`flex h-14 min-w-[158px] shrink-0 items-center gap-2 rounded-full border px-3 text-left shadow-sm transition-colors lg:min-w-0 lg:flex-1 ${
-                      selected
-                        ? "border-[#0057C2] bg-[#0057C2] text-white"
-                        : "border-[#E3ECF6] bg-white text-brand-deep hover:border-[#B8CEE8] hover:bg-[#F8FBFE]"
-                    }`}
-                    aria-pressed={selected}
-                  >
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                        selected ? "bg-white/15" : "bg-[#F1F7FD]"
-                      }`}
-                    >
-                        <CriterionIcon criterion={criterion.key} size={16} color={selected ? "#fff" : criterion.color} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold">{criterion.label}</span>
-                      <span className={`mt-0.5 block truncate text-[11px] font-semibold ${selected ? "text-white/80" : "text-slate-500"}`}>
-                        {items.length > 0 ? "Đã có" : status.label}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+                  <Button size="sm" variant="secondary" onClick={() => runChecklistAction(item)}>
+                    Làm ngay
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
+        ) : null}
 
-          <div className="mt-4">
-            {([criteria.find((item) => item.key === activeCriterion) ?? criteria[0]]).map((criterion) => {
+        <div className="-mx-1 overflow-x-auto pb-1">
+          <div className="flex min-w-max gap-2 px-1 lg:min-w-0">
+            {criteria.map((criterion) => {
+              const items = evidenceByCriterion[criterion.key] ?? [];
+              const result = precheck?.criteriaResults?.find(
+                (item) => item.criterion === criterion.key,
+              );
+              const assessment = targetLevelSuitability.criteria.find(
+                (item) => item.criterion === criterion.key,
+              );
+              const supplementRequest = supplementRequests.find(
+                (item) => item.criterion === criterion.key,
+              );
+              const status = getGuidedCriterionStatus(
+                items.length,
+                result,
+                assessment,
+                Boolean(supplementRequest),
+              );
+              const selected = activeCriterion === criterion.key;
+
+              return (
+                <button
+                  key={criterion.key}
+                  type="button"
+                  onClick={() => {
+                    setActiveCriterion(criterion.key);
+                    window.setTimeout(
+                      () =>
+                        criterionRefs.current[criterion.key]?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        }),
+                      20,
+                    );
+                  }}
+                  className={`flex h-14 min-w-[158px] shrink-0 items-center gap-2 rounded-full border px-3 text-left shadow-sm transition-colors lg:min-w-0 lg:flex-1 ${
+                    selected
+                      ? "border-[#0057C2] bg-[#0057C2] text-white"
+                      : "border-[#E3ECF6] bg-white text-brand-deep hover:border-[#B8CEE8] hover:bg-[#F8FBFE]"
+                  }`}
+                  aria-pressed={selected}
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                      selected ? "bg-white/15" : "bg-[#F1F7FD]"
+                    }`}
+                  >
+                    <CriterionIcon
+                      criterion={criterion.key}
+                      size={16}
+                      color={selected ? "#fff" : criterion.color}
+                    />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold">{criterion.label}</span>
+                    <span
+                      className={`mt-0.5 block truncate text-[11px] font-semibold ${selected ? "text-white/80" : "text-slate-500"}`}
+                    >
+                      {items.length > 0 ? "Đã có" : status.label}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          {[criteria.find((item) => item.key === activeCriterion) ?? criteria[0]].map(
+            (criterion) => {
               const items = evidenceByCriterion[criterion.key] ?? [];
               const sortedItems = sortEvidences(items, evidenceSort);
-              const result = precheck?.criteriaResults?.find((item) => item.criterion === criterion.key);
+              const result = precheck?.criteriaResults?.find(
+                (item) => item.criterion === criterion.key,
+              );
               const matrixItem = getCriterionMatrixItem(application.targetLevel, criterion.key);
-              const assessment = targetLevelSuitability.criteria.find((item) => item.criterion === criterion.key);
-              const supplementRequest = supplementRequests.find((item) => item.criterion === criterion.key);
+              const assessment = targetLevelSuitability.criteria.find(
+                (item) => item.criterion === criterion.key,
+              );
+              const supplementRequest = supplementRequests.find(
+                (item) => item.criterion === criterion.key,
+              );
               const isLockedForSupplement = isCriterionLockedForSupplement(criterion.key);
-              const status = getGuidedCriterionStatus(items.length, result, assessment, Boolean(supplementRequest));
+              const status = getGuidedCriterionStatus(
+                items.length,
+                result,
+                assessment,
+                Boolean(supplementRequest),
+              );
               const needsAttention = status.tone !== "success";
 
               return (
@@ -1478,7 +1833,10 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ background: criterion.color }}>
+                      <span
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                        style={{ background: criterion.color }}
+                      >
                         <CriterionIcon criterion={criterion.key} size={17} color="#fff" />
                       </span>
                       <div className="min-w-0">
@@ -1496,30 +1854,36 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                       <div className="min-w-0 space-y-4 xl:order-2">
                         <div className="rounded-xl border border-[#E3ECF6] bg-white px-4 py-4">
                           <div className="space-y-4">
-                          <div>
-                            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                              Điều kiện chính
+                            <div>
+                              <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                                Điều kiện chính
+                              </div>
+                              <ul className="mt-2 space-y-1 text-sm font-semibold text-brand-deep">
+                                {(matrixItem?.hardRequirements ?? [])
+                                  .slice(0, 3)
+                                  .map((requirement) => (
+                                    <li key={requirement}>{requirement}</li>
+                                  ))}
+                              </ul>
                             </div>
-                            <ul className="mt-2 space-y-1 text-sm font-semibold text-brand-deep">
-                              {(matrixItem?.hardRequirements ?? []).slice(0, 3).map((requirement) => (
-                                <li key={requirement}>{requirement}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div>
-                            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                              Minh chứng nên có
+                            <div>
+                              <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                                Minh chứng nên có
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {((matrixItem?.suggestedEvidenceTypes ?? []).slice(0, 3).length
+                                  ? (matrixItem?.suggestedEvidenceTypes ?? []).slice(0, 3)
+                                  : ["Giấy xác nhận phù hợp với tiêu chí."]
+                                ).map((item) => (
+                                  <span
+                                    key={item}
+                                    className="rounded-full bg-[#EEF6FF] px-2.5 py-1 text-xs font-semibold text-[#0057C2]"
+                                  >
+                                    {item}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {((matrixItem?.suggestedEvidenceTypes ?? []).slice(0, 3).length
-                                ? (matrixItem?.suggestedEvidenceTypes ?? []).slice(0, 3)
-                                : ["Giấy xác nhận phù hợp với tiêu chí."]).map((item) => (
-                                <span key={item} className="rounded-full bg-[#EEF6FF] px-2.5 py-1 text-xs font-semibold text-[#0057C2]">
-                                  {item}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
                           </div>
                         </div>
 
@@ -1535,7 +1899,10 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                             onDraftChange={(field, value) =>
                               setCriterionDrafts((current) => ({
                                 ...current,
-                                [criterion.key]: { ...(current[criterion.key] ?? {}), [field]: value },
+                                [criterion.key]: {
+                                  ...(current[criterion.key] ?? {}),
+                                  [field]: value,
+                                },
                               }))
                             }
                             onMetricChange={(metric, value) => {
@@ -1545,17 +1912,29 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                                 ...prev,
                                 [metric.key]:
                                   value && Number.isFinite(numericValue)
-                                    ? validateMetricValue(metric.key, numericValue, metric.scale) ?? undefined
+                                    ? (validateMetricValue(
+                                        metric.key,
+                                        numericValue,
+                                        metric.scale,
+                                      ) ?? undefined)
                                     : undefined,
                               }));
                             }}
                             onSaveMetric={saveMetric}
                           />
                         ) : (
-                          <ReadOnlyCriterionData criterion={criterion.key} metrics={metrics} drafts={criterionDrafts[criterion.key] ?? {}} />
+                          <ReadOnlyCriterionData
+                            criterion={criterion.key}
+                            metrics={metrics}
+                            drafts={criterionDrafts[criterion.key] ?? {}}
+                          />
                         )}
 
-                        <CriterionChecklist criterion={criterion.key} evidenceCount={items.length} result={result} />
+                        <CriterionChecklist
+                          criterion={criterion.key}
+                          evidenceCount={items.length}
+                          result={result}
+                        />
                       </div>
 
                       <aside className="space-y-3 xl:order-1">
@@ -1563,12 +1942,18 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                           <>
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div>
-                                <div className="text-sm font-bold text-brand-deep">Minh chứng đã thêm</div>
-                                <div className="mt-0.5 text-xs text-muted-foreground">{items.length} minh chứng</div>
+                                <div className="text-sm font-bold text-brand-deep">
+                                  Minh chứng đã thêm
+                                </div>
+                                <div className="mt-0.5 text-xs text-muted-foreground">
+                                  {items.length} minh chứng
+                                </div>
                               </div>
                               <select
                                 value={evidenceSort}
-                                onChange={(event) => setEvidenceSort(event.target.value as EvidenceSort)}
+                                onChange={(event) =>
+                                  setEvidenceSort(event.target.value as EvidenceSort)
+                                }
                                 className="rounded-lg border border-[#DCE7F2] bg-white px-2.5 py-1.5 text-xs font-semibold text-brand-deep outline-none"
                               >
                                 <option value="newest">Mới nhất</option>
@@ -1584,15 +1969,25 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                                   evidence={item}
                                   applicationId={application.id}
                                   canEdit={canEditApplication && !isLockedForSupplement}
-                                  profile={{ fullName: user?.fullName, studentCode: user?.studentCode }}
+                                  profile={{
+                                    fullName: user?.fullName,
+                                    studentCode: user?.studentCode,
+                                  }}
                                   onViewDetails={setSelectedEvidence}
                                   onDelete={(target) => {
                                     if (isLockedForSupplement) {
-                                      toast.error("Tiêu chí này không được mở bổ sung trong đợt này.");
+                                      toast.error(
+                                        "Tiêu chí này không được mở bổ sung trong đợt này.",
+                                      );
                                       return;
                                     }
-                                    setOptimisticEvidences((current) => current.filter((item) => item.id !== target.id));
-                                    deleteEvidence.mutate({ id: target.id, applicationId: application.id });
+                                    setOptimisticEvidences((current) =>
+                                      current.filter((item) => item.id !== target.id),
+                                    );
+                                    deleteEvidence.mutate({
+                                      id: target.id,
+                                      applicationId: application.id,
+                                    });
                                   }}
                                 />
                               ))}
@@ -1602,14 +1997,23 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                                 type="button"
                                 data-add-evidence={criterion.key}
                                 disabled={createEvidence.isPending || uploadAndIndex.isPending}
-                                onClick={() => openEvidenceForm(criterion.key, getDefaultEvidenceName(criterion.key))}
+                                onClick={() =>
+                                  openEvidenceForm(
+                                    criterion.key,
+                                    getDefaultEvidenceName(criterion.key),
+                                  )
+                                }
                                 className="flex min-h-28 w-full flex-col items-center justify-center rounded-xl border border-dashed border-[#B8CEE8] bg-white px-4 py-4 text-center text-sm text-brand-deep transition-colors hover:border-[#0057C2] hover:bg-[#F8FBFE] disabled:opacity-60"
                               >
                                 <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#B8CEE8] text-[#0057C2]">
                                   <Plus className="h-5 w-5" />
                                 </span>
-                                <span className="mt-2 font-bold">Thêm minh chứng khác cho tiêu chí này</span>
-                                <span className="mt-1 text-xs text-muted-foreground">Bạn có thể bổ sung thêm nếu cần thiết.</span>
+                                <span className="mt-2 font-bold">
+                                  Thêm minh chứng khác cho tiêu chí này
+                                </span>
+                                <span className="mt-1 text-xs text-muted-foreground">
+                                  Bạn có thể bổ sung thêm nếu cần thiết.
+                                </span>
                               </button>
                             ) : null}
                           </>
@@ -1618,9 +2022,12 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF6FF] text-[#0057C2]">
                               <Plus className="h-6 w-6" />
                             </div>
-                            <div className="font-semibold text-brand-deep">Bạn chưa có minh chứng cho tiêu chí này.</div>
+                            <div className="font-semibold text-brand-deep">
+                              Bạn chưa có minh chứng cho tiêu chí này.
+                            </div>
                             <div className="mx-auto mt-1 max-w-md">
-                              Bạn có thể tìm trong sự kiện đã xác nhận hoặc tự tải giấy chứng nhận lên.
+                              Bạn có thể tìm trong sự kiện đã xác nhận hoặc tự tải giấy chứng nhận
+                              lên.
                             </div>
                             <div className="mt-4 flex flex-wrap justify-center gap-2">
                               {canEditApplication && !isLockedForSupplement ? (
@@ -1629,7 +2036,12 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                                   size="sm"
                                   variant="secondary"
                                   disabled={createEvidence.isPending || uploadAndIndex.isPending}
-                                  onClick={() => openEvidenceForm(criterion.key, getDefaultEvidenceName(criterion.key))}
+                                  onClick={() =>
+                                    openEvidenceForm(
+                                      criterion.key,
+                                      getDefaultEvidenceName(criterion.key),
+                                    )
+                                  }
                                 >
                                   <Upload className="h-4 w-4" /> Thêm minh chứng
                                 </Button>
@@ -1647,144 +2059,226 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
                   </div>
                 </div>
               );
-            })}
-          </div>
-        </section>
+            },
+          )}
+        </div>
+      </section>
 
-        <section ref={actionSectionRef} className="mb-5 scroll-mt-24" aria-labelledby="submit-title">
-          <Card className={checklistItems.length > 0 ? "border-amber-200 bg-amber-50/60" : "border-emerald-200 bg-emerald-50/60"}>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0">
-                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Kiểm tra và nộp
-                </div>
-                <h3 id="submit-title" className="mt-1 text-xl font-bold text-brand-deep">
-                  {getSubmitSectionTitle(application.status, checklistItems.length, Boolean(precheck), canShowSubmitCta)}
-                </h3>
-                <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-                  Hệ thống kiểm tra dữ liệu đã nhập và các minh chứng đã tải lên. Kết quả này giúp bạn rà soát trước khi nộp;
-                  cán bộ vẫn là người xác nhận cuối cùng.
-                </p>
+      <section ref={actionSectionRef} className="mb-5 scroll-mt-24" aria-labelledby="submit-title">
+        <Card
+          className={
+            checklistItems.length > 0
+              ? "border-amber-200 bg-amber-50/60"
+              : "border-emerald-200 bg-emerald-50/60"
+          }
+        >
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Kiểm tra và nộp
               </div>
-              <div className="flex flex-wrap gap-2 lg:shrink-0">
-                {isReadOnlyMode ? (
-                  <Button onClick={() => trackingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}>
-                    Theo dõi hồ sơ
+              <h3 id="submit-title" className="mt-1 text-xl font-bold text-brand-deep">
+                {getSubmitSectionTitle(
+                  application.status,
+                  checklistItems.length,
+                  Boolean(precheck),
+                  canShowSubmitCta,
+                )}
+              </h3>
+              <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+                Hệ thống kiểm tra dữ liệu đã nhập và các minh chứng đã tải lên. Kết quả này giúp bạn
+                rà soát trước khi nộp; cán bộ vẫn là người xác nhận cuối cùng.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 lg:shrink-0">
+              {isReadOnlyMode ? (
+                <Button
+                  onClick={() =>
+                    trackingSectionRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    })
+                  }
+                >
+                  Theo dõi hồ sơ
+                </Button>
+              ) : checklistItems.length > 0 || isSupplementMode ? (
+                <>
+                  <Button
+                    onClick={isSupplementMode ? goToSupplementCriterion : handleFirstMissingAction}
+                  >
+                    {isSupplementMode ? "Bổ sung theo yêu cầu" : "Hoàn thiện phần còn thiếu"}
                   </Button>
-                ) : checklistItems.length > 0 || isSupplementMode ? (
-                  <>
-                    <Button onClick={isSupplementMode ? goToSupplementCriterion : handleFirstMissingAction}>
-                      {isSupplementMode ? "Bổ sung theo yêu cầu" : "Hoàn thiện phần còn thiếu"}
-                    </Button>
-                    <Button variant="secondary" disabled={runPrecheck.isPending} onClick={precheckNow}>
-                      {runPrecheck.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
-                      Kiểm tra hồ sơ
-                    </Button>
-                    <Button variant="outline" disabled title="Bạn cần hoàn thiện phần còn thiếu trước khi nộp hồ sơ.">
-                      Nộp hồ sơ
-                    </Button>
-                  </>
-                ) : canShowSubmitCta ? (
-                  <>
-                    <Button variant="secondary" disabled={runPrecheck.isPending} onClick={precheckNow}>
-                      {runPrecheck.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
-                      Kiểm tra hồ sơ
-                    </Button>
-                    <Button disabled={!canSubmitApplication || submitApplication.isPending} onClick={submitNow}>
-                      {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      Nộp hồ sơ
-                    </Button>
-                  </>
-                ) : (
-                  <Button disabled={runPrecheck.isPending} onClick={precheckNow}>
-                    {runPrecheck.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
+                  <Button
+                    variant="secondary"
+                    disabled={runPrecheck.isPending}
+                    onClick={precheckNow}
+                  >
+                    {runPrecheck.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ClipboardCheck className="h-4 w-4" />
+                    )}
                     Kiểm tra hồ sơ
                   </Button>
-                )}
-              </div>
-            </div>
-          </Card>
-        </section>
-
-        <section ref={trackingSectionRef} className="mb-5 scroll-mt-24" aria-labelledby="tracking-title">
-          <Card>
-            <div className="flex items-start gap-3">
-              {application.status === "completed" ? (
-                <CheckCircle2 className="mt-1 h-6 w-6 text-emerald-600" />
+                  <Button
+                    variant="outline"
+                    disabled
+                    title="Bạn cần hoàn thiện phần còn thiếu trước khi nộp hồ sơ."
+                  >
+                    Nộp hồ sơ
+                  </Button>
+                </>
+              ) : canShowSubmitCta ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    disabled={runPrecheck.isPending}
+                    onClick={precheckNow}
+                  >
+                    {runPrecheck.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ClipboardCheck className="h-4 w-4" />
+                    )}
+                    Kiểm tra hồ sơ
+                  </Button>
+                  <Button
+                    disabled={!canSubmitApplication || submitApplication.isPending}
+                    onClick={submitNow}
+                  >
+                    {submitApplication.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    Nộp hồ sơ
+                  </Button>
+                </>
               ) : (
-                <CircleAlert className="mt-1 h-6 w-6 text-[#0057C2]" />
+                <Button disabled={runPrecheck.isPending} onClick={precheckNow}>
+                  {runPrecheck.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ClipboardCheck className="h-4 w-4" />
+                  )}
+                  Kiểm tra hồ sơ
+                </Button>
               )}
-              <div className="min-w-0">
-                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Theo dõi kết quả
-                </div>
-                <h3 id="tracking-title" className="mt-1 text-xl font-bold text-brand-deep">
-                  {hasSubmittedApplication ? getStudentApplicationStatusLabel(application.status) : "Chưa nộp hồ sơ"}
-                </h3>
-                {hasSubmittedApplication ? (
-                  <>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      <InfoBlock label="Đã nộp lúc" value={formatDate(application.submittedAt)} />
-                      <InfoBlock label="Trạng thái xét" value={getStudentApplicationStatusLabel(application.status)} />
-                      <InfoBlock label="Kết quả cuối" value={getFinalStatusLabel(application.finalStatus ?? "pending")} />
-                      <InfoBlock label="Thời điểm chốt" value={formatFinalDate(application.finalizedAt)} />
-                    </div>
-                    {application.finalNote ? (
-                      <p className="mt-4 max-w-3xl rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-                        {application.finalNote}
-                      </p>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-                    Sau khi bạn kiểm tra và nộp hồ sơ, khu vực này sẽ hiển thị thời điểm nộp, trạng thái xét duyệt
-                    và yêu cầu bổ sung nếu có.
-                  </p>
-                )}
-              </div>
-            </div>
-          </Card>
-        </section>
-
-        {canEditApplication ? (
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E3ECF6] bg-white/95 px-4 py-3 shadow-[0_-12px_36px_-28px_rgba(15,23,42,0.55)] backdrop-blur">
-            <div className="mx-auto flex max-w-[1280px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-xs text-muted-foreground">
-                {isSupplementMode
-                  ? "Hồ sơ đang cần bổ sung theo yêu cầu của cán bộ."
-                  : checklistItems.length > 0
-                    ? `Bạn còn thiếu ${checklistItems.length} việc trước khi nộp hồ sơ.`
-                    : "Hồ sơ đã đủ dữ liệu cơ bản để kiểm tra và nộp."}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {isSupplementMode ? (
-                  <Button onClick={goToSupplementCriterion}>Bổ sung theo yêu cầu</Button>
-                ) : checklistItems.length > 0 ? (
-                  <>
-                    <Button onClick={handleFirstMissingAction}>Hoàn thiện phần còn thiếu</Button>
-                    <Button variant="secondary" disabled={runPrecheck.isPending} onClick={precheckNow}>
-                      Kiểm tra hồ sơ
-                    </Button>
-                  </>
-                ) : canShowSubmitCta ? (
-                  <>
-                    <Button variant="secondary" disabled={runPrecheck.isPending} onClick={precheckNow}>
-                      Kiểm tra hồ sơ
-                    </Button>
-                    <Button disabled={!canSubmitApplication || submitApplication.isPending} onClick={submitNow}>
-                      {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      Nộp hồ sơ
-                    </Button>
-                  </>
-                ) : (
-                  <Button disabled={runPrecheck.isPending} onClick={precheckNow}>
-                    Kiểm tra hồ sơ
-                  </Button>
-                )}
-              </div>
             </div>
           </div>
-        ) : null}
+        </Card>
+      </section>
+
+      <section
+        ref={trackingSectionRef}
+        className="mb-5 scroll-mt-24"
+        aria-labelledby="tracking-title"
+      >
+        <Card>
+          <div className="flex items-start gap-3">
+            {application.status === "completed" ? (
+              <CheckCircle2 className="mt-1 h-6 w-6 text-emerald-600" />
+            ) : (
+              <CircleAlert className="mt-1 h-6 w-6 text-[#0057C2]" />
+            )}
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Theo dõi kết quả
+              </div>
+              <h3 id="tracking-title" className="mt-1 text-xl font-bold text-brand-deep">
+                {hasSubmittedApplication
+                  ? getStudentApplicationStatusLabel(application.status)
+                  : "Chưa nộp hồ sơ"}
+              </h3>
+              {hasSubmittedApplication ? (
+                <>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <InfoBlock label="Đã nộp lúc" value={formatDate(application.submittedAt)} />
+                    <InfoBlock
+                      label="Trạng thái xét"
+                      value={getStudentApplicationStatusLabel(application.status)}
+                    />
+                    <InfoBlock
+                      label="Kết quả cuối"
+                      value={getFinalStatusLabel(application.finalStatus ?? "pending")}
+                    />
+                    <InfoBlock
+                      label="Thời điểm chốt"
+                      value={formatFinalDate(application.finalizedAt)}
+                    />
+                  </div>
+                  {application.finalNote ? (
+                    <p className="mt-4 max-w-3xl rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                      {application.finalNote}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+                  Sau khi bạn kiểm tra và nộp hồ sơ, khu vực này sẽ hiển thị thời điểm nộp, trạng
+                  thái xét duyệt và yêu cầu bổ sung nếu có.
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {canEditApplication ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E3ECF6] bg-white/95 px-4 py-3 shadow-[0_-12px_36px_-28px_rgba(15,23,42,0.55)] backdrop-blur">
+          <div className="mx-auto flex max-w-[1280px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs text-muted-foreground">
+              {isSupplementMode
+                ? "Hồ sơ đang cần bổ sung theo yêu cầu của cán bộ."
+                : checklistItems.length > 0
+                  ? `Bạn còn thiếu ${checklistItems.length} việc trước khi nộp hồ sơ.`
+                  : "Hồ sơ đã đủ dữ liệu cơ bản để kiểm tra và nộp."}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {isSupplementMode ? (
+                <Button onClick={goToSupplementCriterion}>Bổ sung theo yêu cầu</Button>
+              ) : checklistItems.length > 0 ? (
+                <>
+                  <Button onClick={handleFirstMissingAction}>Hoàn thiện phần còn thiếu</Button>
+                  <Button
+                    variant="secondary"
+                    disabled={runPrecheck.isPending}
+                    onClick={precheckNow}
+                  >
+                    Kiểm tra hồ sơ
+                  </Button>
+                </>
+              ) : canShowSubmitCta ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    disabled={runPrecheck.isPending}
+                    onClick={precheckNow}
+                  >
+                    Kiểm tra hồ sơ
+                  </Button>
+                  <Button
+                    disabled={!canSubmitApplication || submitApplication.isPending}
+                    onClick={submitNow}
+                  >
+                    {submitApplication.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    Nộp hồ sơ
+                  </Button>
+                </>
+              ) : (
+                <Button disabled={runPrecheck.isPending} onClick={precheckNow}>
+                  Kiểm tra hồ sơ
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {application?.id && evidenceForm && canEditApplication ? (
         <AddEvidenceDrawer
@@ -1804,18 +2298,20 @@ export function StudentApplicationWorkspace({ initialTab = "info" }: { initialTa
         />
       ) : null}
 
-      <EvidenceDetailModal
-        evidence={selectedEvidence}
-        onClose={() => setSelectedEvidence(null)}
-      />
+      <EvidenceDetailModal evidence={selectedEvidence} onClose={() => setSelectedEvidence(null)} />
 
       {confirmSubmitOpen && (
         <SubmitConfirmationModal
           application={application}
           precheck={precheck}
-          evidenceCounts={Object.fromEntries(
-            criteria.map((criterion) => [criterion.key, evidenceByCriterion[criterion.key]?.length ?? 0]),
-          ) as Partial<Record<Criterion, number>>}
+          evidenceCounts={
+            Object.fromEntries(
+              criteria.map((criterion) => [
+                criterion.key,
+                evidenceByCriterion[criterion.key]?.length ?? 0,
+              ]),
+            ) as Partial<Record<Criterion, number>>
+          }
           onCancel={() => setConfirmSubmitOpen(false)}
           onConfirm={confirmSubmit}
           pending={submitApplication.isPending}
@@ -1843,22 +2339,68 @@ type GuidedChecklistItem = {
   title: string;
 };
 
+function getActionablePrecheckMissingItems(
+  items: PrecheckMissingItem[],
+  evidenceByCriterion: Record<Criterion, EvidenceResponse[]>,
+  metrics: ApplicationMetric[],
+  applicationStatus: ApplicationStatus,
+) {
+  return items.filter((item) => {
+    const criterion = item.criterion;
+    if (!criterion) return true;
+
+    const evidenceCount = evidenceByCriterion[criterion]?.length ?? 0;
+    const hasMetric = (metricType: MetricType) =>
+      metrics.some(
+        (metric) =>
+          metric.metricType === metricType && metric.value !== null && metric.value !== undefined,
+      );
+    const raw = `${item.code ?? ""} ${item.message ?? ""}`.toLowerCase();
+
+    if (criterion === "physical" && evidenceCount > 0) {
+      return !(
+        applicationStatus === "ready_to_submit" ||
+        raw.includes("physical_score") ||
+        raw.includes("missing_physical")
+      );
+    }
+    if (criterion === "volunteer" && (evidenceCount > 0 || hasMetric("volunteer_days"))) {
+      return !(
+        applicationStatus === "ready_to_submit" ||
+        raw.includes("volunteer_days") ||
+        raw.includes("missing_volunteer")
+      );
+    }
+    if (criterion === "integration" && (evidenceCount > 0 || hasMetric("foreign_language_score"))) {
+      return !(
+        applicationStatus === "ready_to_submit" ||
+        raw.includes("foreign_language_score") ||
+        raw.includes("missing_integration")
+      );
+    }
+
+    return true;
+  });
+}
+
 function buildGuidedChecklist({
   criteria,
   evidenceByCriterion,
   metrics,
-  precheck,
+  precheckMissingItems,
   supplementRequests,
 }: {
   criteria: typeof coreCriteria;
   evidenceByCriterion: Record<Criterion, EvidenceResponse[]>;
   metrics: ApplicationMetric[];
-  precheck: PrecheckResult | null;
+  precheckMissingItems: PrecheckMissingItem[];
   supplementRequests: Array<{ criterion: Criterion; reason: string }>;
 }): GuidedChecklistItem[] {
   const tasks: GuidedChecklistItem[] = [];
   const hasMetric = (metricType: MetricType) =>
-    metrics.some((item) => item.metricType === metricType && item.value !== null && item.value !== undefined);
+    metrics.some(
+      (item) => item.metricType === metricType && item.value !== null && item.value !== undefined,
+    );
 
   supplementRequests.forEach((request) => {
     const meta = criteria.find((item) => item.key === request.criterion);
@@ -1909,7 +2451,12 @@ function buildGuidedChecklist({
       });
     }
 
-    if (criterion.key === "integration" && primaryMetric && !hasMetric(primaryMetric.metricType) && evidenceCount === 0) {
+    if (
+      criterion.key === "integration" &&
+      primaryMetric &&
+      !hasMetric(primaryMetric.metricType) &&
+      evidenceCount === 0
+    ) {
       tasks.push({
         id: "integration-language",
         action: "add_evidence",
@@ -1933,11 +2480,18 @@ function buildGuidedChecklist({
     }
   });
 
-  precheck?.missingItems?.slice(0, 5).forEach((item, index) => {
+  precheckMissingItems.slice(0, 5).forEach((item, index) => {
     const criterion = criteria.find((entry) => entry.key === item.criterion) ?? criteria[0];
     const message = getPrecheckMissingMessage(item);
     const id = `precheck-${item.code ?? index}-${criterion.key}`;
-    if (tasks.some((task) => task.id === id || (task.criterion === criterion.key && task.title === message.description))) return;
+    if (
+      tasks.some(
+        (task) =>
+          task.id === id ||
+          (task.criterion === criterion.key && task.title === message.description),
+      )
+    )
+      return;
     tasks.push({
       id,
       action: "add_evidence",
@@ -1987,7 +2541,9 @@ function getSubmitSectionTitle(
   hasPrecheck: boolean,
   canShowSubmitCta: boolean,
 ) {
-  if (["submitted", "under_review", "resolution_needed", "completed", "rejected"].includes(status)) {
+  if (
+    ["submitted", "under_review", "resolution_needed", "completed", "rejected"].includes(status)
+  ) {
     return "Hồ sơ đã nộp, hãy theo dõi kết quả";
   }
   if (status === "supplement_required") return "Bổ sung hồ sơ theo yêu cầu";
@@ -2016,21 +2572,34 @@ function getGuidedCriterionStatus(
       tone: "warning" as const,
     };
   }
-  if (result?.status === "failed" || result?.status === "needs_supplement" || result?.passed === false) {
+  if (
+    result?.status === "failed" ||
+    result?.status === "needs_supplement" ||
+    result?.passed === false
+  ) {
     return {
       label: "Cần kiểm tra file",
       description: "Hệ thống thấy tiêu chí này cần bổ sung hoặc kiểm tra lại file.",
       tone: "warning" as const,
     };
   }
-  if (result?.warnings?.length || result?.status === "needs_officer_confirmation" || result?.status === "risky") {
+  if (
+    result?.warnings?.length ||
+    result?.status === "needs_officer_confirmation" ||
+    result?.status === "risky"
+  ) {
     return {
       label: "Chờ cán bộ xác nhận",
       description: "Thông tin này sẽ được cán bộ kiểm tra sau khi bạn nộp.",
       tone: "warning" as const,
     };
   }
-  if (result?.passed || result?.status === "passed" || result?.status === "complete" || assessment?.status === "met") {
+  if (
+    result?.passed ||
+    result?.status === "passed" ||
+    result?.status === "complete" ||
+    assessment?.status === "met"
+  ) {
     return {
       label: "Đủ dữ liệu",
       description: "Tiêu chí đã có dữ liệu cơ bản.",
@@ -2069,17 +2638,21 @@ function getPrimaryWorkspaceAction({
     return {
       action: "supplement",
       cta: "Bổ sung minh chứng",
-      description: "Cán bộ đã yêu cầu bổ sung. Hãy đi thẳng tới tiêu chí cần cập nhật rồi gửi lại hồ sơ.",
+      description:
+        "Cán bộ đã yêu cầu bổ sung. Hãy đi thẳng tới tiêu chí cần cập nhật rồi gửi lại hồ sơ.",
       icon: <Upload className="h-4 w-4" />,
       label: "Bổ sung theo yêu cầu của cán bộ",
     };
   }
 
-  if (["submitted", "under_review", "resolution_needed", "completed", "rejected"].includes(status)) {
+  if (
+    ["submitted", "under_review", "resolution_needed", "completed", "rejected"].includes(status)
+  ) {
     return {
       action: "tracking",
       cta: "Theo dõi xét duyệt",
-      description: "Hồ sơ đã gửi. Bạn có thể xem trạng thái từng tiêu chí và phản hồi nếu có yêu cầu bổ sung.",
+      description:
+        "Hồ sơ đã gửi. Bạn có thể xem trạng thái từng tiêu chí và phản hồi nếu có yêu cầu bổ sung.",
       icon: <CircleAlert className="h-4 w-4" />,
       label: "Theo dõi hồ sơ sau khi nộp",
     };
@@ -2108,25 +2681,11 @@ function getPrimaryWorkspaceAction({
   return {
     action: "submit",
     cta: "Nộp hồ sơ",
-    description: "Hồ sơ đã đủ dữ liệu cơ bản. Khi nộp, hồ sơ sẽ khóa cho tới khi cán bộ yêu cầu bổ sung.",
+    description:
+      "Hồ sơ đã đủ dữ liệu cơ bản. Khi nộp, hồ sơ sẽ khóa cho tới khi cán bộ yêu cầu bổ sung.",
     icon: <Send className="h-4 w-4" />,
-      label: "Đủ dữ liệu để nộp hồ sơ",
+    label: "Đủ dữ liệu để nộp hồ sơ",
   };
-}
-
-function getWorkspaceMissingWorkCount({
-  missingCriteriaCount,
-  missingItemsCount,
-  metricsCompleted,
-  metricsRequired,
-}: {
-  missingCriteriaCount: number;
-  missingItemsCount: number;
-  metricsCompleted: number;
-  metricsRequired: number;
-}) {
-  const missingMetrics = Math.max(0, metricsRequired - metricsCompleted);
-  return Math.max(missingCriteriaCount, missingItemsCount, missingMetrics);
 }
 
 function getWorkspaceHeadline(
@@ -2140,7 +2699,9 @@ function getWorkspaceHeadline(
   }
   if (status === "completed" || status === "rejected") return "Đã có kết quả hồ sơ";
   if (status === "supplement_required") {
-    return missingWorkCount > 0 ? `Bạn còn ${missingWorkCount} việc cần bổ sung` : "Bạn cần gửi lại hồ sơ bổ sung";
+    return missingWorkCount > 0
+      ? `Bạn còn ${missingWorkCount} việc cần bổ sung`
+      : "Bạn cần gửi lại hồ sơ bổ sung";
   }
   if (missingCriteriaCount > 0) return `Còn ${missingCriteriaCount}/5 tiêu chí cần bổ sung`;
   if (!hasPrecheck) return "Đã đủ dữ liệu cơ bản để kiểm tra hồ sơ";
@@ -2162,11 +2723,17 @@ function getPrecheckHeadline(
 function getCriterionCheckSummary(evidenceCount: number, result?: PrecheckCriterionResult) {
   if (evidenceCount === 0) return "Chưa có minh chứng cho tiêu chí này";
   if (!result) return "Đã có minh chứng, chờ kiểm tra";
-  if (result.warnings?.length || result.status === "needs_officer_confirmation" || result.status === "risky") {
+  if (
+    result.warnings?.length ||
+    result.status === "needs_officer_confirmation" ||
+    result.status === "risky"
+  ) {
     return "Chờ cán bộ kiểm tra sau khi nộp";
   }
-  if (result.passed || result.status === "passed" || result.status === "complete") return "Đủ dữ liệu cơ bản";
-  if (result.status === "failed" || result.status === "needs_supplement" || result.passed === false) return "Cần bổ sung";
+  if (result.passed || result.status === "passed" || result.status === "complete")
+    return "Đủ dữ liệu cơ bản";
+  if (result.status === "failed" || result.status === "needs_supplement" || result.passed === false)
+    return "Cần bổ sung";
   return "Đã tự kiểm tra trên hệ thống";
 }
 
@@ -2190,12 +2757,18 @@ function ReadOnlyCriterionData({
 
   return (
     <div className="rounded-xl border border-[#E3ECF6] bg-white p-4">
-      <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Dữ liệu đã nộp</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        Dữ liệu đã nộp
+      </div>
       <div className="mt-3 grid gap-2 md:grid-cols-2">
         {rows.map((row) => (
           <div key={row.label} className="rounded-lg bg-[#F8FBFE] px-3 py-2">
-            <div className="text-[11px] font-semibold uppercase text-muted-foreground">{row.label}</div>
-            <div className="mt-1 text-sm font-semibold text-brand-deep">{row.value || "Chưa ghi nhận"}</div>
+            <div className="text-[11px] font-semibold uppercase text-muted-foreground">
+              {row.label}
+            </div>
+            <div className="mt-1 text-sm font-semibold text-brand-deep">
+              {row.value || "Chưa ghi nhận"}
+            </div>
           </div>
         ))}
       </div>
@@ -2230,12 +2803,17 @@ function StructuredCriterionInputs({
 
   return (
     <div className="rounded-xl border border-[#E3ECF6] bg-white p-4">
-      <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Dữ liệu cần nhập</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        Dữ liệu cần nhập
+      </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {fields.map((field) => {
           if (field.kind === "metric") {
             const saved = metrics.find((item) => item.metricType === field.metricType);
-            const scale = field.metricType === "gpa" ? Number(drafts.gpa_scale || field.scale || 4) : field.scale;
+            const scale =
+              field.metricType === "gpa"
+                ? Number(drafts.gpa_scale || field.scale || 4)
+                : field.scale;
             const metric: MetricInputConfig = {
               key: field.metricType,
               label: field.label,
@@ -2247,12 +2825,21 @@ function StructuredCriterionInputs({
                 <label className="text-xs font-semibold text-muted-foreground">{field.label}</label>
                 <div className="mt-1 flex gap-2">
                   <input
-                    className={"min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 " + (metricErrors[field.metricType]
-                      ? "border-rose-300 bg-rose-50 focus:ring-rose-200"
-                      : "border-[#DCE7F2] focus:ring-[#0057C2]/20")}
+                    className={
+                      "min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 " +
+                      (metricErrors[field.metricType]
+                        ? "border-rose-300 bg-rose-50 focus:ring-rose-200"
+                        : "border-[#DCE7F2] focus:ring-[#0057C2]/20")
+                    }
                     type="number"
                     min={0}
-                    max={field.metricType === "gpa" ? scale : field.metricType === "conduct_score" ? 100 : undefined}
+                    max={
+                      field.metricType === "gpa"
+                        ? scale
+                        : field.metricType === "conduct_score"
+                          ? 100
+                          : undefined
+                    }
                     step={field.metricType === "volunteer_days" ? 1 : 0.01}
                     placeholder={saved ? String(saved.value) : field.placeholder}
                     value={metricValues[field.metricType]}
@@ -2262,14 +2849,22 @@ function StructuredCriterionInputs({
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={!canEdit || Boolean(metricErrors[field.metricType]) || Boolean(savingMetrics[field.metricType])}
+                    disabled={
+                      !canEdit ||
+                      Boolean(metricErrors[field.metricType]) ||
+                      Boolean(savingMetrics[field.metricType])
+                    }
                     onClick={() => onSaveMetric(field.metricType, scale)}
                   >
-                    {savingMetrics[field.metricType] ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {savingMetrics[field.metricType] ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : null}
                     Lưu
                   </Button>
                 </div>
-                {metricErrors[field.metricType] ? <div className="mt-1 text-xs text-rose-600">{metricErrors[field.metricType]}</div> : null}
+                {metricErrors[field.metricType] ? (
+                  <div className="mt-1 text-xs text-rose-600">{metricErrors[field.metricType]}</div>
+                ) : null}
               </div>
             );
           }
@@ -2378,12 +2973,17 @@ function CriterionChecklist({
     {
       label: evidenceCount > 0 ? "Đã có minh chứng liên quan" : "Chưa có minh chứng liên quan",
       state: evidenceCount > 0 ? "completed" : "missing",
-      source: evidenceCount > 0 ? String(evidenceCount) + " minh chứng đã được ghi nhận." : "Bạn cần thêm ít nhất một minh chứng cho tiêu chí này.",
+      source:
+        evidenceCount > 0
+          ? String(evidenceCount) + " minh chứng đã được ghi nhận."
+          : "Bạn cần thêm ít nhất một minh chứng cho tiêu chí này.",
     },
     {
       label: result ? "Dữ liệu đã được hệ thống kiểm tra" : "Dữ liệu đủ để kiểm tra hồ sơ",
       state: result ? (warnings.length > 0 ? "warning" : "completed") : "missing",
-      source: result ? "Kết quả mới nhất giúp bạn rà soát trước khi nộp." : "Hãy thêm minh chứng hoặc nhập thông tin còn thiếu.",
+      source: result
+        ? "Kết quả mới nhất giúp bạn rà soát trước khi nộp."
+        : "Hãy thêm minh chứng hoặc nhập thông tin còn thiếu.",
     },
     ...reasons.slice(0, 1).map((reason) => ({
       label: getUserFacingText(reason),
@@ -2405,13 +3005,28 @@ function CriterionChecklist({
       </div>
       <div className="mt-3 grid gap-2">
         {checklist.map((item, index) => (
-          <div key={item.label + "-" + index} className="flex items-start justify-between gap-3 rounded-lg bg-[#F8FBFE] px-3 py-2 text-sm">
+          <div
+            key={item.label + "-" + index}
+            className="flex items-start justify-between gap-3 rounded-lg bg-[#F8FBFE] px-3 py-2 text-sm"
+          >
             <div>
               <div className="font-semibold text-brand-deep">{item.label}</div>
               <div className="mt-0.5 text-xs text-muted-foreground">{item.source}</div>
             </div>
-            <Chip tone={item.state === "completed" ? "success" : item.state === "warning" ? "warning" : "muted"}>
-              {item.state === "completed" ? "Hoàn tất" : item.state === "warning" ? "Cần rà soát" : "Thiếu"}
+            <Chip
+              tone={
+                item.state === "completed"
+                  ? "success"
+                  : item.state === "warning"
+                    ? "warning"
+                    : "muted"
+              }
+            >
+              {item.state === "completed"
+                ? "Hoàn tất"
+                : item.state === "warning"
+                  ? "Cần rà soát"
+                  : "Thiếu"}
             </Chip>
           </div>
         ))}
@@ -2427,7 +3042,8 @@ function getCriterionStatus(evidenceCount: number, result?: PrecheckCriterionRes
   if (!evidenceCount && !result) return { label: "Chưa có dữ liệu", tone: "muted" as const };
   if (!evidenceCount) return { label: "Cần bổ sung", tone: "warning" as const };
   if (result?.warnings?.length) return { label: "Chờ cán bộ xác nhận", tone: "warning" as const };
-  if (result?.passed || result?.status === "passed") return { label: "Đủ dữ liệu cơ bản", tone: "success" as const };
+  if (result?.passed || result?.status === "passed")
+    return { label: "Đủ dữ liệu cơ bản", tone: "success" as const };
   return { label: "Đã có giấy xác nhận", tone: "brand" as const };
 }
 
@@ -2472,7 +3088,10 @@ function getDefaultEvidenceName(criterion: Criterion) {
   return names[criterion] ?? "Minh chứng mới";
 }
 
-function getMissingSummaryForLevel(level: Level, suitability: ReturnType<typeof evaluateLevelAgainstMatrix>) {
+function getMissingSummaryForLevel(
+  level: Level,
+  suitability: ReturnType<typeof evaluateLevelAgainstMatrix>,
+) {
   if (suitability.status === "met") {
     return "Hồ sơ hiện tại phù hợp với " + levelLabel[level] + ".";
   }
@@ -2493,10 +3112,13 @@ function savePrimaryMetricForCriterion(
 function sortEvidences(items: EvidenceResponse[], sort: EvidenceSort) {
   const list = [...items];
   const dateValue = (value?: string | null) => (value ? new Date(value).getTime() : 0);
-  if (sort === "oldest") return list.sort((a, b) => dateValue(a.createdAt) - dateValue(b.createdAt));
-  if (sort === "name") return list.sort((a, b) => (a.evidenceName ?? "").localeCompare(b.evidenceName ?? "", "vi"));
+  if (sort === "oldest")
+    return list.sort((a, b) => dateValue(a.createdAt) - dateValue(b.createdAt));
+  if (sort === "name")
+    return list.sort((a, b) => (a.evidenceName ?? "").localeCompare(b.evidenceName ?? "", "vi"));
   if (sort === "criterion") return list.sort((a, b) => a.criterion.localeCompare(b.criterion));
-  if (sort === "status") return list.sort((a, b) => String(a.status).localeCompare(String(b.status)));
+  if (sort === "status")
+    return list.sort((a, b) => String(a.status).localeCompare(String(b.status)));
   if (sort === "review") return list.sort((a, b) => getReviewWeight(b) - getReviewWeight(a));
   return list.sort((a, b) => dateValue(b.createdAt) - dateValue(a.createdAt));
 }
@@ -2550,13 +3172,20 @@ function validateMetricValue(metricType: MetricType, value: number, scale?: numb
 
 function normalizeEvidences(value: unknown): EvidenceResponse[] {
   if (Array.isArray(value)) return value as EvidenceResponse[];
-  if (value && typeof value === "object" && Array.isArray((value as { evidences?: unknown }).evidences)) {
+  if (
+    value &&
+    typeof value === "object" &&
+    Array.isArray((value as { evidences?: unknown }).evidences)
+  ) {
     return (value as { evidences: EvidenceResponse[] }).evidences;
   }
   return [];
 }
 
-function normalizeOptimisticEvidence(evidence: EvidenceResponse, applicationId: string): EvidenceResponse {
+function normalizeOptimisticEvidence(
+  evidence: EvidenceResponse,
+  applicationId: string,
+): EvidenceResponse {
   return {
     ...evidence,
     applicationId: evidence.applicationId ?? applicationId,
@@ -2604,7 +3233,9 @@ function mergeEvidenceForDisplay(serverItem: EvidenceResponse, optimisticItem: E
 function upsertEvidence(list: EvidenceResponse[], evidence: EvidenceResponse) {
   const exists = list.some((item) => item.id === evidence.id);
   if (exists) {
-    return list.map((item) => (item.id === evidence.id ? mergeEvidenceForDisplay(item, evidence) : item));
+    return list.map((item) =>
+      item.id === evidence.id ? mergeEvidenceForDisplay(item, evidence) : item,
+    );
   }
   return [evidence, ...list];
 }
@@ -2613,7 +3244,9 @@ function normalizeApplicationLevels(application: ApplicationWithDetails): Applic
   return {
     ...application,
     targetLevel: normalizeWorkspaceLevel(application.targetLevel),
-    finalLevel: application.finalLevel ? normalizeWorkspaceLevel(application.finalLevel) : application.finalLevel,
+    finalLevel: application.finalLevel
+      ? normalizeWorkspaceLevel(application.finalLevel)
+      : application.finalLevel,
   };
 }
 
@@ -2676,15 +3309,14 @@ function useResolvedAvatarUrl(avatarUrl?: string | null) {
 }
 
 function getInitials(name?: string | null) {
-  const words = (name ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (!words.length) return "SV";
-  return words
-    .slice(-2)
-    .map((word) => word[0]?.toUpperCase() ?? "")
-    .join("") || "SV";
+  return (
+    words
+      .slice(-2)
+      .map((word) => word[0]?.toUpperCase() ?? "")
+      .join("") || "SV"
+  );
 }
 
 function formatFinalDate(value?: string | null) {

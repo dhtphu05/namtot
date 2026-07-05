@@ -9,19 +9,33 @@ import {
   ChevronRight,
   FileText,
   Info,
+  MessageSquareText,
   RefreshCw,
   User,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip } from "@/components/ui-kit";
+import { toUiRole } from "@/features/auth/role-map";
+import { useAuth } from "@/features/auth/store/auth-store";
 import type { Notification } from "@/features/notifications/api/notifications";
-import { useMarkNotificationRead, useNotifications } from "@/features/notifications/hooks/useNotifications";
 import {
-  formatCriterionLabel,
-  formatLevelLabel,
-} from "@/features/review/utils/formatters";
+  useMarkNotificationRead,
+  useNotifications,
+} from "@/features/notifications/hooks/useNotifications";
+import { formatCriterionLabel, formatLevelLabel } from "@/features/review/utils/formatters";
+import {
+  AppButton,
+  EmptyState as StudentEmptyState,
+  PageHeader,
+  SectionCard,
+  ScrollSafeModal,
+  StatusBadge,
+} from "@/features/student/components/primitives";
+import { criterionLabels, getFeedbackUiItems } from "@/features/student/selectors/student-ui";
 
 type NotificationFilter = "all" | "unread" | "action" | "result";
+type StudentFeedbackTab = "action" | "handled" | "all";
+type FeedbackItem = ReturnType<typeof getFeedbackUiItems>[number];
 
 type PresentedNotification = {
   bucket: "action" | "result" | "info";
@@ -41,6 +55,21 @@ export function Notifications() {
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const { data: items = [], isLoading, isError, refetch } = useNotifications();
   const markReadMutation = useMarkNotificationRead();
+  const user = useAuth((state) => state.user);
+  const role = user ? toUiRole(user.role) : "student";
+
+  if (role === "student") {
+    return (
+      <StudentFeedbackCenter
+        items={items}
+        isLoading={isLoading}
+        isError={isError}
+        isPending={markReadMutation.isPending}
+        onRetry={() => void refetch()}
+        onMarkRead={(id) => markReadMutation.mutate(id)}
+      />
+    );
+  }
 
   const presentedItems = presentNotifications(items);
   const unreadCount = presentedItems.filter((n) => n.isUnread).length;
@@ -88,10 +117,30 @@ export function Notifications() {
       />
 
       <div className="mb-4 flex flex-wrap gap-1.5 rounded-xl bg-[var(--surface-secondary)] p-1.5">
-        <NotificationTab active={filter === "all"} count={presentedItems.length} label="Tất cả" onClick={() => setFilter("all")} />
-        <NotificationTab active={filter === "unread"} count={unreadCount} label="Chưa đọc" onClick={() => setFilter("unread")} />
-        <NotificationTab active={filter === "action"} count={actionCount} label="Cần hành động" onClick={() => setFilter("action")} />
-        <NotificationTab active={filter === "result"} count={resultCount} label="Kết quả/hội ý" onClick={() => setFilter("result")} />
+        <NotificationTab
+          active={filter === "all"}
+          count={presentedItems.length}
+          label="Tất cả"
+          onClick={() => setFilter("all")}
+        />
+        <NotificationTab
+          active={filter === "unread"}
+          count={unreadCount}
+          label="Chưa đọc"
+          onClick={() => setFilter("unread")}
+        />
+        <NotificationTab
+          active={filter === "action"}
+          count={actionCount}
+          label="Cần hành động"
+          onClick={() => setFilter("action")}
+        />
+        <NotificationTab
+          active={filter === "result"}
+          count={resultCount}
+          label="Kết quả/hội ý"
+          onClick={() => setFilter("result")}
+        />
       </div>
 
       <Card>
@@ -116,13 +165,17 @@ export function Notifications() {
                 key={n.id}
                 className={`flex items-start gap-3 py-3 transition-colors ${n.isUnread ? "-mx-3 rounded-xl bg-[var(--surface-selected)] px-3" : ""}`}
               >
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${tint(n.type)} text-white`}>
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${tint(n.type)} text-white`}
+                >
                   {iconFor(n.type)}
                 </div>
 
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h4 className={`text-[14px] font-bold leading-snug text-brand-deep ${n.isUnread ? "font-extrabold" : ""}`}>
+                    <h4
+                      className={`text-[14px] font-bold leading-snug text-brand-deep ${n.isUnread ? "font-extrabold" : ""}`}
+                    >
                       {n.title}
                     </h4>
                     {n.isUnread ? <Chip tone="brand">Mới</Chip> : null}
@@ -135,7 +188,10 @@ export function Notifications() {
                       {new Date(n.createdAt).toLocaleString("vi-VN")}
                     </span>
 
-                    <Link to={n.ctaLink} className="flex items-center gap-0.5 text-xs font-bold text-[#0057C2] hover:underline">
+                    <Link
+                      to={n.ctaLink}
+                      className="flex items-center gap-0.5 text-xs font-bold text-[#0057C2] hover:underline"
+                    >
                       {n.ctaIcon} {n.ctaText} <ChevronRight className="h-3 w-3" />
                     </Link>
                   </div>
@@ -157,6 +213,308 @@ export function Notifications() {
       </Card>
     </>
   );
+}
+
+function StudentFeedbackCenter({
+  items,
+  isLoading,
+  isError,
+  isPending,
+  onRetry,
+  onMarkRead,
+}: {
+  items: Notification[];
+  isLoading: boolean;
+  isError: boolean;
+  isPending: boolean;
+  onRetry: () => void;
+  onMarkRead: (id: string) => void;
+}) {
+  const [tab, setTab] = useState<StudentFeedbackTab>("action");
+  const [expandedItem, setExpandedItem] = useState<FeedbackItem | null>(null);
+  const feedbackItems = getFeedbackUiItems(items);
+  const actionableCount = feedbackItems.filter((item) => item.isActionable).length;
+  const handledCount = feedbackItems.filter(
+    (item) => !item.isActionable && item.status === "read",
+  ).length;
+  const filteredItems = feedbackItems.filter((item) => {
+    if (tab === "action") return item.isActionable;
+    if (tab === "handled") return !item.isActionable && item.status === "read";
+    return true;
+  });
+
+  if (isError) {
+    return (
+      <>
+        <PageHeader
+          title="Phản hồi"
+          description="Xem yêu cầu bổ sung, kết quả và phản hồi liên quan đến hồ sơ của bạn."
+        />
+        <StudentEmptyState
+          variant="error"
+          title="Chưa tải được phản hồi"
+          description="Vui lòng thử lại sau. Các minh chứng đã lưu của bạn không bị mất."
+          primaryAction={<AppButton onClick={onRetry}>Thử lại</AppButton>}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PageHeader
+        title="Phản hồi"
+        description="Xem yêu cầu bổ sung, kết quả và phản hồi liên quan đến hồ sơ của bạn."
+        rightAction={
+          items.some((item) => !item.readAt) ? (
+            <AppButton
+              variant="secondary"
+              disabled={isPending}
+              onClick={() =>
+                items.filter((item) => !item.readAt).forEach((item) => onMarkRead(item.id))
+              }
+            >
+              <Check className="h-4 w-4" /> Đã đọc tất cả
+            </AppButton>
+          ) : undefined
+        }
+      />
+
+      <div className="mb-4 flex min-w-0 flex-wrap gap-1.5 rounded-2xl bg-slate-100 p-1.5">
+        <FeedbackTab
+          active={tab === "action"}
+          label="Cần xử lý"
+          count={actionableCount}
+          onClick={() => setTab("action")}
+        />
+        <FeedbackTab
+          active={tab === "handled"}
+          label="Đã xử lý"
+          count={handledCount}
+          onClick={() => setTab("handled")}
+        />
+        <FeedbackTab
+          active={tab === "all"}
+          label="Tất cả"
+          count={feedbackItems.length}
+          onClick={() => setTab("all")}
+        />
+      </div>
+
+      <SectionCard>
+        {isLoading ? (
+          <div className="space-y-3 py-2">
+            <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <StudentEmptyState
+            variant="noData"
+            title={
+              tab === "action" ? "Không có phản hồi cần xử lý" : "Chưa có phản hồi trong mục này"
+            }
+            description={
+              tab === "action"
+                ? "Khi cán bộ yêu cầu bổ sung minh chứng hoặc hồ sơ có kết quả, thông tin sẽ xuất hiện tại đây."
+                : "Các phản hồi phù hợp sẽ xuất hiện khi hồ sơ của bạn được cập nhật."
+            }
+            primaryAction={
+              tab === "action" ? (
+                <AppButton asChild variant="secondary">
+                  <Link to="/app/application">Quay lại hồ sơ</Link>
+                </AppButton>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="space-y-3">
+            {filteredItems.map((item) => (
+              <FeedbackCard
+                key={item.id}
+                item={item}
+                isPending={isPending}
+                onMarkRead={onMarkRead}
+                onExpand={setExpandedItem}
+              />
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <ScrollSafeModal
+        open={Boolean(expandedItem)}
+        onOpenChange={(open) => {
+          if (!open) setExpandedItem(null);
+        }}
+        title={expandedItem?.title ?? "Chi tiết phản hồi"}
+        description={expandedItem?.criterionLabel || undefined}
+        widthClassName="max-w-2xl"
+        footer={
+          <div className="flex justify-end">
+            <AppButton onClick={() => setExpandedItem(null)}>Đóng</AppButton>
+          </div>
+        }
+      >
+        <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">
+          {expandedItem?.message}
+        </p>
+      </ScrollSafeModal>
+    </>
+  );
+}
+
+function FeedbackTab({
+  active,
+  count,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  count: number;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
+        active ? "bg-white text-[#0057C2] shadow-sm" : "text-slate-600 hover:bg-white/70"
+      }`}
+    >
+      {label} ({count})
+    </button>
+  );
+}
+
+function FeedbackCard({
+  item,
+  isPending,
+  onMarkRead,
+  onExpand,
+}: {
+  item: FeedbackItem;
+  isPending: boolean;
+  onMarkRead: (id: string) => void;
+  onExpand: (item: FeedbackItem) => void;
+}) {
+  const actionHref = item.criterionKey
+    ? `/app/application?criterion=${encodeURIComponent(item.criterionKey)}${
+        item.evidenceId ? `&evidenceId=${encodeURIComponent(String(item.evidenceId))}` : ""
+      }`
+    : item.route;
+  const assistantHref = buildAssistantHref({
+    criterionKey: item.criterionKey,
+    criterionLabel: item.criterionLabel,
+    feedbackId: item.id,
+    message: item.message,
+    source: "feedback",
+  });
+  const isLong = item.message.length > 180;
+  const isAcknowledgeOnly = item.actionLabel === "Đã hiểu";
+
+  return (
+    <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <StatusBadge
+              tone={item.isActionable ? "warning" : item.status === "new" ? "info" : "neutral"}
+              label={item.statusLabel}
+            />
+            {item.criterionKey ? (
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
+                {item.criterionLabel || criterionLabels[item.criterionKey]}
+              </span>
+            ) : null}
+          </div>
+          <h3 className="mt-3 line-clamp-2 text-base font-bold text-[var(--text-primary)]">
+            {item.title}
+          </h3>
+          <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--text-secondary)]">
+            {item.message}
+          </p>
+          {isLong ? (
+            <button
+              type="button"
+              className="mt-1 text-sm font-bold text-[#0057C2]"
+              onClick={() => onExpand(item)}
+            >
+              Xem thêm
+            </button>
+          ) : null}
+          {item.dueDate ? (
+            <div className="mt-3 text-sm font-semibold text-amber-700">
+              Hạn bổ sung: {formatFeedbackDate(item.dueDate)}
+            </div>
+          ) : null}
+        </div>
+        <MessageSquareText className="hidden h-5 w-5 shrink-0 text-[#0057C2] sm:block" />
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {isAcknowledgeOnly ? (
+          <AppButton
+            size="sm"
+            variant="secondary"
+            disabled={isPending || item.status === "read"}
+            onClick={() => onMarkRead(item.id)}
+          >
+            Đã hiểu
+          </AppButton>
+        ) : (
+          <AppButton asChild size="sm" variant={item.isActionable ? "primary" : "secondary"}>
+            <a href={actionHref}>{item.actionLabel}</a>
+          </AppButton>
+        )}
+        <AppButton asChild size="sm" variant="ghost">
+          <a href={assistantHref}>Hỏi cách xử lý</a>
+        </AppButton>
+        {!isAcknowledgeOnly && (item.status === "new" || item.isActionable) ? (
+          <AppButton
+            size="sm"
+            variant="ghost"
+            disabled={isPending}
+            onClick={() => onMarkRead(item.id)}
+          >
+            Đã hiểu
+          </AppButton>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function buildAssistantHref({
+  criterionKey,
+  criterionLabel,
+  feedbackId,
+  message,
+  source,
+}: {
+  criterionKey?: string | null;
+  criterionLabel?: string | null;
+  feedbackId?: string;
+  message?: string;
+  source: "feedback";
+}) {
+  const params = new URLSearchParams({ source });
+  if (feedbackId) params.set("feedbackId", feedbackId);
+  if (criterionKey) params.set("criterionKey", criterionKey);
+  if (criterionLabel) params.set("criterionLabel", criterionLabel);
+  if (message) params.set("message", message);
+  return `/app/assistant?${params.toString()}`;
+}
+
+function formatFeedbackDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
 }
 
 function NotificationTab({
@@ -182,8 +540,14 @@ function NotificationTab({
 
 function iconFor(type: string) {
   const normalized = type.toLowerCase();
-  if (normalized.includes("success") || normalized.includes("resolved")) return <CheckCircle2 className="h-4 w-4" />;
-  if (normalized.includes("warning") || normalized.includes("error") || normalized.includes("supplement")) return <AlertTriangle className="h-4 w-4" />;
+  if (normalized.includes("success") || normalized.includes("resolved"))
+    return <CheckCircle2 className="h-4 w-4" />;
+  if (
+    normalized.includes("warning") ||
+    normalized.includes("error") ||
+    normalized.includes("supplement")
+  )
+    return <AlertTriangle className="h-4 w-4" />;
   return <Info className="h-4 w-4" />;
 }
 
@@ -204,19 +568,27 @@ function presentNotifications(items: Notification[]): PresentedNotification[] {
 
   return Array.from(groups.values())
     .map(presentNotificationGroup)
-    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+    .sort(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+    );
 }
 
 function presentNotificationGroup(group: Notification[]): PresentedNotification {
-  const sorted = [...group].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const sorted = [...group].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
   const newest = sorted[0];
   const metadata = newest.metadata ?? {};
   const criterion = String(metadata.criterion ?? metadata.criteria ?? "");
   const criterionLabel = formatCriterionLabel(criterion as never);
-  const levelLabel = formatLevelLabel(String(metadata.targetLevel ?? metadata.level ?? "") as never);
+  const levelLabel = formatLevelLabel(
+    String(metadata.targetLevel ?? metadata.level ?? "") as never,
+  );
   const studentName = String(metadata.studentName ?? metadata.fullName ?? "");
   const studentCode = String(metadata.studentCode ?? metadata.mssv ?? "");
-  const context = [studentName, studentCode, levelLabel !== "Chưa có dữ liệu" ? levelLabel : ""].filter(Boolean).join(" · ");
+  const context = [studentName, studentCode, levelLabel !== "Chưa có dữ liệu" ? levelLabel : ""]
+    .filter(Boolean)
+    .join(" · ");
   const lowerType = newest.type.toLowerCase();
   const lowerText = `${newest.title} ${newest.message}`.toLowerCase();
   const cta = getNotificationCta(newest);
@@ -228,7 +600,11 @@ function presentNotificationGroup(group: Notification[]): PresentedNotification 
     title = `Bạn được giao xét tiêu chí ${criterionLabel}`;
   } else if (lowerType.includes("supplement") || lowerText.includes("bổ sung")) {
     title = "Sinh viên đã bổ sung minh chứng";
-  } else if (lowerType.includes("resolution") || lowerText.includes("resolution") || lowerText.includes("hội ý")) {
+  } else if (
+    lowerType.includes("resolution") ||
+    lowerText.includes("resolution") ||
+    lowerText.includes("hội ý")
+  ) {
     title = "Case hội ý đã được cập nhật";
   } else if (lowerType.includes("deadline") || lowerText.includes("quá hạn")) {
     title = "Tác vụ sắp quá hạn";
@@ -242,7 +618,8 @@ function presentNotificationGroup(group: Notification[]): PresentedNotification 
     ctaText: cta.text,
     id: group.map((item) => item.id).join(":"),
     isUnread: group.some((item) => !item.readAt),
-    message: context || sanitizeNotificationText(newest.message) || "Mở chi tiết để xem thông tin xử lý.",
+    message:
+      context || sanitizeNotificationText(newest.message) || "Mở chi tiết để xem thông tin xử lý.",
     sourceIds: group.map((item) => item.id),
     title,
     type: newest.type,
@@ -251,14 +628,27 @@ function presentNotificationGroup(group: Notification[]): PresentedNotification 
 
 function getNotificationGroupKey(item: Notification) {
   const criterion = String(item.metadata?.criterion ?? "");
-  return [item.applicationId ?? "none", item.reviewTaskId ?? "none", criterion, item.type].join(":");
+  return [item.applicationId ?? "none", item.reviewTaskId ?? "none", criterion, item.type].join(
+    ":",
+  );
 }
 
 function getNotificationBucket(item: Notification): PresentedNotification["bucket"] {
   const lowerType = item.type.toLowerCase();
   const lowerText = `${item.title} ${item.message}`.toLowerCase();
-  if (lowerType.includes("resolution") || lowerText.includes("hội ý") || lowerText.includes("resolved")) return "result";
-  if (lowerType.includes("supplement") || lowerType.includes("assigned") || lowerType.includes("deadline") || item.reviewTaskId) return "action";
+  if (
+    lowerType.includes("resolution") ||
+    lowerText.includes("hội ý") ||
+    lowerText.includes("resolved")
+  )
+    return "result";
+  if (
+    lowerType.includes("supplement") ||
+    lowerType.includes("assigned") ||
+    lowerType.includes("deadline") ||
+    item.reviewTaskId
+  )
+    return "action";
   return "info";
 }
 
@@ -267,15 +657,31 @@ function getNotificationCta(item: Notification) {
   const lowerTitle = item.title.toLowerCase();
   const caseId = String(item.metadata?.resolutionCaseId ?? item.metadata?.caseId ?? "");
   if (caseId || lowerType.includes("resolution") || lowerTitle.includes("resolution")) {
-    return { icon: <FileText className="mr-1 h-3.5 w-3.5" />, link: caseId ? `/app/resolution/${caseId}` : "/app/resolution", text: "Xem case hội ý" };
+    return {
+      icon: <FileText className="mr-1 h-3.5 w-3.5" />,
+      link: caseId ? `/app/resolution/${caseId}` : "/app/resolution",
+      text: "Xem case hội ý",
+    };
   }
   if (item.reviewTaskId) {
-    return { icon: <FileText className="mr-1 h-3.5 w-3.5" />, link: `/app/review/${item.reviewTaskId}`, text: "Mở xét duyệt" };
+    return {
+      icon: <FileText className="mr-1 h-3.5 w-3.5" />,
+      link: `/app/review/${item.reviewTaskId}`,
+      text: "Mở xét duyệt",
+    };
   }
   if (item.evidenceId || lowerType.includes("supplement")) {
-    return { icon: <FileText className="mr-1 h-3.5 w-3.5" />, link: "/app/evidence", text: "Xem minh chứng" };
+    return {
+      icon: <FileText className="mr-1 h-3.5 w-3.5" />,
+      link: "/app/application",
+      text: "Xem minh chứng",
+    };
   }
-  return { icon: <User className="mr-1 h-3.5 w-3.5" />, link: item.applicationId ? "/app/queue" : "/app", text: "Xem hồ sơ" };
+  return {
+    icon: <User className="mr-1 h-3.5 w-3.5" />,
+    link: item.applicationId ? "/app/queue" : "/app",
+    text: "Xem hồ sơ",
+  };
 }
 
 function sanitizeNotificationText(value: string) {

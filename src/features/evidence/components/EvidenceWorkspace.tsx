@@ -7,18 +7,16 @@ import { TopBar } from "@/components/layout/TopBar";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
-import { UxStatusCard } from "@/components/status/UxStatusCard";
 import { cn } from "@/lib/utils";
 import type { Criterion, EvidenceResponse } from "@/lib/api/types";
 import { useCurrentApplication } from "@/features/application/hooks/useApplication";
 import { useEvidences, useRetryEvidenceJob } from "@/features/evidence/hooks/useEvidence";
+import { StatusBadge } from "@/features/student/components/primitives";
+import { getEvidenceStudentStatus } from "@/features/student/selectors/student-ui";
 import { AddEvidenceDrawer } from "./AddEvidenceDrawer";
 import { EvidenceDetailModal } from "./EvidenceDetailModal";
 import {
   canRetryEvidence,
-  getConfidenceSummary,
-  getEvidenceUxStatus,
-  indexingStatusCopy,
   normalizeEvidenceCard,
   normalizeWarnings,
   sourceTypeCopy,
@@ -254,8 +252,7 @@ function EvidenceListItem({
   onRetry: () => void;
 }) {
   const card = normalizeEvidenceCard((evidence as EvidenceResponse & { card?: unknown }).card);
-  const uxStatus = getEvidenceUxStatus(evidence, card);
-  const confidence = getConfidenceSummary(card?.confidence ?? evidence.confidence);
+  const studentStatus = getEvidenceStudentStatus(evidence);
   const warnings = normalizeWarnings(card?.warnings ?? card?.warningsJson);
   const fileCount = getEvidenceFiles(evidence).length;
   const retryable = canRetryEvidence(evidence);
@@ -287,20 +284,22 @@ function EvidenceListItem({
       </div>
 
       <div className="mt-4">
-        <UxStatusCard status={uxStatus} className="p-3" />
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#F8FAFC] p-3">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Tình trạng minh chứng
+            </div>
+            <p className="mt-1 line-clamp-2 text-sm text-foreground">
+              {getStudentEvidenceStatusDescription(studentStatus.normalizedStatus)}
+            </p>
+          </div>
+          <StatusBadge tone={studentStatus.tone} label={studentStatus.label} />
+        </div>
       </div>
 
       <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-        <Meta
-          icon={CalendarClock}
-          label="Trạng thái"
-          value={indexingStatusCopy[evidence.indexingStatus] ?? evidence.indexingStatus}
-        />
+        <Meta icon={CalendarClock} label="Trạng thái" value={studentStatus.label} />
         <Meta label="File" value={fileCount ? `${fileCount} file` : "Chưa có file"} />
-        <Meta
-          label="Độ chắc chắn"
-          value={confidence ? `${confidence.label} (${confidence.percent}%)` : "Chưa có"}
-        />
         <Meta
           label="Cảnh báo"
           value={warnings.length ? `${warnings.length} cảnh báo` : "Không có"}
@@ -360,4 +359,17 @@ function Meta({
       </div>
     </div>
   );
+}
+
+function getStudentEvidenceStatusDescription(
+  status: ReturnType<typeof getEvidenceStudentStatus>["normalizedStatus"],
+) {
+  if (status === "processing") return "Hệ thống đang xử lý file. Bạn có thể quay lại sau.";
+  if (status === "recorded" || status === "accepted")
+    return "Minh chứng đã được ghi nhận vào hồ sơ.";
+  if (status === "failed") return "File hiện chưa đọc được. Hãy tải lại file rõ hơn nếu có.";
+  if (status === "supplement_required") return "Cần bổ sung theo yêu cầu để hồ sơ đầy đủ hơn.";
+  if (status === "rejected") return "Minh chứng chưa phù hợp với yêu cầu hiện tại.";
+  if (status === "empty") return "Chưa có file hoặc dữ liệu minh chứng.";
+  return "Minh chứng cần được kiểm tra thêm trước khi xác nhận.";
 }

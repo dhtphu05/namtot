@@ -55,7 +55,7 @@ export function PageHeader({
             </div>
           ) : null}
           <Link
-            to="/app/notifications"
+            to={role === "student" ? "/app/feedback" : "/app/notifications"}
             className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[var(--brand-primary)] shadow-[0_0_0_1px_rgba(15,23,42,0.07)] transition-colors hover:bg-[var(--brand-primary-soft)] focus:outline-none focus:ring-2 focus:ring-[#0057C2]/25"
             aria-label="Thông báo"
           >

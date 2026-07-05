@@ -13,11 +13,11 @@ export function toUiRole(role: ApiRole): UiRole {
 }
 
 export function getDefaultAppPathForRole(role: ApiRole): string {
-  if (role === "student") return "/app/drafts";
+  if (role === "student") return "/app";
   if (role === "class_representative") return "/app/collective";
   if (role === "officer") return "/app";
   if (role === "manager" || role === "committee" || role === "admin") return "/app/analytics";
-  return "/app/drafts";
+  return "/app";
 }
 
 export function isUiRole(role: string): role is UiRole {
