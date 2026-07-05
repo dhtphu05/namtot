@@ -628,9 +628,14 @@ function presentNotificationGroup(group: Notification[]): PresentedNotification 
 
 function getNotificationGroupKey(item: Notification) {
   const criterion = String(item.metadata?.criterion ?? "");
-  return [item.applicationId ?? "none", item.reviewTaskId ?? "none", criterion, item.type].join(
-    ":",
-  );
+  return [
+    item.applicationId ?? "none",
+    item.reviewTaskId ?? "none",
+    item.resolutionCaseId ?? item.metadata?.resolutionCaseId ?? "none",
+    item.evidenceId ?? item.metadata?.evidenceId ?? "none",
+    criterion,
+    item.type,
+  ].join(":");
 }
 
 function getNotificationBucket(item: Notification): PresentedNotification["bucket"] {
@@ -655,7 +660,9 @@ function getNotificationBucket(item: Notification): PresentedNotification["bucke
 function getNotificationCta(item: Notification) {
   const lowerType = item.type.toLowerCase();
   const lowerTitle = item.title.toLowerCase();
-  const caseId = String(item.metadata?.resolutionCaseId ?? item.metadata?.caseId ?? "");
+  const caseId = String(
+    item.resolutionCaseId ?? item.metadata?.resolutionCaseId ?? item.metadata?.caseId ?? "",
+  );
   if (caseId || lowerType.includes("resolution") || lowerTitle.includes("resolution")) {
     return {
       icon: <FileText className="mr-1 h-3.5 w-3.5" />,
@@ -671,9 +678,14 @@ function getNotificationCta(item: Notification) {
     };
   }
   if (item.evidenceId || lowerType.includes("supplement")) {
+    const criterion = String(item.metadata?.criterion ?? "");
+    const evidenceId = String(item.evidenceId ?? item.metadata?.evidenceId ?? "");
+    const params = new URLSearchParams();
+    if (criterion) params.set("criterion", criterion);
+    if (evidenceId) params.set("evidenceId", evidenceId);
     return {
       icon: <FileText className="mr-1 h-3.5 w-3.5" />,
-      link: "/app/application",
+      link: `/app/application${params.toString() ? `?${params.toString()}` : ""}`,
       text: "Xem minh chứng",
     };
   }

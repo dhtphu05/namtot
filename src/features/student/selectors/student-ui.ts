@@ -310,8 +310,15 @@ export function getEvidenceStudentStatus(evidenceInput?: unknown): {
 export function getFeedbackUiItems(notificationsInput?: unknown) {
   return toArray<Notification>(notificationsInput as Notification[]).map((item) => {
     const metadata = asRecord(item.metadata);
-    const criterionKey = normalizeCriterion(metadata?.criterion ?? metadata?.criteria);
+    const metadataEvidenceIds = getArray(metadata?.evidenceIds).map(stringValue).filter(Boolean);
+    const allowedCriteria = getArray(metadata?.allowedCriteria);
     const text = `${item.type} ${item.title} ${item.message}`.toLowerCase();
+    const criterionKey =
+      normalizeCriterion(metadata?.criterion ?? metadata?.criteria ?? allowedCriteria[0]) ??
+      inferCriterionFromText(text);
+    const evidenceId = stringValue(
+      item.evidenceId ?? metadata?.evidenceId ?? metadataEvidenceIds[0],
+    );
     const isSystemInfo =
       text.includes("upload") ||
       text.includes("indexing") ||
@@ -346,7 +353,7 @@ export function getFeedbackUiItems(notificationsInput?: unknown) {
       message: cleanStudentText(item.message) || "Mở chi tiết để xem phản hồi.",
       criterionKey,
       criterionLabel: criterionKey ? criterionLabels[criterionKey] : "",
-      evidenceId: item.evidenceId,
+      evidenceId,
       dueDate: stringValue(metadata?.dueDate ?? metadata?.deadline),
       status,
       statusLabel: status === "action_required" ? "Cần xử lý" : status === "new" ? "Mới" : "Đã đọc",
@@ -515,6 +522,13 @@ function normalizeCriterion(value: unknown): Criterion | undefined {
   return (Object.keys(criterionLabels) as Criterion[]).includes(raw as Criterion)
     ? (raw as Criterion)
     : undefined;
+}
+
+function inferCriterionFromText(text: string): Criterion | undefined {
+  return (Object.keys(criterionLabels) as Criterion[]).find((key) => {
+    const label = criterionLabels[key].toLowerCase();
+    return text.includes(key) || text.includes(label);
+  });
 }
 
 function cleanStudentText(value: string) {
