@@ -18,7 +18,7 @@ The integration is fail-safe:
 ## Environment variables
 
 ```env
-VITE_SMARTUX_ENABLED=false
+VITE_SMARTUX_ENABLED=true
 VITE_SMARTUX_ENV=development
 VITE_SMARTUX_SCRIPT_SRC=
 VITE_SMARTUX_INLINE_SCRIPT=
@@ -32,7 +32,7 @@ VITE_SMARTUX_ENV=production
 VITE_SMARTUX_SCRIPT_SRC=<script-url-from-smartux-console>
 ```
 
-Use `VITE_SMARTUX_INLINE_SCRIPT` only when VNPT provides a full inline snippet and no external script URL. If both script URL and inline script are configured, the external URL is preferred to avoid duplicate SDK loading.
+The app includes the VNPT inline snippet provided for this project as the default fallback, so SmartUX is on unless `VITE_SMARTUX_ENABLED=false` is set explicitly. Use `VITE_SMARTUX_INLINE_SCRIPT` only when VNPT provides a replacement full inline snippet. If both script URL and inline script are configured, the external URL is preferred to avoid duplicate SDK loading.
 
 ## Acceptance checks
 

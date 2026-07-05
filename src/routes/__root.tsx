@@ -14,6 +14,35 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "sonner";
 
+const defaultSmartUXInlineScript = `
+var VNPT = VNPT || {};
+VNPT.q = VNPT.q || [];
+
+VNPT.app_key = 'c2770e700c8c7532c7bbb92427366b6f0d37b342';
+
+VNPT.url = 'https://console-smartux.vnpt.vn';
+
+VNPT.q.push(['track_sessions']);
+VNPT.q.push(['track_pageview']);
+VNPT.q.push(['track_clicks']);
+VNPT.q.push(['track_scrolls']);
+VNPT.q.push(['track_errors']);
+VNPT.q.push(['track_links']);
+VNPT.q.push(['track_forms']);
+VNPT.q.push(['collect_from_forms']);
+
+(function () {
+const paths = ['https://console-smartux.vnpt.vn/sdk/web/core-track.js', 'https://console-smartux.vnpt.vn/sdk/web/minify.min.js'];
+for (let i in paths) {
+    var cly = document.createElement('script'); cly.type = 'text/javascript';
+    cly.async = true;
+    cly.src = paths[i];
+    cly.onload = i == 0 ? function () { VNPT.init() } : function() { window.minify = require("html-minifier").minify; };
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(cly, s);
+}
+})();
+`;
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -142,9 +171,9 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function SmartUXHeadScript() {
-  const enabled = import.meta.env.VITE_SMARTUX_ENABLED === "true";
+  const enabled = import.meta.env.VITE_SMARTUX_ENABLED !== "false";
   const scriptSrc = import.meta.env.VITE_SMARTUX_SCRIPT_SRC;
-  const inlineScript = import.meta.env.VITE_SMARTUX_INLINE_SCRIPT;
+  const inlineScript = import.meta.env.VITE_SMARTUX_INLINE_SCRIPT || defaultSmartUXInlineScript;
   const smartUXEnv = import.meta.env.VITE_SMARTUX_ENV || "production";
 
   if (!enabled) return null;
