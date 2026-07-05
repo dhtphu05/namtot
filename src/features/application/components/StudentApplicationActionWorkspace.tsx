@@ -841,10 +841,10 @@ function CriterionWorkspace({
               </Link>
             </AppButton>
             <AppButton asChild variant="ghost">
-              <a href={assistantHref}>
+              <Link to={toStudentAssistantHref(assistantHref)}>
                 <Sparkles className="h-4 w-4" />
                 Hỏi trợ lý
-              </a>
+              </Link>
             </AppButton>
           </div>
         </div>
@@ -980,10 +980,10 @@ function QuickGuidePanel({
           <GuideBlock title="Minh chứng hợp lệ" items={guide.valid} />
           <GuideBlock title="Lỗi thường gặp" items={guide.mistakes} />
           <AppButton asChild variant="secondary" size="sm" className="w-full">
-            <a href={assistantHref}>
+            <Link to={toStudentAssistantHref(assistantHref)}>
               <Sparkles className="h-4 w-4" />
               Hỏi trợ lý về tiêu chí này
-            </a>
+            </Link>
           </AppButton>
           <details className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
             <summary className="cursor-pointer text-sm font-bold text-[var(--text-primary)]">
@@ -1229,6 +1229,10 @@ function buildAssistantHref({
   if (criterionKey) params.set("criterionKey", criterionKey);
   if (criterionLabel) params.set("criterionLabel", criterionLabel);
   return `/app/assistant?${params.toString()}`;
+}
+
+function toStudentAssistantHref(href: string) {
+  return href as "/app/assistant";
 }
 
 function isCriterionLockedForSupplement(
