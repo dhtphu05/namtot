@@ -9,13 +9,19 @@ export const collectiveEvidenceKeys = {
   list: (id: string) => [...collectiveEvidenceKeys.all, "list", id] as const,
 };
 
-function invalidateCollectiveEvidences(queryClient: ReturnType<typeof useQueryClient>, collectiveId: string) {
+function invalidateCollectiveEvidences(
+  queryClient: ReturnType<typeof useQueryClient>,
+  collectiveId: string,
+) {
   queryClient.invalidateQueries({ queryKey: collectiveEvidenceKeys.list(collectiveId) });
   queryClient.invalidateQueries({ queryKey: collectiveKeys.detail(collectiveId) });
   queryClient.invalidateQueries({ queryKey: collectiveKeys.all });
 }
 
-export function useCollectiveEvidences(collectiveId?: string, query?: Record<string, string | number>) {
+export function useCollectiveEvidences(
+  collectiveId?: string,
+  query?: Record<string, string | number>,
+) {
   return useQuery({
     queryKey: [...collectiveEvidenceKeys.list(collectiveId ?? ""), query],
     queryFn: async () => {
@@ -78,7 +84,13 @@ export function useImportEventCollective() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ collectiveId, data }: { collectiveId: string; data: { eventId: string; collectiveCriterion?: string } }) => {
+    mutationFn: async ({
+      collectiveId,
+      data,
+    }: {
+      collectiveId: string;
+      data: { eventId: string; collectiveCriterion?: string };
+    }) => {
       const res = await collectiveApi.importEvent(collectiveId, data);
       return res.data;
     },

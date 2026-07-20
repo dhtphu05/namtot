@@ -39,7 +39,13 @@ export function EvidenceAuditButton({
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="min-h-11"
+        onClick={() => setOpen(true)}
+      >
         <History className="h-4 w-4" />
         {label}
       </Button>

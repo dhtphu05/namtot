@@ -80,9 +80,15 @@ export function LandingPage() {
           </div>
         </Link>
         <div className="hidden gap-7 text-sm font-semibold text-[#475569] md:flex">
-          <a href="#steps" className="hover:text-[#0057C2]">Quy trình</a>
-          <a href="#criteria" className="hover:text-[#0057C2]">5 tiêu chí</a>
-          <a href="#staff" className="hover:text-[#0057C2]">Cán bộ</a>
+          <a href="#steps" className="hover:text-[#0057C2]">
+            Quy trình
+          </a>
+          <a href="#criteria" className="hover:text-[#0057C2]">
+            5 tiêu chí
+          </a>
+          <a href="#staff" className="hover:text-[#0057C2]">
+            Cán bộ
+          </a>
         </div>
         <Link
           to="/login"
@@ -102,8 +108,8 @@ export function LandingPage() {
             Nộp hồ sơ Sinh viên 5 tốt dễ hơn.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#475569] md:text-lg">
-            Tạo hồ sơ, thêm thành tích, kiểm tra điều kiện và theo dõi xét duyệt trên một workspace rõ ràng.
-            Bạn luôn biết đang ở bước nào, còn thiếu gì và cần làm gì tiếp theo.
+            Tạo hồ sơ, thêm thành tích, kiểm tra điều kiện và theo dõi xét duyệt trên một workspace
+            rõ ràng. Bạn luôn biết đang ở bước nào, còn thiếu gì và cần làm gì tiếp theo.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -129,7 +135,10 @@ export function LandingPage() {
 
           <div className="mt-8 grid gap-2 sm:grid-cols-2">
             {studentSignals.map((item) => (
-              <div key={item} className="flex items-center gap-2 text-sm font-medium text-[#334155]">
+              <div
+                key={item}
+                className="flex items-center gap-2 text-sm font-medium text-[#334155]"
+              >
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                 {item}
               </div>
@@ -146,8 +155,12 @@ export function LandingPage() {
           <div className="rounded-xl bg-[#F8FAFC] p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="text-xs font-bold uppercase tracking-wide text-[#64748B]">Workspace hồ sơ</div>
-                <h2 className="mt-1 text-2xl font-extrabold text-[#0F172A]">Việc cần làm tiếp theo</h2>
+                <div className="text-xs font-bold uppercase tracking-wide text-[#64748B]">
+                  Workspace hồ sơ
+                </div>
+                <h2 className="mt-1 text-2xl font-extrabold text-[#0F172A]">
+                  Việc cần làm tiếp theo
+                </h2>
               </div>
               <span className="rounded-full bg-[#ECFDF3] px-3 py-1 text-xs font-bold text-emerald-700">
                 Đang hoàn thiện
@@ -187,8 +200,12 @@ export function LandingPage() {
 
       <section id="steps" className="mx-auto max-w-7xl px-6 py-14">
         <div className="mb-8 max-w-2xl">
-          <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">Quy trình sinh viên</div>
-          <h2 className="mt-2 text-3xl font-extrabold text-[#0F172A]">4 bước để gửi hồ sơ xét duyệt</h2>
+          <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">
+            Quy trình sinh viên
+          </div>
+          <h2 className="mt-2 text-3xl font-extrabold text-[#0F172A]">
+            4 bước để gửi hồ sơ xét duyệt
+          </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {studentSteps.map((step, index) => {
@@ -217,35 +234,36 @@ export function LandingPage() {
         <div className="rounded-xl bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] md:p-8">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">5 tiêu chí</div>
-              <h2 className="mt-2 text-3xl font-extrabold text-[#0F172A]">Mọi tiêu chí đều có checklist riêng</h2>
+              <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">
+                5 tiêu chí
+              </div>
+              <h2 className="mt-2 text-3xl font-extrabold text-[#0F172A]">
+                Mọi tiêu chí đều có checklist riêng
+              </h2>
               <p className="mt-3 text-sm leading-7 text-[#64748B]">
-                Mỗi tiêu chí hiển thị điều kiện bắt buộc, dữ liệu đã nhập, minh chứng đã có và việc còn thiếu.
-                Nút hành động nằm ngay tại nơi sinh viên đang đọc.
+                Mỗi tiêu chí hiển thị điều kiện bắt buộc, dữ liệu đã nhập, minh chứng đã có và việc
+                còn thiếu. Nút hành động nằm ngay tại nơi sinh viên đang đọc.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                "Đạo đức tốt",
-                "Học tập tốt",
-                "Thể lực tốt",
-                "Tình nguyện tốt",
-                "Hội nhập tốt",
-              ].map((item) => (
-                <div key={item} className="rounded-2xl bg-[#F8FAFC] p-4">
-                  <div className="flex items-center gap-2 font-bold text-[#0F172A]">
-                    <ClipboardCheck className="h-4 w-4 text-[#0057C2]" />
-                    {item}
+              {["Đạo đức tốt", "Học tập tốt", "Thể lực tốt", "Tình nguyện tốt", "Hội nhập tốt"].map(
+                (item) => (
+                  <div key={item} className="rounded-2xl bg-[#F8FAFC] p-4">
+                    <div className="flex items-center gap-2 font-bold text-[#0F172A]">
+                      <ClipboardCheck className="h-4 w-4 text-[#0057C2]" />
+                      {item}
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-[#64748B]">
+                      Kiểm tra dữ liệu cứng, thành tích và giấy xác nhận theo cấp đăng ký.
+                    </p>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-[#64748B]">
-                    Kiểm tra dữ liệu cứng, thành tích và giấy xác nhận theo cấp đăng ký.
-                  </p>
-                </div>
-              ))}
+                ),
+              )}
               <div className="rounded-2xl bg-[#EAF3FF] p-4">
                 <div className="font-bold text-[#0057C2]">Gợi ý cấp xét phù hợp</div>
                 <p className="mt-2 text-xs leading-5 text-[#334155]">
-                  Hệ thống gợi ý cấp xét dựa trên dữ liệu hiện có, cán bộ vẫn là người quyết định cuối cùng.
+                  Hệ thống gợi ý cấp xét dựa trên dữ liệu hiện có, cán bộ vẫn là người quyết định
+                  cuối cùng.
                 </p>
               </div>
             </div>
@@ -256,8 +274,12 @@ export function LandingPage() {
       <section id="staff" className="mx-auto max-w-7xl px-6 py-14">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">Dành cho cán bộ và hội đồng</div>
-            <h2 className="mt-2 text-3xl font-extrabold text-[#0F172A]">Các module vận hành nằm sau flow sinh viên</h2>
+            <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">
+              Dành cho cán bộ và hội đồng
+            </div>
+            <h2 className="mt-2 text-3xl font-extrabold text-[#0F172A]">
+              Các module vận hành nằm sau flow sinh viên
+            </h2>
           </div>
           <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-bold text-[#64748B]">
             <Bell className="h-3.5 w-3.5" />

@@ -179,7 +179,7 @@ export function RequestSupplementPanel({ task, onSuccess }: RequestSupplementPan
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setNote((current) => current ? `${current.trim()}\n${template}` : template);
+                  setNote((current) => (current ? `${current.trim()}\n${template}` : template));
                   setFormError(null);
                 }}
               >

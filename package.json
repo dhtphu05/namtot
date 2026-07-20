@@ -11,6 +11,14 @@
     "lint": "eslint .",
     "format": "prettier --write ."
   },
+  "pnpm": {
+    "overrides": {
+      "nf3": "0.3.22"
+    }
+  },
+  "overrides": {
+    "nf3": "0.3.22"
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -70,9 +78,11 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.6.4",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@vercel/nft": "1.10.2",
     "@vitejs/plugin-react": "^5.2.0",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { notificationsApi } from "@/features/notifications/api/notifications";
+import { notificationsApi, type Notification } from "@/features/notifications/api/notifications";
 
 export const notificationKeys = {
   all: ["notifications"] as const,
@@ -29,6 +29,24 @@ export function useMarkNotificationRead() {
     mutationFn: async (notificationId: string) => {
       const res = await notificationsApi.markNotificationRead(notificationId);
       return res.data;
+    },
+    onMutate: async (notificationId) => {
+      await queryClient.cancelQueries({ queryKey: notificationKeys.all });
+      const previous = queryClient.getQueriesData<Notification[]>({
+        queryKey: notificationKeys.all,
+      });
+      const readAt = new Date().toISOString();
+
+      queryClient.setQueriesData<Notification[]>({ queryKey: notificationKeys.all }, (current) =>
+        current?.map((item) => (item.id === notificationId ? { ...item, readAt } : item)),
+      );
+
+      return { previous };
+    },
+    onError: (_error, _notificationId, context) => {
+      context?.previous.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });

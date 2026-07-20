@@ -1,10 +1,7 @@
 import type { Criterion } from "@/lib/api/types";
 
 export type ChatbotContextScope =
-  | "student_helpdesk"
-  | "reviewer_copilot"
-  | "manager_assistant"
-  | "committee_assistant";
+  "student_helpdesk" | "reviewer_copilot" | "manager_assistant" | "committee_assistant";
 
 export type ChatbotPage =
   | "dashboard"

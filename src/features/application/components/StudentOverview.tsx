@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import {
+  useCriteriaCompletion,
   useCurrentApplication,
   useLatestPrecheck,
   useStartApplication,
@@ -28,6 +29,11 @@ import { useEvidences } from "@/features/evidence/hooks/useEvidence";
 import { useNotifications } from "@/features/notifications/hooks/useNotifications";
 import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 import {
+  applyActionPresentationToUiAction,
+  applyCriterionDisplayToUiState,
+  getStudentCriterionDisplayState,
+} from "@/features/application/presentation";
+import {
   AppButton,
   EmptyState,
   PageHeader,
@@ -35,6 +41,7 @@ import {
   StatusBadge,
 } from "@/features/student/components/primitives";
 import {
+  applyCompletionToCriteriaState,
   coreStudentCriteria,
   criterionLabels,
   getCriteriaUiState,
@@ -42,9 +49,11 @@ import {
   getNextActions,
   getStudentApplicationSummary,
 } from "@/features/student/selectors/student-ui";
+import { PRESENTATION_SEMANTICS_V2 } from "@/lib/presentation-semantics";
 import { cn } from "@/lib/utils";
 import type {
   ApplicationState,
+  CriterionCompletionItem,
   Criterion,
   EvidenceResponse,
   PrecheckResult,
@@ -67,7 +76,7 @@ type ApplicationWithDashboardData = ApplicationState & {
 
 type CriteriaState = ReturnType<typeof getCriteriaUiState>;
 type FeedbackItem = ReturnType<typeof getFeedbackUiItems>[number];
-type NextAction = ReturnType<typeof getNextActions>[number];
+type NextAction = ReturnType<typeof getNextActions>[number] & { isInteractive?: boolean };
 
 const criterionIcons: Partial<Record<Criterion, LucideIcon>> = {
   ethics: ShieldCheck,
@@ -83,6 +92,7 @@ export function StudentOverview() {
   const application = current.data?.application as ApplicationWithDashboardData | null | undefined;
   const applicationId = application?.id;
   const latestPrecheck = useLatestPrecheck(applicationId);
+  const criteriaCompletion = useCriteriaCompletion(applicationId);
   const evidencesQuery = useEvidences(applicationId, { limit: 100 });
   const notifications = useNotifications({ page: 1, limit: 20 });
   const startApplication = useStartApplication();
@@ -98,23 +108,37 @@ export function StudentOverview() {
     () => (application ? { ...application, evidences } : null),
     [application, evidences],
   );
+  const criteriaStates = useMemo(
+    () =>
+      application
+        ? coreStudentCriteria.map((criterion) =>
+            buildOverviewCriterionState({
+              criterion,
+              application,
+              completion: criteriaCompletion.data?.items.find(
+                (item) => item.criterion === criterion,
+              ),
+              evidences,
+              precheck,
+              feedbackItems,
+            }),
+          )
+        : [],
+    [application, criteriaCompletion.data?.items, evidences, precheck, feedbackItems],
+  );
   const summary = getStudentApplicationSummary(
     applicationForSummary,
     precheck,
     null,
     feedbackItems,
-  );
-  const criteriaStates = useMemo(
-    () =>
-      application
-        ? coreStudentCriteria.map((criterion) =>
-            getCriteriaUiState(criterion, evidences, precheck, feedbackItems),
-          )
-        : [],
-    [application, evidences, precheck, feedbackItems],
+    criteriaStates,
   );
   const nextActions = useMemo(
-    () => getNextActions(applicationForSummary, criteriaStates, feedbackItems, precheck),
+    () =>
+      getNextActions(applicationForSummary, criteriaStates, feedbackItems, precheck).map(
+        (action) =>
+          PRESENTATION_SEMANTICS_V2 ? applyActionPresentationToUiAction(action) : action,
+      ),
     [applicationForSummary, criteriaStates, feedbackItems, precheck],
   );
   const actionableFeedback = useMemo(
@@ -289,11 +313,23 @@ function ApplicationHeroCard({
           </div>
           <div className="mt-3 flex items-end gap-1">
             <span className="text-4xl font-bold text-[#0057C2]">
-              {summary.completedCriteriaCount}
+              {summary.completionCounts.readyForPrecheck}
             </span>
             <span className="pb-1 text-sm font-semibold text-slate-500">
               /{summary.totalCriteriaCount} tiêu chí
             </span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <OverviewCount label="Chưa bắt đầu" value={summary.completionCounts.notStarted} />
+            <OverviewCount label="Đang hoàn thiện" value={summary.completionCounts.inProgress} />
+            <OverviewCount
+              label="Cần xác minh"
+              value={summary.completionCounts.needsVerification}
+            />
+            <OverviewCount
+              label="Có yêu cầu bổ sung"
+              value={summary.completionCounts.supplementRequired}
+            />
           </div>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
             {summary.pendingActionCount > 0
@@ -303,6 +339,15 @@ function ApplicationHeroCard({
         </div>
       </div>
     </SectionCard>
+  );
+}
+
+function OverviewCount({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50 px-2 py-2">
+      <div className="text-lg font-bold text-[#0057C2]">{value}</div>
+      <div className="line-clamp-1 text-slate-500">{label}</div>
+    </div>
   );
 }
 
@@ -393,15 +438,19 @@ function ActionRow({ action, index }: { action: NextAction; index: number }) {
         <h3 className="truncate text-sm font-bold text-[var(--text-primary)]">{action.title}</h3>
         <p className="line-clamp-1 text-sm text-[var(--text-secondary)]">{action.description}</p>
       </div>
-      <AppButton asChild size="sm" variant={index === 0 ? "primary" : "secondary"}>
-        <Link
-          to={action.criterionKey ? "/app/application" : toStudentRoute(action.route)}
-          search={action.criterionKey ? { criterion: action.criterionKey } : undefined}
-          data-smartux-tag={getStudentActionTag(action)}
-        >
-          {action.actionLabel}
-        </Link>
-      </AppButton>
+      {action.isInteractive === false ? (
+        <StatusBadge tone="info" label="Đang chờ" />
+      ) : (
+        <AppButton asChild size="sm" variant={index === 0 ? "primary" : "secondary"}>
+          <Link
+            to={action.criterionKey ? "/app/application" : toStudentRoute(action.route)}
+            search={action.criterionKey ? { criterion: action.criterionKey } : undefined}
+            data-smartux-tag={getStudentActionTag(action)}
+          >
+            {action.actionLabel}
+          </Link>
+        </AppButton>
+      )}
     </div>
   );
 }
@@ -547,6 +596,37 @@ function buildAssistantSearch({
     message,
     nextActions: nextActions?.length ? nextActions.slice(0, 3).join("|") : undefined,
   };
+}
+
+function buildOverviewCriterionState({
+  application,
+  completion,
+  criterion,
+  evidences,
+  feedbackItems,
+  precheck,
+}: {
+  application: ApplicationWithDashboardData;
+  completion?: CriterionCompletionItem;
+  criterion: Criterion;
+  evidences: EvidenceResponse[];
+  feedbackItems: FeedbackItem[];
+  precheck: PrecheckResult | null;
+}) {
+  const base = applyCompletionToCriteriaState(
+    getCriteriaUiState(criterion, evidences, precheck, feedbackItems),
+    completion,
+  );
+  if (!PRESENTATION_SEMANTICS_V2) return base;
+  const display = getStudentCriterionDisplayState({
+    criterion,
+    application,
+    completion,
+    reviewTask: application.reviewTasks?.find((item) => item.criterion === criterion),
+    precheckAction: precheck?.criteriaResults?.find((item) => item.criterion === criterion)
+      ?.nextAction,
+  });
+  return applyCriterionDisplayToUiState(base, display);
 }
 
 function OverviewSkeleton() {

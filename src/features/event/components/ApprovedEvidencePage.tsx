@@ -1,271 +1,188 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, DatabaseZap, FileUp } from "lucide-react";
-import { Link } from "@tanstack/react-router";
-import { TopBar } from "@/components/layout/TopBar";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/feedback/EmptyState";
-import { ErrorState } from "@/components/feedback/ErrorState";
-import { LoadingState } from "@/components/feedback/LoadingState";
-import { ApiError } from "@/lib/api/client";
-import { useAuth } from "@/features/auth/store/auth-store";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentApplication } from "@/features/application/hooks/useApplication";
+import { AddEvidenceDrawer } from "@/features/evidence/components/AddEvidenceDrawer";
+import { EmptyState, PageHeader, StudentPageShell } from "@/features/student/components/primitives";
 import type { Criterion, EvidenceResponse } from "@/lib/api/types";
-import type { ApprovedEvidenceSearchItem } from "@/types/evidence";
-import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDetailModal";
+import type { OfficialEventLibraryItem } from "@/types/evidence";
 import {
-  useApprovedEvidenceSearch,
-  useImportApprovedEvidence,
-} from "@/features/event/hooks/useApprovedEvidenceSearch";
-import { ApprovedEvidenceCard } from "./ApprovedEvidenceCard";
-import { ApprovedEvidenceFilters } from "./ApprovedEvidenceFilters";
-import { ImportEvidenceModal } from "./ImportEvidenceModal";
+  ReferenceEventSkeleton,
+  StudentReferenceEventLibrary,
+} from "./OfficialEventLibraryStudent";
 
-type SearchStatus = "all" | "importable" | "imported";
+type EventLibrarySearch = {
+  q?: string;
+  criterion?: string;
+};
+
+type StudentReferenceEvent = Pick<OfficialEventLibraryItem, "eventId" | "title">;
 
 export function ApprovedEvidencePage() {
-  const user = useAuth((state) => state.user);
-  const studentCode = user?.studentCode;
-  const studentName = user?.fullName;
+  const navigate = useNavigate();
+  const searchParams = useSearch({ from: "/app/event-library" }) as EventLibrarySearch;
   const currentApplication = useCurrentApplication();
   const applicationId = currentApplication.data?.application?.id;
-  const [q, setQ] = useState("");
-  const debouncedQ = useDebouncedValue(q, 400);
-  const [criterion, setCriterion] = useState<Criterion | "all">("all");
-  const [status, setStatus] = useState<SearchStatus>("all");
-  const [confirmItem, setConfirmItem] = useState<ApprovedEvidenceSearchItem | null>(null);
-  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceResponse | null>(null);
-  const [importedEvidenceByEvent, setImportedEvidenceByEvent] = useState<
-    Record<string, EvidenceResponse>
-  >({});
-  const search = useApprovedEvidenceSearch(
-    {
-      studentCode,
-      studentName,
-      criterion,
-      q: debouncedQ,
-      status,
-    },
-    true,
+  const [search, setSearch] = useState(searchParams.q ?? "");
+  const [criterion, setCriterion] = useState<Criterion | "all">(
+    normalizeCriterionSearch(searchParams.criterion) ?? "all",
   );
-  const importEvidence = useImportApprovedEvidence(applicationId);
-  const searchError = search.error instanceof ApiError ? search.error : null;
-  const items = search.data ?? [];
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [referenceEvent, setReferenceEvent] = useState<StudentReferenceEvent | null>(null);
 
-  const emptyCopy = useMemo(() => {
-    if (debouncedQ || criterion !== "all" || status !== "all") {
-      return {
-        title: "Không có kết quả phù hợp",
-        description: "Thử đổi tiêu chí hoặc từ khóa tìm kiếm.",
-      };
-    }
+  useEffect(() => {
+    setSearch(searchParams.q ?? "");
+    setCriterion(normalizeCriterionSearch(searchParams.criterion) ?? "all");
+  }, [searchParams.criterion, searchParams.q]);
 
-    return {
-      title: "Chưa tìm thấy minh chứng chính thức",
-      description:
-        "Hiện chưa có hoạt động nào trong danh sách chính thức khớp với hồ sơ của bạn. Bạn vẫn có thể upload minh chứng ở mục Minh chứng của tôi.",
-    };
-  }, [criterion, debouncedQ, status]);
-
-  const confirmImport = async () => {
-    if (!confirmItem) return;
-    const result = await importEvidence.mutateAsync({
-      eventId: confirmItem.event.id,
-      participantId: confirmItem.participant.id,
+  const updateSearchParams = (nextSearch: string, nextCriterion: Criterion | "all") => {
+    void navigate({
+      to: "/app/event-library",
+      replace: true,
+      search: {
+        q: nextSearch.trim() || undefined,
+        criterion: nextCriterion === "all" ? undefined : nextCriterion,
+      } as never,
     });
-
-    if (result?.evidence) {
-      setImportedEvidenceByEvent((current) => ({
-        ...current,
-        [confirmItem.event.id]: result.evidence as EvidenceResponse,
-      }));
-      setSelectedEvidence(result.evidence as EvidenceResponse);
-    }
-    setConfirmItem(null);
   };
 
-  if (currentApplication.isLoading) {
-    return <LoadingState label="Đang tải hồ sơ hiện tại..." />;
-  }
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    updateSearchParams(value, criterion);
+  };
 
-  if (currentApplication.isError) {
-    return (
-      <ErrorState
-        title="Không thể tải hồ sơ"
-        message={
-          currentApplication.error instanceof Error
-            ? currentApplication.error.message
-            : "Vui lòng thử lại."
-        }
-        onRetry={() => void currentApplication.refetch()}
-      />
-    );
-  }
+  const handleCriterionChange = (value: Criterion | "all") => {
+    setCriterion(value);
+    updateSearchParams(search, value);
+  };
 
-  if (!currentApplication.data?.application) {
-    return (
-      <>
-        <TopBar
-          title="Kho minh chứng chính thức"
-          subtitle="Vui lòng tạo hồ sơ trước khi thêm minh chứng."
-        />
-        <EmptyState
-          title="Bạn chưa có hồ sơ xét duyệt"
-          description="Hãy tạo hồ sơ để thêm minh chứng từ danh sách chính thức."
-          action={
-            <Button asChild>
-              <Link to="/app/wizard">Tạo hồ sơ ngay</Link>
-            </Button>
-          }
-        />
-      </>
-    );
-  }
+  const openBlankEvidenceSheet = () => {
+    setReferenceEvent(null);
+    setDrawerOpen(true);
+  };
+
+  const openReferenceEvidenceSheet = (item: StudentReferenceEvent) => {
+    setReferenceEvent(item);
+    setDrawerOpen(true);
+  };
+
+  const handleCreated = (evidence: EvidenceResponse) => {
+    void navigate({
+      to: "/app/application",
+      search: {
+        criterion: evidence.criterion,
+        evidenceId: evidence.id,
+      } as never,
+    });
+  };
+
+  const selectedCriterion = criterion === "all" ? "academic" : criterion;
 
   return (
-    <>
-      <TopBar
-        title="Kho minh chứng chính thức"
-        subtitle="Các hoạt động và danh sách đã được cán bộ xác nhận. Nếu có tên trong danh sách, bạn có thể thêm vào hồ sơ."
-        action={
-          <Button asChild variant="outline">
-            <Link to="/app/evidence">
-              Minh chứng của tôi
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+    <StudentPageShell className="px-4 md:px-6">
+      <PageHeader
+        title="Kho minh chứng"
+        description="Trang này giúp bạn tham khảo tên hoạt động đã từng được chấp nhận để đặt tên minh chứng nhất quán hơn."
+        rightAction={
+          <Button
+            type="button"
+            className="min-h-11"
+            onClick={openBlankEvidenceSheet}
+            disabled={!applicationId || currentApplication.isLoading}
+          >
+            Thêm minh chứng
           </Button>
         }
       />
 
-      <div className="mb-4 rounded-md border bg-white p-4 text-sm text-muted-foreground">
-        Minh chứng từ danh sách chính thức được thêm trực tiếp vào hồ sơ của bạn.
-      </div>
-
-      <ApprovedEvidenceFilters
-        q={q}
-        criterion={criterion}
-        status={status}
-        onQueryChange={setQ}
-        onCriterionChange={setCriterion}
-        onStatusChange={setStatus}
-      />
-
-      <div className="mt-5">
-        {search.isLoading ? (
-          <LoadingState label="Đang tải kho minh chứng chính thức..." />
-        ) : search.isError ? (
-          <ErrorState
-            title={getErrorTitle(searchError)}
-            message={getErrorMessage(searchError)}
-            requestId={searchError?.meta?.requestId}
-            onRetry={() => void search.refetch()}
-          />
-        ) : items.length === 0 ? (
-          <EmptyState
-            icon={debouncedQ || criterion !== "all" || status !== "all" ? DatabaseZap : FileUp}
-            title={emptyCopy.title}
-            description={emptyCopy.description}
-            action={
-              debouncedQ || criterion !== "all" || status !== "all" ? null : (
-                <Button asChild>
-                  <Link to="/app/evidence">Upload minh chứng thủ công</Link>
-                </Button>
-              )
-            }
-          />
-        ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
-            {items.map((item) => {
-              const importedEvidence = importedEvidenceByEvent[item.event.id];
-              const evidenceId = importedEvidence?.id ?? item.evidenceId;
-              return (
-                <ApprovedEvidenceCard
-                  key={`${item.event.id}-${item.participant.id}`}
-                  item={{
-                    ...item,
-                    alreadyImported: item.alreadyImported || Boolean(importedEvidence),
-                  }}
-                  evidenceId={evidenceId}
-                  isImporting={importEvidence.isPending}
-                  onImport={() => setConfirmItem(item)}
-                  onViewEvidence={() => {
-                    if (importedEvidence) {
-                      setSelectedEvidence(importedEvidence);
-                      return;
-                    }
-
-                    if (item.evidenceId) {
-                      setSelectedEvidence(
-                        toEvidencePlaceholder(item, item.evidenceId, applicationId),
-                      );
-                    }
-                  }}
-                />
-              );
-            })}
+      {currentApplication.isLoading ? (
+        <ReferencePageSkeleton />
+      ) : currentApplication.isError ? (
+        <div className="rounded-md border border-rose-100 bg-rose-50 px-4 py-3 text-rose-900">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-medium">Chưa tải được hồ sơ để mở kho minh chứng.</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void currentApplication.refetch()}
+            >
+              Thử lại
+            </Button>
           </div>
-        )}
-      </div>
+        </div>
+      ) : !currentApplication.data?.application ? (
+        <EmptyState
+          variant="noData"
+          title="Bạn chưa có hồ sơ xét duyệt"
+          description="Tạo hồ sơ trước khi thêm minh chứng từ tên hoạt động tham khảo."
+          primaryAction={
+            <Button asChild>
+              <Link to="/app/application">Mở hồ sơ</Link>
+            </Button>
+          }
+        />
+      ) : (
+        <StudentReferenceEventLibrary
+          applicationId={applicationId}
+          search={search}
+          criterion={criterion}
+          onSearchChange={handleSearchChange}
+          onCriterionChange={handleCriterionChange}
+          onSelect={openReferenceEvidenceSheet}
+          onAddEvidence={openBlankEvidenceSheet}
+        />
+      )}
 
-      <ImportEvidenceModal
-        item={confirmItem}
-        open={Boolean(confirmItem)}
-        isSubmitting={importEvidence.isPending}
-        onOpenChange={(open) => !open && setConfirmItem(null)}
-        onConfirm={() => void confirmImport()}
-      />
-
-      <EvidenceDetailModal
-        evidence={selectedEvidence}
-        applicationId={applicationId}
-        canEdit={false}
-        onClose={() => setSelectedEvidence(null)}
-      />
-    </>
+      {applicationId ? (
+        <AddEvidenceDrawer
+          applicationId={applicationId}
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          initialCriterion={selectedCriterion}
+          initialEvidenceName={referenceEvent?.title ?? ""}
+          referenceEvent={
+            referenceEvent
+              ? {
+                  eventId: referenceEvent.eventId,
+                  title: referenceEvent.title,
+                }
+              : null
+          }
+          submitLabel={referenceEvent ? "Dùng tên sự kiện" : "Upload minh chứng"}
+          onCreated={handleCreated}
+        />
+      ) : null}
+    </StudentPageShell>
   );
 }
 
-function useDebouncedValue<T>(value: T, delayMs: number) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedValue(value), delayMs);
-    return () => window.clearTimeout(timeout);
-  }, [delayMs, value]);
-
-  return debouncedValue;
+function ReferencePageSkeleton() {
+  return (
+    <div className="min-w-0">
+      <Skeleton className="h-11 w-full rounded-lg" />
+      <Skeleton className="mt-2 h-5 w-72 max-w-full rounded-md" />
+      <div className="mt-4 flex gap-2 overflow-hidden">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-11 w-32 shrink-0 rounded-md" />
+        ))}
+      </div>
+      <div className="mt-4">
+        <ReferenceEventSkeleton />
+      </div>
+    </div>
+  );
 }
 
-function getErrorTitle(error: ApiError | null) {
-  if (error?.status === 403) return "Bạn chỉ có thể xem minh chứng của chính mình";
-  if (error?.status === 404) return "Không tìm thấy hoạt động hoặc danh sách này";
-  return "Không thể tải kho minh chứng";
-}
-
-function getErrorMessage(error: ApiError | null) {
-  if (error?.status === 403) return "Bạn chỉ có thể xem và thêm minh chứng của chính mình.";
-  if (error?.status === 404) return "Không tìm thấy hoạt động hoặc danh sách này.";
-  if (error?.code?.toLowerCase().includes("already")) return "Minh chứng này đã có trong hồ sơ.";
-  if (error?.code?.toLowerCase().includes("participant"))
-    return "Bạn không thể thêm minh chứng của sinh viên khác.";
-  return error?.message ?? "Vui lòng kiểm tra kết nối và thử lại.";
-}
-
-function toEvidencePlaceholder(
-  item: ApprovedEvidenceSearchItem,
-  evidenceId: string,
-  applicationId?: string,
-): EvidenceResponse {
-  const now = new Date().toISOString();
-
-  return {
-    id: evidenceId,
-    applicationId,
-    evidenceName: item.event.eventName,
-    criterion: item.event.criterion,
-    sourceType: "event_import",
-    status: "indexed",
-    indexingStatus: "indexed",
-    createdAt: now,
-    updatedAt: now,
-  };
+function normalizeCriterionSearch(value?: string): Criterion | null {
+  if (
+    value === "ethics" ||
+    value === "academic" ||
+    value === "physical" ||
+    value === "volunteer" ||
+    value === "integration"
+  ) {
+    return value;
+  }
+  return null;
 }

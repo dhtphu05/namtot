@@ -1,11 +1,18 @@
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip } from "@/components/ui-kit";
 import { AlertTriangle, Bell, Check, Info, Loader2 } from "lucide-react";
-import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications } from "../hooks/useNotifications";
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
+} from "../hooks/useNotifications";
 import type { NotificationItem } from "../api/notifications";
 
 export function Notifications() {
-  const { data, isLoading, isError, error, refetch, isFetching } = useNotifications({ page: 1, limit: 50 });
+  const { data, isLoading, isError, error, refetch, isFetching } = useNotifications({
+    page: 1,
+    limit: 50,
+  });
   const markOne = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
   const items = data?.items ?? [];
@@ -19,7 +26,11 @@ export function Notifications() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
-              {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+              {isFetching ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Bell className="h-4 w-4" />
+              )}
               Tải lại
             </Button>
             <Button
@@ -39,7 +50,11 @@ export function Notifications() {
             Đang tải thông báo...
           </div>
         )}
-        {isError && <div className="py-12 text-center font-semibold text-rose-600">{(error as Error)?.message || "Không thể tải thông báo."}</div>}
+        {isError && (
+          <div className="py-12 text-center font-semibold text-rose-600">
+            {(error as Error)?.message || "Không thể tải thông báo."}
+          </div>
+        )}
         {!isLoading && !isError && (
           <div className="space-y-2">
             {items.map((item) => (
@@ -50,7 +65,11 @@ export function Notifications() {
                 onMarkRead={() => markOne.mutate(item.id)}
               />
             ))}
-            {items.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">Chưa có thông báo.</div>}
+            {items.length === 0 && (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                Chưa có thông báo.
+              </div>
+            )}
           </div>
         )}
       </Card>
@@ -69,8 +88,12 @@ function NotificationRow({
 }) {
   const unread = !item.readAt;
   return (
-    <div className={`flex items-start gap-4 rounded-lg p-4 ${unread ? "bg-[#F4FBFF]" : "bg-white"}`}>
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white ${tint(item.type)}`}>
+    <div
+      className={`flex items-start gap-4 rounded-lg p-4 ${unread ? "bg-[#F4FBFF]" : "bg-white"}`}
+    >
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white ${tint(item.type)}`}
+      >
         {iconFor(item.type)}
       </div>
       <div className="min-w-0 flex-1">
@@ -91,7 +114,8 @@ function NotificationRow({
 
 function iconFor(type: string) {
   if (type.includes("result")) return <Check className="h-4 w-4" />;
-  if (type.includes("supplement") || type.includes("deadline")) return <AlertTriangle className="h-4 w-4" />;
+  if (type.includes("supplement") || type.includes("deadline"))
+    return <AlertTriangle className="h-4 w-4" />;
   if (type.includes("review")) return <Bell className="h-4 w-4" />;
   return <Info className="h-4 w-4" />;
 }

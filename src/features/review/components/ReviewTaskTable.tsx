@@ -84,13 +84,17 @@ export function ReviewTaskTable({
               }}
             >
               <TableCell className="min-w-[220px]">
-                <div className="font-semibold text-brand-deep">{item.studentName || fallbackText}</div>
+                <div className="font-semibold text-brand-deep">
+                  {item.studentName || fallbackText}
+                </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
                   {[item.studentCode, getStudentMeta(item)].filter(Boolean).join(" • ")}
                 </div>
               </TableCell>
               <TableCell className="min-w-[280px]">
-                <div className="text-sm font-medium text-foreground">{getOfficerTaskWorkLabel(item)}</div>
+                <div className="text-sm font-medium text-foreground">
+                  {getOfficerTaskWorkLabel(item)}
+                </div>
                 <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
                   <span>{item.evidenceCount ?? 0} minh chứng</span>
                   <span>•</span>
@@ -153,11 +157,15 @@ export function ReviewTaskTable({
 
 function PriorityBadge({ item }: { item: ReviewTaskListItem }) {
   if (item.priorityReason === "overdue") return <Badge variant="destructive">Quá hạn</Badge>;
-  if (item.priorityReason === "student_resubmitted") return <Badge variant="outline">Vừa bổ sung</Badge>;
-  if (item.priorityReason === "low_ai_confidence") return <Badge variant="destructive">Cần kiểm tra thêm</Badge>;
+  if (item.priorityReason === "student_resubmitted")
+    return <Badge variant="outline">Vừa bổ sung</Badge>;
+  if (item.priorityReason === "low_ai_confidence")
+    return <Badge variant="destructive">Cần kiểm tra thêm</Badge>;
   if (item.priorityReason === "due_soon") return <Badge variant="outline">Sắp đến hạn</Badge>;
-  if (item.priorityReason === "assigned_to_you") return <Badge variant="secondary">Được giao</Badge>;
-  if (item.priorityReason === "unassigned_claimable") return <Badge variant="secondary">Có thể nhận</Badge>;
+  if (item.priorityReason === "assigned_to_you")
+    return <Badge variant="secondary">Được giao</Badge>;
+  if (item.priorityReason === "unassigned_claimable")
+    return <Badge variant="secondary">Có thể nhận</Badge>;
   return <Badge variant="secondary">Theo dõi</Badge>;
 }
 

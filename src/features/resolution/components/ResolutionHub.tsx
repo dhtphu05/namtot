@@ -50,13 +50,21 @@ export function ResolutionHub() {
             Đang tải resolution cases...
           </div>
         )}
-        {isError && <div className="py-12 text-center font-semibold text-rose-600">{(error as Error)?.message || "Không thể tải resolution cases."}</div>}
+        {isError && (
+          <div className="py-12 text-center font-semibold text-rose-600">
+            {(error as Error)?.message || "Không thể tải resolution cases."}
+          </div>
+        )}
         {!isLoading && !isError && (
           <div className="space-y-2">
             {cases.map((item) => (
               <ResolutionRow key={item.id} item={item} />
             ))}
-            {cases.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">Chưa có case phù hợp.</div>}
+            {cases.length === 0 && (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                Chưa có case phù hợp.
+              </div>
+            )}
           </div>
         )}
       </Card>
@@ -73,12 +81,17 @@ function ResolutionRow({ item }: { item: ResolutionCaseListItem }) {
           <AlertTriangle className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-bold text-brand-deep">{item.student?.fullName ?? "Chưa có dữ liệu"}</div>
+          <div className="font-bold text-brand-deep">
+            {item.student?.fullName ?? "Chưa có dữ liệu"}
+          </div>
           <div className="mt-0.5 text-xs text-muted-foreground">
-            {item.student?.studentCode ?? "Chưa có MSSV"} - {item.evidence?.evidenceName ?? "Không có evidence"} - {item.reason}
+            {item.student?.studentCode ?? "Chưa có MSSV"} -{" "}
+            {item.evidence?.evidenceName ?? "Không có evidence"} - {item.reason}
           </div>
         </div>
-        {item.evidence && <Chip>{CRITERION_LABEL[item.evidence.criterion] ?? item.evidence.criterion}</Chip>}
+        {item.evidence && (
+          <Chip>{CRITERION_LABEL[item.evidence.criterion] ?? item.evidence.criterion}</Chip>
+        )}
         <Chip tone={status.tone}>{status.label}</Chip>
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </div>

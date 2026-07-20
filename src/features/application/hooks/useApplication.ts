@@ -9,6 +9,7 @@ export const applicationKeys = {
   current: () => ["application", "current"] as const,
   timeline: (id: string) => ["application", id, "timeline"] as const,
   latestPrecheck: (id: string) => ["application", id, "precheck", "latest"] as const,
+  criteriaCompletion: (id: string) => ["application", id, "criteria-completion"] as const,
   metrics: (id: string) => ["application", id, "metrics"] as const,
 };
 
@@ -113,6 +114,9 @@ export function useSubmitApplication() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: applicationKeys.current() }),
         queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) }),
+        queryClient.invalidateQueries({
+          queryKey: applicationKeys.criteriaCompletion(variables.id),
+        }),
         queryClient.invalidateQueries({ queryKey: applicationKeys.timeline(variables.id) }),
         queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] }),
         queryClient.invalidateQueries({ queryKey: notificationKeys.all }),
@@ -122,7 +126,9 @@ export function useSubmitApplication() {
         queryClient.refetchQueries({ queryKey: ["evidences", variables.id], type: "active" }),
         queryClient.refetchQueries({ queryKey: notificationKeys.all, type: "active" }),
       ]);
-      toast.success(variables.successMessage ?? "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.");
+      toast.success(
+        variables.successMessage ?? "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.",
+      );
     },
     onError: (err: Error) => {
       toast.error(`Không thể nộp hồ sơ: ${err.message}`);
@@ -142,6 +148,19 @@ export function useLatestPrecheck(applicationId: string | undefined) {
   });
 }
 
+export function useCriteriaCompletion(applicationId: string | undefined) {
+  return useQuery({
+    queryKey: applicationKeys.criteriaCompletion(applicationId ?? ""),
+    queryFn: async () => {
+      if (!applicationId) return null;
+      const res = await applicationApi.getCriteriaCompletion(applicationId);
+      return res.data;
+    },
+    enabled: !!applicationId,
+    retry: false,
+  });
+}
+
 export function usePrecheck() {
   const queryClient = useQueryClient();
 
@@ -153,6 +172,9 @@ export function usePrecheck() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.criteriaCompletion(variables.id),
+      });
     },
   });
 }
@@ -208,6 +230,241 @@ export function useUpsertMetric() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.criteriaCompletion(variables.id),
+      });
+    },
+  });
+}
+
+export function useDeclareEthicsConductScore() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      value,
+      scale,
+      schoolYear,
+    }: {
+      id: string;
+      value: number;
+      scale?: number;
+      schoolYear?: string;
+    }) => {
+      const res = await applicationApi.declareEthicsConductScore(id, {
+        value,
+        scale,
+        schoolYear,
+        sourceType: "manual_metric",
+      });
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.criteriaCompletion(variables.id),
+      });
+    },
+  });
+}
+
+export function useDeclareAcademicGpa() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      value,
+      scale,
+      schoolYear,
+    }: {
+      id: string;
+      value: number;
+      scale: 4 | 10;
+      schoolYear: string;
+    }) => {
+      const res = await applicationApi.declareAcademicGpa(id, {
+        value,
+        scale,
+        schoolYear,
+        sourceType: "manual_metric",
+      });
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.criteriaCompletion(variables.id),
+      });
+    },
+  });
+}
+
+export function useDeclarePhysicalCourseResult() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      resultType,
+      value,
+      classification,
+      schoolYear,
+      replaceExisting,
+    }: {
+      id: string;
+      resultType: "score" | "classification";
+      value?: number;
+      classification?: string;
+      schoolYear: string;
+      replaceExisting?: boolean;
+    }) => {
+      const res = await applicationApi.declarePhysicalCourseResult(id, {
+        resultType,
+        value,
+        classification,
+        schoolYear,
+        sourceType: "manual_metric",
+        replaceExisting,
+      });
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.criteriaCompletion(variables.id),
+      });
+    },
+  });
+}
+
+export function useAddPhysicalPathEvidence() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      requirementKey,
+      evidenceId,
+      payloadJson,
+      replaceExisting,
+    }: {
+      id: string;
+      requirementKey:
+        | "healthy_student_title"
+        | "sports_activity_or_award"
+        | "sports_team_member"
+        | "regular_sports_training";
+      evidenceId: string;
+      payloadJson?: Record<string, unknown>;
+      replaceExisting?: boolean;
+    }) => {
+      const res = await applicationApi.addPhysicalPathEvidence(id, {
+        requirementKey,
+        evidenceId,
+        payloadJson,
+        replaceExisting,
+        sourceType: "manual_evidence",
+      });
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.criteriaCompletion(variables.id),
+      });
+    },
+  });
+}
+
+export function useAddVolunteerActivity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      requirementKey,
+      activityType,
+      activityName,
+      organizer,
+      organizerLevel,
+      startDate,
+      endDate,
+      declaredValue,
+      declaredUnit,
+      evidenceId,
+    }: {
+      id: string;
+      requirementKey: "accumulated_volunteer_days" | "activity_count";
+      activityType: string;
+      activityName: string;
+      organizer?: string;
+      organizerLevel?: string;
+      startDate?: string;
+      endDate?: string;
+      declaredValue?: number;
+      declaredUnit?: "day" | "session" | "event" | "donation";
+      evidenceId?: string;
+    }) => {
+      const res = await applicationApi.addVolunteerActivity(id, {
+        requirementKey,
+        activityType,
+        activityName,
+        organizer,
+        organizerLevel,
+        startDate,
+        endDate,
+        declaredValue,
+        declaredUnit: declaredUnit ?? "day",
+        evidenceId,
+        sourceType: "manual_evidence",
+      });
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.criteriaCompletion(variables.id),
+      });
+    },
+  });
+}
+
+export function useAddIntegrationPathResponse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      requirementKey,
+      evidenceId,
+      payloadJson,
+    }: {
+      id: string;
+      requirementKey: string;
+      evidenceId?: string;
+      payloadJson?: Record<string, unknown>;
+    }) => {
+      const res = await applicationApi.addIntegrationPathResponse(id, {
+        requirementKey,
+        evidenceId,
+        payloadJson,
+        sourceType: "manual_evidence",
+      });
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.criteriaCompletion(variables.id),
+      });
     },
   });
 }
@@ -223,6 +480,9 @@ export function useCreateMetric() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.applicationId) });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.criteriaCompletion(variables.applicationId),
+      });
       toast.success("Đã lưu chỉ số thành công!");
     },
     onError: (err: Error) => {
@@ -259,7 +519,12 @@ export function useUpdateMetric() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       if (variables.applicationId) {
-        queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.applicationId) });
+        queryClient.invalidateQueries({
+          queryKey: applicationKeys.metrics(variables.applicationId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: applicationKeys.criteriaCompletion(variables.applicationId),
+        });
       }
       toast.success("Đã cập nhật chỉ số thành công!");
     },

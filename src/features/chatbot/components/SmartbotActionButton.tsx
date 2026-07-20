@@ -45,7 +45,10 @@ export function SmartbotActionButton({ action, onPostback }: Props) {
       const response = await chatbotApi.executeAction(action.id);
       const result = response.data.result;
       if (result?.type === "navigation") {
-        openNavigation({ ...action, route: result.route ?? action.route, query: result.query ?? action.query }, nav);
+        openNavigation(
+          { ...action, route: result.route ?? action.route, query: result.query ?? action.query },
+          nav,
+        );
       } else if (result?.type === "postback") {
         onPostback(extractPostback(result.payload) ?? action.payload ?? action.id, action.label);
       } else if (result?.type === "message" && result.message) {
@@ -64,7 +67,8 @@ export function SmartbotActionButton({ action, onPostback }: Props) {
     void chatbotApi.cancelAction(action.id).catch(() => undefined);
   };
 
-  const Icon = action.type === "navigate" ? Navigation : action.type === "execute" ? Play : MessageSquare;
+  const Icon =
+    action.type === "navigate" ? Navigation : action.type === "execute" ? Play : MessageSquare;
   const confirmation = confirmationCopy(action);
 
   return (
@@ -99,10 +103,21 @@ export function SmartbotActionButton({ action, onPostback }: Props) {
               {confirmation.description}
             </p>
             <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="secondary" size="sm" onClick={cancelConfirmation} disabled={isRunning}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={cancelConfirmation}
+                disabled={isRunning}
+              >
                 Hủy
               </Button>
-              <Button type="button" size="sm" onClick={() => void executeAction(true)} disabled={isRunning}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void executeAction(true)}
+                disabled={isRunning}
+              >
                 {isRunning && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {confirmation.confirmLabel}
               </Button>
@@ -138,7 +153,10 @@ function confirmationCopy(action: SmartbotAction) {
   };
 }
 
-function openNavigation(action: Pick<SmartbotAction, "route" | "url" | "query">, nav: ReturnType<typeof useNavigate>) {
+function openNavigation(
+  action: Pick<SmartbotAction, "route" | "url" | "query">,
+  nav: ReturnType<typeof useNavigate>,
+) {
   if (action.url && isSafeExternalUrl(action.url)) {
     window.open(action.url, "_blank", "noopener,noreferrer");
     return;

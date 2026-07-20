@@ -22,7 +22,10 @@ const LEVEL_LABEL: Record<string, string> = {
   central: "Cấp Trung ương",
 };
 
-const DECISION_LABEL: Record<string, { label: string; tone: "brand" | "success" | "warning" | "error" | "muted" }> = {
+const DECISION_LABEL: Record<
+  string,
+  { label: string; tone: "brand" | "success" | "warning" | "error" | "muted" }
+> = {
   accepted: { label: "Đã duyệt", tone: "success" },
   rejected: { label: "Từ chối", tone: "error" },
   needs_supplement: { label: "Cần bổ sung", tone: "warning" },
@@ -104,7 +107,9 @@ export function EvidenceSearch() {
         <aside className="lg:col-span-4">
           <Card className="!p-2">
             {isLoading && <Loading label="Đang tải Knowledge Base..." />}
-            {isError && <Error label={(error as Error)?.message || "Không thể tải Knowledge Base."} />}
+            {isError && (
+              <Error label={(error as Error)?.message || "Không thể tải Knowledge Base."} />
+            )}
             {!isLoading && !isError && (
               <ul className="space-y-1">
                 {items.map((item) => (
@@ -120,12 +125,17 @@ export function EvidenceSearch() {
                         <DecisionChip decision={item.decision} />
                       </div>
                       <div className="mt-0.5 text-[11px] text-muted-foreground">
-                        {CRITERION_LABEL[item.criterion] ?? item.criterion} - {item.usageCount} lần dùng
+                        {CRITERION_LABEL[item.criterion] ?? item.criterion} - {item.usageCount} lần
+                        dùng
                       </div>
                     </button>
                   </li>
                 ))}
-                {items.length === 0 && <li className="py-10 text-center text-sm text-muted-foreground">Chưa có case phù hợp.</li>}
+                {items.length === 0 && (
+                  <li className="py-10 text-center text-sm text-muted-foreground">
+                    Chưa có case phù hợp.
+                  </li>
+                )}
               </ul>
             )}
           </Card>
@@ -136,7 +146,9 @@ export function EvidenceSearch() {
             <KnowledgeDetail item={active} />
           ) : (
             <Card>
-              <div className="py-12 text-center text-sm text-muted-foreground">Chọn một case để xem chi tiết.</div>
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                Chọn một case để xem chi tiết.
+              </div>
             </Card>
           )}
         </section>
@@ -145,18 +157,36 @@ export function EvidenceSearch() {
           {active && (
             <>
               <Card>
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Trường bắt buộc</div>
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Trường bắt buộc
+                </div>
                 <List values={active.requiredFieldsJson} empty="Chưa khai báo trường bắt buộc." />
               </Card>
               <Card>
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lỗi thường gặp</div>
-                <List values={active.commonErrorsJson} empty="Chưa khai báo lỗi thường gặp." tone="warning" />
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Lỗi thường gặp
+                </div>
+                <List
+                  values={active.commonErrorsJson}
+                  empty="Chưa khai báo lỗi thường gặp."
+                  tone="warning"
+                />
               </Card>
               <Card>
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Đã dùng</div>
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Đã dùng
+                </div>
                 <div className="text-[24px] font-bold text-brand-deep">{active.usageCount} lần</div>
-                <Button className="mt-2 w-full" onClick={() => useItem.mutate(active.id)} disabled={useItem.isPending}>
-                  {useItem.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpenCheck className="h-4 w-4" />}
+                <Button
+                  className="mt-2 w-full"
+                  onClick={() => useItem.mutate(active.id)}
+                  disabled={useItem.isPending}
+                >
+                  {useItem.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <BookOpenCheck className="h-4 w-4" />
+                  )}
                   Dùng làm tham chiếu
                 </Button>
               </Card>
@@ -174,8 +204,12 @@ function KnowledgeDetail({ item }: { item: KnowledgeBaseItem }) {
       <Card>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Case tham chiếu</div>
-            <h3 className="text-[17px] font-bold text-brand-deep">{item.evidenceName ?? item.eventName ?? "Case chưa đặt tên"}</h3>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Case tham chiếu
+            </div>
+            <h3 className="text-[17px] font-bold text-brand-deep">
+              {item.evidenceName ?? item.eventName ?? "Case chưa đặt tên"}
+            </h3>
             <div className="text-[12px] text-muted-foreground">
               {CRITERION_LABEL[item.criterion] ?? item.criterion}
               {item.level ? ` - ${LEVEL_LABEL[item.level] ?? item.level}` : ""}
@@ -184,7 +218,8 @@ function KnowledgeDetail({ item }: { item: KnowledgeBaseItem }) {
           <DecisionChip decision={item.decision} />
         </div>
         <div className="rounded-xl bg-[#F6F9FC] p-5 text-sm text-muted-foreground">
-          Không hiển thị ảnh mẫu ở màn này vì Knowledge Base API không expose file preview. Dữ liệu dùng để tham chiếu nằm trong lý do, field bắt buộc và lỗi thường gặp.
+          Không hiển thị ảnh mẫu ở màn này vì Knowledge Base API không expose file preview. Dữ liệu
+          dùng để tham chiếu nằm trong lý do, field bắt buộc và lỗi thường gặp.
         </div>
       </Card>
       <Card>
@@ -200,8 +235,17 @@ function DecisionChip({ decision }: { decision: string }) {
   return <Chip tone={item.tone}>{item.label}</Chip>;
 }
 
-function List({ values, empty, tone = "success" }: { values: string[]; empty: string; tone?: "success" | "warning" }) {
-  if (values.length === 0) return <div className="text-[12.5px] text-muted-foreground">{empty}</div>;
+function List({
+  values,
+  empty,
+  tone = "success",
+}: {
+  values: string[];
+  empty: string;
+  tone?: "success" | "warning";
+}) {
+  if (values.length === 0)
+    return <div className="text-[12.5px] text-muted-foreground">{empty}</div>;
   return (
     <ul className={`space-y-1 text-[12.5px] ${tone === "warning" ? "text-amber-800" : ""}`}>
       {values.map((value) => (

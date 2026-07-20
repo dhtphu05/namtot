@@ -33,7 +33,8 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
   );
   const { data, isError, isLoading } = useAuditLogs(params);
   const items = useMemo(
-    () => sortChronologically(data?.items ?? []).filter((item) => isUserFacingAuditAction(item.action)),
+    () =>
+      sortChronologically(data?.items ?? []).filter((item) => isUserFacingAuditAction(item.action)),
     [data?.items],
   );
 
@@ -65,11 +66,7 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
             ) : items.length ? (
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <TimelineItem
-                    key={item.id}
-                    isLast={index === items.length - 1}
-                    item={item}
-                  />
+                  <TimelineItem key={item.id} isLast={index === items.length - 1} item={item} />
                 ))}
               </div>
             ) : (
@@ -82,13 +79,7 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
   );
 }
 
-function TimelineItem({
-  isLast,
-  item,
-}: {
-  isLast: boolean;
-  item: AuditLogEntry;
-}) {
+function TimelineItem({ isLast, item }: { isLast: boolean; item: AuditLogEntry }) {
   const safeDetails = getSafeDetails(item.details);
 
   return (
@@ -103,7 +94,9 @@ function TimelineItem({
       <div className="min-w-0 flex-1 rounded-md bg-[var(--surface-muted)] p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="font-semibold text-brand-deep">{formatAuditActionLabel(item.action)}</div>
+            <div className="font-semibold text-brand-deep">
+              {formatAuditActionLabel(item.action)}
+            </div>
             <div className="mt-1 text-xs text-muted-foreground">
               {item.actor || fallbackText}
               {item.role ? ` / ${formatRoleLabel(item.role)}` : ""}
@@ -113,7 +106,9 @@ function TimelineItem({
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          {item.entityType ? <Badge variant="outline">{formatEntityTypeLabel(item.entityType)}</Badge> : null}
+          {item.entityType ? (
+            <Badge variant="outline">{formatEntityTypeLabel(item.entityType)}</Badge>
+          ) : null}
           {item.entityId ? <Badge variant="outline">#{item.entityId.slice(0, 8)}</Badge> : null}
         </div>
 
@@ -129,7 +124,6 @@ function TimelineItem({
             ))}
           </div>
         ) : null}
-
       </div>
     </div>
   );
@@ -181,7 +175,8 @@ function getSafeDetails(details: unknown) {
   return Object.entries(details)
     .filter(([key, value]) => {
       const normalized = key.toLowerCase();
-      if (normalized.includes("id") || normalized.includes("uuid") || normalized.includes("token")) return false;
+      if (normalized.includes("id") || normalized.includes("uuid") || normalized.includes("token"))
+        return false;
       if (normalized.includes("action") || normalized.includes("code")) return false;
       return ["string", "number", "boolean"].includes(typeof value);
     })

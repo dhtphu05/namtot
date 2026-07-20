@@ -24,6 +24,7 @@ const studentRoutes = [
 const officerRoutes = [
   "/app/queue",
   "/app/evidence-search",
+  "/app/evidence-knowledge",
   "/app/review",
   "/app/decision-imports",
 ];
@@ -41,6 +42,7 @@ const managerRoutes = [
   "/app/settings",
 ];
 const collectiveRoutes = ["/app/collective"];
+const adminRoutes = ["/app/admin"];
 
 const sharedAuthenticatedRoutes = ["/app/notifications", "/app/chatbot"];
 const studentEvidenceRoutes = ["/app/evidence", "/app/event-library"];
@@ -55,7 +57,7 @@ export async function requireAuthenticatedAppRoute(pathname: string, queryClient
 
   await waitForAuthHydration();
 
-  const { accessToken } = useAuth.getState();
+  const { accessToken, user: authUser } = useAuth.getState();
   if (!accessToken) {
     throw redirect({ to: "/login" });
   }
@@ -63,7 +65,14 @@ export async function requireAuthenticatedAppRoute(pathname: string, queryClient
   let role: Role;
   try {
     const cachedUser = queryClient.getQueryData<SafeUser>(authKeys.me);
-    const me = cachedUser ?? (await queryClient.fetchQuery(meQueryOptions));
+    const canUseCachedUser = Boolean(cachedUser && (!authUser || cachedUser.id === authUser.id));
+    const me = canUseCachedUser ? cachedUser : await queryClient.fetchQuery(meQueryOptions);
+    if (!me) {
+      throw new Error("User session is missing profile data");
+    }
+    if (me.role !== "admin" && !me.workspaceId) {
+      throw new Error("User account is missing workspace configuration");
+    }
     useAuth.getState().setUser(me);
     useApp.getState().setRole(toUiRole(me.role));
     role = me.role;
@@ -76,6 +85,13 @@ export async function requireAuthenticatedAppRoute(pathname: string, queryClient
 
   if ((pathname === "/app" || pathname === "/app/") && role !== "student") {
     throw redirect({ to: getDefaultAppPathForRole(role) });
+  }
+
+  if (matchesAny(pathname, adminRoutes) && role !== "admin") {
+    useAuth.getState().clearAuth();
+    queryClient.removeQueries({ queryKey: authKeys.me });
+    useApp.getState().setRole("student");
+    throw redirect({ to: "/login" });
   }
 
   if (!canAccessPath(role, pathname)) {
@@ -92,6 +108,7 @@ export function canAccessPath(role: Role, pathname: string): boolean {
   if (matchesAny(pathname, studentEvidenceRoutes)) return role === "student";
   if (matchesAny(pathname, studentRoutes)) return role === "student";
   if (matchesAny(pathname, collectiveRoutes)) return role === "class_representative";
+  if (matchesAny(pathname, adminRoutes)) return role === "admin";
   if (matchesAny(pathname, officerRoutes)) return reviewRoles.includes(role);
   if (matchesAny(pathname, managerRoutes))
     return role === "manager" || role === "committee" || role === "admin";

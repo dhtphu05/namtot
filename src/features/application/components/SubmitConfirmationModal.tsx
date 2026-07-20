@@ -1,9 +1,9 @@
-import { AlertTriangle, CheckCircle2, Clock3, Loader2, Send, X, XCircle } from "lucide-react";
+import { AlertTriangle, Loader2, Send, X } from "lucide-react";
 import { Button, Chip, Progress } from "@/components/ui-kit";
-import type { ApplicationState, Criterion, Level, PrecheckMissingItem, PrecheckResult } from "@/lib/api/types";
-import { getCriterionResultStatusLabel, getStudentApplicationStatusLabel } from "@/lib/status-labels";
-import { getPrecheckMissingMessage, getUserFacingText } from "@/lib/user-facing-messages";
+import type { ApplicationState, Criterion, Level, PrecheckResult } from "@/lib/api/types";
+import { getStudentApplicationStatusLabel } from "@/lib/status-labels";
 import { studentCriterionLabel } from "@/features/evidence/components/student-evidence-utils";
+import { buildCriterionSummary, type CriterionSummary } from "./submit-confirmation-summary";
 
 const levelLabel: Record<Level, string> = {
   school: "Cấp Trường",
@@ -13,15 +13,6 @@ const levelLabel: Record<Level, string> = {
 };
 
 const criteria: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
-
-type CriterionSummary = {
-  criterion: Criterion;
-  label: string;
-  explanation: string;
-  tone: "brand" | "success" | "warning" | "error" | "muted";
-  icon: typeof CheckCircle2;
-  requiredAttention: boolean;
-};
 
 type SubmitMode = "first_submit" | "supplement" | "locked" | "completed";
 
@@ -87,12 +78,19 @@ export function SubmitConfirmationModal({
 
           <div className="grid gap-3 md:grid-cols-3">
             <InfoBlock label="Cấp đăng ký" value={levelLabel[application.targetLevel]} />
-            <InfoBlock label="Trạng thái" value={getStudentApplicationStatusLabel(application.status)} />
+            <InfoBlock
+              label="Trạng thái"
+              value={getStudentApplicationStatusLabel(application.status)}
+            />
             <div className="rounded-lg bg-[#F6F9FC] px-3 py-3">
               <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
                 <span>Tiến độ tham khảo</span>
                 <span className="text-brand-deep">
-                  {missingCriteriaCount > 0 ? `Còn ${missingCriteriaCount} tiêu chí` : "Đủ dữ liệu cơ bản"}
+                  {missingCriteriaCount > 0
+                    ? `Còn ${missingCriteriaCount} tiêu chí`
+                    : precheck
+                      ? "Không có cảnh báo bắt buộc"
+                      : "Chờ kết quả kiểm tra"}
                 </span>
               </div>
               <div className="mt-2">
@@ -112,12 +110,19 @@ export function SubmitConfirmationModal({
               {criterionSummaries.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div key={item.criterion} className="grid gap-3 rounded-lg bg-[#F6F9FC] px-3 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                  <div
+                    key={item.criterion}
+                    className="grid gap-3 rounded-lg bg-[#F6F9FC] px-3 py-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                  >
                     <div className="flex min-w-0 items-start gap-3">
                       <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${getIconClass(item.tone)}`} />
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold text-brand-deep">{studentCriterionLabel[item.criterion]}</div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">{item.explanation}</div>
+                        <div className="text-sm font-semibold text-brand-deep">
+                          {studentCriterionLabel[item.criterion]}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          {item.explanation}
+                        </div>
                       </div>
                     </div>
                     <Chip tone={item.tone}>{item.label}</Chip>
@@ -140,7 +145,11 @@ export function SubmitConfirmationModal({
           </Button>
           {!isLocked && (
             <Button onClick={onConfirm} disabled={pending}>
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
               {primaryLabel}
             </Button>
           )}
@@ -192,7 +201,8 @@ function ReadinessWarning({
 
 function getSubmitMode(status: string): SubmitMode {
   if (status === "completed") return "completed";
-  if (status === "submitted" || status === "under_review" || status === "resolution_needed") return "locked";
+  if (status === "submitted" || status === "under_review" || status === "resolution_needed")
+    return "locked";
   if (status === "supplement_required" || status === "draft_supplement") return "supplement";
   return "first_submit";
 }
@@ -223,7 +233,7 @@ function getModalCopy(mode: SubmitMode, readinessScore: number) {
   }
 
   return {
-      badge: "Kiểm tra hồ sơ",
+    badge: "Kiểm tra hồ sơ",
     title: "Xác nhận nộp hồ sơ",
     description:
       readinessScore < 80
@@ -236,124 +246,6 @@ function getPrimaryLabel(mode: SubmitMode, readinessScore: number) {
   if (mode === "supplement") return "Gửi lại hồ sơ bổ sung";
   if (readinessScore < 80) return "Xác nhận nộp hồ sơ";
   return "Xác nhận nộp hồ sơ";
-}
-
-function buildCriterionSummary(
-  criterion: Criterion,
-  evidenceCount: number,
-  precheck?: PrecheckResult | null,
-): CriterionSummary {
-  const result = precheck?.criteriaResults?.find((item) => item.criterion === criterion);
-  const missingItem = precheck?.missingItems?.find((item) => item.criterion === criterion);
-  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
-  const reasons = Array.isArray(result?.reasons) ? result.reasons : [];
-
-  if (missingItem) {
-    return {
-      criterion,
-      label: "Cần bổ sung",
-      explanation: getMissingExplanation(missingItem),
-      tone: "warning",
-      icon: AlertTriangle,
-      requiredAttention: true,
-    };
-  }
-
-  if (!evidenceCount && !result) {
-    return {
-      criterion,
-      label: "Chưa có minh chứng",
-      explanation: "Chưa có minh chứng hoặc kết quả kiểm tra cho tiêu chí này.",
-      tone: "error",
-      icon: XCircle,
-      requiredAttention: true,
-    };
-  }
-
-  if (result?.status === "ai_processing") {
-    return {
-      criterion,
-      label: "Hệ thống đang kiểm tra",
-      explanation: "Minh chứng đã tải lên và đang chờ kết quả kiểm tra mới nhất.",
-      tone: "brand",
-      icon: Clock3,
-      requiredAttention: false,
-    };
-  }
-
-  if (result?.status === "ai_failed") {
-    return {
-      criterion,
-      label: "Cần kiểm tra thủ công",
-      explanation: "Hệ thống chưa đọc được minh chứng. Cán bộ có thể cần kiểm tra thủ công.",
-      tone: "warning",
-      icon: AlertTriangle,
-      requiredAttention: true,
-    };
-  }
-
-  if (warnings.length > 0 || result?.status === "needs_officer_confirmation" || result?.status === "risky") {
-    return {
-      criterion,
-      label: "Chờ cán bộ xác nhận",
-      explanation: getUserFacingText(
-        warnings[0] ?? reasons[0] ?? result?.status,
-        "Dữ liệu đã có nhưng cần cán bộ xác nhận trước khi chốt kết quả.",
-      ),
-      tone: "warning",
-      icon: AlertTriangle,
-      requiredAttention: false,
-    };
-  }
-
-  if (result?.passed || result?.status === "passed" || result?.status === "complete") {
-    return {
-      criterion,
-      label: getCriterionResultStatusLabel(result.status),
-      explanation: getUserFacingText(reasons[0], "Đủ dữ liệu theo kết quả kiểm tra mới nhất."),
-      tone: "success",
-      icon: CheckCircle2,
-      requiredAttention: false,
-    };
-  }
-
-  if (result?.status === "failed" || result?.status === "needs_supplement" || result?.passed === false) {
-    return {
-      criterion,
-      label: "Cần bổ sung",
-      explanation: getUserFacingText(
-        reasons[0] ?? result?.status,
-        "Kết quả kiểm tra cho thấy tiêu chí này cần bổ sung thêm dữ liệu.",
-      ),
-      tone: "warning",
-      icon: AlertTriangle,
-      requiredAttention: true,
-    };
-  }
-
-  if (evidenceCount > 0) {
-    return {
-      criterion,
-      label: "Đủ dữ liệu cơ bản",
-      explanation: `${evidenceCount} minh chứng đã được ghi nhận, chờ cán bộ xác nhận khi xét duyệt.`,
-      tone: "success",
-      icon: CheckCircle2,
-      requiredAttention: false,
-    };
-  }
-
-  return {
-    criterion,
-    label: "Chờ cán bộ xác nhận",
-    explanation: "Chưa đủ dữ liệu chi tiết từ hệ thống kiểm tra. Cán bộ sẽ xác nhận khi xét duyệt.",
-    tone: "brand",
-    icon: AlertTriangle,
-    requiredAttention: false,
-  };
-}
-
-function getMissingExplanation(item: PrecheckMissingItem) {
-  return getPrecheckMissingMessage(item).description;
 }
 
 function getIconClass(tone: CriterionSummary["tone"]) {

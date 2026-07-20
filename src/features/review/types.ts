@@ -1,3 +1,4 @@
+import type { OfficerEvidenceKnowledgeSearchItem } from "@/features/evidence-knowledge/types";
 import type { Pagination } from "@/lib/api/types";
 
 export type Role =
@@ -323,6 +324,9 @@ export type SubmitReviewDecisionRequest = {
   levelAssessmentJson?: Record<string, unknown>;
   supplementRequestJson?: Record<string, unknown>;
   note: string;
+  precedentId?: string;
+  precedentEventId?: string;
+  precedentEvidenceId?: string;
   evidenceDecisions?: Array<{
     evidenceId: string;
     status: "accepted" | "rejected" | "needs_supplement" | "resolution_needed";
@@ -397,6 +401,10 @@ export type RequestSupplementResponse = {
 export type EscalateResolutionRequest = {
   reason: string;
   evidenceIds?: string[];
+  precedentId?: string;
+  precedentGuardViewed?: boolean;
+  precedentGuardReason?:
+    "different_level" | "different_organizer" | "conflicting_information" | "other";
 };
 
 export type EscalateResolutionResponse = {
@@ -405,6 +413,11 @@ export type EscalateResolutionResponse = {
   resolutionCaseId?: string;
   applicationId: string;
   applicationStatus: "resolution_needed";
+};
+
+export type ReviewTaskPrecedentCheckResponse = {
+  items: OfficerEvidenceKnowledgeSearchItem[];
+  hasStrongPrecedent: boolean;
 };
 
 export type ClaimReviewTaskResponse = {

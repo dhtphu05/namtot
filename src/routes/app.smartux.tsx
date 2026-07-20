@@ -19,7 +19,9 @@ function SmartUxRoute() {
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-sky-50 text-sky-700">
             <BarChart3 className="h-6 w-6" />
           </div>
-          <div className="text-base font-bold text-brand-deep">SmartUX Analytics chưa có dữ liệu</div>
+          <div className="text-base font-bold text-brand-deep">
+            SmartUX Analytics chưa có dữ liệu
+          </div>
           <div className="mt-2 max-w-xl text-sm text-muted-foreground">
             SmartUX Analytics sẽ hiển thị dữ liệu hành vi người dùng sau khi tích hợp.
           </div>

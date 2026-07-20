@@ -1,0 +1,827 @@
+{
+  "screenshots": [
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\overview-default-1280x720.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-ethics-1280x720.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-academic-1280x720.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-physical-1280x720.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-volunteer-1280x720.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-integration-1280x720.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\feedback-1280x720.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\assistant-empty-1280x720.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\overview-default-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-ethics-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\guide-sheet-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\evidence-full-preview-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-academic-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-physical-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-volunteer-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-integration-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\feedback-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\assistant-empty-1440x900.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\overview-default-768x1024.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-ethics-768x1024.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-academic-768x1024.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-physical-768x1024.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-volunteer-768x1024.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-integration-768x1024.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\feedback-768x1024.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\assistant-empty-768x1024.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\overview-default-390x844.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-ethics-390x844.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-academic-390x844.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-physical-390x844.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-volunteer-390x844.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\application-integration-390x844.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\feedback-390x844.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\assistant-empty-390x844.png",
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\assistant-long-conversation-390x844.png"
+  ],
+  "observations": [
+    {
+      "label": "overview-default",
+      "viewport": "1280x720",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Xin chào, Sinh Hoà",
+      "overflowX": 0,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-ethics",
+      "viewport": "1280x720",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=ethics",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-academic",
+      "viewport": "1280x720",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=academic",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-physical",
+      "viewport": "1280x720",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=physical",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-volunteer",
+      "viewport": "1280x720",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=volunteer",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-integration",
+      "viewport": "1280x720",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=integration",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "feedback",
+      "viewport": "1280x720",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/feedback",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Phản hồi Xem yêu c",
+      "overflowX": 0,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "assistant-empty",
+      "viewport": "1280x720",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/assistant",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Trợ lý hồ sơ Trợ l",
+      "overflowX": 0,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "overview-default",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Xin chào, Sinh Hoà",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-ethics",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=ethics",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "guide-sheet",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=ethics",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [
+        {
+          "tag": "div",
+          "text": "Close Điều kiện Đạo đức tốt Tóm tắt yêu cầu đang áp dụng cho tiêu chí này. Yêu c",
+          "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px",
+          "width": 384,
+          "height": 900,
+          "top": 0,
+          "left": 1056
+        },
+        {
+          "tag": "button",
+          "text": "Close",
+          "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklch(0.985 0.006 230) 0px 0px 0px 2px, rgb(0, 87, 194) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+          "width": 44,
+          "height": 44,
+          "top": 16,
+          "left": 1380
+        }
+      ],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "evidence-full-preview",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=ethics",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [
+        {
+          "tag": "div",
+          "text": "Đạo đức tốt Upload thủ công Đã đọc minh chứng Minh chứng Đạo đức tốt Thông tin m",
+          "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(15, 23, 42, 0.35) 0px 14px 34px -30px",
+          "width": 1152,
+          "height": 828,
+          "top": 36,
+          "left": 144
+        },
+        {
+          "tag": "button",
+          "text": "File",
+          "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(15, 23, 42, 0.08) 0px 0px 0px 1px",
+          "width": 45,
+          "height": 44,
+          "top": 154,
+          "left": 263
+        },
+        {
+          "tag": "button",
+          "text": "Lịch sử",
+          "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(15, 23, 42, 0.08) 0px 0px 0px 1px",
+          "width": 90,
+          "height": 44,
+          "top": 1228,
+          "left": 1169
+        }
+      ],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-academic",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=academic",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-physical",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=physical",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-volunteer",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=volunteer",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-integration",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=integration",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "feedback",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/feedback",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Phản hồi Xem yêu c",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "assistant-empty",
+      "viewport": "1440x900",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/assistant",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Trợ lý hồ sơ Trợ l",
+      "overflowX": 0,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "overview-default",
+      "viewport": "768x1024",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Xin chào, Sinh Hoà",
+      "overflowX": 0,
+      "scrollHeight": 1024,
+      "clientHeight": 1024,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-ethics",
+      "viewport": "768x1024",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=ethics",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 1024,
+      "clientHeight": 1024,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-academic",
+      "viewport": "768x1024",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=academic",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 1024,
+      "clientHeight": 1024,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-physical",
+      "viewport": "768x1024",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=physical",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 1024,
+      "clientHeight": 1024,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-volunteer",
+      "viewport": "768x1024",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=volunteer",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 1024,
+      "clientHeight": 1024,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "application-integration",
+      "viewport": "768x1024",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=integration",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Hồ sơ & minh chứng",
+      "overflowX": 0,
+      "scrollHeight": 1024,
+      "clientHeight": 1024,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "feedback",
+      "viewport": "768x1024",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/feedback",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Phản hồi Xem yêu c",
+      "overflowX": 0,
+      "scrollHeight": 1024,
+      "clientHeight": 1024,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "assistant-empty",
+      "viewport": "768x1024",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/assistant",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Trợ lý hồ sơ Trợ l",
+      "overflowX": 0,
+      "scrollHeight": 1024,
+      "clientHeight": 1024,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    },
+    {
+      "label": "overview-default",
+      "viewport": "390x844",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app",
+      "bodySample": "DDK Năm học 2025–2026 Quy định áp dụng Trung tâm hỗ trợ Thông tin hệ thống Xin chào, Sinh Hoàn thiện hồ sơ Sinh viên 5 tốt theo đúng yêu cầu đang áp dụng tại đơn vị của bạn. TRẠNG THÁI HỒ SƠ Đang chờ cán bộ xét Hồ sơ của bạn đang được xét d",
+      "overflowX": 0,
+      "scrollHeight": 844,
+      "clientHeight": 844,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": []
+    },
+    {
+      "label": "application-ethics",
+      "viewport": "390x844",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=ethics",
+      "bodySample": "DDK Năm học 2025–2026 Quy định áp dụng Trung tâm hỗ trợ Thông tin hệ thống Hồ sơ & minh chứng Hoàn thiện hồ sơ Sinh viên 5 tốt theo từng tiêu chí và kiểm tra trước khi nộp. Năm học 2025-2026 Cấp đăng ký: Cấp Thành phố Trạng thái: Đang chờ c",
+      "overflowX": 0,
+      "scrollHeight": 844,
+      "clientHeight": 844,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": []
+    },
+    {
+      "label": "application-academic",
+      "viewport": "390x844",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=academic",
+      "bodySample": "DDK Năm học 2025–2026 Quy định áp dụng Trung tâm hỗ trợ Thông tin hệ thống Hồ sơ & minh chứng Hoàn thiện hồ sơ Sinh viên 5 tốt theo từng tiêu chí và kiểm tra trước khi nộp. Năm học 2025-2026 Cấp đăng ký: Cấp Thành phố Trạng thái: Đang chờ c",
+      "overflowX": 0,
+      "scrollHeight": 844,
+      "clientHeight": 844,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": []
+    },
+    {
+      "label": "application-physical",
+      "viewport": "390x844",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=physical",
+      "bodySample": "DDK Năm học 2025–2026 Quy định áp dụng Trung tâm hỗ trợ Thông tin hệ thống Hồ sơ & minh chứng Hoàn thiện hồ sơ Sinh viên 5 tốt theo từng tiêu chí và kiểm tra trước khi nộp. Năm học 2025-2026 Cấp đăng ký: Cấp Thành phố Trạng thái: Đang chờ c",
+      "overflowX": 0,
+      "scrollHeight": 844,
+      "clientHeight": 844,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": []
+    },
+    {
+      "label": "application-volunteer",
+      "viewport": "390x844",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=volunteer",
+      "bodySample": "DDK Năm học 2025–2026 Quy định áp dụng Trung tâm hỗ trợ Thông tin hệ thống Hồ sơ & minh chứng Hoàn thiện hồ sơ Sinh viên 5 tốt theo từng tiêu chí và kiểm tra trước khi nộp. Năm học 2025-2026 Cấp đăng ký: Cấp Thành phố Trạng thái: Đang chờ c",
+      "overflowX": 0,
+      "scrollHeight": 844,
+      "clientHeight": 844,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": []
+    },
+    {
+      "label": "application-integration",
+      "viewport": "390x844",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/application?criterion=integration",
+      "bodySample": "DDK Năm học 2025–2026 Quy định áp dụng Trung tâm hỗ trợ Thông tin hệ thống Hồ sơ & minh chứng Hoàn thiện hồ sơ Sinh viên 5 tốt theo từng tiêu chí và kiểm tra trước khi nộp. Năm học 2025-2026 Cấp đăng ký: Cấp Thành phố Trạng thái: Đang chờ c",
+      "overflowX": 0,
+      "scrollHeight": 844,
+      "clientHeight": 844,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": []
+    },
+    {
+      "label": "feedback",
+      "viewport": "390x844",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/feedback",
+      "bodySample": "DDK Năm học 2025–2026 Quy định áp dụng Trung tâm hỗ trợ Thông tin hệ thống Phản hồi Xem yêu cầu bổ sung, kết quả và phản hồi liên quan đến hồ sơ của bạn. Đã đọc tất cả Cần xử lý (3) Đã xử lý (1) Tất cả (20) Hộp thư phản hồi 3 mục trong bộ l",
+      "overflowX": 0,
+      "scrollHeight": 844,
+      "clientHeight": 844,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": []
+    },
+    {
+      "label": "assistant-empty",
+      "viewport": "390x844",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/assistant",
+      "bodySample": "DDK Năm học 2025–2026 Quy định áp dụng Trung tâm hỗ trợ Thông tin hệ thống Trợ lý hồ sơ Trợ lý hướng dẫn theo quy định và ngữ cảnh hồ sơ hiện tại. Quyết định chính thức vẫn do cán bộ hoặc Hội đồng xác nhận. Mình có thể hỗ trợ tiêu chí, minh",
+      "overflowX": 0,
+      "scrollHeight": 844,
+      "clientHeight": 844,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": []
+    },
+    {
+      "label": "assistant-long-conversation",
+      "viewport": "390x844",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app/assistant",
+      "bodySample": "DDK Năm học 2025–2026 Quy định áp dụng Trung tâm hỗ trợ Thông tin hệ thống Trợ lý hồ sơ Trợ lý hướng dẫn theo quy định và ngữ cảnh hồ sơ hiện tại. Quyết định chính thức vẫn do cán bộ hoặc Hội đồng xác nhận. Mình có thể hỗ trợ tiêu chí, minh",
+      "overflowX": 0,
+      "scrollHeight": 844,
+      "clientHeight": 844,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": []
+    }
+  ],
+  "seriousLogs": [
+    "overview-default: Failed to execute 'observe' on 'MutationObserver': parameter 1 is not of type 'Node'.",
+    "application-ethics: Failed to execute 'observe' on 'MutationObserver': parameter 1 is not of type 'Node'.",
+    "overview-default: Failed to load resource: the server responded with a status of 404 ()",
+    "application-ethics: Failed to load resource: the server responded with a status of 404 ()"
+  ]
+}

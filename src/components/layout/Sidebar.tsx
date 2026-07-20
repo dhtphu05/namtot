@@ -3,17 +3,20 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   BookOpenCheck,
+  Building2,
   CalendarCheck,
   ChartNoAxesCombined,
   Download,
   FileText,
   FileUp,
   FolderUp,
+  GraduationCap,
   History,
   Inbox,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
+  School,
   ShieldQuestion,
   SlidersHorizontal,
   Trophy,
@@ -28,10 +31,13 @@ import {
   isUiRole,
   toUiRole,
 } from "@/features/auth/role-map";
+import { UserWorkspaceInfo } from "@/components/layout/UserWorkspaceInfo";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useApp } from "@/lib/store";
+import { STUDENT_APPLICATION_UI_V2 } from "@/lib/student-application-ui-v2";
 import { ROLES, type Role } from "@/lib/mock-data";
-import { type Role as ApiRole } from "@/lib/api/types";
+import { type Role as ApiRole, type SafeUser } from "@/lib/api/types";
+import hsvvnEmblemUrl from "@/assets/hsvvn-emblem.webp";
 
 type BadgeTone = "core" | "ai" | "demo" | "ops" | "beta";
 type NavItem = {
@@ -43,6 +49,13 @@ type NavItem = {
 };
 type NavGroup = { group: string; items: NavItem[] };
 
+const ADMIN_NAV: NavGroup[] = [
+  {
+    group: "QUẢN LÝ ĐƠN VỊ",
+    items: [{ label: "Trường triển khai", to: "/app/admin/workspaces", icon: Building2 }],
+  },
+];
+
 const NAV: Record<Role, NavGroup[]> = {
   student: [
     {
@@ -50,6 +63,7 @@ const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
         { label: "Hồ sơ & minh chứng", to: "/app/application", icon: FileText },
+        { label: "Kho minh chứng", to: "/app/event-library", icon: BookOpenCheck },
         { label: "Phản hồi", to: "/app/feedback", icon: Bell },
         { label: "Trợ lý", to: "/app/assistant", icon: LifeBuoy },
       ],
@@ -72,6 +86,16 @@ const NAV: Record<Role, NavGroup[]> = {
           label: "Tra cứu minh chứng",
           to: "/app/evidence-search",
           icon: BookOpenCheck,
+        },
+        {
+          label: "Kho minh chứng chuyên trách",
+          to: "/app/evidence-knowledge",
+          icon: BookOpenCheck,
+        },
+        {
+          label: "Sự kiện chính thức",
+          to: "/app/event-registry",
+          icon: CalendarCheck,
         },
         { label: "Thông báo", to: "/app/notifications", icon: Bell },
       ],
@@ -132,6 +156,8 @@ export function Sidebar() {
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const groups = getNavGroups(role, user?.role);
+  const isAdmin = user?.role === "admin";
+  const isStudentV2 = STUDENT_APPLICATION_UI_V2 && user?.role === "student" && role === "student";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const nav = useNavigate();
 
@@ -155,33 +181,70 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`h-[100dvh] shrink-0 flex-col bg-white/95 shadow-[1px_0_0_rgba(15,23,42,0.05)] backdrop-blur ${
-        role === "student" ? "hidden w-[248px] md:flex" : "flex w-[264px]"
+      className={`h-[100dvh] shrink-0 flex-col bg-white ${
+        isStudentV2
+          ? "border-r border-[var(--student-v2-divider)]"
+          : "shadow-[1px_0_0_rgba(15,23,42,0.05)] backdrop-blur"
+      } ${
+        role === "student"
+          ? isStudentV2
+            ? "hidden w-[296px] md:flex"
+            : "hidden w-[248px] md:flex"
+          : "flex w-[264px]"
       }`}
     >
-      <div className="shrink-0 px-4 pb-3 pt-5">
-        <Link to="/app" className="flex items-center gap-3 px-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0057C2] text-sm font-bold text-white">
-            5T
-          </div>
-          <div>
-            <div className="text-[15px] font-bold leading-tight text-[#0F172A]">5TOT Platform</div>
-            <div className="text-[11px] font-medium text-[#64748B]">SV5T 2025-2026</div>
-          </div>
-        </Link>
+      <div className={isStudentV2 ? "shrink-0 px-4 pb-3 pt-5" : "shrink-0 px-4 pb-3 pt-5"}>
+        {isStudentV2 ? (
+          <Link
+            to="/app"
+            className="block rounded-[var(--student-v2-radius-section)] transition-colors duration-[120ms] hover:bg-[var(--student-v2-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2"
+            aria-label="Về tổng quan hồ sơ Sinh viên 5 tốt"
+          >
+            <StudentV2Lockup
+              workspaceName={user?.workspace?.name}
+              workspaceShortName={user?.workspace?.shortName}
+            />
+          </Link>
+        ) : (
+          <Link to="/app" className="flex items-center gap-3 px-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0057C2] text-sm font-bold text-white">
+              5T
+            </div>
+            <div>
+              <div className="text-[15px] font-bold leading-tight text-[#0F172A]">
+                {isAdmin ? "HỘI SINH VIÊN VIỆT NAM" : "5TOT Platform"}
+              </div>
+              <div className="text-[11px] font-medium text-[#64748B]">
+                {isAdmin ? "Hệ thống quản lý Sinh viên 5 tốt" : "SV5T 2025-2026"}
+              </div>
+            </div>
+          </Link>
+        )}
       </div>
 
-      <div className="shrink-0 px-4 pb-3">
-        <RolePanel />
+      <div className={isStudentV2 ? "shrink-0 px-4 pb-3" : "shrink-0 px-4 pb-3"}>
+        {isStudentV2 ? (
+          <StudentV2ProfilePanel user={user} fallbackInitial={ROLES.student.initial} />
+        ) : (
+          <RolePanel />
+        )}
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto px-4 pr-3">
+      <nav
+        className={
+          isStudentV2
+            ? "min-h-0 flex-1 overflow-y-auto px-3"
+            : "min-h-0 flex-1 overflow-y-auto px-4 pr-3"
+        }
+      >
         <div className="flex flex-col gap-4 pb-4">
           {groups.map((group) => (
             <div key={group.group}>
-              <div className="mb-2 px-3 text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
-                {group.group}
-              </div>
+              {isStudentV2 ? null : (
+                <div className="mb-2 px-3 text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
+                  {group.group}
+                </div>
+              )}
               <ul className="flex flex-col gap-1">
                 {group.items.map((item) => {
                   const active = activeItem?.to === item.to && activeItem?.label === item.label;
@@ -190,21 +253,33 @@ export function Sidebar() {
                     <li key={`${group.group}-${item.to}-${item.label}`}>
                       <Link
                         to={item.to}
-                        className={`group flex items-center gap-3 rounded-2xl px-3 py-2 text-[13px] font-semibold transition-colors ${
-                          active
-                            ? "bg-[#EAF3FF] text-[#0057C2]"
-                            : "text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0057C2]"
-                        }`}
+                        className={
+                          isStudentV2
+                            ? `group relative flex min-h-[46px] items-center gap-3 rounded-[var(--student-v2-radius-control)] px-4 py-2.5 text-[15px] font-medium transition-colors duration-[120ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2 ${
+                                active
+                                  ? "bg-[var(--student-v2-surface-selected)] text-[var(--student-v2-institutional-blue)] before:absolute before:left-0 before:top-2 before:h-[30px] before:w-[3px] before:rounded-r-[var(--student-v2-radius-pill)] before:bg-[var(--student-v2-institutional-blue)]"
+                                  : "text-[var(--student-v2-text-secondary)] hover:bg-[var(--student-v2-surface-hover)] hover:text-[var(--student-v2-institutional-blue)]"
+                              }`
+                            : `group flex items-center gap-3 rounded-2xl px-3 py-2 text-[13px] font-semibold transition-colors ${
+                                active
+                                  ? "bg-[#EAF3FF] text-[#0057C2]"
+                                  : "text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0057C2]"
+                              }`
+                        }
                       >
-                        <span
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
-                            active
-                              ? "bg-white text-[#0057C2]"
-                              : "bg-[#F8FAFC] text-[#64748B] group-hover:text-[#0057C2]"
-                          }`}
-                        >
-                          <Icon className="h-4 w-4" strokeWidth={1.9} />
-                        </span>
+                        {isStudentV2 ? (
+                          <Icon className="h-5 w-5 shrink-0" strokeWidth={1.9} aria-hidden="true" />
+                        ) : (
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                              active
+                                ? "bg-white text-[#0057C2]"
+                                : "bg-[#F8FAFC] text-[#64748B] group-hover:text-[#0057C2]"
+                            }`}
+                          >
+                            <Icon className="h-4 w-4" strokeWidth={1.9} />
+                          </span>
+                        )}
                         <span className="min-w-0 flex-1 truncate">{item.label}</span>
                         {item.badge && (
                           <span
@@ -225,11 +300,21 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="shrink-0 bg-white px-4 py-4 shadow-[0_-1px_0_rgba(15,23,42,0.06)]">
+      <div
+        className={`shrink-0 bg-white ${
+          isStudentV2
+            ? "mx-5 border-t border-[var(--student-v2-divider)] py-5"
+            : "px-4 py-4 shadow-[0_-1px_0_rgba(15,23,42,0.06)]"
+        }`}
+      >
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-[13px] font-semibold text-[#64748B] transition-colors hover:bg-[#F8FAFC] hover:text-[#0057C2]"
+          className={
+            isStudentV2
+              ? "flex min-h-11 w-full items-center gap-3 rounded-[var(--student-v2-radius-control)] px-2 py-2 text-[15px] font-medium text-[var(--student-v2-text-secondary)] transition-colors hover:bg-[var(--student-v2-surface-hover)] hover:text-[var(--student-v2-institutional-blue)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2"
+              : "flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-[13px] font-semibold text-[#64748B] transition-colors hover:bg-[#F8FAFC] hover:text-[#0057C2]"
+          }
         >
           <LogOut className="h-4 w-4" /> Đăng xuất
         </button>
@@ -238,8 +323,100 @@ export function Sidebar() {
   );
 }
 
+function StudentV2Lockup({
+  workspaceName,
+  workspaceShortName,
+}: {
+  workspaceName?: string | null;
+  workspaceShortName?: string | null;
+}) {
+  const workspaceLabel = workspaceShortName || workspaceName || "Đơn vị triển khai";
+
+  return (
+    <div className="flex min-w-0 items-center gap-3 border-b border-[var(--student-v2-divider)] pb-4">
+      <img
+        src={hsvvnEmblemUrl}
+        alt=""
+        className="h-12 w-12 shrink-0 rounded-full object-contain"
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <h2 className="m-0 whitespace-nowrap text-[14px] font-bold uppercase leading-[18px] text-[var(--student-v2-institutional-blue)]">
+          HỘI SINH VIÊN VIỆT NAM
+        </h2>
+        <div className="mt-1 truncate text-[14px] font-semibold leading-5 text-[var(--student-v2-institutional-blue)]">
+          {workspaceLabel}
+        </div>
+        <div className="mt-0.5 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
+          Hệ thống Sinh viên 5 tốt
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StudentV2ProfilePanel({
+  user,
+  fallbackInitial,
+}: {
+  user: SafeUser | null;
+  fallbackInitial: string;
+}) {
+  const displayName = user?.fullName || "Sinh viên";
+  const initials = getInitials(displayName, fallbackInitial);
+  const workspaceLabel = user?.workspace?.name || user?.workspace?.shortName || "Đơn vị triển khai";
+
+  return (
+    <section
+      className="border-b border-[var(--student-v2-divider)] pb-3"
+      aria-label="Thông tin sinh viên"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--student-v2-institutional-navy)] text-[19px] font-bold text-[var(--student-v2-text-inverse)]">
+          {initials}
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-bold leading-[22px] text-[var(--student-v2-text-primary)]">
+            {displayName}
+          </div>
+          <div className="text-[14px] leading-5 text-[var(--student-v2-text-secondary)]">
+            Sinh viên
+          </div>
+        </div>
+      </div>
+
+      <dl className="mt-3 space-y-2.5 text-[14px] leading-5 text-[var(--student-v2-text-secondary)]">
+        <StudentV2ProfileRow icon={School} value={workspaceLabel} />
+        <StudentV2ProfileRow icon={FileText} value={user?.studentCode || "Chưa có mã sinh viên"} />
+        <StudentV2ProfileRow icon={GraduationCap} value={user?.faculty || "Khoa chưa cập nhật"} />
+        <StudentV2ProfileRow icon={UsersRound} value={user?.className || "Lớp chưa cập nhật"} />
+      </dl>
+    </section>
+  );
+}
+
+function StudentV2ProfileRow({
+  icon: Icon,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  value: string;
+}) {
+  return (
+    <div className="grid min-w-0 grid-cols-[24px_minmax(0,1fr)] items-start gap-2">
+      <Icon
+        className="mt-0.5 h-4 w-4 text-[var(--student-v2-text-secondary)]"
+        strokeWidth={1.9}
+        aria-hidden="true"
+      />
+      <dd className="min-w-0 truncate">{value}</dd>
+    </div>
+  );
+}
+
 function getNavGroups(role: Role, backendRole?: ApiRole): NavGroup[] {
-  if (backendRole === "committee" || backendRole === "admin") return NAV.manager;
+  if (backendRole === "admin") return ADMIN_NAV;
+  if (backendRole === "committee") return NAV.manager;
   return NAV[role];
 }
 
@@ -263,13 +440,15 @@ function normalizeStudentWorkspacePath(pathname: string, role: Role) {
   if (pathname.startsWith("/app/wizard")) {
     return "/app/application";
   }
+  if (pathname.startsWith("/app/event-library")) {
+    return "/app/event-library";
+  }
   if (
     pathname.startsWith("/app/drafts") ||
     pathname.startsWith("/app/evidence") ||
     pathname.startsWith("/app/profile") ||
     pathname.startsWith("/app/my-application") ||
     pathname.startsWith("/app/upload") ||
-    pathname.startsWith("/app/event-library") ||
     pathname.startsWith("/app/ai-precheck") ||
     pathname.startsWith("/app/cascade")
   ) {
@@ -291,25 +470,43 @@ function RolePanel() {
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const roleMeta = ROLES[role];
+  const isAdmin = user?.role === "admin";
   const isStudent = role === "student";
+  const isStudentV2 = STUDENT_APPLICATION_UI_V2 && user?.role === "student" && isStudent;
   const displayName = user?.fullName ?? roleMeta.label;
   const initials = getInitials(displayName, roleMeta.initial);
 
   return (
     <div
-      className={`mx-1 bg-[var(--surface-muted)] p-2.5 ${isStudent ? "rounded-2xl" : "rounded-3xl"}`}
+      className={`mx-1 p-2.5 ${
+        isStudentV2
+          ? "rounded-[var(--student-v2-radius-section)] bg-[var(--student-v2-surface-secondary)]"
+          : `bg-[var(--surface-muted)] ${isStudent ? "rounded-2xl" : "rounded-3xl"}`
+      }`}
     >
       <div className="mb-2 px-1 text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
         Đang đăng nhập
       </div>
       <div className="mb-2.5 flex items-center gap-3 px-1">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#0057C2] text-xs font-bold text-white">
-          {initials}
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center text-xs font-bold ${
+            isStudentV2
+              ? "rounded-[var(--student-v2-radius-control)] bg-[var(--student-v2-institutional-navy)] text-[var(--student-v2-text-inverse)]"
+              : "rounded-2xl bg-[#0057C2] text-white"
+          }`}
+        >
+          {isAdmin ? "QT" : initials}
         </div>
         <div className="min-w-0">
           <div className="truncate text-[13px] font-bold text-[#0F172A]">{displayName}</div>
           <div className="truncate text-[11px] text-[#64748B]">
-            {isStudent ? "Sinh viên" : user ? getUserRoleLabel(user) : roleMeta.desc}
+            {isAdmin
+              ? "Quản trị hệ thống"
+              : isStudent
+                ? "Sinh viên"
+                : user
+                  ? getUserRoleLabel(user)
+                  : roleMeta.desc}
           </div>
         </div>
       </div>
@@ -332,13 +529,29 @@ function RolePanel() {
           </select>
         </>
       ) : (
-        <div className="rounded-2xl bg-white px-3 py-2 text-[12px] font-semibold text-[#0057C2]">
-          {isStudent
-            ? "Sinh viên"
-            : user
-              ? `Phụ trách: ${getUserAssignmentLabel(user)}`
-              : roleMeta.label}
+        <div
+          className={`px-3 py-2 text-[12px] font-semibold ${
+            isStudentV2
+              ? "rounded-[var(--student-v2-radius-control)] bg-[var(--student-v2-surface-primary)] text-[var(--student-v2-institutional-blue)]"
+              : "rounded-2xl bg-white text-[#0057C2]"
+          }`}
+        >
+          {isAdmin
+            ? "Toàn bộ đơn vị"
+            : isStudent
+              ? "Sinh viên"
+              : user
+                ? `Phụ trách: ${getUserAssignmentLabel(user)}`
+                : roleMeta.label}
         </div>
+      )}
+      {isAdmin ? (
+        <div className="mt-2 rounded-2xl bg-white px-3 py-2 text-[11px] leading-5 text-[#64748B] shadow-[0_0_0_1px_rgba(15,23,42,0.06)]">
+          Quản trị danh sách các trường đang triển khai 5TOT. Không có chuyển đổi workspace trong
+          giao diện này.
+        </div>
+      ) : isStudentV2 ? null : (
+        <UserWorkspaceInfo user={user} className="mt-2" />
       )}
     </div>
   );

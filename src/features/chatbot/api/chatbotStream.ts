@@ -1,6 +1,11 @@
 import { useAuth } from "@/features/auth/store/auth-store";
 import { API_BASE_URL } from "@/lib/api/client";
-import type { ChatbotMessageRequest, ChatbotResponse, SmartbotAction, SmartbotMessageCard } from "../types";
+import type {
+  ChatbotMessageRequest,
+  ChatbotResponse,
+  SmartbotAction,
+  SmartbotMessageCard,
+} from "../types";
 
 export type ChatbotStreamHandlers = {
   onMeta?: (data: { sessionId: string; mode: "stream" }) => void;
@@ -67,13 +72,18 @@ export async function streamChatbotMessage(
   return finalResponse;
 }
 
-export function parseSseBuffer(input: string, flush = false): {
+export function parseSseBuffer(
+  input: string,
+  flush = false,
+): {
   events: ParsedSseEvent[];
   remainder: string;
 } {
   const frames = input.split(/\r?\n\r?\n/);
   const remainder = flush ? "" : (frames.pop() ?? "");
-  const events = frames.map(parseSseFrame).filter((event): event is ParsedSseEvent => Boolean(event));
+  const events = frames
+    .map(parseSseFrame)
+    .filter((event): event is ParsedSseEvent => Boolean(event));
   if (flush && remainder.trim()) {
     const tail = parseSseFrame(remainder);
     if (tail) events.push(tail);

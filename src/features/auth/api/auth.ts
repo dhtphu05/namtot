@@ -1,12 +1,12 @@
 import { apiClient } from "@/lib/api/client";
-import type { LoginData, SafeUser } from "@/lib/api/types";
+import type { LoginData, SafeUser, WorkspaceSummary } from "@/lib/api/types";
 
 type RegisterPayload = {
   fullName: string;
   email: string;
   password: string;
+  workspaceId: string;
   studentCode: string;
-  school?: string;
   className?: string;
   faculty?: string;
   phone?: string;
@@ -17,6 +17,12 @@ export const authApi = {
     return apiClient<LoginData>("/api/auth/register", {
       method: "POST",
       body: data,
+    });
+  },
+
+  getRegistrationWorkspaces: async () => {
+    return apiClient<WorkspaceSummary[]>("/api/workspaces?registration=true", {
+      method: "GET",
     });
   },
 

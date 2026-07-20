@@ -19,7 +19,8 @@ export const managerKeys = {
   dashboard: ["managerDashboard"] as const,
   committeeInbox: (params?: CommitteeInboxParams) => ["committeeInbox", params ?? {}] as const,
   collectives: (params?: ManagerCollectiveFilters) => ["managerCollectives", params ?? {}] as const,
-  collectiveAggregation: (collectiveId?: string) => ["managerCollectiveAggregation", collectiveId ?? ""] as const,
+  collectiveAggregation: (collectiveId?: string) =>
+    ["managerCollectiveAggregation", collectiveId ?? ""] as const,
   results: (params?: ManagerResultFilters) => ["managerResults", params ?? {}] as const,
   resultDetail: (applicationId?: string) => ["managerResultDetail", applicationId ?? ""] as const,
 };

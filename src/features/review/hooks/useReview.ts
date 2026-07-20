@@ -18,6 +18,7 @@ export const reviewKeys = {
   dashboard: (userId?: string) => ["officerDashboard", userId ?? "anonymous"] as const,
   assessment: (taskId: string) => ["criterionLevelAssessment", taskId] as const,
   timeline: (taskId: string) => ["reviewTaskTimeline", taskId] as const,
+  precedents: (taskId: string, limit: number) => ["reviewTaskPrecedents", taskId, limit] as const,
   signedUrl: (fileId: string) => ["signedFileUrl", fileId] as const,
 };
 
@@ -106,6 +107,18 @@ export function useReviewTaskTimeline(taskId?: string) {
   });
 }
 
+export function useReviewTaskPrecedents(taskId?: string, enabled = true, limit = 3) {
+  return useQuery({
+    queryKey: reviewKeys.precedents(taskId ?? "", limit),
+    queryFn: async () => {
+      const response = await reviewApi.getReviewTaskPrecedents(taskId ?? "", limit);
+      return response.data ?? { items: [], hasStrongPrecedent: false };
+    },
+    enabled: enabled && Boolean(taskId),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
 export function useSignedFileUrl(fileId?: string, enabled = false) {
   return useQuery({
     queryKey: reviewKeys.signedUrl(fileId ?? ""),
@@ -150,6 +163,11 @@ export function useSubmitReviewDecision(taskId?: string) {
       queryClient.invalidateQueries({
         queryKey: managerInvalidationKeys.workload,
       });
+      if (data?.applicationId) {
+        queryClient.invalidateQueries({
+          queryKey: ["manager", "aggregation", data.applicationId],
+        });
+      }
 
       if (
         variables.payload.decision === "resolution_needed" ||
@@ -158,6 +176,9 @@ export function useSubmitReviewDecision(taskId?: string) {
         queryClient.invalidateQueries({
           queryKey: resolutionInvalidationKeys.cases,
         });
+      }
+      if (variables.payload.decision === "accepted") {
+        queryClient.invalidateQueries({ queryKey: ["evidence-knowledge"] });
       }
     },
   });

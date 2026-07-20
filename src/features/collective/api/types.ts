@@ -6,16 +6,9 @@
 export type Level = "school" | "university" | "city" | "central";
 
 export type EvidenceSourceType =
-  | "metric_input"
-  | "manual_upload"
-  | "event_import"
-  | "collective_import";
+  "metric_input" | "manual_upload" | "event_import" | "collective_import";
 
-export type IndexingStatus =
-  | "pending"
-  | "processing"
-  | "indexed"
-  | "failed";
+export type IndexingStatus = "pending" | "processing" | "indexed" | "failed";
 
 export interface CollectiveMember {
   id: string;

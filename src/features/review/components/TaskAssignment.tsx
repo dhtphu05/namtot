@@ -41,7 +41,9 @@ function OfficerWorkloadRow({ officer }: { officer: OfficerWorkload }) {
       <div className="min-w-0 flex-1">
         <div className="text-[13px] font-semibold text-brand-deep">{officer.fullName}</div>
         <div className="text-[11px] text-muted-foreground">
-          Chuyên trách: {officer.specializations.map((item) => CRITERION_LABEL[item] ?? item).join(", ") || "Chưa khai báo"}
+          Chuyên trách:{" "}
+          {officer.specializations.map((item) => CRITERION_LABEL[item] ?? item).join(", ") ||
+            "Chưa khai báo"}
           {officer.facultyScope ? ` - Khoa ${officer.facultyScope}` : ""}
         </div>
       </div>
@@ -74,10 +76,16 @@ function TaskRow({
     <tr className="border-t border-[#EEF2F7]">
       <td className="px-3 py-2 font-semibold text-brand-deep">{owner}</td>
       <td className="px-3 py-2">
-        <Chip tone={task.criterion === "collective" ? "warning" : "brand"}>{CRITERION_LABEL[task.criterion] ?? task.criterion}</Chip>
+        <Chip tone={task.criterion === "collective" ? "warning" : "brand"}>
+          {CRITERION_LABEL[task.criterion] ?? task.criterion}
+        </Chip>
       </td>
       <td className="px-3 py-2">
-        <Chip tone={task.status === "accepted" ? "success" : task.status === "rejected" ? "error" : "muted"}>
+        <Chip
+          tone={
+            task.status === "accepted" ? "success" : task.status === "rejected" ? "error" : "muted"
+          }
+        >
           {STATUS_LABEL[task.status] ?? task.status}
         </Chip>
       </td>

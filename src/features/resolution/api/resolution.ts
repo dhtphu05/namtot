@@ -70,7 +70,9 @@ function normalizeResolutionCaseItem(raw: RawRecord): ResolutionCaseListItem {
     evidenceIds: [
       ...((Array.isArray(raw.evidenceIds) ? raw.evidenceIds : []) as unknown[]),
       raw.evidenceId ?? evidence?.id,
-    ].filter(Boolean).map((item) => asString(item)),
+    ]
+      .filter(Boolean)
+      .map((item) => asString(item)),
     studentId: asString(raw.studentId ?? student?.id),
     studentName: asString(raw.studentName ?? student?.fullName),
     studentCode: asString(raw.studentCode ?? student?.studentCode),
@@ -123,9 +125,13 @@ function normalizeResolutionCaseDetail(payload: RawRecord | null): ResolutionCas
       evidence?.evidenceName,
       primaryEvidence?.evidenceName,
       ...relatedEvidences.map((item) => item.evidenceName),
-    ].filter(Boolean).map((item) => asString(item)),
+    ]
+      .filter(Boolean)
+      .map((item) => asString(item)),
     primaryEvidence: normalizeResolutionEvidence(primaryEvidence ?? evidence),
-    relatedEvidences: relatedEvidences.map(normalizeResolutionEvidence).filter(Boolean) as NonNullable<ResolutionCaseDetail["relatedEvidences"]>,
+    relatedEvidences: relatedEvidences
+      .map(normalizeResolutionEvidence)
+      .filter(Boolean) as NonNullable<ResolutionCaseDetail["relatedEvidences"]>,
     latestPrecheck: payload.latestPrecheck ?? payload.precheck ?? null,
     latestCascade: payload.latestCascade ?? payload.cascade ?? null,
     comments: asRecordArray(payload.comments).map((item) => ({

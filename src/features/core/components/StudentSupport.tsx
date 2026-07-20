@@ -9,8 +9,8 @@ export function StudentSupport() {
 
   return (
     <SmartbotPanel
-      title="Hỗ trợ"
-      subtitle="Hỏi nhanh về hồ sơ, minh chứng, hạn bổ sung và bước tiếp theo. Kết quả chính thức do cán bộ/Hội đồng xác nhận."
+      title="Trợ lý hồ sơ"
+      subtitle="Trợ lý hướng dẫn theo quy định và ngữ cảnh hồ sơ hiện tại. Quyết định chính thức vẫn do cán bộ hoặc Hội đồng xác nhận."
       applicationId={applicationId}
       contextScope="student_helpdesk"
       pageContext={{ page: "dashboard" }}

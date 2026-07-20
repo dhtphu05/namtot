@@ -3,10 +3,31 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip } from "@/components/ui-kit";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Loader2, ArrowRight, Save, Send, AlertTriangle, History, FileText, Upload } from "lucide-react";
+import {
+  Check,
+  Loader2,
+  ArrowRight,
+  Save,
+  Send,
+  AlertTriangle,
+  History,
+  FileText,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
-import { useCurrentApplication, useStartApplication, useUpdateTargetLevel, useSaveApplicationDraft, useSubmitApplication, useCreateMetric, useUpdateMetric, useApplicationMetrics } from "@/features/application/hooks/useApplication";
-import { levelLabel, applicationStatusLabel, type Level, type ApplicationStatus, type MetricInput } from "@/lib/api/types";
+import {
+  useCurrentApplication,
+  useStartApplication,
+  useUpdateTargetLevel,
+  useSaveApplicationDraft,
+  useSubmitApplication,
+} from "@/features/application/hooks/useApplication";
+import {
+  levelLabel,
+  applicationStatusLabel,
+  type Level,
+  type ApplicationStatus,
+} from "@/lib/api/types";
 import { ACTIVE_LEVELS } from "@/lib/levels";
 import { MEDIA } from "@/lib/mock-data";
 import { Link } from "@tanstack/react-router";
@@ -18,8 +39,6 @@ export function Wizard() {
   const updateTargetLvlMutation = useUpdateTargetLevel();
   const saveDraftMutation = useSaveApplicationDraft();
   const submitMutation = useSubmitApplication();
-  const createMetricMutation = useCreateMetric();
-  const updateMetricMutation = useUpdateMetric();
 
   const [draftForm, setDraftForm] = useState({
     faculty: "",
@@ -31,28 +50,18 @@ export function Wizard() {
     integrationSummary: "",
   });
 
-  const [metricsForm, setMetricsForm] = useState({
-    gpa: "",
-    conductScore: "",
-    physicalScore: "",
-    volunteerDays: "",
-    languageCertificate: "",
-  });
-
   const [localLevel, setLocalLevel] = useState<Level | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [metricsSaveStatus, setMetricsSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [showConfirm, setShowConfirm] = useState(false);
 
   const profile = appRes?.application;
-  const { data: metricsList = [] } = useApplicationMetrics(profile?.id);
 
   // Prepopulate form when data loads
   useEffect(() => {
     if (appRes?.application) {
       const app = appRes.application;
       setLocalLevel(app.targetLevel);
-      const draft = (app as any).draftData || {};
+      const draft = (app as { draftData?: Record<string, string | undefined> }).draftData ?? {};
       setDraftForm({
         faculty: draft.faculty || app.basicInfo?.faculty || "",
         className: draft.className || app.basicInfo?.className || "",
@@ -65,28 +74,9 @@ export function Wizard() {
     }
   }, [appRes]);
 
-  // Prepopulate metrics when data loads
-  useEffect(() => {
-    if (metricsList && metricsList.length > 0) {
-      const gpaItem = metricsList.find((m: any) => m.metricType === "gpa");
-      const conductItem = metricsList.find((m: any) => m.metricType === "conduct_score");
-      const physicalItem = metricsList.find((m: any) => m.metricType === "physical_score");
-      const volunteerItem = metricsList.find((m: any) => m.metricType === "volunteer_days");
-      const integrationItem = metricsList.find(
-        (m: any) => m.metricType === "foreign_language_score" || m.metricType === "language_certificate",
-      );
-
-      setMetricsForm({
-        gpa: gpaItem ? String(gpaItem.valueNumber ?? "") : "",
-        conductScore: conductItem ? String(conductItem.valueNumber ?? "") : "",
-        physicalScore: physicalItem ? String(physicalItem.valueNumber ?? physicalItem.valueText ?? "") : "",
-        volunteerDays: volunteerItem ? String(volunteerItem.valueNumber ?? "") : "",
-        languageCertificate: integrationItem ? String(integrationItem.valueNumber ?? integrationItem.valueText ?? "") : "",
-      });
-    }
-  }, [metricsList]);
-
-  const isEditable = profile && ["draft", "prechecked", "ready_to_submit", "supplement_required"].includes(profile.status);
+  const isEditable =
+    profile &&
+    ["draft", "prechecked", "ready_to_submit", "supplement_required"].includes(profile.status);
 
   // Debounced Autosave for personal info draft (1000ms)
   useEffect(() => {
@@ -104,7 +94,7 @@ export function Wizard() {
         {
           onSuccess: () => setSaveStatus("saved"),
           onError: () => setSaveStatus("error"),
-        }
+        },
       );
     }, 1000);
 
@@ -144,7 +134,7 @@ export function Wizard() {
           toast.success("Khởi tạo hồ sơ thành công!");
           refetch();
         },
-      }
+      },
     );
   };
 
@@ -161,9 +151,12 @@ export function Wizard() {
           <div className="absolute inset-0 wave-bg opacity-30" />
           <div className="relative flex flex-col justify-between items-start gap-6">
             <div>
-              <h2 className="text-3xl font-extrabold leading-tight">Bắt đầu hồ sơ Sinh viên 5 tốt</h2>
+              <h2 className="text-3xl font-extrabold leading-tight">
+                Bắt đầu hồ sơ Sinh viên 5 tốt
+              </h2>
               <p className="text-white/85 mt-2 max-w-xl text-sm leading-relaxed">
-                Bạn chỉ cần tạo một hồ sơ và chọn cấp aim mong muốn. Hệ thống/cán bộ sẽ xét theo tiêu chí tương ứng. Minh chứng được bổ sung ở mục Minh chứng.
+                Bạn chỉ cần tạo một hồ sơ và chọn cấp aim mong muốn. Hệ thống/cán bộ sẽ xét theo
+                tiêu chí tương ứng. Minh chứng được bổ sung ở mục Minh chứng.
               </p>
             </div>
             <Button
@@ -201,7 +194,7 @@ export function Wizard() {
           toast.error("Không thể cập nhật cấp aim.");
           setLocalLevel(profile.targetLevel);
         },
-      }
+      },
     );
   };
 
@@ -224,101 +217,12 @@ export function Wizard() {
           toast.error("Không thể lưu bản nháp.");
           setTimeout(() => setSaveStatus("idle"), 3000);
         },
-      }
+      },
     );
   };
 
-  const handleSaveMetrics = async () => {
-    if (!isEditable) return;
-
-    // Client validation
-    const gpaVal = parseFloat(metricsForm.gpa);
-    if (!isNaN(gpaVal) && (gpaVal < 0 || gpaVal > 10)) {
-      toast.error("GPA học tập phải nằm trong khoảng từ 0 đến 10!");
-      return;
-    }
-
-    const drlVal = parseFloat(metricsForm.conductScore);
-    if (!isNaN(drlVal) && (drlVal < 0 || drlVal > 100)) {
-      toast.error("Điểm rèn luyện phải nằm trong khoảng từ 0 đến 100!");
-      return;
-    }
-
-    const volVal = parseFloat(metricsForm.volunteerDays);
-    if (!isNaN(volVal) && volVal < 0) {
-      toast.error("Số ngày tình nguyện không được âm!");
-      return;
-    }
-
-    setMetricsSaveStatus("saving");
-
-    try {
-      const itemsToSave = [
-        {
-          metricType: "gpa" as const,
-          criterion: "academic" as const,
-          valueNumber: isNaN(gpaVal) ? undefined : gpaVal,
-          unit: "điểm",
-        },
-        {
-          metricType: "conduct_score" as const,
-          criterion: "ethics" as const,
-          valueNumber: isNaN(drlVal) ? undefined : drlVal,
-          unit: "điểm",
-        },
-        {
-          metricType: "physical_score" as const,
-          criterion: "physical" as const,
-          valueNumber: Number.isNaN(Number(metricsForm.physicalScore)) ? undefined : Number(metricsForm.physicalScore),
-          unit: "chỉ số",
-        },
-        {
-          metricType: "volunteer_days" as const,
-          criterion: "volunteer" as const,
-          valueNumber: isNaN(volVal) ? undefined : volVal,
-          unit: "ngày",
-        },
-        {
-          metricType: "foreign_language_score" as const,
-          criterion: "integration" as const,
-          valueNumber: Number.isNaN(Number(metricsForm.languageCertificate)) ? undefined : Number(metricsForm.languageCertificate),
-          unit: "chứng chỉ",
-        },
-      ];
-
-      for (const item of itemsToSave) {
-        if (item.valueNumber === undefined && !item.valueText) continue;
-
-        const existing = metricsList.find((m: any) => m.metricType === item.metricType);
-        if (existing) {
-          await updateMetricMutation.mutateAsync({
-            metricId: existing.id,
-            applicationId: profile.id,
-            data: {
-              valueNumber: item.valueNumber,
-              valueText: item.valueText,
-            },
-          });
-        } else {
-          await createMetricMutation.mutateAsync({
-            applicationId: profile.id,
-            data: {
-              ...item,
-              source: "student_input",
-            } as MetricInput,
-          });
-        }
-      }
-
-      setMetricsSaveStatus("saved");
-      toast.success("Đã lưu các chỉ số thành công!");
-      setTimeout(() => setMetricsSaveStatus("idle"), 2000);
-      refetch();
-    } catch (e) {
-      setMetricsSaveStatus("error");
-      toast.error("Lỗi khi lưu chỉ số.");
-      setTimeout(() => setMetricsSaveStatus("idle"), 3000);
-    }
+  const handleOpenCriteriaWorkspace = () => {
+    nav({ to: "/app/application" });
   };
 
   const handleSubmit = () => {
@@ -332,22 +236,31 @@ export function Wizard() {
             nav({ to: "/app/evidence" });
           });
         },
-        onError: (err: any) => {
-          toast.error(`Nộp hồ sơ thất bại: ${err.message || "Vui lòng thử lại"}`);
+        onError: (err: unknown) => {
+          const message = err instanceof Error ? err.message : "Vui lòng thử lại";
+          toast.error(`Nộp hồ sơ thất bại: ${message}`);
         },
-      }
+      },
     );
   };
 
   return (
     <>
-      <TopBar title="Thông tin hồ sơ cá nhân" subtitle={`Hồ sơ cá nhân năm học ${profile.schoolYear}`} />
+      <TopBar
+        title="Thông tin hồ sơ cá nhân"
+        subtitle={`Hồ sơ cá nhân năm học ${profile.schoolYear}`}
+      />
 
       {/* Guide notice */}
       <div className="card-soft p-4 mb-6 text-sm text-[#0057C2] bg-[#EEF9FF] border border-[#BCE4FA] rounded-xl flex items-start gap-2.5">
         <AlertTriangle className="w-5 h-5 shrink-0 text-[#00AEEF]" />
         <div>
-          <b>Hướng dẫn:</b> Bạn chỉ cần tạo một hồ sơ duy nhất cho năm học này và chọn cấp aim mong muốn. Hệ thống/cán bộ sẽ xét duyệt theo tiêu chí tương ứng. Minh chứng được bổ sung ở mục <Link to="/app/evidence" className="underline font-semibold">Minh chứng</Link>.
+          <b>Hướng dẫn:</b> Bạn chỉ cần tạo một hồ sơ duy nhất cho năm học này và chọn cấp aim mong
+          muốn. Hệ thống/cán bộ sẽ xét duyệt theo tiêu chí tương ứng. Minh chứng được bổ sung ở mục{" "}
+          <Link to="/app/evidence" className="underline font-semibold">
+            Minh chứng
+          </Link>
+          .
         </div>
       </div>
 
@@ -355,10 +268,15 @@ export function Wizard() {
         <div className="card-soft p-4 mb-6 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
           <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600" />
           <div>
-            <b>Hồ sơ không thể chỉnh sửa:</b> Trạng thái hồ sơ hiện tại là <b>{applicationStatusLabel[profile.status]}</b>. Thông tin lúc này ở chế độ chỉ đọc.
+            <b>Hồ sơ không thể chỉnh sửa:</b> Trạng thái hồ sơ hiện tại là{" "}
+            <b>{applicationStatusLabel[profile.status]}</b>. Thông tin lúc này ở chế độ chỉ đọc.
             <div className="flex gap-4 mt-2">
-              <Link to="/app/evidence" className="underline font-semibold flex items-center gap-1"><Upload className="w-3.5 h-3.5" /> Xem minh chứng</Link>
-              <Link to="/app/audit" className="underline font-semibold flex items-center gap-1"><History className="w-3.5 h-3.5" /> Xem timeline</Link>
+              <Link to="/app/evidence" className="underline font-semibold flex items-center gap-1">
+                <Upload className="w-3.5 h-3.5" /> Xem minh chứng
+              </Link>
+              <Link to="/app/audit" className="underline font-semibold flex items-center gap-1">
+                <History className="w-3.5 h-3.5" /> Xem timeline
+              </Link>
             </div>
           </div>
         </div>
@@ -368,7 +286,9 @@ export function Wizard() {
         <div className="lg:col-span-2 space-y-6">
           {/* Section 1: Aim target Level */}
           <Card>
-            <h3 className="font-bold text-brand-deep text-lg mb-3">1. Cấp aim mong muốn xét duyệt</h3>
+            <h3 className="font-bold text-brand-deep text-lg mb-3">
+              1. Cấp aim mong muốn xét duyệt
+            </h3>
             <div className="grid grid-cols-2 gap-4">
               {([...ACTIVE_LEVELS] as Level[]).map((lvl) => {
                 const active = localLevel === lvl;
@@ -381,7 +301,15 @@ export function Wizard() {
                     className={`p-5 rounded-2xl text-left border transition-all flex flex-col justify-between h-32 hover:-translate-y-0.5 ${active ? "bg-[#0057C2] text-white border-[#0057C2]" : "bg-white border-[#EEF2F7] hover:bg-slate-50"} disabled:opacity-60 disabled:cursor-not-allowed`}
                   >
                     <div>
-                      <div className={`text-xs uppercase font-bold tracking-wider ${active ? "text-white/80" : "text-muted-foreground"}`}>{lvl === "school" ? "Cấp 1/3" : lvl === "university" ? "Cấp 2/3" : "Cấp 3/3"}</div>
+                      <div
+                        className={`text-xs uppercase font-bold tracking-wider ${active ? "text-white/80" : "text-muted-foreground"}`}
+                      >
+                        {lvl === "school"
+                          ? "Cấp 1/3"
+                          : lvl === "university"
+                            ? "Cấp 2/3"
+                            : "Cấp 3/3"}
+                      </div>
                       <div className="font-bold text-base mt-1">{levelLabel[lvl]}</div>
                     </div>
                     {isPending && <Loader2 className="w-4 h-4 animate-spin text-white self-end" />}
@@ -396,16 +324,26 @@ export function Wizard() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-brand-deep text-lg">2. Thông tin chi tiết</h3>
               <div className="text-xs text-muted-foreground flex items-center gap-1">
-                {saveStatus === "saving" && <span className="text-blue-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Đang tự động lưu...</span>}
-                {saveStatus === "saved" && <span className="text-emerald-600 font-semibold">✓ Đã tự động lưu nháp</span>}
-                {saveStatus === "error" && <span className="text-rose-500 font-semibold">⚠ Lỗi khi lưu nháp</span>}
+                {saveStatus === "saving" && (
+                  <span className="text-blue-500 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Đang tự động lưu...
+                  </span>
+                )}
+                {saveStatus === "saved" && (
+                  <span className="text-emerald-600 font-semibold">✓ Đã tự động lưu nháp</span>
+                )}
+                {saveStatus === "error" && (
+                  <span className="text-rose-500 font-semibold">⚠ Lỗi khi lưu nháp</span>
+                )}
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Khoa / Viện phụ trách</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                    Khoa / Viện phụ trách
+                  </label>
                   <input
                     value={draftForm.faculty}
                     disabled={!isEditable}
@@ -415,7 +353,9 @@ export function Wizard() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Lớp học sinh hoạt</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                    Lớp học sinh hoạt
+                  </label>
                   <input
                     value={draftForm.className}
                     disabled={!isEditable}
@@ -427,7 +367,9 @@ export function Wizard() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Số điện thoại liên hệ</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                  Số điện thoại liên hệ
+                </label>
                 <input
                   value={draftForm.phone}
                   disabled={!isEditable}
@@ -438,29 +380,39 @@ export function Wizard() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Ghi chú cá nhân / Giới thiệu</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                  Ghi chú cá nhân / Giới thiệu
+                </label>
                 <textarea
                   value={draftForm.personalStatement}
                   disabled={!isEditable}
-                  onChange={(e) => setDraftForm({ ...draftForm, personalStatement: e.target.value })}
+                  onChange={(e) =>
+                    setDraftForm({ ...draftForm, personalStatement: e.target.value })
+                  }
                   className="w-full px-4 py-2.5 rounded-xl bg-[#F4FBFF] text-sm font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#00AEEF] min-h-[80px] disabled:opacity-60"
                   placeholder="Giới thiệu bản thân và mục tiêu phấn đấu..."
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Tóm tắt thành tích Học tập tốt</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                  Tóm tắt thành tích Học tập tốt
+                </label>
                 <textarea
                   value={draftForm.achievementsSummary}
                   disabled={!isEditable}
-                  onChange={(e) => setDraftForm({ ...draftForm, achievementsSummary: e.target.value })}
+                  onChange={(e) =>
+                    setDraftForm({ ...draftForm, achievementsSummary: e.target.value })
+                  }
                   className="w-full px-4 py-2.5 rounded-xl bg-[#F4FBFF] text-sm font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#00AEEF] min-h-[80px] disabled:opacity-60"
                   placeholder="Nêu tóm tắt thành tích học tập và nghiên cứu khoa học..."
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Tóm tắt hoạt động Tình nguyện tốt</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                  Tóm tắt hoạt động Tình nguyện tốt
+                </label>
                 <textarea
                   value={draftForm.volunteerSummary}
                   disabled={!isEditable}
@@ -471,11 +423,15 @@ export function Wizard() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Tóm tắt thành tích Hội nhập tốt</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                  Tóm tắt thành tích Hội nhập tốt
+                </label>
                 <textarea
                   value={draftForm.integrationSummary}
                   disabled={!isEditable}
-                  onChange={(e) => setDraftForm({ ...draftForm, integrationSummary: e.target.value })}
+                  onChange={(e) =>
+                    setDraftForm({ ...draftForm, integrationSummary: e.target.value })
+                  }
                   className="w-full px-4 py-2.5 rounded-xl bg-[#F4FBFF] text-sm font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#00AEEF] min-h-[80px] disabled:opacity-60"
                   placeholder="Nêu tóm tắt ngoại ngữ, tin học, kỹ năng mềm và giao lưu quốc tế..."
                 />
@@ -484,7 +440,11 @@ export function Wizard() {
 
             {isEditable && (
               <div className="flex gap-4 mt-6">
-                <Button variant="secondary" onClick={handleManualSave} disabled={saveDraftMutation.isPending}>
+                <Button
+                  variant="secondary"
+                  onClick={handleManualSave}
+                  disabled={saveDraftMutation.isPending}
+                >
                   <Save className="w-4 h-4 mr-2" /> Lưu bản nháp thủ công
                 </Button>
               </div>
@@ -493,98 +453,24 @@ export function Wizard() {
 
           {/* Section 3: Quantitative Metrics */}
           <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-brand-deep text-lg">3. Chỉ số học tập & rèn luyện cơ bản</h3>
-              <div className="text-xs text-muted-foreground flex items-center gap-1">
-                {metricsSaveStatus === "saving" && <span className="text-blue-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Đang lưu...</span>}
-                {metricsSaveStatus === "saved" && <span className="text-emerald-600 font-semibold">✓ Đã lưu thành công</span>}
-                {metricsSaveStatus === "error" && <span className="text-rose-500 font-semibold">⚠ Lỗi khi lưu chỉ số</span>}
-              </div>
-            </div>
-
-            <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200 mb-4">
-              * Chỉ số này giúp cán bộ đối chiếu nhanh, không thay thế minh chứng chính thức nếu tiêu chí yêu cầu.
-            </p>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">GPA (Điểm học tập)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="10"
-                    value={metricsForm.gpa}
-                    disabled={!isEditable}
-                    onChange={(e) => setMetricsForm({ ...metricsForm, gpa: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#F4FBFF] text-sm font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#00AEEF] disabled:opacity-60"
-                    placeholder="Ví dụ: 3.5 hoặc 8.5"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Điểm rèn luyện</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={metricsForm.conductScore}
-                    disabled={!isEditable}
-                    onChange={(e) => setMetricsForm({ ...metricsForm, conductScore: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#F4FBFF] text-sm font-medium text-[#0057C2] focus:outline-none focus:ring-2 focus:ring-[#00AEEF] disabled:opacity-60"
-                    placeholder="0 - 100"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Thể lực (Đạt/Chưa đạt)</label>
-                  <select
-                    value={metricsForm.physicalScore}
-                    disabled={!isEditable}
-                    onChange={(e) => setMetricsForm({ ...metricsForm, physicalScore: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#F4FBFF] text-sm font-medium text-[#0057C2] focus:outline-none focus:ring-2 focus:ring-[#00AEEF] disabled:opacity-60"
-                  >
-                    <option value="">-- Chọn trạng thái --</option>
-                    <option value="Đạt">Đạt tiêu chuẩn thể lực</option>
-                    <option value="Chưa đạt">Chưa đạt</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Số ngày tình nguyện</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={metricsForm.volunteerDays}
-                    disabled={!isEditable}
-                    onChange={(e) => setMetricsForm({ ...metricsForm, volunteerDays: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#F4FBFF] text-sm font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#00AEEF] disabled:opacity-60"
-                    placeholder="Ví dụ: 5"
-                  />
-                </div>
-              </div>
-
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Ngoại ngữ / Chứng chỉ hội nhập</label>
-                <input
-                  type="text"
-                  value={metricsForm.languageCertificate}
-                  disabled={!isEditable}
-                  onChange={(e) => setMetricsForm({ ...metricsForm, languageCertificate: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#F4FBFF] text-sm font-medium text-brand-deep focus:outline-none focus:ring-2 focus:ring-[#00AEEF] disabled:opacity-60"
-                  placeholder="Ví dụ: IELTS 6.5, TOEIC 750, hoặc hoạt động ngoại khóa..."
-                />
+                <h3 className="font-bold text-brand-deep text-lg">
+                  3. Hoàn thiện tiêu chí theo requirement tree
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Các tiêu chí hiện được nhập theo từng requirement, nguồn dữ liệu và trạng thái xác
+                  minh.
+                </p>
               </div>
+              <FileText className="h-5 w-5 shrink-0 text-[#0057C2]" />
             </div>
-
-            {isEditable && (
-              <div className="flex gap-4 mt-6">
-                <Button variant="secondary" onClick={handleSaveMetrics} disabled={createMetricMutation.isPending || updateMetricMutation.isPending}>
-                  <Save className="w-4 h-4 mr-2" /> Lưu chỉ số học tập & rèn luyện
-                </Button>
-              </div>
-            )}
+            <div className="mt-4 rounded-xl border border-[#BCE4FA] bg-[#EEF9FF] p-4 text-sm text-[#0057C2]">
+              Không nhập tổng ngày tình nguyện hoặc trạng thái thể lực cố định ở bước này.
+            </div>
+            <Button className="mt-5" onClick={handleOpenCriteriaWorkspace}>
+              Mở workspace tiêu chí <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </Card>
         </div>
 
@@ -603,17 +489,25 @@ export function Wizard() {
               </div>
               <div className="flex justify-between border-b pb-2">
                 <span className="text-muted-foreground">Cấp aim:</span>
-                <span className="font-semibold text-brand-deep">{levelLabel[localLevel || profile.targetLevel]}</span>
+                <span className="font-semibold text-brand-deep">
+                  {levelLabel[localLevel || profile.targetLevel]}
+                </span>
               </div>
               <div className="flex justify-between border-b pb-2">
                 <span className="text-muted-foreground">Trạng thái:</span>
-                <span className="font-semibold text-brand-deep">{applicationStatusLabel[profile.status]}</span>
+                <span className="font-semibold text-brand-deep">
+                  {applicationStatusLabel[profile.status]}
+                </span>
               </div>
             </div>
 
             {isEditable && (
               <div className="mt-6">
-                <Button className="w-full" onClick={() => setShowConfirm(true)} disabled={submitMutation.isPending}>
+                <Button
+                  className="w-full"
+                  onClick={() => setShowConfirm(true)}
+                  disabled={submitMutation.isPending}
+                >
                   <Send className="w-4 h-4 mr-2" /> Nộp hồ sơ xét duyệt
                 </Button>
               </div>
@@ -638,15 +532,24 @@ export function Wizard() {
               <div>
                 <h3 className="font-extrabold text-brand-deep text-xl">Xác nhận nộp hồ sơ</h3>
                 <p className="text-muted-foreground text-sm mt-2 leading-relaxed">
-                  Hồ sơ sẽ được chuyển sang trạng thái đang xét duyệt. Bạn vẫn có thể bổ sung minh chứng nếu cán bộ yêu cầu trong quá trình xét duyệt.
+                  Hồ sơ sẽ được chuyển sang trạng thái đang xét duyệt. Bạn vẫn có thể bổ sung minh
+                  chứng nếu cán bộ yêu cầu trong quá trình xét duyệt.
                 </p>
               </div>
               <div className="flex gap-3 mt-6">
                 <Button variant="ghost" className="flex-1" onClick={() => setShowConfirm(false)}>
                   Hủy
                 </Button>
-                <Button className="flex-1" onClick={handleSubmit} disabled={submitMutation.isPending}>
-                  {submitMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Xác nhận nộp"}
+                <Button
+                  className="flex-1"
+                  onClick={handleSubmit}
+                  disabled={submitMutation.isPending}
+                >
+                  {submitMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Xác nhận nộp"
+                  )}
                 </Button>
               </div>
             </motion.div>

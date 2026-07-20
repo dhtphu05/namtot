@@ -251,6 +251,9 @@ async function executeApiRequest<T>(
       },
     };
   } catch (error) {
+    if (isAbortError(error)) {
+      throw error;
+    }
     if (error instanceof ApiError) {
       throw error;
     }
@@ -259,6 +262,13 @@ async function executeApiRequest<T>(
       "NETWORK_ERROR",
     );
   }
+}
+
+function isAbortError(error: unknown) {
+  return (
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (error instanceof Error && error.name === "AbortError")
+  );
 }
 
 export async function apiBlob(

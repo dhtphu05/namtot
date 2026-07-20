@@ -3,7 +3,9 @@ import { toast } from "sonner";
 import type { Criterion } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
 import { eventsApi } from "@/features/event/api/events";
+import { applicationKeys } from "@/features/application/hooks/useApplication";
 import { evidenceKeys } from "@/features/evidence/hooks/useEvidence";
+import type { OfficialEventLibraryResponse } from "@/types/evidence";
 
 export type ApprovedEvidenceFilters = {
   studentCode?: string | null;
@@ -13,10 +15,35 @@ export type ApprovedEvidenceFilters = {
   status?: "all" | "importable" | "imported";
 };
 
+export type OfficialEventLibraryFilters = {
+  applicationId?: string;
+  search?: string;
+  criterion?: Criterion | "all";
+  projection?: "full" | "reference";
+  page?: number;
+  limit?: number;
+};
+
 export const approvedEvidenceKeys = {
   all: ["approved-evidence"] as const,
   search: (filters: ApprovedEvidenceFilters) =>
     [...approvedEvidenceKeys.all, "search", filters] as const,
+};
+
+export const officialEventLibraryKeys = {
+  all: ["official-event-library"] as const,
+  list: (filters: OfficialEventLibraryFilters) =>
+    [
+      ...officialEventLibraryKeys.all,
+      {
+        applicationId: filters.applicationId ?? null,
+        search: filters.search?.trim() ?? "",
+        criterion: filters.criterion ?? "all",
+        projection: filters.projection ?? "full",
+        page: filters.page ?? 1,
+        limit: filters.limit ?? 20,
+      },
+    ] as const,
 };
 
 export function useApprovedEvidenceSearch(filters: ApprovedEvidenceFilters, enabled = true) {
@@ -45,6 +72,66 @@ export function useApprovedEvidenceSearch(filters: ApprovedEvidenceFilters, enab
   });
 }
 
+export function useOfficialEventLibrary(filters: OfficialEventLibraryFilters, enabled = true) {
+  return useQuery<OfficialEventLibraryResponse>({
+    queryKey: officialEventLibraryKeys.list(filters),
+    queryFn: async ({ signal }) => {
+      if (!filters.applicationId) {
+        return {
+          items: [],
+          page: filters.page ?? 1,
+          limit: filters.limit ?? 20,
+          total: 0,
+          totalPages: 1,
+        };
+      }
+
+      const response = await eventsApi.searchOfficialEventLibrary(
+        {
+          applicationId: filters.applicationId,
+          search: filters.search?.trim() || undefined,
+          criterion:
+            filters.criterion && filters.criterion !== "all" ? filters.criterion : undefined,
+          projection: filters.projection,
+          page: filters.page ?? 1,
+          limit: filters.limit ?? 20,
+        },
+        { signal },
+      );
+      return response.data;
+    },
+    enabled: enabled && Boolean(filters.applicationId),
+  });
+}
+
+export function useImportOfficialEvent(applicationId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ eventId }: { eventId: string }) => {
+      if (!applicationId) throw new Error("Missing applicationId");
+      const response = await eventsApi.importAsEvidence(eventId, { applicationId });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      if (applicationId) {
+        queryClient.invalidateQueries({ queryKey: evidenceKeys.list(applicationId) });
+        queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(applicationId) });
+        queryClient.invalidateQueries({
+          queryKey: applicationKeys.criteriaCompletion(applicationId),
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: officialEventLibraryKeys.all });
+      if (data?.evidence?.id) {
+        queryClient.invalidateQueries({ queryKey: evidenceKeys.detail(data.evidence.id) });
+        queryClient.invalidateQueries({ queryKey: evidenceKeys.card(data.evidence.id) });
+        queryClient.invalidateQueries({ queryKey: evidenceKeys.audit(data.evidence.id) });
+      }
+    },
+  });
+}
+
 export function useImportApprovedEvidence(applicationId?: string) {
   const queryClient = useQueryClient();
 
@@ -57,6 +144,9 @@ export function useImportApprovedEvidence(applicationId?: string) {
     onSuccess: (data) => {
       if (applicationId) {
         queryClient.invalidateQueries({ queryKey: evidenceKeys.list(applicationId) });
+        queryClient.invalidateQueries({
+          queryKey: applicationKeys.criteriaCompletion(applicationId),
+        });
       }
       queryClient.invalidateQueries({ queryKey: approvedEvidenceKeys.all });
       if (data?.evidence?.id) {

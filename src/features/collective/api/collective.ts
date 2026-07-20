@@ -1,15 +1,15 @@
 import { apiClient } from "@/lib/api/client";
-import type { 
-  Level, 
-  CurrentCollectiveEmpty, 
-  CurrentCollectiveResponse, 
-  CollectiveMember, 
-  CollectiveMemberInput, 
+import type {
+  Level,
+  CurrentCollectiveEmpty,
+  CurrentCollectiveResponse,
+  CollectiveMember,
+  CollectiveMemberInput,
   RosterImportResult,
   CollectivePrecheckView,
   EvidenceResponse,
   EvidenceSourceType,
-  IndexingStatus
+  IndexingStatus,
 } from "@/lib/api/types";
 
 type BackendCurrentCollective = {
@@ -25,7 +25,7 @@ type CollectiveEvidenceResponse = EvidenceResponse & {
 };
 
 function normalizeCurrentCollective(
-  data: BackendCurrentCollective | CurrentCollectiveResponse | CurrentCollectiveEmpty
+  data: BackendCurrentCollective | CurrentCollectiveResponse | CurrentCollectiveEmpty,
 ): CurrentCollectiveResponse | CurrentCollectiveEmpty {
   if ("collective" in data) return data;
   if (!data.profile) {
@@ -51,10 +51,9 @@ export const collectiveApi = {
     if (schoolYear) query.append("schoolYear", schoolYear);
     if (className) query.append("className", className);
     const qString = query.toString();
-    const res = await apiClient<BackendCurrentCollective | CurrentCollectiveResponse | CurrentCollectiveEmpty>(
-      `/api/collective/current${qString ? `?${qString}` : ""}`,
-      { method: "GET" }
-    );
+    const res = await apiClient<
+      BackendCurrentCollective | CurrentCollectiveResponse | CurrentCollectiveEmpty
+    >(`/api/collective/current${qString ? `?${qString}` : ""}`, { method: "GET" });
     return { ...res, data: normalizeCurrentCollective(res.data) };
   },
 
@@ -63,7 +62,10 @@ export const collectiveApi = {
       method: "POST",
       body: data,
     });
-    return { ...res, data: { collective: res.data, state: res.data.status } satisfies CurrentCollectiveResponse };
+    return {
+      ...res,
+      data: { collective: res.data, state: res.data.status } satisfies CurrentCollectiveResponse,
+    };
   },
 
   getById: async (id: string) => {
@@ -86,9 +88,12 @@ export const collectiveApi = {
       Object.entries(query).forEach(([k, v]) => q.append(k, String(v)));
     }
     const qString = q.toString();
-    return apiClient<CollectiveMember[]>(`/api/collective/${id}/members${qString ? `?${qString}` : ""}`, {
-      method: "GET",
-    });
+    return apiClient<CollectiveMember[]>(
+      `/api/collective/${id}/members${qString ? `?${qString}` : ""}`,
+      {
+        method: "GET",
+      },
+    );
   },
 
   upsertMember: async (id: string, data: CollectiveMemberInput) => {
@@ -127,13 +132,19 @@ export const collectiveApi = {
       Object.entries(query).forEach(([k, v]) => q.append(k, String(v)));
     }
     const qString = q.toString();
-    const res = await apiClient<CollectiveEvidenceResponse[]>(`/api/collective/${id}/evidences${qString ? `?${qString}` : ""}`, {
-      method: "GET",
-    });
+    const res = await apiClient<CollectiveEvidenceResponse[]>(
+      `/api/collective/${id}/evidences${qString ? `?${qString}` : ""}`,
+      {
+        method: "GET",
+      },
+    );
     return { ...res, data: res.data.map(normalizeCollectiveEvidence) };
   },
 
-  createEvidence: async (id: string, data: { evidenceName: string; collectiveCriterion?: string; sourceType?: EvidenceSourceType }) => {
+  createEvidence: async (
+    id: string,
+    data: { evidenceName: string; collectiveCriterion?: string; sourceType?: EvidenceSourceType },
+  ) => {
     const res = await apiClient<CollectiveEvidenceResponse>(`/api/collective/${id}/evidences`, {
       method: "POST",
       body: { ...data, criterion: "collective" },
@@ -144,17 +155,26 @@ export const collectiveApi = {
   uploadFile: async (evidenceId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return apiClient<{ fileId: string; fileName: string; size: number }>(`/api/collective/evidences/${evidenceId}/files`, {
-      method: "POST",
-      body: formData,
-    });
+    return apiClient<{ fileId: string; fileName: string; size: number }>(
+      `/api/collective/evidences/${evidenceId}/files`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
   },
 
-  startIndexing: async (evidenceId: string, options?: { force?: boolean; runMode?: "sync" | "async" }) => {
-    return apiClient<{ jobId: string; status: IndexingStatus }>(`/api/collective/evidences/${evidenceId}/start-indexing`, {
-      method: "POST",
-      body: options || {},
-    });
+  startIndexing: async (
+    evidenceId: string,
+    options?: { force?: boolean; runMode?: "sync" | "async" },
+  ) => {
+    return apiClient<{ jobId: string; status: IndexingStatus }>(
+      `/api/collective/evidences/${evidenceId}/start-indexing`,
+      {
+        method: "POST",
+        body: options || {},
+      },
+    );
   },
 
   importEvent: async (id: string, data: { eventId: string; collectiveCriterion?: string }) => {

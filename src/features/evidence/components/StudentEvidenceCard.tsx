@@ -11,9 +11,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppButton, InlineAlert, StatusBadge } from "@/features/student/components/primitives";
+import { getEvidenceDisplayModel } from "@/features/application/presentation";
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import { useUpdateEvidence, useUploadEvidenceFile } from "@/features/evidence/hooks/useEvidence";
 import { getEvidenceStudentStatus } from "@/features/student/selectors/student-ui";
+import { PRESENTATION_SEMANTICS_V2 } from "@/lib/presentation-semantics";
 import type { EvidenceResponse } from "@/lib/api/types";
 import {
   formatStudentDate,
@@ -53,6 +55,7 @@ export function StudentEvidenceCard({
   const files = useMemo(() => getEvidenceFiles(evidence), [evidence]);
   const primaryFile = useMemo(() => getPrimaryFile(evidence), [evidence]);
   const status = getEvidenceStudentStatus(evidence);
+  const display = useMemo(() => getEvidenceDisplayModel(evidence), [evidence]);
   const isBusy = updateEvidence.isPending || uploadFile.isPending;
   const extractedSummary = getExtractedSummary(evidence);
   const warnings = getEvidenceWarnings(evidence, profile);
@@ -167,16 +170,23 @@ export function StudentEvidenceCard({
                 </div>
               ) : (
                 <h3 className="line-clamp-2 text-sm font-bold leading-5 text-[var(--text-primary)]">
-                  {evidence.evidenceName || "Minh chứng chưa đặt tên"}
+                  {PRESENTATION_SEMANTICS_V2
+                    ? display.title
+                    : evidence.evidenceName || "Minh chứng chưa đặt tên"}
                 </h3>
               )}
               <p className="mt-1 line-clamp-1 text-xs font-medium text-[var(--text-secondary)]">
                 {studentCriterionLabel[evidence.criterion]} ·{" "}
-                {sourceTypeLabel[evidence.sourceType] ?? "Nguồn khác"}
+                {PRESENTATION_SEMANTICS_V2
+                  ? display.sourceLabel
+                  : (sourceTypeLabel[evidence.sourceType] ?? "Nguồn khác")}
               </p>
             </div>
             <div className="shrink-0">
-              <StatusBadge tone={status.tone} label={status.label} />
+              <StatusBadge
+                tone={PRESENTATION_SEMANTICS_V2 ? display.tone : status.tone}
+                label={PRESENTATION_SEMANTICS_V2 ? display.statusLabel : status.label}
+              />
             </div>
           </div>
 

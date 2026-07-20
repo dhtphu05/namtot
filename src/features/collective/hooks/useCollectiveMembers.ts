@@ -9,13 +9,19 @@ export const collectiveMemberKeys = {
   list: (id: string) => [...collectiveMemberKeys.all, "list", id] as const,
 };
 
-function invalidateCollectiveRoster(queryClient: ReturnType<typeof useQueryClient>, collectiveId: string) {
+function invalidateCollectiveRoster(
+  queryClient: ReturnType<typeof useQueryClient>,
+  collectiveId: string,
+) {
   queryClient.invalidateQueries({ queryKey: collectiveMemberKeys.list(collectiveId) });
   queryClient.invalidateQueries({ queryKey: collectiveKeys.detail(collectiveId) });
   queryClient.invalidateQueries({ queryKey: collectiveKeys.all });
 }
 
-export function useCollectiveMembers(collectiveId?: string, query?: Record<string, string | number>) {
+export function useCollectiveMembers(
+  collectiveId?: string,
+  query?: Record<string, string | number>,
+) {
   return useQuery({
     queryKey: [...collectiveMemberKeys.list(collectiveId ?? ""), query],
     queryFn: async () => {
@@ -47,7 +53,15 @@ export function useUpdateMember() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, memberId, data }: { id: string; memberId: string; data: Partial<CollectiveMemberInput> }) => {
+    mutationFn: async ({
+      id,
+      memberId,
+      data,
+    }: {
+      id: string;
+      memberId: string;
+      data: Partial<CollectiveMemberInput>;
+    }) => {
       const res = await collectiveApi.updateMember(id, memberId, data);
       return { id, data: res.data };
     },

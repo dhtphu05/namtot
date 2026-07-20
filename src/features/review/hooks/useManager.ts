@@ -5,9 +5,11 @@ import { managerApi, type ManagerApplicationFilters } from "../api/manager";
 
 export const managerKeys = {
   all: ["manager"] as const,
-  applications: (filters: ManagerApplicationFilters) => [...managerKeys.all, "applications", filters] as const,
+  applications: (filters: ManagerApplicationFilters) =>
+    [...managerKeys.all, "applications", filters] as const,
   workloads: () => [...managerKeys.all, "workloads"] as const,
-  aggregation: (applicationId: string) => [...managerKeys.all, "aggregation", applicationId] as const,
+  aggregation: (applicationId: string) =>
+    [...managerKeys.all, "aggregation", applicationId] as const,
 };
 
 export function useManagerApplications(filters: ManagerApplicationFilters = {}) {
@@ -36,8 +38,15 @@ export function useAssignReviewTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ taskId, officerId, note }: { taskId: string; officerId: string; note?: string }) =>
-      managerApi.assignTask(taskId, { officerId, note }),
+    mutationFn: ({
+      taskId,
+      officerId,
+      note,
+    }: {
+      taskId: string;
+      officerId: string;
+      note?: string;
+    }) => managerApi.assignTask(taskId, { officerId, note }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reviewKeys.all });
       queryClient.invalidateQueries({ queryKey: managerKeys.workloads() });

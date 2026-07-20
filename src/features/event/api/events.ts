@@ -5,9 +5,17 @@ import type {
   EventRegistryItem,
   EventStatus,
   Level,
+  Pagination,
+  StaffEventWorkspace,
 } from "@/lib/api/types";
 import { normalizeEvidence, type EvidenceResponse } from "@/features/evidence/api/evidence";
-import type { ApprovedEvidenceSearchItem, ImportEvidenceResponse } from "@/types/evidence";
+import type {
+  ApprovedEvidenceSearchItem,
+  ImportEvidenceResponse,
+  OfficialEventLibraryItem,
+  OfficialEventLibraryResponse,
+  OfficialEventLibraryState,
+} from "@/types/evidence";
 
 export interface EventFilters {
   q?: string;
@@ -32,6 +40,16 @@ export interface EventParticipantRow {
   convertedValue?: number | null;
   convertedUnit?: string | null;
 }
+
+export type EventListResult = {
+  items: EventRegistryItem[];
+  pagination: Pagination;
+};
+
+export type EventParticipantsResult = {
+  items: EventParticipantRow[];
+  pagination: Pagination;
+};
 
 function toQuery(filters?: object) {
   const query = new URLSearchParams();
@@ -77,12 +95,48 @@ type ApprovedEvidenceSearchPayload =
       results?: unknown[];
     };
 
+type OfficialEventLibraryPayload =
+  | unknown[]
+  | {
+      items?: unknown[];
+      data?: unknown[];
+      events?: unknown[];
+      results?: unknown[];
+      page?: unknown;
+      limit?: unknown;
+      total?: unknown;
+      totalPages?: unknown;
+      total_pages?: unknown;
+      pagination?: {
+        page?: unknown;
+        limit?: unknown;
+        total?: unknown;
+        totalPages?: unknown;
+        total_pages?: unknown;
+      };
+    };
+
 function normalizeEvents(payload: EventListPayload | null): EventRegistryItem[] {
   const rows = Array.isArray(payload)
     ? payload
     : (payload?.items ?? payload?.data ?? payload?.events ?? payload?.results ?? []);
 
   return rows.map(normalizeEvent).filter((event): event is EventRegistryItem => Boolean(event?.id));
+}
+
+function normalizePagination(
+  meta: unknown,
+  fallbackTotal: number,
+  fallbackLimit: number,
+): Pagination {
+  const pagination = asRecord(asRecord(meta)?.pagination ?? meta);
+  const page = nullableNumber(pagination?.page) ?? 1;
+  const limit = nullableNumber(pagination?.limit) ?? fallbackLimit;
+  const total = nullableNumber(pagination?.total) ?? fallbackTotal;
+  const totalPages =
+    nullableNumber(pagination?.totalPages ?? pagination?.total_pages) ??
+    Math.max(1, Math.ceil(total / Math.max(1, limit)));
+  return { page, limit, total, totalPages };
 }
 
 function normalizeEvent(raw: unknown): EventRegistryItem | null {
@@ -175,6 +229,93 @@ function normalizeApprovedEvidenceSearch(
     .filter((item): item is ApprovedEvidenceSearchItem =>
       Boolean(item?.event.id && item.participant.id),
     );
+}
+
+function normalizeOfficialEventLibrary(
+  payload: OfficialEventLibraryPayload | null,
+): OfficialEventLibraryResponse {
+  const source = Array.isArray(payload) ? null : payload;
+  const pagination = asRecord(source?.pagination);
+  const rows = Array.isArray(payload)
+    ? payload
+    : (payload?.items ?? payload?.data ?? payload?.events ?? payload?.results ?? []);
+  const items = rows
+    .map(normalizeOfficialEventLibraryItem)
+    .filter((item): item is OfficialEventLibraryItem => Boolean(item?.eventId && item.title));
+  const page = nullableNumber(source?.page ?? pagination?.page) ?? 1;
+  const limit = nullableNumber(source?.limit ?? pagination?.limit) ?? items.length;
+  const total = nullableNumber(source?.total ?? pagination?.total) ?? items.length;
+  const totalPages =
+    nullableNumber(
+      source?.totalPages ??
+        source?.total_pages ??
+        pagination?.totalPages ??
+        pagination?.total_pages,
+    ) ?? Math.max(1, Math.ceil(total / Math.max(1, limit)));
+
+  return {
+    items,
+    page,
+    limit,
+    total,
+    totalPages,
+  };
+}
+
+function normalizeOfficialEventLibraryItem(raw: unknown): OfficialEventLibraryItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const event = asRecord(row.event) ?? asRecord(row.eventRegistry) ?? row;
+  const item: OfficialEventLibraryItem = {
+    eventId: stringValue(
+      row.eventId ?? row.event_id ?? event.eventId ?? event.event_id ?? event.id ?? row.id,
+    ),
+    title: stringValue(
+      row.title ??
+        row.eventName ??
+        row.event_name ??
+        row.name ??
+        event.title ??
+        event.eventName ??
+        event.event_name ??
+        event.name,
+    ),
+  };
+
+  const organizer = nullableString(row.organizer ?? event.organizer ?? event.organizerName);
+  const organizerLevel = nullableString(
+    row.organizerLevel ??
+      row.organizer_level ??
+      event.organizerLevel ??
+      event.organizer_level ??
+      event.level,
+  );
+  const criterion = nullableString(row.criterion ?? event.criterion);
+  const evidenceId = nullableString(row.evidenceId ?? row.evidence_id);
+  const stateSource =
+    row.state ?? row.status ?? row.importState ?? row.import_state ?? row.alreadyImported;
+
+  if (organizer !== null) item.organizer = organizer;
+  if (organizerLevel !== null) item.organizerLevel = organizerLevel;
+  if (criterion !== null) item.criterion = normalizeCriterion(criterion);
+  if (stateSource !== undefined) item.state = normalizeOfficialEventLibraryState(stateSource);
+  if (evidenceId !== null) item.evidenceId = evidenceId;
+
+  return item;
+}
+
+function normalizeOfficialEventLibraryState(value: unknown): OfficialEventLibraryState {
+  if (typeof value === "boolean") return value ? "already_imported" : "available";
+  const normalized = nullableString(value)?.toLowerCase();
+  if (
+    normalized === "already_imported" ||
+    normalized === "imported" ||
+    normalized === "duplicate" ||
+    normalized === "true"
+  ) {
+    return "already_imported";
+  }
+  return "available";
 }
 
 function normalizeApprovedEvidenceSearchItem(raw: unknown): ApprovedEvidenceSearchItem | null {
@@ -369,6 +510,20 @@ export const eventsApi = {
     return { ...response, data: normalizeEvents(response.data) };
   },
 
+  listEventsPage: async (filters?: EventFilters) => {
+    const response = await apiClient<EventListPayload>(`/api/events${toQuery(filters)}`, {
+      method: "GET",
+    });
+    const items = normalizeEvents(response.data);
+    return {
+      ...response,
+      data: {
+        items,
+        pagination: normalizePagination(response.meta, items.length, filters?.limit ?? 20),
+      },
+    };
+  },
+
   searchEvents: async (
     filters?: Pick<EventFilters, "studentCode" | "criterion" | "q" | "page" | "limit">,
   ) => {
@@ -409,6 +564,28 @@ export const eventsApi = {
     return { ...response, data: normalizeApprovedEvidenceSearch(response.data) };
   },
 
+  searchOfficialEventLibrary: async (
+    filters: {
+      applicationId: string;
+      search?: string;
+      criterion?: Criterion;
+      projection?: "full" | "reference";
+      page?: number;
+      limit?: number;
+    },
+    options?: { signal?: AbortSignal },
+  ) => {
+    const response = await apiClient<OfficialEventLibraryPayload>(
+      `/api/evidence-matching/library${toQuery(filters)}`,
+      {
+        method: "GET",
+        signal: options?.signal,
+      },
+    );
+
+    return { ...response, data: normalizeOfficialEventLibrary(response.data) };
+  },
+
   getParticipants: async (
     eventId: string,
     params?: { page?: number; limit?: number; q?: string },
@@ -422,11 +599,37 @@ export const eventsApi = {
     return { ...response, data: normalizeParticipants(response.data) };
   },
 
+  getParticipantsPage: async (
+    eventId: string,
+    params?: { page?: number; limit?: number; q?: string },
+  ) => {
+    const response = await apiClient<EventParticipantsPayload>(
+      `/api/events/${eventId}/participants${toQuery(params)}`,
+      {
+        method: "GET",
+      },
+    );
+    const items = normalizeParticipants(response.data);
+    return {
+      ...response,
+      data: {
+        items,
+        pagination: normalizePagination(response.meta, items.length, params?.limit ?? 20),
+      },
+    };
+  },
+
   getEvent: async (eventId: string) => {
     const response = await apiClient<unknown>(`/api/events/${eventId}`, {
       method: "GET",
     });
     return { ...response, data: normalizeEvent(response.data) };
+  },
+
+  getStaffWorkspace: async (eventId: string) => {
+    return apiClient<StaffEventWorkspace>(`/api/events/${eventId}/staff-workspace`, {
+      method: "GET",
+    });
   },
 
   checkParticipant: async (eventId: string, applicationId: string) => {

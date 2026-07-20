@@ -1,4 +1,8 @@
-import { getStatusTone, getStudentApplicationStatusLabel, type StatusTone } from "@/lib/status-labels";
+import {
+  getStatusTone,
+  getStudentApplicationStatusLabel,
+  type StatusTone,
+} from "@/lib/status-labels";
 
 type StatusBadgeProps = {
   status?: string | null;

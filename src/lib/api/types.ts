@@ -37,8 +37,16 @@ export interface ApiFailure {
 export type Role =
   "student" | "class_representative" | "officer" | "manager" | "committee" | "admin";
 
+export interface WorkspaceSummary {
+  id: string;
+  code: string;
+  name: string;
+  shortName: string | null;
+}
+
 export interface SafeUser {
   id: string;
+  workspaceId: string | null;
   email: string;
   role: Role;
   fullName: string;
@@ -51,6 +59,7 @@ export interface SafeUser {
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
+  workspace: WorkspaceSummary | null;
   officerSpecializations?: Array<{
     criterion: Criterion;
     facultyScope?: string | null;
@@ -167,6 +176,13 @@ export interface ApplicationMetric {
 export interface PrecheckCriterionResult {
   criterion: Criterion;
   status: FinalStatus | string;
+  label?: string;
+  requirementGroups?: RequirementGroup[];
+  satisfiedRequirements?: string[];
+  missingRequirements?: PrecheckMissingItem[];
+  needsVerification?: PrecheckMissingItem[];
+  nextAction?: PrecheckNextAction | null;
+  humanConfirmationRequired?: boolean;
   score?: number;
   passed?: boolean;
   reasons?: string[];
@@ -177,10 +193,25 @@ export interface PrecheckCriterionResult {
 
 export interface PrecheckMissingItem {
   criterion?: Criterion;
+  requirementKey?: string;
+  title?: string;
+  status?: string;
+  reason?: string;
+  action?: PrecheckNextAction;
   code?: string;
   message?: string;
   severity?: "info" | "warning" | "error" | string;
   [key: string]: unknown;
+}
+
+export interface PrecheckNextAction {
+  type: string;
+  label: string;
+  shortReason: string;
+  criterion?: Criterion;
+  requirementKey?: string;
+  route: string;
+  priority: number;
 }
 
 export interface PrecheckResult {
@@ -192,8 +223,132 @@ export interface PrecheckResult {
   missingItems: PrecheckMissingItem[];
   warnings: string[];
   nextBestAction: string;
+  nextAction?: PrecheckNextAction | null;
   humanConfirmationRequired: boolean;
   createdAt: string;
+}
+
+export type RequirementGroupOperator = "all_of" | "one_of" | "at_least_n";
+export type RequirementType =
+  "metric" | "evidence" | "system_confirmation" | "activity_aggregation";
+export type RequirementSourceType =
+  "system_data" | "official_event" | "manual_evidence" | "manual_metric";
+export type CriterionCompletionStatus =
+  | "not_started"
+  | "in_progress"
+  | "needs_verification"
+  | "ready_for_precheck"
+  | "precheck_warning"
+  | "supplement_required"
+  | "under_review"
+  | "accepted"
+  | "rejected";
+
+export interface RequirementResponse {
+  id: string;
+  responseKind: string;
+  status: string;
+  metricId?: string | null;
+  evidenceId?: string | null;
+  payloadJson?: unknown;
+  source?: "explicit" | "legacy";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RequirementItem {
+  key: string;
+  title: string;
+  description?: string;
+  type: RequirementType;
+  status: "not_started" | "declared" | "needs_verification" | "verified" | "rejected";
+  optional: boolean;
+  acceptedSources: RequirementSourceType[];
+  formSchema?: unknown;
+  currentResponses: RequirementResponse[];
+  aggregation?: RequirementAggregation;
+  nextAction?: {
+    type: string;
+    label: string;
+  };
+}
+
+export interface RequirementAggregationActivity {
+  id: string;
+  applicationId?: string | null;
+  requirementKey: string;
+  activityType?: string | null;
+  activityName?: string | null;
+  organizer?: string | null;
+  organizerLevel?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  declaredValue?: number | null;
+  declaredUnit?: string | null;
+  convertedValue?: number | null;
+  convertedUnit?: string | null;
+  conversionSource?: string | null;
+  sourceType?: string | null;
+  evidenceId?: string | null;
+  eventId?: string | null;
+  status: string;
+  countedValue: number;
+  exclusionReason?: string | null;
+}
+
+export interface RequirementAggregation {
+  verifiedTotal: number;
+  pendingVerificationTotal: number;
+  excludedTotal: number;
+  unit: string;
+  threshold?: number;
+  activities: RequirementAggregationActivity[];
+}
+
+export interface RequirementGroup {
+  key: string;
+  title: string;
+  operator: RequirementGroupOperator;
+  requiredCount?: number;
+  optional: boolean;
+  formSchema?: unknown;
+  requirements: RequirementItem[];
+}
+
+export interface CriterionCompletionItem {
+  criterion: Criterion;
+  title: string;
+  description: string;
+  status: CriterionCompletionStatus;
+  requirementGroups: RequirementGroup[];
+  completion: {
+    satisfied: number;
+    required: number;
+    needsVerification: number;
+  };
+  evidenceCount: number;
+  additionalAchievementRequired?: boolean;
+  nextAction: {
+    type: string;
+    label: string;
+    requirementKey?: string;
+    route?: string;
+  } | null;
+}
+
+export interface CriteriaCompletionResponse {
+  applicationId: string;
+  criteriaVersionId: string | null;
+  targetLevel: Level;
+  items: CriterionCompletionItem[];
+  summary: {
+    notStarted: number;
+    inProgress: number;
+    needsVerification: number;
+    readyForPrecheck: number;
+    accepted: number;
+  };
+  generatedAt: string;
 }
 
 export interface EventRegistryItem {
@@ -216,6 +371,43 @@ export interface EventRegistryItem {
   } | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type StaffEventFileRole = "roster" | "decision_source" | "sample_certificate";
+
+export interface StaffEventFile {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  role: StaffEventFileRole;
+}
+
+export interface StaffEventWorkspace {
+  event: {
+    id: string;
+    name: string;
+    organizer: string | null;
+    organizerLevel: Level;
+    criterion: Criterion;
+    status: EventStatus;
+    rosterIndexed: boolean;
+    participantCount: number;
+    convertedValue: number | null;
+    convertedUnit: string | null;
+    updatedAt: string;
+  };
+  files: StaffEventFile[];
+  source: {
+    decisionImportId: string | null;
+    decisionNumber: string | null;
+  };
+  indexSummary: {
+    status: IndexingStatus | "not_started";
+    validRows: number | null;
+    warningRows: number | null;
+    errorRows: number | null;
+  };
 }
 
 export interface EventParticipantCheck {

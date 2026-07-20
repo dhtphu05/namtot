@@ -47,7 +47,8 @@ export type MatrixEvidenceLike = {
   status?: string | null;
 };
 
-export type CriteriaSuitabilityStatus = "met" | "needs_supplement" | "missing_data" | "not_suitable";
+export type CriteriaSuitabilityStatus =
+  "met" | "needs_supplement" | "missing_data" | "not_suitable";
 
 export type CriterionSuitability = {
   criterion: CoreCriterion;
@@ -81,25 +82,29 @@ export const coreCriteria: Array<{
     key: "ethics",
     label: "Đạo đức tốt",
     color: "#EF4444",
-    description: "Điểm rèn luyện, cam kết không vi phạm và thành tích Đoàn - Hội khi cấp xét yêu cầu.",
+    description:
+      "Điểm rèn luyện, cam kết không vi phạm và thành tích Đoàn - Hội khi cấp xét yêu cầu.",
   },
   {
     key: "academic",
     label: "Học tập tốt",
     color: "#0057C2",
-    description: "GPA/ĐTB, xác nhận không có điểm F và thành tích học thuật hoặc nghiên cứu khoa học nếu có.",
+    description:
+      "GPA/ĐTB, xác nhận không có điểm F và thành tích học thuật hoặc nghiên cứu khoa học nếu có.",
   },
   {
     key: "physical",
     label: "Thể lực tốt",
     color: "#10B981",
-    description: "Sinh viên khỏe, Thanh niên khỏe hoặc hoạt động thể thao được đơn vị tổ chức xác nhận.",
+    description:
+      "Sinh viên khỏe, Thanh niên khỏe hoặc hoạt động thể thao được đơn vị tổ chức xác nhận.",
   },
   {
     key: "volunteer",
     label: "Tình nguyện tốt",
     color: "#F59E0B",
-    description: "Số ngày tình nguyện, hoạt động tham gia, đơn vị tổ chức và giấy khen/chứng nhận nếu có.",
+    description:
+      "Số ngày tình nguyện, hoạt động tham gia, đơn vị tổ chức và giấy khen/chứng nhận nếu có.",
   },
   {
     key: "integration",
@@ -163,129 +168,254 @@ export const criteriaLevelSummaries: Record<Level, CriteriaLevelSummary> = {
 export const criteriaMatrix: Record<Level, Record<CoreCriterion, CriteriaMatrixItem>> = {
   school: {
     ethics: matrixItem("school", "ethics", {
-      hardRequirements: ["Điểm rèn luyện từ 82/100 trở lên.", "Không vi phạm pháp luật, kỷ luật hoặc nội quy."],
+      hardRequirements: [
+        "Điểm rèn luyện từ 82/100 trở lên.",
+        "Không vi phạm pháp luật, kỷ luật hoặc nội quy.",
+      ],
       additionalRequirements: ["Có cam kết hoặc xác nhận của đơn vị khi hồ sơ cần đối chiếu."],
-      suggestedEvidenceTypes: ["Phiếu điểm rèn luyện", "Giấy xác nhận không vi phạm", "Thành tích Đoàn - Hội nếu có"],
+      suggestedEvidenceTypes: [
+        "Phiếu điểm rèn luyện",
+        "Giấy xác nhận không vi phạm",
+        "Thành tích Đoàn - Hội nếu có",
+      ],
       thresholds: { conductMin: 82, evidenceRequired: true },
     }),
     academic: matrixItem("school", "academic", {
       hardRequirements: ["GPA/ĐTB từ 3.0/4.0 trở lên.", "Không có học phần điểm F trong năm xét."],
-      additionalRequirements: ["Thành tích học thuật, nghiên cứu khoa học hoặc giải thưởng được ghi nhận là điểm cộng."],
+      additionalRequirements: [
+        "Thành tích học thuật, nghiên cứu khoa học hoặc giải thưởng được ghi nhận là điểm cộng.",
+      ],
       suggestedEvidenceTypes: ["Bảng điểm", "Giấy khen học thuật hoặc nghiên cứu khoa học"],
       thresholds: { gpaMin: 3.0, evidenceRequired: true },
     }),
     physical: matrixItem("school", "physical", {
-      hardRequirements: ["Đạt Sinh viên khỏe, Thanh niên khỏe hoặc tiêu chuẩn thể lực tương đương."],
+      hardRequirements: [
+        "Đạt Sinh viên khỏe, Thanh niên khỏe hoặc tiêu chuẩn thể lực tương đương.",
+      ],
       additionalRequirements: ["Hoạt động thể thao có đơn vị tổ chức rõ ràng được ưu tiên."],
-      suggestedEvidenceTypes: ["Giấy chứng nhận Sinh viên khỏe", "Giấy xác nhận hoạt động thể thao"],
+      suggestedEvidenceTypes: [
+        "Giấy chứng nhận Sinh viên khỏe",
+        "Giấy xác nhận hoạt động thể thao",
+      ],
       thresholds: { evidenceRequired: true },
     }),
     volunteer: matrixItem("school", "volunteer", {
-      hardRequirements: ["Có hoạt động tình nguyện được ghi nhận hoặc tối thiểu 2 ngày tình nguyện."],
+      hardRequirements: [
+        "Có hoạt động tình nguyện được ghi nhận hoặc tối thiểu 2 ngày tình nguyện.",
+      ],
       additionalRequirements: ["Hoạt động trong kho sự kiện giúp hồ sơ được đối chiếu nhanh hơn."],
-      suggestedEvidenceTypes: ["Giấy chứng nhận chiến dịch tình nguyện", "Giấy xác nhận hiến máu hoặc hoạt động cộng đồng"],
+      suggestedEvidenceTypes: [
+        "Giấy chứng nhận chiến dịch tình nguyện",
+        "Giấy xác nhận hiến máu hoặc hoạt động cộng đồng",
+      ],
       thresholds: { volunteerDaysMin: 2, evidenceRequired: true },
     }),
     integration: matrixItem("school", "integration", {
       hardRequirements: ["Có chứng chỉ ngoại ngữ hoặc hoạt động hội nhập phù hợp."],
-      additionalRequirements: ["Cần ngày cấp, thời hạn và đơn vị cấp khi dùng chứng chỉ ngoại ngữ."],
-      suggestedEvidenceTypes: ["Chứng chỉ ngoại ngữ", "Giấy chứng nhận tập huấn, hội thảo hoặc giao lưu quốc tế"],
+      additionalRequirements: [
+        "Cần ngày cấp, thời hạn và đơn vị cấp khi dùng chứng chỉ ngoại ngữ.",
+      ],
+      suggestedEvidenceTypes: [
+        "Chứng chỉ ngoại ngữ",
+        "Giấy chứng nhận tập huấn, hội thảo hoặc giao lưu quốc tế",
+      ],
       thresholds: { languageRequired: true, evidenceRequired: true },
     }),
   },
   university: {
     ethics: matrixItem("university", "ethics", {
-      hardRequirements: ["Điểm rèn luyện từ 80/100 trở lên.", "Không vi phạm pháp luật, kỷ luật hoặc nội quy."],
-      additionalRequirements: ["Nên có quyết định hoặc xác nhận đạt cấp Trường nếu đơn vị yêu cầu."],
-      suggestedEvidenceTypes: ["Phiếu điểm rèn luyện", "Quyết định công nhận cấp Trường", "Thành tích Đoàn - Hội"],
+      hardRequirements: [
+        "Điểm rèn luyện từ 80/100 trở lên.",
+        "Không vi phạm pháp luật, kỷ luật hoặc nội quy.",
+      ],
+      additionalRequirements: [
+        "Nên có quyết định hoặc xác nhận đạt cấp Trường nếu đơn vị yêu cầu.",
+      ],
+      suggestedEvidenceTypes: [
+        "Phiếu điểm rèn luyện",
+        "Quyết định công nhận cấp Trường",
+        "Thành tích Đoàn - Hội",
+      ],
       thresholds: { conductMin: 80, evidenceRequired: true },
     }),
     academic: matrixItem("university", "academic", {
       hardRequirements: ["GPA/ĐTB từ 3.2/4.0 trở lên.", "Không có học phần điểm F."],
-      additionalRequirements: ["Cần thêm thành tích học thuật, nghiên cứu khoa học hoặc giải thưởng nếu hồ sơ xét cạnh tranh."],
-      suggestedEvidenceTypes: ["Bảng điểm", "Giấy khen nghiên cứu khoa học", "Quyết định đội tuyển học thuật"],
+      additionalRequirements: [
+        "Cần thêm thành tích học thuật, nghiên cứu khoa học hoặc giải thưởng nếu hồ sơ xét cạnh tranh.",
+      ],
+      suggestedEvidenceTypes: [
+        "Bảng điểm",
+        "Giấy khen nghiên cứu khoa học",
+        "Quyết định đội tuyển học thuật",
+      ],
       thresholds: { gpaMin: 3.2, evidenceRequired: true, achievementRequired: true },
     }),
     physical: matrixItem("university", "physical", {
-      hardRequirements: ["Đạt Sinh viên khỏe, Thanh niên khỏe hoặc hoạt động thể thao được xác nhận."],
+      hardRequirements: [
+        "Đạt Sinh viên khỏe, Thanh niên khỏe hoặc hoạt động thể thao được xác nhận.",
+      ],
       additionalRequirements: ["Ưu tiên giấy xác nhận từ cấp Trường trở lên."],
-      suggestedEvidenceTypes: ["Giấy chứng nhận Sinh viên khỏe", "Giấy chứng nhận giải thể thao cấp Trường trở lên"],
+      suggestedEvidenceTypes: [
+        "Giấy chứng nhận Sinh viên khỏe",
+        "Giấy chứng nhận giải thể thao cấp Trường trở lên",
+      ],
       thresholds: { evidenceRequired: true },
     }),
     volunteer: matrixItem("university", "volunteer", {
       hardRequirements: ["Có tối thiểu 3 ngày tình nguyện hoặc tiêu chuẩn tương đương."],
       additionalRequirements: ["Giấy khen hoặc chứng nhận cấp Trường trở lên giúp hồ sơ rõ hơn."],
-      suggestedEvidenceTypes: ["Giấy chứng nhận chiến dịch tình nguyện", "Giấy khen tình nguyện cấp Trường"],
+      suggestedEvidenceTypes: [
+        "Giấy chứng nhận chiến dịch tình nguyện",
+        "Giấy khen tình nguyện cấp Trường",
+      ],
       thresholds: { volunteerDaysMin: 3, evidenceRequired: true },
     }),
     integration: matrixItem("university", "integration", {
       hardRequirements: ["Có chứng chỉ ngoại ngữ hoặc hoạt động hội nhập được xác nhận."],
-      additionalRequirements: ["Ưu tiên chứng chỉ còn thời hạn hoặc hoạt động giao lưu, hội thảo có cấp tổ chức rõ."],
-      suggestedEvidenceTypes: ["Chứng chỉ B1 hoặc tương đương", "Giấy chứng nhận giao lưu quốc tế", "Giấy khen Hội - Đoàn"],
+      additionalRequirements: [
+        "Ưu tiên chứng chỉ còn thời hạn hoặc hoạt động giao lưu, hội thảo có cấp tổ chức rõ.",
+      ],
+      suggestedEvidenceTypes: [
+        "Chứng chỉ B1 hoặc tương đương",
+        "Giấy chứng nhận giao lưu quốc tế",
+        "Giấy khen Hội - Đoàn",
+      ],
       thresholds: { languageRequired: true, evidenceRequired: true },
     }),
   },
   city: {
     ethics: matrixItem("city", "ethics", {
-      hardRequirements: ["Điểm rèn luyện từ 80/100 trở lên.", "Không vi phạm pháp luật, kỷ luật hoặc nội quy."],
-      additionalRequirements: ["Có thành tích đạo đức, Đoàn - Hội hoặc xác nhận đề nghị xét cấp Thành phố nếu đơn vị yêu cầu."],
-      suggestedEvidenceTypes: ["Phiếu điểm rèn luyện", "Quyết định cấp Trường", "Thành tích Đoàn - Hội hoặc thanh niên tiêu biểu"],
+      hardRequirements: [
+        "Điểm rèn luyện từ 80/100 trở lên.",
+        "Không vi phạm pháp luật, kỷ luật hoặc nội quy.",
+      ],
+      additionalRequirements: [
+        "Có thành tích đạo đức, Đoàn - Hội hoặc xác nhận đề nghị xét cấp Thành phố nếu đơn vị yêu cầu.",
+      ],
+      suggestedEvidenceTypes: [
+        "Phiếu điểm rèn luyện",
+        "Quyết định cấp Trường",
+        "Thành tích Đoàn - Hội hoặc thanh niên tiêu biểu",
+      ],
       thresholds: { conductMin: 80, evidenceRequired: true, achievementRequired: true },
     }),
     academic: matrixItem("city", "academic", {
       hardRequirements: ["GPA/ĐTB từ 3.2/4.0 hoặc 8.0/10 trở lên.", "Không có học phần điểm F."],
-      additionalRequirements: ["Cần thành tích học thuật, nghiên cứu khoa học hoặc giải thưởng được xác nhận."],
-      suggestedEvidenceTypes: ["Bảng điểm", "Giấy khen nghiên cứu khoa học", "Giấy chứng nhận cuộc thi học thuật"],
+      additionalRequirements: [
+        "Cần thành tích học thuật, nghiên cứu khoa học hoặc giải thưởng được xác nhận.",
+      ],
+      suggestedEvidenceTypes: [
+        "Bảng điểm",
+        "Giấy khen nghiên cứu khoa học",
+        "Giấy chứng nhận cuộc thi học thuật",
+      ],
       thresholds: { gpaMin: 3.2, evidenceRequired: true, achievementRequired: true },
     }),
     physical: matrixItem("city", "physical", {
-      hardRequirements: ["Đạt Sinh viên khỏe, Thanh niên khỏe hoặc hoạt động thể thao cấp Khoa trở lên."],
+      hardRequirements: [
+        "Đạt Sinh viên khỏe, Thanh niên khỏe hoặc hoạt động thể thao cấp Khoa trở lên.",
+      ],
       additionalRequirements: ["Nên có ngày cấp và cấp tổ chức rõ trong giấy xác nhận."],
-      suggestedEvidenceTypes: ["Giấy chứng nhận Sinh viên khỏe", "Giấy chứng nhận giải thể thao cấp Khoa trở lên"],
+      suggestedEvidenceTypes: [
+        "Giấy chứng nhận Sinh viên khỏe",
+        "Giấy chứng nhận giải thể thao cấp Khoa trở lên",
+      ],
       thresholds: { evidenceRequired: true },
     }),
     volunteer: matrixItem("city", "volunteer", {
-      hardRequirements: ["Có tối thiểu 5 ngày tình nguyện trong năm xét.", "Hoạt động cần có đơn vị tổ chức hoặc giấy xác nhận."],
-      additionalRequirements: ["Giấy khen/chứng nhận tình nguyện cấp Khoa trở lên là điểm cộng quan trọng."],
-      suggestedEvidenceTypes: ["Giấy chứng nhận chiến dịch tình nguyện", "Giấy khen tình nguyện cấp Khoa trở lên"],
+      hardRequirements: [
+        "Có tối thiểu 5 ngày tình nguyện trong năm xét.",
+        "Hoạt động cần có đơn vị tổ chức hoặc giấy xác nhận.",
+      ],
+      additionalRequirements: [
+        "Giấy khen/chứng nhận tình nguyện cấp Khoa trở lên là điểm cộng quan trọng.",
+      ],
+      suggestedEvidenceTypes: [
+        "Giấy chứng nhận chiến dịch tình nguyện",
+        "Giấy khen tình nguyện cấp Khoa trở lên",
+      ],
       thresholds: { volunteerDaysMin: 5, evidenceRequired: true, achievementRequired: true },
     }),
     integration: matrixItem("city", "integration", {
-      hardRequirements: ["Có chứng chỉ ngoại ngữ hoặc điểm ngoại ngữ theo ngưỡng cấp Thành phố.", "Chứng chỉ cần còn thời hạn hoặc có xác nhận hợp lệ."],
-      additionalRequirements: ["Hoạt động hội nhập, giao lưu quốc tế hoặc giải ngoại ngữ giúp hồ sơ phù hợp hơn."],
-      suggestedEvidenceTypes: ["Chứng chỉ ngoại ngữ", "Giấy chứng nhận giao lưu quốc tế", "Giấy chứng nhận cuộc thi ngoại ngữ"],
+      hardRequirements: [
+        "Có chứng chỉ ngoại ngữ hoặc điểm ngoại ngữ theo ngưỡng cấp Thành phố.",
+        "Chứng chỉ cần còn thời hạn hoặc có xác nhận hợp lệ.",
+      ],
+      additionalRequirements: [
+        "Hoạt động hội nhập, giao lưu quốc tế hoặc giải ngoại ngữ giúp hồ sơ phù hợp hơn.",
+      ],
+      suggestedEvidenceTypes: [
+        "Chứng chỉ ngoại ngữ",
+        "Giấy chứng nhận giao lưu quốc tế",
+        "Giấy chứng nhận cuộc thi ngoại ngữ",
+      ],
       thresholds: { languageRequired: true, evidenceRequired: true, achievementRequired: true },
     }),
   },
   central: {
     ethics: matrixItem("central", "ethics", {
-      hardRequirements: ["Điểm rèn luyện từ 90/100 trở lên.", "Không vi phạm pháp luật, kỷ luật hoặc nội quy."],
-      additionalRequirements: ["Cần thành tích đạo đức, Đoàn - Hội hoặc danh hiệu nổi bật được xác nhận."],
-      suggestedEvidenceTypes: ["Phiếu điểm rèn luyện", "Quyết định công nhận cấp Tỉnh/Thành", "Thành tích đạo đức hoặc Đoàn - Hội nổi bật"],
+      hardRequirements: [
+        "Điểm rèn luyện từ 90/100 trở lên.",
+        "Không vi phạm pháp luật, kỷ luật hoặc nội quy.",
+      ],
+      additionalRequirements: [
+        "Cần thành tích đạo đức, Đoàn - Hội hoặc danh hiệu nổi bật được xác nhận.",
+      ],
+      suggestedEvidenceTypes: [
+        "Phiếu điểm rèn luyện",
+        "Quyết định công nhận cấp Tỉnh/Thành",
+        "Thành tích đạo đức hoặc Đoàn - Hội nổi bật",
+      ],
       thresholds: { conductMin: 90, evidenceRequired: true, achievementRequired: true },
     }),
     academic: matrixItem("central", "academic", {
       hardRequirements: ["GPA/ĐTB từ 3.4/4.0 hoặc 8.5/10 trở lên.", "Không có học phần điểm F."],
-      additionalRequirements: ["Cần thành tích học thuật mạnh như nghiên cứu khoa học, đội tuyển, giải thưởng hoặc sản phẩm sáng tạo."],
-      suggestedEvidenceTypes: ["Bảng điểm", "Giải nghiên cứu khoa học", "Quyết định đội tuyển hoặc giải học thuật"],
+      additionalRequirements: [
+        "Cần thành tích học thuật mạnh như nghiên cứu khoa học, đội tuyển, giải thưởng hoặc sản phẩm sáng tạo.",
+      ],
+      suggestedEvidenceTypes: [
+        "Bảng điểm",
+        "Giải nghiên cứu khoa học",
+        "Quyết định đội tuyển hoặc giải học thuật",
+      ],
       thresholds: { gpaMin: 3.4, evidenceRequired: true, achievementRequired: true },
     }),
     physical: matrixItem("central", "physical", {
-      hardRequirements: ["Đạt Sinh viên khỏe, Thanh niên khỏe hoặc thành tích thể thao từ cấp Trường trở lên."],
+      hardRequirements: [
+        "Đạt Sinh viên khỏe, Thanh niên khỏe hoặc thành tích thể thao từ cấp Trường trở lên.",
+      ],
       additionalRequirements: ["Ưu tiên giấy xác nhận cấp Tỉnh/Thành hoặc Trung ương nếu có."],
-      suggestedEvidenceTypes: ["Giấy chứng nhận Sinh viên khỏe", "Giấy chứng nhận giải thể thao cấp Trường trở lên"],
+      suggestedEvidenceTypes: [
+        "Giấy chứng nhận Sinh viên khỏe",
+        "Giấy chứng nhận giải thể thao cấp Trường trở lên",
+      ],
       thresholds: { evidenceRequired: true, achievementRequired: true },
     }),
     volunteer: matrixItem("central", "volunteer", {
-      hardRequirements: ["Có tối thiểu 5 ngày tình nguyện trong năm xét.", "Hoạt động tình nguyện cần có vai trò hoặc thành tích nổi bật."],
-      additionalRequirements: ["Ưu tiên bằng khen cấp Tỉnh/Thành, UBND huyện trở lên hoặc tương đương."],
-      suggestedEvidenceTypes: ["Giấy chứng nhận chiến dịch tình nguyện", "Bằng khen hoặc giấy khen tình nguyện cấp cao"],
+      hardRequirements: [
+        "Có tối thiểu 5 ngày tình nguyện trong năm xét.",
+        "Hoạt động tình nguyện cần có vai trò hoặc thành tích nổi bật.",
+      ],
+      additionalRequirements: [
+        "Ưu tiên bằng khen cấp Tỉnh/Thành, UBND huyện trở lên hoặc tương đương.",
+      ],
+      suggestedEvidenceTypes: [
+        "Giấy chứng nhận chiến dịch tình nguyện",
+        "Bằng khen hoặc giấy khen tình nguyện cấp cao",
+      ],
       thresholds: { volunteerDaysMin: 5, evidenceRequired: true, achievementRequired: true },
     }),
     integration: matrixItem("central", "integration", {
-      hardRequirements: ["Có chứng chỉ ngoại ngữ hoặc điểm ngoại ngữ phù hợp.", "Có hoạt động hội nhập cấp Trường trở lên hoặc thành tích hội nhập nổi bật."],
+      hardRequirements: [
+        "Có chứng chỉ ngoại ngữ hoặc điểm ngoại ngữ phù hợp.",
+        "Có hoạt động hội nhập cấp Trường trở lên hoặc thành tích hội nhập nổi bật.",
+      ],
       additionalRequirements: ["Cần ngày cấp, thời hạn, đơn vị cấp và tài liệu xác nhận rõ."],
-      suggestedEvidenceTypes: ["Chứng chỉ ngoại ngữ", "Giấy chứng nhận giao lưu quốc tế", "Giải thưởng ngoại ngữ hoặc hội nhập"],
+      suggestedEvidenceTypes: [
+        "Chứng chỉ ngoại ngữ",
+        "Giấy chứng nhận giao lưu quốc tế",
+        "Giải thưởng ngoại ngữ hoặc hội nhập",
+      ],
       thresholds: { languageRequired: true, evidenceRequired: true, achievementRequired: true },
     }),
   },
@@ -293,30 +423,79 @@ export const criteriaMatrix: Record<Level, Record<CoreCriterion, CriteriaMatrixI
 
 export const criterionInputFields: Record<CoreCriterion, CriterionInputField[]> = {
   ethics: [
-    { kind: "metric", metricType: "conduct_score", label: "Điểm rèn luyện", placeholder: "Ví dụ 90" },
-    { kind: "select", key: "discipline", label: "Có vi phạm pháp luật/kỷ luật không", options: ["Không", "Có"], defaultValue: "Không" },
-    { kind: "text", key: "ethics_achievement", label: "Minh chứng đạo đức/Đoàn-Hội nếu cấp yêu cầu" },
+    {
+      kind: "metric",
+      metricType: "conduct_score",
+      label: "Điểm rèn luyện",
+      placeholder: "Ví dụ 90",
+    },
+    {
+      kind: "select",
+      key: "discipline",
+      label: "Có vi phạm pháp luật/kỷ luật không",
+      options: ["Không", "Có"],
+      defaultValue: "Không",
+    },
+    {
+      kind: "text",
+      key: "ethics_achievement",
+      label: "Minh chứng đạo đức/Đoàn-Hội nếu cấp yêu cầu",
+    },
   ],
   academic: [
     { kind: "metric", metricType: "gpa", label: "GPA/ĐTB", placeholder: "Ví dụ 3.4", scale: 4 },
-    { kind: "select", key: "gpa_scale", label: "Thang điểm", options: ["4", "10"], defaultValue: "4" },
-    { kind: "select", key: "has_f", label: "Có điểm F không", options: ["Không", "Có"], defaultValue: "Không" },
+    {
+      kind: "select",
+      key: "gpa_scale",
+      label: "Thang điểm",
+      options: ["4", "10"],
+      defaultValue: "4",
+    },
+    {
+      kind: "select",
+      key: "has_f",
+      label: "Có điểm F không",
+      options: ["Không", "Có"],
+      defaultValue: "Không",
+    },
     { kind: "text", key: "academic_achievement", label: "Minh chứng học thuật/NCKH/giải thưởng" },
   ],
   physical: [
-    { kind: "select", key: "physical_passed", label: "Đạt Sinh viên khỏe/Thanh niên khỏe", options: ["Đạt", "Chưa đạt", "Chờ cán bộ kiểm tra sau khi nộp"], defaultValue: "Đạt" },
+    {
+      kind: "select",
+      key: "physical_passed",
+      label: "Đạt Sinh viên khỏe/Thanh niên khỏe",
+      options: ["Đạt", "Chưa đạt", "Chờ cán bộ kiểm tra sau khi nộp"],
+      defaultValue: "Đạt",
+    },
     { kind: "text", key: "sport_activity_type", label: "Loại hoạt động thể thao" },
     { kind: "text", key: "physical_issued_at", label: "Ngày cấp", inputType: "date" },
     { kind: "text", key: "physical_organizer_level", label: "Cấp tổ chức" },
   ],
   volunteer: [
-    { kind: "metric", metricType: "volunteer_days", label: "Số ngày tình nguyện", placeholder: "Ví dụ 5" },
+    {
+      kind: "metric",
+      metricType: "volunteer_days",
+      label: "Số ngày tình nguyện",
+      placeholder: "Ví dụ 5",
+    },
     { kind: "text", key: "volunteer_activity", label: "Hoạt động" },
     { kind: "text", key: "volunteer_organizer", label: "Đơn vị tổ chức" },
-    { kind: "select", key: "volunteer_certificate", label: "Có giấy khen/chứng nhận không", options: ["Có", "Chưa có", "Cần bổ sung"], defaultValue: "Có" },
+    {
+      kind: "select",
+      key: "volunteer_certificate",
+      label: "Có giấy khen/chứng nhận không",
+      options: ["Có", "Chưa có", "Cần bổ sung"],
+      defaultValue: "Có",
+    },
   ],
   integration: [
-    { kind: "metric", metricType: "foreign_language_score", label: "Chứng chỉ hoặc điểm ngoại ngữ", placeholder: "Ví dụ IELTS 6.5 hoặc TOEIC 650" },
+    {
+      kind: "metric",
+      metricType: "foreign_language_score",
+      label: "Chứng chỉ hoặc điểm ngoại ngữ",
+      placeholder: "Ví dụ IELTS 6.5 hoặc TOEIC 650",
+    },
     { kind: "text", key: "language_issued_at", label: "Ngày cấp", inputType: "date" },
     { kind: "text", key: "language_expires_at", label: "Thời hạn", inputType: "date" },
     { kind: "text", key: "integration_activity", label: "Hoạt động hội nhập" },
@@ -326,7 +505,12 @@ export const criterionInputFields: Record<CoreCriterion, CriterionInputField[]> 
 
 export const priorityAchievementGroup = {
   label: "Minh chứng ưu tiên / Danh hiệu nổi bật",
-  examples: ["Sao Tháng Giêng", "Giải thưởng nghiên cứu khoa học", "Danh hiệu thanh niên tiêu biểu", "Giải thưởng học thuật hoặc hội nhập cấp cao"],
+  examples: [
+    "Sao Tháng Giêng",
+    "Giải thưởng nghiên cứu khoa học",
+    "Danh hiệu thanh niên tiêu biểu",
+    "Giải thưởng học thuật hoặc hội nhập cấp cao",
+  ],
 };
 
 export const suitabilityLabels: Record<CriteriaSuitabilityStatus, string> = {
@@ -347,15 +531,23 @@ export function getLevelCriteria(level: Level) {
 
 export function getPrimaryMetricInput(criterion: Criterion) {
   if (!isCoreCriterion(criterion)) return null;
-  return criterionInputFields[criterion].find((field): field is Extract<CriterionInputField, { kind: "metric" }> => field.kind === "metric") ?? null;
+  return (
+    criterionInputFields[criterion].find(
+      (field): field is Extract<CriterionInputField, { kind: "metric" }> => field.kind === "metric",
+    ) ?? null
+  );
 }
 
 export function evaluateLevelAgainstMatrix(
   level: Level,
   context: { metrics: MatrixMetricLike[]; evidences: MatrixEvidenceLike[] },
 ): LevelSuitability {
-  const criteria = coreCriteria.map((criterion) => evaluateCriterionAgainstMatrix(level, criterion.key, context));
-  const missing = criteria.flatMap((item) => item.missing.map((message) => `${item.label}: ${message}`));
+  const criteria = coreCriteria.map((criterion) =>
+    evaluateCriterionAgainstMatrix(level, criterion.key, context),
+  );
+  const missing = criteria.flatMap((item) =>
+    item.missing.map((message) => `${item.label}: ${message}`),
+  );
   const status = combineStatuses(criteria.map((item) => item.status));
   return {
     level,
@@ -381,21 +573,24 @@ export function evaluateCriterionAgainstMatrix(
   if (typeof thresholds.gpaMin === "number") {
     const value = getMetricNumber(context.metrics, "gpa");
     if (value === null) missing.push("Cần nhập GPA/ĐTB.");
-    else if (value < thresholds.gpaMin) failed.push(`GPA hiện tại ${value} chưa đủ ngưỡng ${thresholds.gpaMin}.`);
+    else if (value < thresholds.gpaMin)
+      failed.push(`GPA hiện tại ${value} chưa đủ ngưỡng ${thresholds.gpaMin}.`);
     else facts.push(`GPA ${value} đạt ngưỡng ${thresholds.gpaMin}.`);
   }
 
   if (typeof thresholds.conductMin === "number") {
     const value = getMetricNumber(context.metrics, "conduct_score");
     if (value === null) missing.push("Cần nhập điểm rèn luyện.");
-    else if (value < thresholds.conductMin) failed.push(`Điểm rèn luyện ${value} chưa đủ ngưỡng ${thresholds.conductMin}.`);
+    else if (value < thresholds.conductMin)
+      failed.push(`Điểm rèn luyện ${value} chưa đủ ngưỡng ${thresholds.conductMin}.`);
     else facts.push(`Điểm rèn luyện ${value} đạt ngưỡng ${thresholds.conductMin}.`);
   }
 
   if (typeof thresholds.volunteerDaysMin === "number") {
     const value = getMetricNumber(context.metrics, "volunteer_days");
     if (value === null) missing.push("Cần nhập số ngày tình nguyện.");
-    else if (value < thresholds.volunteerDaysMin) failed.push(`Số ngày tình nguyện ${value} chưa đủ ngưỡng ${thresholds.volunteerDaysMin}.`);
+    else if (value < thresholds.volunteerDaysMin)
+      failed.push(`Số ngày tình nguyện ${value} chưa đủ ngưỡng ${thresholds.volunteerDaysMin}.`);
     else facts.push(`${value} ngày tình nguyện đạt ngưỡng ${thresholds.volunteerDaysMin}.`);
   }
 
@@ -409,7 +604,8 @@ export function evaluateCriterionAgainstMatrix(
   }
 
   if (thresholds.evidenceRequired) {
-    if (relatedEvidence.length === 0) missing.push("Cần thêm thành tích hoặc giấy xác nhận liên quan.");
+    if (relatedEvidence.length === 0)
+      missing.push("Cần thêm thành tích hoặc giấy xác nhận liên quan.");
     else facts.push(`Có ${relatedEvidence.length} thành tích/giấy xác nhận.`);
   }
 
@@ -417,12 +613,16 @@ export function evaluateCriterionAgainstMatrix(
     missing.push("Cần thành tích nổi bật hoặc giấy xác nhận phù hợp với cấp xét.");
   }
 
-  const lowClarity = relatedEvidence.some((evidence) => typeof evidence.confidence === "number" && evidence.confidence < 0.7);
+  const lowClarity = relatedEvidence.some(
+    (evidence) => typeof evidence.confidence === "number" && evidence.confidence < 0.7,
+  );
   if (lowClarity) missing.push("Có tài liệu cần cán bộ xác nhận thêm.");
 
   const status: CriteriaSuitabilityStatus = failed.length
     ? "not_suitable"
-    : missing.some((message) => message.startsWith("Cần nhập") || message.startsWith("Cần chứng chỉ"))
+    : missing.some(
+          (message) => message.startsWith("Cần nhập") || message.startsWith("Cần chứng chỉ"),
+        )
       ? "missing_data"
       : missing.length
         ? "needs_supplement"

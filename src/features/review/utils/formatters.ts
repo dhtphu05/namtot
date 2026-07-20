@@ -150,7 +150,11 @@ export function formatAuditActionLabel(action?: string | null) {
 export function isUserFacingAuditAction(action?: string | null) {
   if (!action) return true;
   const normalized = action.toUpperCase();
-  return !normalized.includes("VIEWED") && !normalized.includes("_VIEW") && !normalized.includes("DETAIL_VIEW");
+  return (
+    !normalized.includes("VIEWED") &&
+    !normalized.includes("_VIEW") &&
+    !normalized.includes("DETAIL_VIEW")
+  );
 }
 
 export function getOfficerTaskActionLabel(item: ReviewTaskListItem) {
