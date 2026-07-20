@@ -122,6 +122,7 @@ type EvidenceDrawerContext = {
   criterion: Criterion;
   requirementKey?: string;
   requirementLabel?: string;
+  suggestedEventId?: string;
 };
 
 type IntegrationRequirementKey =
@@ -240,6 +241,7 @@ export function StudentApplicationActionWorkspace() {
   const initializedCriterionRef = useRef(false);
   const handledUploadEvidenceRequestRef = useRef(false);
   const handledEvidenceConfirmRequestRef = useRef<string | null>(null);
+  const handledSuggestedImportRequestRef = useRef<string | null>(null);
 
   const serverEvidences = useMemo(
     () => normalizeEvidences(evidencesQuery.data),
@@ -348,7 +350,7 @@ export function StudentApplicationActionWorkspace() {
   }, [application, nextActions]);
 
   const openEvidenceDrawer = useCallback(
-    (criterion: Criterion, context?: { requirementKey?: string; requirementLabel?: string }) => {
+    (criterion: Criterion, context?: Omit<EvidenceDrawerContext, "criterion">) => {
       if (!canEditApplication) {
         toast.error("Hồ sơ đã nộp. Bạn chỉ có thể bổ sung khi cán bộ yêu cầu.");
         return;
@@ -371,6 +373,15 @@ export function StudentApplicationActionWorkspace() {
     clearUploadEvidenceRequestFromLocation();
     openEvidenceDrawer(requestedCriterion);
   }, [application, canEditApplication, isSupplementMode, openEvidenceDrawer, supplementCriteria]);
+
+  useEffect(() => {
+    if (!application) return;
+    const request = getSuggestedEventImportRequestFromLocation();
+    if (!request || handledSuggestedImportRequestRef.current === request.eventId) return;
+    handledSuggestedImportRequestRef.current = request.eventId;
+    selectCriterion(request.criterion, setSelectedCriterion);
+    openEvidenceDrawer(request.criterion, { suggestedEventId: request.eventId });
+  }, [application, openEvidenceDrawer]);
 
   useEffect(() => {
     const request = getEvidenceConfirmRequestFromLocation();
@@ -717,7 +728,10 @@ export function StudentApplicationActionWorkspace() {
           applicationId={application.id}
           open={Boolean(evidenceDrawerContext)}
           onOpenChange={(open) => {
-            if (!open) setEvidenceDrawerContext(null);
+            if (!open) {
+              setEvidenceDrawerContext(null);
+              clearSuggestedEventImportRequestFromLocation();
+            }
           }}
           initialCriterion={evidenceDrawerContext.criterion}
           initialRequirementKey={
@@ -726,10 +740,12 @@ export function StudentApplicationActionWorkspace() {
           initialRequirementLabel={
             PRESENTATION_SEMANTICS_V2 ? evidenceDrawerContext.requirementLabel : undefined
           }
+          preselectedEventId={evidenceDrawerContext.suggestedEventId}
           onCreated={(created) => {
             const nextEvidence = normalizeOptimisticEvidence(created, application.id);
             setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
             selectCriterion(nextEvidence.criterion, setSelectedCriterion);
+            clearSuggestedEventImportRequestFromLocation();
             void evidencesQuery.refetch();
           }}
         />
@@ -2878,6 +2894,30 @@ function clearEvidenceConfirmRequestFromLocation() {
   const url = new URL(window.location.href);
   url.searchParams.delete("evidenceId");
   url.searchParams.delete("mode");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function getSuggestedEventImportRequestFromLocation(): {
+  eventId: string;
+  criterion: Criterion;
+} | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const eventId = params.get("eventId");
+  const criterion = params.get("criterion") as Criterion | null;
+  if (!eventId || params.get("mode") !== "suggested-import") return null;
+  return {
+    eventId,
+    criterion: criterion && coreStudentCriteria.includes(criterion) ? criterion : "academic",
+  };
+}
+
+function clearSuggestedEventImportRequestFromLocation() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("mode") !== "suggested-import") return;
+  url.searchParams.delete("mode");
+  url.searchParams.delete("eventId");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 

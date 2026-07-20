@@ -109,7 +109,12 @@ export function useImportEventToApplication() {
       return res.data;
     },
     onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({ queryKey: evidenceKeys.list(variables.applicationId) });
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.latestPrecheck(variables.applicationId),
+      });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.applicationId),
       });

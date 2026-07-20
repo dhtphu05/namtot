@@ -137,6 +137,7 @@ type EvidenceDrawerContext = {
   criterion: Criterion;
   requirementKey?: string;
   requirementLabel?: string;
+  suggestedEventId?: string;
 };
 
 type AssistantSearch = {
@@ -241,6 +242,7 @@ export function StudentApplicationWorkspaceV2() {
   const initializedCriterionRef = useRef(false);
   const handledUploadEvidenceRequestRef = useRef(false);
   const handledEvidenceConfirmRequestRef = useRef<string | null>(null);
+  const handledSuggestedImportRequestRef = useRef<string | null>(null);
 
   const serverEvidences = useMemo(
     () => normalizeEvidences(evidencesQuery.data),
@@ -356,7 +358,7 @@ export function StudentApplicationWorkspaceV2() {
   }, [application, nextActions]);
 
   const openEvidenceDrawer = useCallback(
-    (criterion: Criterion, context?: { requirementKey?: string; requirementLabel?: string }) => {
+    (criterion: Criterion, context?: Omit<EvidenceDrawerContext, "criterion">) => {
       if (!canEditApplication) {
         toast.error("Hồ sơ đã nộp. Bạn chỉ có thể bổ sung khi cán bộ yêu cầu.");
         return;
@@ -378,6 +380,15 @@ export function StudentApplicationWorkspaceV2() {
     selectCriterion(requestedCriterion, setSelectedCriterion);
     clearUploadEvidenceRequestFromLocation();
     openEvidenceDrawer(requestedCriterion);
+  }, [application, openEvidenceDrawer]);
+
+  useEffect(() => {
+    if (!application) return;
+    const request = getSuggestedEventImportRequestFromLocation();
+    if (!request || handledSuggestedImportRequestRef.current === request.eventId) return;
+    handledSuggestedImportRequestRef.current = request.eventId;
+    selectCriterion(request.criterion, setSelectedCriterion);
+    openEvidenceDrawer(request.criterion, { suggestedEventId: request.eventId });
   }, [application, openEvidenceDrawer]);
 
   useEffect(() => {
@@ -762,14 +773,19 @@ export function StudentApplicationWorkspaceV2() {
           initialEvidenceName={getDefaultEvidenceName(evidenceDrawerContext.criterion)}
           initialRequirementKey={evidenceDrawerContext.requirementKey}
           initialRequirementLabel={evidenceDrawerContext.requirementLabel}
+          preselectedEventId={evidenceDrawerContext.suggestedEventId}
           onOpenChange={(open) => {
-            if (!open) setEvidenceDrawerContext(null);
+            if (!open) {
+              setEvidenceDrawerContext(null);
+              clearSuggestedEventImportRequestFromLocation();
+            }
           }}
           onCreated={(created) => {
             const nextEvidence = normalizeOptimisticEvidence(created, application.id);
             setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
             setEvidenceDrawerContext(null);
             selectCriterion(nextEvidence.criterion, setSelectedCriterion);
+            clearSuggestedEventImportRequestFromLocation();
           }}
         />
       ) : null}
@@ -3483,6 +3499,30 @@ function clearEvidenceConfirmRequestFromLocation() {
   const url = new URL(window.location.href);
   url.searchParams.delete("evidenceId");
   url.searchParams.delete("mode");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function getSuggestedEventImportRequestFromLocation(): {
+  eventId: string;
+  criterion: Criterion;
+} | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const eventId = params.get("eventId");
+  const criterion = params.get("criterion") as Criterion | null;
+  if (!eventId || params.get("mode") !== "suggested-import") return null;
+  return {
+    eventId,
+    criterion: criterion && coreStudentCriteria.includes(criterion) ? criterion : "academic",
+  };
+}
+
+function clearSuggestedEventImportRequestFromLocation() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("mode") !== "suggested-import") return;
+  url.searchParams.delete("mode");
+  url.searchParams.delete("eventId");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 

@@ -116,6 +116,60 @@ type OfficialEventLibraryPayload =
       };
     };
 
+export type EvidenceEventSuggestion = {
+  eventId: string;
+  eventName: string;
+  criterion: Criterion;
+  organizer: string | null;
+  organizerLevel: Level | null;
+  startDate: string | null;
+  endDate: string | null;
+  convertedValue: number | null;
+  convertedUnit: string | null;
+  alreadyImported: boolean;
+  match: {
+    score: number;
+    level: "exact" | "strong" | "possible";
+    reasons: string[];
+  };
+  participantCheck: {
+    required: boolean;
+    state: "eligible_to_check" | string;
+  };
+};
+
+export type EvidenceEventSuggestionResponse = {
+  query: string | null;
+  normalizedQuery: string | null;
+  suggestions: EvidenceEventSuggestion[];
+  meta: {
+    minimumQueryLength: number;
+    resultCount: number;
+    source: "event_registry";
+  };
+};
+
+export type EvidenceEventSuggestionFilters = {
+  applicationId: string;
+  query?: string;
+  criterion?: Criterion;
+  eventId?: string;
+  limit?: number;
+  excludeImported?: boolean;
+};
+
+type EvidenceEventSuggestionPayload =
+  | unknown[]
+  | {
+      query?: unknown;
+      normalizedQuery?: unknown;
+      normalized_query?: unknown;
+      suggestions?: unknown[];
+      items?: unknown[];
+      data?: unknown[];
+      meta?: unknown;
+    };
+
 function normalizeEvents(payload: EventListPayload | null): EventRegistryItem[] {
   const rows = Array.isArray(payload)
     ? payload
@@ -414,6 +468,101 @@ function normalizeImportEvidenceResponse(
   };
 }
 
+function normalizeEvidenceEventSuggestions(
+  payload: EvidenceEventSuggestionPayload | null,
+): EvidenceEventSuggestionResponse {
+  const source = Array.isArray(payload) ? null : payload;
+  const rows = Array.isArray(payload)
+    ? payload
+    : (payload?.suggestions ?? payload?.items ?? payload?.data ?? []);
+  const suggestions = rows
+    .map(normalizeEvidenceEventSuggestion)
+    .filter((item): item is EvidenceEventSuggestion => Boolean(item?.eventId));
+  const meta = asRecord(source?.meta);
+  return {
+    query: nullableString(source?.query) ?? null,
+    normalizedQuery: nullableString(source?.normalizedQuery ?? source?.normalized_query) ?? null,
+    suggestions,
+    meta: {
+      minimumQueryLength:
+        nullableNumber(meta?.minimumQueryLength ?? meta?.minimum_query_length) ?? 3,
+      resultCount: nullableNumber(meta?.resultCount ?? meta?.result_count) ?? suggestions.length,
+      source: "event_registry",
+    },
+  };
+}
+
+function normalizeEvidenceEventSuggestion(raw: unknown): EvidenceEventSuggestion | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const match = asRecord(row.match);
+  const participantCheck = asRecord(row.participantCheck ?? row.participant_check);
+  return {
+    eventId: stringValue(row.eventId ?? row.event_id ?? row.id),
+    eventName: stringValue(row.eventName ?? row.event_name ?? row.title ?? row.name),
+    criterion: normalizeCriterion(row.criterion),
+    organizer: nullableString(row.organizer),
+    organizerLevel: nullableString(row.organizerLevel ?? row.organizer_level) as Level | null,
+    startDate: nullableString(row.startDate ?? row.start_date),
+    endDate: nullableString(row.endDate ?? row.end_date),
+    convertedValue: nullableNumber(row.convertedValue ?? row.converted_value),
+    convertedUnit: nullableString(row.convertedUnit ?? row.converted_unit),
+    alreadyImported: booleanValue(row.alreadyImported ?? row.already_imported, false),
+    match: {
+      score: nullableNumber(match?.score) ?? 0,
+      level: normalizeSuggestionLevel(match?.level),
+      reasons: Array.isArray(match?.reasons)
+        ? match.reasons.filter((item): item is string => typeof item === "string")
+        : [],
+    },
+    participantCheck: {
+      required: booleanValue(participantCheck?.required, true),
+      state: stringValue(participantCheck?.state) || "eligible_to_check",
+    },
+  };
+}
+
+function normalizeSuggestionLevel(value: unknown): "exact" | "strong" | "possible" {
+  if (value === "exact" || value === "strong" || value === "possible") return value;
+  return "possible";
+}
+
+function normalizeParticipantCheck(payload: unknown): EventParticipantCheck {
+  const row = asRecord(payload) ?? {};
+  const participant = asRecord(row.participant);
+  const eligibility = asRecord(row.importEligibility ?? row.import_eligibility);
+  const found = booleanValue(row.isParticipant ?? row.found ?? participant?.found, false);
+  return {
+    found,
+    participant: participant
+      ? {
+          studentCode: stringValue(
+            row.studentCodeMasked ??
+              row.studentCode ??
+              participant.studentCodeMasked ??
+              participant.studentCode,
+          ),
+          studentName: nullableString(
+            participant.studentName ?? participant.fullName ?? participant.student_name,
+          ),
+          className: nullableString(participant.className ?? participant.class_name),
+          faculty: nullableString(participant.faculty),
+          convertedValue: nullableNumber(participant.convertedValue ?? participant.converted_value),
+          convertedUnit: nullableString(participant.convertedUnit ?? participant.converted_unit),
+          participationStatus: nullableString(
+            participant.participationStatus ??
+              participant.participation_status ??
+              participant.attendanceStatus,
+          ),
+          source: nullableString(participant.source),
+          found,
+        }
+      : null,
+    canImport: booleanValue(eligibility?.eligible ?? row.canImport ?? row.can_import, found),
+    reason: nullableString(eligibility?.reason ?? row.reason),
+  };
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -586,6 +735,21 @@ export const eventsApi = {
     return { ...response, data: normalizeOfficialEventLibrary(response.data) };
   },
 
+  getEvidenceEventSuggestions: async (
+    filters: EvidenceEventSuggestionFilters,
+    options?: { signal?: AbortSignal },
+  ) => {
+    const response = await apiClient<EvidenceEventSuggestionPayload>(
+      `/api/evidence-matching/suggestions${toQuery(filters)}`,
+      {
+        method: "GET",
+        signal: options?.signal,
+      },
+    );
+
+    return { ...response, data: normalizeEvidenceEventSuggestions(response.data) };
+  },
+
   getParticipants: async (
     eventId: string,
     params?: { page?: number; limit?: number; q?: string },
@@ -633,10 +797,11 @@ export const eventsApi = {
   },
 
   checkParticipant: async (eventId: string, applicationId: string) => {
-    return apiClient<EventParticipantCheck>(`/api/events/${eventId}/check-participant`, {
+    const response = await apiClient<unknown>(`/api/events/${eventId}/check-participant`, {
       method: "POST",
       body: { applicationId },
     });
+    return { ...response, data: normalizeParticipantCheck(response.data) };
   },
 
   importToApplication: async (eventId: string, applicationId: string) => {

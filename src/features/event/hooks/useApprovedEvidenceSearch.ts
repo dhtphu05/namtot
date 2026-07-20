@@ -24,6 +24,15 @@ export type OfficialEventLibraryFilters = {
   limit?: number;
 };
 
+export type EvidenceEventSuggestionFilters = {
+  applicationId?: string;
+  query?: string;
+  criterion?: Criterion;
+  eventId?: string;
+  limit?: number;
+  excludeImported?: boolean;
+};
+
 export const approvedEvidenceKeys = {
   all: ["approved-evidence"] as const,
   search: (filters: ApprovedEvidenceFilters) =>
@@ -42,6 +51,19 @@ export const officialEventLibraryKeys = {
         projection: filters.projection ?? "full",
         page: filters.page ?? 1,
         limit: filters.limit ?? 20,
+      },
+    ] as const,
+  suggestions: (filters: EvidenceEventSuggestionFilters) =>
+    [
+      ...officialEventLibraryKeys.all,
+      "suggestions",
+      {
+        applicationId: filters.applicationId ?? null,
+        query: filters.query?.trim() ?? "",
+        criterion: filters.criterion ?? null,
+        eventId: filters.eventId ?? null,
+        limit: filters.limit ?? 5,
+        excludeImported: filters.excludeImported ?? true,
       },
     ] as const,
 };
@@ -104,6 +126,39 @@ export function useOfficialEventLibrary(filters: OfficialEventLibraryFilters, en
   });
 }
 
+export function useEvidenceEventSuggestions(
+  filters: EvidenceEventSuggestionFilters,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: officialEventLibraryKeys.suggestions(filters),
+    queryFn: async ({ signal }) => {
+      if (!filters.applicationId) {
+        return {
+          query: filters.query ?? null,
+          normalizedQuery: null,
+          suggestions: [],
+          meta: { minimumQueryLength: 3, resultCount: 0, source: "event_registry" as const },
+        };
+      }
+      const response = await eventsApi.getEvidenceEventSuggestions(
+        {
+          applicationId: filters.applicationId,
+          query: filters.query?.trim() || undefined,
+          criterion: filters.criterion,
+          eventId: filters.eventId,
+          limit: filters.limit ?? 5,
+          excludeImported: filters.excludeImported ?? true,
+        },
+        { signal },
+      );
+      return response.data;
+    },
+    enabled: enabled && Boolean(filters.applicationId),
+    placeholderData: (previous) => previous,
+  });
+}
+
 export function useImportOfficialEvent(applicationId?: string) {
   const queryClient = useQueryClient();
 
@@ -115,6 +170,7 @@ export function useImportOfficialEvent(applicationId?: string) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       if (applicationId) {
         queryClient.invalidateQueries({ queryKey: evidenceKeys.list(applicationId) });
         queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(applicationId) });
@@ -142,12 +198,16 @@ export function useImportApprovedEvidence(applicationId?: string) {
       return response.data;
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       if (applicationId) {
         queryClient.invalidateQueries({ queryKey: evidenceKeys.list(applicationId) });
+        queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(applicationId) });
         queryClient.invalidateQueries({
           queryKey: applicationKeys.criteriaCompletion(applicationId),
         });
       }
+      queryClient.invalidateQueries({ queryKey: officialEventLibraryKeys.all });
       queryClient.invalidateQueries({ queryKey: approvedEvidenceKeys.all });
       if (data?.evidence?.id) {
         queryClient.invalidateQueries({ queryKey: evidenceKeys.detail(data.evidence.id) });

@@ -8,6 +8,7 @@ describe("student application route search validation", () => {
       validateStudentApplicationSearch({
         criterion: "academic",
         evidenceId: "evidence-1",
+        eventId: "event-1",
         mode: "confirm",
         reviewTaskId: "task-1",
         uploadEvidence: "1",
@@ -15,6 +16,7 @@ describe("student application route search validation", () => {
       {
         criterion: "academic",
         evidenceId: "evidence-1",
+        eventId: "event-1",
         mode: "confirm",
         reviewTaskId: "task-1",
         uploadEvidence: "1",
@@ -27,6 +29,7 @@ describe("student application route search validation", () => {
       validateStudentApplicationSearch({
         criterion: 5,
         evidenceId: null,
+        eventId: false,
         mode: "unknown",
         reviewTaskId: null,
         uploadEvidence: true,
@@ -34,7 +37,26 @@ describe("student application route search validation", () => {
       {
         criterion: undefined,
         evidenceId: undefined,
+        eventId: undefined,
         mode: undefined,
+        reviewTaskId: undefined,
+        uploadEvidence: undefined,
+      },
+    );
+  });
+
+  it("accepts suggested event import mode", () => {
+    assert.deepEqual(
+      validateStudentApplicationSearch({
+        criterion: "volunteer",
+        eventId: "event-1",
+        mode: "suggested-import",
+      }),
+      {
+        criterion: "volunteer",
+        evidenceId: undefined,
+        eventId: "event-1",
+        mode: "suggested-import",
         reviewTaskId: undefined,
         uploadEvidence: undefined,
       },
