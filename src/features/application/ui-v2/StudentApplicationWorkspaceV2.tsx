@@ -240,6 +240,7 @@ export function StudentApplicationWorkspaceV2() {
   const [gpaScale, setGpaScale] = useState<4 | 10>(4);
   const initializedCriterionRef = useRef(false);
   const handledUploadEvidenceRequestRef = useRef(false);
+  const handledEvidenceConfirmRequestRef = useRef<string | null>(null);
 
   const serverEvidences = useMemo(
     () => normalizeEvidences(evidencesQuery.data),
@@ -378,6 +379,16 @@ export function StudentApplicationWorkspaceV2() {
     clearUploadEvidenceRequestFromLocation();
     openEvidenceDrawer(requestedCriterion);
   }, [application, openEvidenceDrawer]);
+
+  useEffect(() => {
+    const request = getEvidenceConfirmRequestFromLocation();
+    if (!request || handledEvidenceConfirmRequestRef.current === request.evidenceId) return;
+    const target = evidences.find((item) => item.id === request.evidenceId);
+    if (!target) return;
+    handledEvidenceConfirmRequestRef.current = request.evidenceId;
+    selectCriterion(target.criterion, setSelectedCriterion);
+    setSelectedEvidence(target);
+  }, [evidences]);
 
   const openOfficialEventLibrary = () => {
     if (!selectedSupportsOfficialEventImport) {
@@ -763,7 +774,23 @@ export function StudentApplicationWorkspaceV2() {
         />
       ) : null}
 
-      <EvidenceDetailModal evidence={selectedEvidence} onClose={() => setSelectedEvidence(null)} />
+      <EvidenceDetailModal
+        evidence={selectedEvidence}
+        applicationId={application.id}
+        canEdit={canEditApplication}
+        initialMode={
+          getEvidenceConfirmRequestFromLocation()?.evidenceId === selectedEvidence?.id
+            ? "confirm"
+            : "view"
+        }
+        onClose={() => {
+          setSelectedEvidence(null);
+          clearEvidenceConfirmRequestFromLocation();
+        }}
+        onChanged={() => {
+          void evidencesQuery.refetch();
+        }}
+      />
 
       {confirmSubmitOpen ? (
         <SubmitConfirmationModal
@@ -3440,6 +3467,22 @@ function clearUploadEvidenceRequestFromLocation() {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   url.searchParams.delete("uploadEvidence");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function getEvidenceConfirmRequestFromLocation(): { evidenceId: string } | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const evidenceId = params.get("evidenceId");
+  if (!evidenceId || params.get("mode") !== "confirm") return null;
+  return { evidenceId };
+}
+
+function clearEvidenceConfirmRequestFromLocation() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete("evidenceId");
+  url.searchParams.delete("mode");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 

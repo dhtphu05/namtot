@@ -206,7 +206,7 @@ export function UploadEvidence() {
               type="file"
               ref={fileInputRef}
               className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
               onChange={handleFileChange}
               disabled={createEvidence.isPending || uploadAndIndex.isPending}
             />

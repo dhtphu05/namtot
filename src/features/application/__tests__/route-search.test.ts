@@ -8,11 +8,15 @@ describe("student application route search validation", () => {
       validateStudentApplicationSearch({
         criterion: "academic",
         evidenceId: "evidence-1",
+        mode: "confirm",
+        reviewTaskId: "task-1",
         uploadEvidence: "1",
       }),
       {
         criterion: "academic",
         evidenceId: "evidence-1",
+        mode: "confirm",
+        reviewTaskId: "task-1",
         uploadEvidence: "1",
       },
     );
@@ -23,11 +27,15 @@ describe("student application route search validation", () => {
       validateStudentApplicationSearch({
         criterion: 5,
         evidenceId: null,
+        mode: "unknown",
+        reviewTaskId: null,
         uploadEvidence: true,
       }),
       {
         criterion: undefined,
         evidenceId: undefined,
+        mode: undefined,
+        reviewTaskId: undefined,
         uploadEvidence: undefined,
       },
     );

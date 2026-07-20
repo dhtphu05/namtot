@@ -26,6 +26,7 @@ function invalidateStudentState(
   evidenceId?: string,
 ) {
   queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+  queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
   if (applicationId) {
     queryClient.invalidateQueries({ queryKey: evidenceKeys.list(applicationId) });
     queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(applicationId) });
@@ -266,6 +267,7 @@ export function useRetryEvidenceJob(applicationId?: string) {
     onSuccess: (data) => {
       if (applicationId)
         queryClient.invalidateQueries({ queryKey: evidenceKeys.list(applicationId) });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({ queryKey: evidenceKeys.detail(data.evidenceId) });
       queryClient.invalidateQueries({ queryKey: evidenceKeys.card(data.evidenceId) });
       if (data.job?.id) queryClient.invalidateQueries({ queryKey: evidenceKeys.job(data.job.id) });
@@ -273,6 +275,64 @@ export function useRetryEvidenceJob(applicationId?: string) {
     },
     onError: (err: Error) => {
       toast.error(`Không thể xử lý lại: ${err.message}`);
+    },
+  });
+}
+
+export function useSaveEvidenceCardCorrections(applicationId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      evidenceId,
+      fields,
+      expectedUpdatedAt,
+    }: {
+      evidenceId: string;
+      fields: Record<string, unknown>;
+      expectedUpdatedAt?: string;
+    }) => {
+      const res = await evidenceApi.saveEvidenceCardCorrections(evidenceId, {
+        fields,
+        expectedUpdatedAt,
+      });
+      return { evidenceId, card: res.data };
+    },
+    onSuccess: (data) => {
+      invalidateStudentState(queryClient, applicationId, data.evidenceId);
+      toast.success("Đã lưu thông tin đã chỉnh.");
+    },
+    onError: (err: Error) => {
+      toast.error(`Không thể lưu chỉnh sửa: ${err.message}`);
+    },
+  });
+}
+
+export function useConfirmEvidenceCard(applicationId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      evidenceId,
+      acknowledgedWarnings,
+      expectedUpdatedAt,
+    }: {
+      evidenceId: string;
+      acknowledgedWarnings?: string[];
+      expectedUpdatedAt?: string;
+    }) => {
+      const res = await evidenceApi.confirmEvidenceCard(evidenceId, {
+        acknowledgedWarnings,
+        expectedUpdatedAt,
+      });
+      return { evidenceId, card: res.data };
+    },
+    onSuccess: (data) => {
+      invalidateStudentState(queryClient, applicationId, data.evidenceId);
+      toast.success("Đã xác nhận thông tin minh chứng.");
+    },
+    onError: (err: Error) => {
+      toast.error(`Không thể xác nhận minh chứng: ${err.message}`);
     },
   });
 }

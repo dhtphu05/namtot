@@ -20,7 +20,9 @@ import { getSourcePresentation } from "@/features/application/presentation";
 import {
   useEvidenceCard,
   useEvidenceDetail,
+  useConfirmEvidenceCard,
   useRetryEvidenceJob,
+  useSaveEvidenceCardCorrections,
   useStartEvidenceIndexing,
   useUploadEvidenceFile,
 } from "@/features/evidence/hooks/useEvidence";
@@ -39,6 +41,7 @@ type EvidenceDetailModalProps = {
   evidence: EvidenceResponse | null;
   applicationId?: string;
   canEdit?: boolean;
+  initialMode?: "confirm" | "view";
   onClose: () => void;
   onChanged?: () => void;
 };
@@ -49,10 +52,12 @@ export function EvidenceDetailModal({
   evidence,
   applicationId,
   canEdit = false,
+  initialMode = "view",
   onClose,
   onChanged,
 }: EvidenceDetailModalProps) {
   const [tab, setTab] = useState<DetailTab>("card");
+  const [hasUnsavedCardChanges, setHasUnsavedCardChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailQuery = useEvidenceDetail(evidence?.id);
   const detail = (detailQuery.data ?? evidence) as EvidenceResponse | null;
@@ -88,6 +93,8 @@ export function EvidenceDetailModal({
   const uploadFile = useUploadEvidenceFile(applicationId);
   const startIndexing = useStartEvidenceIndexing(applicationId);
   const retryJob = useRetryEvidenceJob(applicationId);
+  const saveCorrections = useSaveEvidenceCardCorrections(applicationId);
+  const confirmCard = useConfirmEvidenceCard(applicationId);
 
   if (!evidence) return null;
 
@@ -121,8 +128,43 @@ export function EvidenceDetailModal({
     onChanged?.();
   };
 
+  const close = () => {
+    if (
+      hasUnsavedCardChanges &&
+      !window.confirm("Bạn có chỉnh sửa chưa lưu. Đóng cửa sổ sẽ bỏ các thay đổi này.")
+    ) {
+      return;
+    }
+    setHasUnsavedCardChanges(false);
+    onClose();
+  };
+
+  const saveCardCorrections = async (
+    fields: Record<string, unknown>,
+    expectedUpdatedAt?: string,
+  ) => {
+    if (!activeEvidence) return;
+    await saveCorrections.mutateAsync({
+      evidenceId: activeEvidence.id,
+      fields,
+      expectedUpdatedAt,
+    });
+    setHasUnsavedCardChanges(false);
+    onChanged?.();
+  };
+
+  const confirmEvidenceCard = async (expectedUpdatedAt?: string) => {
+    if (!activeEvidence) return;
+    await confirmCard.mutateAsync({
+      evidenceId: activeEvidence.id,
+      expectedUpdatedAt,
+    });
+    setHasUnsavedCardChanges(false);
+    onChanged?.();
+  };
+
   return (
-    <Dialog open={Boolean(evidence)} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={Boolean(evidence)} onOpenChange={(open) => !open && close()}>
       <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto p-0">
         <DialogHeader className="border-b px-5 py-4">
           <div className="flex items-start justify-between gap-4">
@@ -152,7 +194,7 @@ export function EvidenceDetailModal({
               type="button"
               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]"
               aria-label="Đóng"
-              onClick={onClose}
+              onClick={close}
             >
               <X className="h-5 w-5" />
             </button>
@@ -196,7 +238,7 @@ export function EvidenceDetailModal({
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
                   onChange={(event) => void uploadMore(event.target.files?.[0])}
                 />
                 <Button
@@ -219,7 +261,7 @@ export function EvidenceDetailModal({
           </div>
         </DialogHeader>
 
-        <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid gap-0 lg:grid-cols-[1.25fr_0.95fr]">
           <aside className="space-y-3 border-b p-5 lg:border-b-0 lg:border-r">
             {detailQuery.isLoading ? (
               <LoadingState label="Đang tải minh chứng..." />
@@ -275,6 +317,12 @@ export function EvidenceDetailModal({
                   retrying={retryJob.isPending}
                   onUploadMore={canUploadMore ? () => fileInputRef.current?.click() : undefined}
                   uploading={uploadFile.isPending || startIndexing.isPending}
+                  confirmationMode={initialMode === "confirm"}
+                  onSaveCorrections={saveCardCorrections}
+                  savingCorrections={saveCorrections.isPending}
+                  onConfirm={confirmEvidenceCard}
+                  confirming={confirmCard.isPending}
+                  onDirtyChange={setHasUnsavedCardChanges}
                 />
               )
             ) : null}

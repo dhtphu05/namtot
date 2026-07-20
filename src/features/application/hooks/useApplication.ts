@@ -1,12 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { applicationApi } from "@/features/application/api/application";
+import {
+  streamCurrentAssistantNarrative,
+  studentAssistantApi,
+} from "@/features/application/api/student-assistant";
 import type { Level, MetricInput, MetricType, VerificationStatus } from "@/lib/api/types";
 import { notificationKeys } from "@/features/notifications/hooks/useNotifications";
 
 export const applicationKeys = {
   all: ["applications"] as const,
   current: () => ["application", "current"] as const,
+  assistantContext: (schoolYear?: string) =>
+    ["application", "current", "assistant-context", schoolYear ?? ""] as const,
   timeline: (id: string) => ["application", id, "timeline"] as const,
   latestPrecheck: (id: string) => ["application", id, "precheck", "latest"] as const,
   criteriaCompletion: (id: string) => ["application", id, "criteria-completion"] as const,
@@ -38,6 +45,7 @@ export function useStartApplication() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     },
     onError: (err: Error) => {
@@ -56,6 +64,7 @@ export function useUpdateTargetLevel() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
     },
   });
 }
@@ -83,6 +92,7 @@ export function useSaveApplicationDraft() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
     },
   });
 }
@@ -120,6 +130,7 @@ export function useSubmitApplication() {
         queryClient.invalidateQueries({ queryKey: applicationKeys.timeline(variables.id) }),
         queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] }),
         queryClient.invalidateQueries({ queryKey: notificationKeys.all }),
+        queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() }),
       ]);
       await Promise.all([
         queryClient.refetchQueries({ queryKey: applicationKeys.current(), type: "active" }),
@@ -172,11 +183,123 @@ export function usePrecheck() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(variables.id) });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.id),
       });
     },
   });
+}
+
+export function useStudentAssistantContext(schoolYear?: string) {
+  return useQuery({
+    queryKey: applicationKeys.assistantContext(schoolYear),
+    queryFn: async () => {
+      const res = await studentAssistantApi.getCurrentAssistantContext(schoolYear);
+      return res.data;
+    },
+    retry: false,
+    staleTime: 15_000,
+  });
+}
+
+export function useAssistantNarrativeStream({
+  contextVersion,
+  enabled,
+  fallbackText,
+  schoolYear,
+}: {
+  schoolYear?: string;
+  contextVersion?: string;
+  fallbackText?: string;
+  enabled: boolean;
+}) {
+  const [text, setText] = useState(fallbackText ?? "");
+  const [status, setStatus] = useState<"idle" | "connecting" | "streaming" | "complete" | "error">(
+    "idle",
+  );
+  const [attempt, setAttempt] = useState(0);
+  const pendingChunksRef = useRef<string[]>([]);
+  const timerRef = useRef<number | null>(null);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const enqueueChunk = useCallback(
+    (chunk: string) => {
+      pendingChunksRef.current.push(chunk);
+      if (timerRef.current !== null) return;
+      timerRef.current = window.setInterval(() => {
+        const next = pendingChunksRef.current.shift();
+        if (!next) {
+          stopTimer();
+          return;
+        }
+        setText((current) => current + next);
+      }, 35);
+    },
+    [stopTimer],
+  );
+
+  useEffect(() => {
+    setText(fallbackText ?? "");
+    pendingChunksRef.current = [];
+    stopTimer();
+    if (!enabled || !contextVersion) {
+      setStatus("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+    setStatus("connecting");
+    void streamCurrentAssistantNarrative({
+      schoolYear,
+      contextVersion,
+      signal: controller.signal,
+      handlers: {
+        onDelta: (data) => {
+          setStatus("streaming");
+          enqueueChunk(data.text);
+        },
+        onComplete: (data) => {
+          stopTimer();
+          pendingChunksRef.current = [];
+          setText(data.text || fallbackText || "");
+          setStatus("complete");
+        },
+        onError: () => {
+          stopTimer();
+          pendingChunksRef.current = [];
+          setText(fallbackText ?? "");
+          setStatus("error");
+        },
+      },
+    }).catch((error) => {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      stopTimer();
+      pendingChunksRef.current = [];
+      setText(fallbackText ?? "");
+      setStatus("error");
+    });
+
+    return () => {
+      controller.abort();
+      stopTimer();
+    };
+  }, [attempt, contextVersion, enabled, enqueueChunk, fallbackText, schoolYear, stopTimer]);
+
+  const retry = useCallback(() => setAttempt((current) => current + 1), []);
+  const abort = useCallback(() => {
+    stopTimer();
+    pendingChunksRef.current = [];
+    setStatus("idle");
+  }, [stopTimer]);
+
+  return { text, status, retry, abort };
 }
 
 export function useApplicationTimeline(id: string | undefined) {
@@ -230,6 +353,7 @@ export function useUpsertMetric() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.id),
       });
@@ -263,6 +387,7 @@ export function useDeclareEthicsConductScore() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.id),
       });
@@ -296,6 +421,7 @@ export function useDeclareAcademicGpa() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.id),
       });
@@ -335,6 +461,7 @@ export function useDeclarePhysicalCourseResult() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.id),
       });
@@ -375,6 +502,7 @@ export function useAddPhysicalPathEvidence() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.id),
       });
@@ -429,6 +557,7 @@ export function useAddVolunteerActivity() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.id),
       });
@@ -462,6 +591,7 @@ export function useAddIntegrationPathResponse() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: ["evidences", variables.id] });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.id),
       });
@@ -480,6 +610,7 @@ export function useCreateMetric() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
       queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.applicationId) });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.applicationId),
       });
@@ -518,6 +649,7 @@ export function useUpdateMetric() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       if (variables.applicationId) {
         queryClient.invalidateQueries({
           queryKey: applicationKeys.metrics(variables.applicationId),

@@ -137,6 +137,29 @@ function normalizeEvidenceCard(payload: unknown): EvidenceCard | null {
     ...row,
     id: nullableString(row.id) ?? undefined,
     evidenceId: nullableString(row.evidenceId ?? row.evidence_id) ?? undefined,
+    provider: nullableString(row.provider),
+    providerModel: nullableString(row.providerModel ?? row.provider_model),
+    promptVersion: nullableString(row.promptVersion ?? row.prompt_version),
+    confirmationStatus: nullableString(row.confirmationStatus ?? row.confirmation_status),
+    requiresHumanConfirmation:
+      typeof (row.requiresHumanConfirmation ?? row.requires_human_confirmation) === "boolean"
+        ? Boolean(row.requiresHumanConfirmation ?? row.requires_human_confirmation)
+        : undefined,
+    confirmedFields: asRecord(row.confirmedFields ?? row.confirmed_fields) ?? null,
+    effectiveFields: asRecord(row.effectiveFields ?? row.effective_fields) ?? null,
+    fieldDetails: Array.isArray(row.fieldDetails ?? row.field_details)
+      ? ((row.fieldDetails ?? row.field_details) as EvidenceCard["fieldDetails"])
+      : undefined,
+    confirmedAt: nullableString(row.confirmedAt ?? row.confirmed_at),
+    confirmedByUserId: nullableString(row.confirmedByUserId ?? row.confirmed_by_user_id),
+    canEdit:
+      typeof (row.canEdit ?? row.can_edit) === "boolean"
+        ? Boolean(row.canEdit ?? row.can_edit)
+        : undefined,
+    canConfirm:
+      typeof (row.canConfirm ?? row.can_confirm) === "boolean"
+        ? Boolean(row.canConfirm ?? row.can_confirm)
+        : undefined,
     readableSummary,
     matchingStatus: normalizeMatchingStatus(row.matchingStatus ?? row.matching_status),
     missingFields,
@@ -395,6 +418,30 @@ export const evidenceApi = {
           }
         : null,
     };
+  },
+
+  saveEvidenceCardCorrections: async (
+    evidenceId: string,
+    input: { fields: Record<string, unknown>; expectedUpdatedAt?: string },
+  ) => {
+    const res = await apiClient<unknown>(`/api/evidences/${evidenceId}/card/corrections`, {
+      method: "PATCH",
+      body: input,
+    });
+    const wrapper = asRecord(res.data);
+    return { ...res, data: normalizeEvidenceCard(wrapper?.card ?? res.data) };
+  },
+
+  confirmEvidenceCard: async (
+    evidenceId: string,
+    input: { acknowledgedWarnings?: string[]; expectedUpdatedAt?: string },
+  ) => {
+    const res = await apiClient<unknown>(`/api/evidences/${evidenceId}/card/confirm`, {
+      method: "POST",
+      body: input,
+    });
+    const wrapper = asRecord(res.data);
+    return { ...res, data: normalizeEvidenceCard(wrapper?.card ?? res.data) };
   },
 
   getEvidenceAudit: async (evidenceId: string) => {

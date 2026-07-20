@@ -39,7 +39,7 @@ type AddEvidenceDrawerProps = {
 };
 
 const maxFileSize = 10 * 1024 * 1024;
-const acceptedTypes = [".pdf", ".jpg", ".jpeg", ".png"];
+const acceptedTypes = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
 
 export function AddEvidenceDrawer({
   applicationId,
