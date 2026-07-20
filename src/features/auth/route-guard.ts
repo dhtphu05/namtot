@@ -12,6 +12,7 @@ const studentRoutes = [
   "/app/my-application",
   "/app/profile",
   "/app/feedback",
+  "/app/result",
   "/app/assistant",
   "/app/drafts",
   "/app/upload",

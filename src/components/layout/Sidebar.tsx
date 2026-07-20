@@ -13,9 +13,11 @@ import {
   GraduationCap,
   History,
   Inbox,
+  IdCard,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
+  Mail,
   School,
   ShieldQuestion,
   SlidersHorizontal,
@@ -64,6 +66,7 @@ const NAV: Record<Role, NavGroup[]> = {
         { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
         { label: "Hồ sơ & minh chứng", to: "/app/application", icon: FileText },
         { label: "Kho minh chứng", to: "/app/event-library", icon: BookOpenCheck },
+        { label: "Kết quả", to: "/app/result", icon: Trophy },
         { label: "Phản hồi", to: "/app/feedback", icon: Bell },
         { label: "Trợ lý", to: "/app/assistant", icon: LifeBuoy },
       ],
@@ -88,7 +91,7 @@ const NAV: Record<Role, NavGroup[]> = {
           icon: BookOpenCheck,
         },
         {
-          label: "Kho minh chứng chuyên trách",
+          label: "Kho tiền lệ",
           to: "/app/evidence-knowledge",
           icon: BookOpenCheck,
         },
@@ -157,7 +160,7 @@ export function Sidebar() {
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const groups = getNavGroups(role, user?.role);
   const isAdmin = user?.role === "admin";
-  const isStudentV2 = STUDENT_APPLICATION_UI_V2 && user?.role === "student" && role === "student";
+  const isV2Sidebar = STUDENT_APPLICATION_UI_V2;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const nav = useNavigate();
 
@@ -182,19 +185,21 @@ export function Sidebar() {
   return (
     <aside
       className={`h-[100dvh] shrink-0 flex-col bg-white ${
-        isStudentV2
+        isV2Sidebar
           ? "border-r border-[var(--student-v2-divider)]"
           : "shadow-[1px_0_0_rgba(15,23,42,0.05)] backdrop-blur"
       } ${
         role === "student"
-          ? isStudentV2
+          ? isV2Sidebar
             ? "hidden w-[296px] md:flex"
             : "hidden w-[248px] md:flex"
-          : "flex w-[264px]"
+          : isV2Sidebar
+            ? "flex w-[296px]"
+            : "flex w-[264px]"
       }`}
     >
-      <div className={isStudentV2 ? "shrink-0 px-4 pb-3 pt-5" : "shrink-0 px-4 pb-3 pt-5"}>
-        {isStudentV2 ? (
+      <div className={isV2Sidebar ? "shrink-0 px-4 pb-3 pt-5" : "shrink-0 px-4 pb-3 pt-5"}>
+        {isV2Sidebar ? (
           <Link
             to="/app"
             className="block rounded-[var(--student-v2-radius-section)] transition-colors duration-[120ms] hover:bg-[var(--student-v2-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2"
@@ -222,17 +227,13 @@ export function Sidebar() {
         )}
       </div>
 
-      <div className={isStudentV2 ? "shrink-0 px-4 pb-3" : "shrink-0 px-4 pb-3"}>
-        {isStudentV2 ? (
-          <StudentV2ProfilePanel user={user} fallbackInitial={ROLES.student.initial} />
-        ) : (
-          <RolePanel />
-        )}
+      <div className={isV2Sidebar ? "shrink-0 px-4 pb-3" : "shrink-0 px-4 pb-3"}>
+        {isV2Sidebar ? <SidebarV2ProfilePanel user={user} role={role} /> : <RolePanel />}
       </div>
 
       <nav
         className={
-          isStudentV2
+          isV2Sidebar
             ? "min-h-0 flex-1 overflow-y-auto px-3"
             : "min-h-0 flex-1 overflow-y-auto px-4 pr-3"
         }
@@ -240,7 +241,13 @@ export function Sidebar() {
         <div className="flex flex-col gap-4 pb-4">
           {groups.map((group) => (
             <div key={group.group}>
-              {isStudentV2 ? null : (
+              {isV2Sidebar ? (
+                role === "student" ? null : (
+                  <div className="mb-2 px-4 text-[11px] font-semibold uppercase leading-4 text-[var(--student-v2-text-muted)]">
+                    {group.group}
+                  </div>
+                )
+              ) : (
                 <div className="mb-2 px-3 text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
                   {group.group}
                 </div>
@@ -254,7 +261,7 @@ export function Sidebar() {
                       <Link
                         to={item.to}
                         className={
-                          isStudentV2
+                          isV2Sidebar
                             ? `group relative flex min-h-[46px] items-center gap-3 rounded-[var(--student-v2-radius-control)] px-4 py-2.5 text-[15px] font-medium transition-colors duration-[120ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2 ${
                                 active
                                   ? "bg-[var(--student-v2-surface-selected)] text-[var(--student-v2-institutional-blue)] before:absolute before:left-0 before:top-2 before:h-[30px] before:w-[3px] before:rounded-r-[var(--student-v2-radius-pill)] before:bg-[var(--student-v2-institutional-blue)]"
@@ -267,7 +274,7 @@ export function Sidebar() {
                               }`
                         }
                       >
-                        {isStudentV2 ? (
+                        {isV2Sidebar ? (
                           <Icon className="h-5 w-5 shrink-0" strokeWidth={1.9} aria-hidden="true" />
                         ) : (
                           <span
@@ -302,7 +309,7 @@ export function Sidebar() {
 
       <div
         className={`shrink-0 bg-white ${
-          isStudentV2
+          isV2Sidebar
             ? "mx-5 border-t border-[var(--student-v2-divider)] py-5"
             : "px-4 py-4 shadow-[0_-1px_0_rgba(15,23,42,0.06)]"
         }`}
@@ -311,7 +318,7 @@ export function Sidebar() {
           type="button"
           onClick={handleLogout}
           className={
-            isStudentV2
+            isV2Sidebar
               ? "flex min-h-11 w-full items-center gap-3 rounded-[var(--student-v2-radius-control)] px-2 py-2 text-[15px] font-medium text-[var(--student-v2-text-secondary)] transition-colors hover:bg-[var(--student-v2-surface-hover)] hover:text-[var(--student-v2-institutional-blue)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2"
               : "flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-[13px] font-semibold text-[#64748B] transition-colors hover:bg-[#F8FAFC] hover:text-[#0057C2]"
           }
@@ -352,6 +359,62 @@ function StudentV2Lockup({
         </div>
       </div>
     </div>
+  );
+}
+
+function SidebarV2ProfilePanel({ user, role }: { user: SafeUser | null; role: Role }) {
+  const roleMeta = ROLES[role];
+  const isAdmin = user?.role === "admin";
+  const isStudent = role === "student" && user?.role === "student";
+  const displayName =
+    user?.fullName || (isAdmin ? "Quản trị hệ thống" : roleMeta.label || "Tài khoản");
+  const initials = getInitials(displayName, isAdmin ? "QT" : roleMeta.initial);
+  const workspaceLabel = user?.workspace?.name || user?.workspace?.shortName || "Đơn vị triển khai";
+  const roleLabel = isAdmin ? "Quản trị hệ thống" : user ? getUserRoleLabel(user) : roleMeta.label;
+  const assignmentLabel = isAdmin
+    ? "Toàn bộ đơn vị"
+    : user
+      ? getUserAssignmentLabel(user)
+      : roleMeta.desc;
+
+  const rows = isStudent
+    ? [
+        { icon: School, value: workspaceLabel },
+        { icon: IdCard, value: user?.studentCode || "Chưa có mã sinh viên" },
+        { icon: GraduationCap, value: user?.faculty || "Khoa chưa cập nhật" },
+        { icon: UsersRound, value: user?.className || "Lớp chưa cập nhật" },
+      ]
+    : [
+        { icon: School, value: workspaceLabel },
+        { icon: UserCog, value: assignmentLabel },
+        { icon: Mail, value: user?.email || "Email chưa cập nhật" },
+      ];
+
+  return (
+    <section
+      className="border-b border-[var(--student-v2-divider)] pb-3"
+      aria-label={isStudent ? "Thông tin sinh viên" : "Thông tin tài khoản"}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--student-v2-institutional-navy)] text-[18px] font-bold text-[var(--student-v2-text-inverse)]">
+          {initials}
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-bold leading-[22px] text-[var(--student-v2-text-primary)]">
+            {displayName}
+          </div>
+          <div className="truncate text-[14px] leading-5 text-[var(--student-v2-text-secondary)]">
+            {roleLabel}
+          </div>
+        </div>
+      </div>
+
+      <dl className="mt-3 space-y-2.5 text-[14px] leading-5 text-[var(--student-v2-text-secondary)]">
+        {rows.map((row) => (
+          <StudentV2ProfileRow key={`${row.value}`} icon={row.icon} value={row.value} />
+        ))}
+      </dl>
+    </section>
   );
 }
 

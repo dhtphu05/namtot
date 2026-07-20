@@ -1,7 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { OfficerEvidenceKnowledgeSearchItem } from "../types";
-import { getApprovalSourcesLabel } from "./evidence-knowledge-labels";
 
 type OfficerEventListProps = {
   items: OfficerEvidenceKnowledgeSearchItem[];
@@ -70,21 +69,22 @@ export function OfficerEventList({
           <li key={item.eventId}>
             <button
               className={[
-                "relative flex h-[68px] w-full min-w-0 items-center px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0057C2]/25",
+                "relative flex h-[72px] w-full min-w-0 items-center px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0057C2]/25",
                 selected ? "bg-[#F1F7FD] pl-4" : "hover:bg-slate-50",
               ].join(" ")}
               type="button"
               onClick={() => onSelect(item.eventId)}
             >
               {selected ? (
-                <span className="absolute left-0 top-2 h-[52px] w-[3px] rounded-r-full bg-[#0057C2]" />
+                <span className="absolute left-0 top-2 h-[56px] w-[3px] rounded-r-full bg-[#0057C2]" />
               ) : null}
               <span className="min-w-0 flex-1">
-                <span className="line-clamp-1 text-sm font-semibold text-brand-deep">
+                <span className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]">
                   {item.canonicalTitle}
                 </span>
                 <span className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                  {item.acceptedCount} minh chứng - {getApprovalSourcesLabel(item.approvalSources)}
+                  {item.acceptedCount} minh chứng
+                  {item.hasResolutionPrecedent ? " · Có tiền lệ Hội đồng" : ""}
                 </span>
               </span>
             </button>

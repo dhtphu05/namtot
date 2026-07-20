@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExternalLink, FileText, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,12 +21,21 @@ type EvidenceFilePreviewProps = {
 };
 
 export function EvidenceFilePreview({ evidence, onUploadMore }: EvidenceFilePreviewProps) {
-  const files = getEvidenceFiles(evidence);
+  const files = useMemo(() => getEvidenceFiles(evidence), [evidence]);
   const [selectedFile, setSelectedFile] = useState<StudentEvidenceFile | null>(files[0] ?? null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState(false);
 
-  const loadPreview = async (file: StudentEvidenceFile, openInNewTab = false) => {
+  const loadPreview = useCallback(async (file: StudentEvidenceFile, openInNewTab = false) => {
+    const directUrl = file.signedUrl || file.url || file.publicUrl || null;
+    if (directUrl) {
+      setSelectedFile(file);
+      setPreviewUrl(directUrl);
+      if (openInNewTab) {
+        window.open(directUrl, "_blank", "noopener,noreferrer");
+      }
+      return;
+    }
     if (!file.id) return;
     try {
       setLoadingUrl(true);
@@ -43,7 +52,16 @@ export function EvidenceFilePreview({ evidence, onUploadMore }: EvidenceFilePrev
     } finally {
       setLoadingUrl(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const firstFile = files[0] ?? null;
+    setSelectedFile(firstFile);
+    setPreviewUrl(null);
+    if (firstFile?.id) {
+      void loadPreview(firstFile);
+    }
+  }, [evidence.id, files, loadPreview]);
 
   if (!files.length) {
     return (

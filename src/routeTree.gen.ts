@@ -20,6 +20,7 @@ import { Route as AppVnptRouteImport } from './routes/app.vnpt'
 import { Route as AppUploadRouteImport } from './routes/app.upload'
 import { Route as AppSmartuxRouteImport } from './routes/app.smartux'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppResultRouteImport } from './routes/app.result'
 import { Route as AppResolutionRouteImport } from './routes/app.resolution'
 import { Route as AppQueueRouteImport } from './routes/app.queue'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
@@ -111,6 +112,11 @@ const AppSmartuxRoute = AppSmartuxRouteImport.update({
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResultRoute = AppResultRouteImport.update({
+  id: '/result',
+  path: '/result',
   getParentRoute: () => AppRoute,
 } as any)
 const AppResolutionRoute = AppResolutionRouteImport.update({
@@ -333,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/app/profile': typeof AppProfileRoute
   '/app/queue': typeof AppQueueRoute
   '/app/resolution': typeof AppResolutionRouteWithChildren
+  '/app/result': typeof AppResultRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/smartux': typeof AppSmartuxRoute
   '/app/upload': typeof AppUploadRoute
@@ -382,6 +389,7 @@ export interface FileRoutesByTo {
   '/app/profile': typeof AppProfileRoute
   '/app/queue': typeof AppQueueRoute
   '/app/resolution': typeof AppResolutionRouteWithChildren
+  '/app/result': typeof AppResultRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/smartux': typeof AppSmartuxRoute
   '/app/upload': typeof AppUploadRoute
@@ -433,6 +441,7 @@ export interface FileRoutesById {
   '/app/profile': typeof AppProfileRoute
   '/app/queue': typeof AppQueueRoute
   '/app/resolution': typeof AppResolutionRouteWithChildren
+  '/app/result': typeof AppResultRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/smartux': typeof AppSmartuxRoute
   '/app/upload': typeof AppUploadRoute
@@ -485,6 +494,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/queue'
     | '/app/resolution'
+    | '/app/result'
     | '/app/settings'
     | '/app/smartux'
     | '/app/upload'
@@ -534,6 +544,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/queue'
     | '/app/resolution'
+    | '/app/result'
     | '/app/settings'
     | '/app/smartux'
     | '/app/upload'
@@ -584,6 +595,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/queue'
     | '/app/resolution'
+    | '/app/result'
     | '/app/settings'
     | '/app/smartux'
     | '/app/upload'
@@ -689,6 +701,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/app/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/result': {
+      id: '/app/result'
+      path: '/result'
+      fullPath: '/app/result'
+      preLoaderRoute: typeof AppResultRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/resolution': {
@@ -1037,6 +1056,7 @@ interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
   AppQueueRoute: typeof AppQueueRoute
   AppResolutionRoute: typeof AppResolutionRouteWithChildren
+  AppResultRoute: typeof AppResultRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppSmartuxRoute: typeof AppSmartuxRoute
   AppUploadRoute: typeof AppUploadRoute
@@ -1078,6 +1098,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
   AppQueueRoute: AppQueueRoute,
   AppResolutionRoute: AppResolutionRouteWithChildren,
+  AppResultRoute: AppResultRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppSmartuxRoute: AppSmartuxRoute,
   AppUploadRoute: AppUploadRoute,

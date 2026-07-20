@@ -554,7 +554,7 @@ function CompactHelpCard({
   );
 }
 
-type StudentOverviewRoute = "/app/application" | "/app/feedback";
+type StudentOverviewRoute = "/app/application" | "/app/feedback" | "/app/result";
 
 type AssistantSearch = {
   source: "overview" | "criterion" | "feedback";
@@ -683,12 +683,15 @@ function normalizeEvidences(value: unknown): EvidenceResponse[] {
 }
 
 function toStudentRoute(route: string): StudentOverviewRoute {
-  return route === "/app/feedback" ? "/app/feedback" : "/app/application";
+  if (route === "/app/feedback") return "/app/feedback";
+  if (route === "/app/result") return "/app/result";
+  return "/app/application";
 }
 
 function getStudentActionTag(action: NextAction) {
   if (action.criterionKey) return "student_open_criterion";
   if (action.route === "/app/feedback") return "student_view_gap_analysis";
+  if (action.route === "/app/result") return "student_view_final_result";
   return "student_continue_application";
 }
 

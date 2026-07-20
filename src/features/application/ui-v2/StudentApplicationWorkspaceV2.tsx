@@ -68,7 +68,11 @@ import {
   getPrimaryFile,
   studentCriterionLabel,
 } from "@/features/evidence/components/student-evidence-utils";
-import { useDeleteEvidence, useEvidences } from "@/features/evidence/hooks/useEvidence";
+import {
+  useDeleteEvidence,
+  useEvidences,
+  useSignedFileUrl,
+} from "@/features/evidence/hooks/useEvidence";
 import { OfficialEventLibraryDialog } from "@/features/event/components/OfficialEventLibraryStudent";
 import { officialEventLibraryTitleForCriterion } from "@/features/event/components/official-event-library-copy";
 import {
@@ -278,6 +282,7 @@ export function StudentApplicationWorkspaceV2() {
       application.status,
     ),
   );
+  const showCompletionGuidance = canEditApplication;
 
   const criteriaStates = useMemo(
     () =>
@@ -535,6 +540,7 @@ export function StudentApplicationWorkspaceV2() {
           statusLabel={getStudentApplicationStatus(application.status).label}
           onPrecheck={precheckNow}
           isPrechecking={runPrecheck.isPending}
+          showPrecheck={showCompletionGuidance}
         />
 
         {criteriaCompletion.isLoading ? (
@@ -558,8 +564,12 @@ export function StudentApplicationWorkspaceV2() {
           />
 
           <main className="min-w-0">
-            <div className="flex min-w-0 flex-col gap-6 pb-28">
-              <CriterionHeaderV2 state={selectedState} onOpenGuide={() => setGuideOpen(true)} />
+            <div className="flex min-w-0 flex-col gap-6 pb-6">
+              <CriterionHeaderV2
+                state={selectedState}
+                onOpenGuide={() => setGuideOpen(true)}
+                showGuide={showCompletionGuidance}
+              />
 
               {isSelectedLocked ? (
                 <InlineStateMessage
@@ -569,22 +579,24 @@ export function StudentApplicationWorkspaceV2() {
                 />
               ) : null}
 
-              <CriterionActionRow
-                assistantSearch={assistantSearch}
-                canEdit={canEditSelectedCriterion}
-                canFindOfficialEvent={
-                  canEditSelectedCriterion &&
-                  selectedSupportsOfficialEventImport &&
-                  selectedCriterion !== "physical" &&
-                  selectedCriterion !== "integration"
-                }
-                onFindOfficialEvent={openOfficialEventLibrary}
-                onManualUpload={() =>
-                  openEvidenceDrawer(selectedCriterion, {
-                    requirementLabel: selectedState.label,
-                  })
-                }
-              />
+              {showCompletionGuidance ? (
+                <CriterionActionRow
+                  assistantSearch={assistantSearch}
+                  canEdit={canEditSelectedCriterion}
+                  canFindOfficialEvent={
+                    canEditSelectedCriterion &&
+                    selectedSupportsOfficialEventImport &&
+                    selectedCriterion !== "physical" &&
+                    selectedCriterion !== "integration"
+                  }
+                  onFindOfficialEvent={openOfficialEventLibrary}
+                  onManualUpload={() =>
+                    openEvidenceDrawer(selectedCriterion, {
+                      requirementLabel: selectedState.label,
+                    })
+                  }
+                />
+              ) : null}
 
               <CriterionDataSection
                 completion={selectedCompletion}
@@ -661,56 +673,58 @@ export function StudentApplicationWorkspaceV2() {
               />
             </div>
 
-            <StickyNextActionBarV2
-              className="min-h-[72px] px-4 sm:px-6"
-              title={hasSubmitCta ? "Sẵn sàng gửi hồ sơ" : getBottomActionTitle(nextActions)}
-              description={
-                hasSubmitCta
-                  ? "Kiểm tra lần cuối trước khi gửi hồ sơ cho cán bộ xét duyệt."
-                  : getBottomActionDescription(nextActions)
-              }
-              secondaryAction={
-                <ButtonV2
-                  type="button"
-                  variant="secondary"
-                  onClick={precheckNow}
-                  disabled={runPrecheck.isPending}
-                >
-                  {runPrecheck.isPending ? (
-                    <Loader2 className="animate-spin" aria-hidden="true" />
-                  ) : (
-                    <BookOpenCheck aria-hidden="true" />
-                  )}
-                  Kiểm tra hồ sơ
-                </ButtonV2>
-              }
-              primaryAction={
-                hasSubmitCta ? (
+            {showCompletionGuidance ? (
+              <StickyNextActionBarV2
+                className="static rounded-[8px] border border-[var(--student-v2-divider)] px-4 sm:px-6"
+                title={hasSubmitCta ? "Sẵn sàng gửi hồ sơ" : getBottomActionTitle(nextActions)}
+                description={
+                  hasSubmitCta
+                    ? "Kiểm tra lần cuối trước khi gửi hồ sơ cho cán bộ xét duyệt."
+                    : getBottomActionDescription(nextActions)
+                }
+                secondaryAction={
                   <ButtonV2
                     type="button"
-                    onClick={submitNow}
-                    disabled={submitApplication.isPending}
+                    variant="secondary"
+                    onClick={precheckNow}
+                    disabled={runPrecheck.isPending}
                   >
-                    {submitApplication.isPending ? (
+                    {runPrecheck.isPending ? (
                       <Loader2 className="animate-spin" aria-hidden="true" />
                     ) : (
-                      <Send aria-hidden="true" />
+                      <BookOpenCheck aria-hidden="true" />
                     )}
-                    Nộp hồ sơ
+                    Kiểm tra hồ sơ
                   </ButtonV2>
-                ) : nextActions[0]?.criterionKey ? (
-                  <ButtonV2
-                    type="button"
-                    onClick={() =>
-                      selectCriterion(nextActions[0].criterionKey!, setSelectedCriterion)
-                    }
-                  >
-                    {nextActions[0].actionLabel}
-                    <ChevronRight aria-hidden="true" />
-                  </ButtonV2>
-                ) : null
-              }
-            />
+                }
+                primaryAction={
+                  hasSubmitCta ? (
+                    <ButtonV2
+                      type="button"
+                      onClick={submitNow}
+                      disabled={submitApplication.isPending}
+                    >
+                      {submitApplication.isPending ? (
+                        <Loader2 className="animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Send aria-hidden="true" />
+                      )}
+                      Nộp hồ sơ
+                    </ButtonV2>
+                  ) : nextActions[0]?.criterionKey ? (
+                    <ButtonV2
+                      type="button"
+                      onClick={() =>
+                        selectCriterion(nextActions[0].criterionKey!, setSelectedCriterion)
+                      }
+                    >
+                      {nextActions[0].actionLabel}
+                      <ChevronRight aria-hidden="true" />
+                    </ButtonV2>
+                  ) : null
+                }
+              />
+            ) : null}
           </main>
         </section>
       </div>
@@ -802,6 +816,7 @@ function ApplicationWorkspaceContextBar({
   statusLabel,
   isPrechecking,
   onPrecheck,
+  showPrecheck,
 }: {
   title: string;
   helper: string;
@@ -810,6 +825,7 @@ function ApplicationWorkspaceContextBar({
   statusLabel: string;
   isPrechecking: boolean;
   onPrecheck: () => void;
+  showPrecheck: boolean;
 }) {
   return (
     <section
@@ -832,14 +848,16 @@ function ApplicationWorkspaceContextBar({
           <span>Trạng thái: {statusLabel}</span>
         </div>
       </div>
-      <ButtonV2 type="button" variant="secondary" onClick={onPrecheck} disabled={isPrechecking}>
-        {isPrechecking ? (
-          <Loader2 className="animate-spin" aria-hidden="true" />
-        ) : (
-          <BookOpenCheck aria-hidden="true" />
-        )}
-        Kiểm tra hồ sơ
-      </ButtonV2>
+      {showPrecheck ? (
+        <ButtonV2 type="button" variant="secondary" onClick={onPrecheck} disabled={isPrechecking}>
+          {isPrechecking ? (
+            <Loader2 className="animate-spin" aria-hidden="true" />
+          ) : (
+            <BookOpenCheck aria-hidden="true" />
+          )}
+          Kiểm tra hồ sơ
+        </ButtonV2>
+      ) : null}
     </section>
   );
 }
@@ -888,9 +906,11 @@ function CriteriaNavigationV2({
 function CriterionHeaderV2({
   state,
   onOpenGuide,
+  showGuide,
 }: {
   state: CriteriaState;
   onOpenGuide: () => void;
+  showGuide: boolean;
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-3 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-5 sm:px-6">
@@ -903,11 +923,13 @@ function CriterionHeaderV2({
             {state.displayDescription}
           </p>
         </div>
-        <GuideSheetTriggerV2
-          criterionName={state.label}
-          onClick={onOpenGuide}
-          className="shrink-0 self-start"
-        />
+        {showGuide ? (
+          <GuideSheetTriggerV2
+            criterionName={state.label}
+            onClick={onOpenGuide}
+            className="shrink-0 self-start"
+          />
+        ) : null}
       </div>
     </section>
   );
@@ -1209,12 +1231,12 @@ function EthicsDataSectionV2({
     },
     {
       label: "Tình trạng vi phạm",
-      value: getRequirementDisplayValue(noViolation) ?? "Chờ nhà trường xác minh",
+      value: getRequirementDisplayValue(noViolation) ?? "Cán bộ xét duyệt xác minh",
       source: getDisplayRequirementSourceLabel(noViolation),
       status: (
         <StatusPillV2
-          status={mapRequirementStatus(noViolation?.status ?? "needs_verification")}
-          label={getRequirementStatusLabel(noViolation?.status ?? "needs_verification")}
+          status={mapNoViolationRequirementStatus(noViolation)}
+          label={getNoViolationStatusLabel(noViolation)}
         />
       ),
       action: <LongTextValue value={noViolationPassiveCopy(noViolation)} />,
@@ -1288,8 +1310,8 @@ function EthicsDataSectionV2({
       {noViolation && noViolation.status !== "verified" ? (
         <InlineStateMessage
           tone="info"
-          title="Chờ nhà trường xác minh tình trạng vi phạm"
-          description="Sinh viên không tự xác minh mục này. Bạn có thể tiếp tục hoàn thiện các tiêu chí khác trong khi chờ dữ liệu chính thức."
+          title="Cán bộ xét duyệt sẽ xác minh tình trạng vi phạm"
+          description="Sinh viên không tự xác minh mục này. Mục này không chặn nộp hồ sơ khi các phần sinh viên phụ trách đã hoàn tất."
         />
       ) : null}
 
@@ -2711,29 +2733,13 @@ function EvidenceGallerySection({
       ) : evidences.length ? (
         <EvidenceGallery>
           {evidences.map((evidence) => (
-            <EvidenceCardV2
+            <StudentEvidenceGalleryCard
               key={evidence.id}
-              title={evidence.evidenceName || "Minh chứng chưa đặt tên"}
-              metadata={getEvidenceMetadata(evidence, applicationId)}
-              context={
-                studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]
-              }
-              processingDetail={getEvidenceProcessingDetail(evidence)}
-              status={mapEvidenceToProgressStatus(evidence)}
-              preview={getEvidencePreview(evidence)}
-              onOpen={() => onViewEvidence(evidence)}
-              actionItems={[
-                { label: "Xem minh chứng", onSelect: () => onViewEvidence(evidence) },
-                ...(canEdit
-                  ? [
-                      {
-                        label: "Xóa minh chứng",
-                        onSelect: () => onDeleteEvidence(evidence),
-                        destructive: true,
-                      },
-                    ]
-                  : []),
-              ]}
+              applicationId={applicationId}
+              canEdit={canEdit}
+              evidence={evidence}
+              onDeleteEvidence={onDeleteEvidence}
+              onViewEvidence={onViewEvidence}
             />
           ))}
         </EvidenceGallery>
@@ -2750,6 +2756,53 @@ function EvidenceGallerySection({
         />
       )}
     </section>
+  );
+}
+
+function StudentEvidenceGalleryCard({
+  applicationId,
+  canEdit,
+  evidence,
+  onDeleteEvidence,
+  onViewEvidence,
+}: {
+  applicationId: string;
+  canEdit: boolean;
+  evidence: EvidenceResponse;
+  onDeleteEvidence: (evidence: EvidenceResponse) => void;
+  onViewEvidence: (evidence: EvidenceResponse) => void;
+}) {
+  const primaryFile = getPrimaryFile(evidence);
+  const existingPreviewUrl =
+    primaryFile?.signedUrl ?? primaryFile?.url ?? primaryFile?.publicUrl ?? null;
+  const signedUrl = useSignedFileUrl(
+    primaryFile?.id,
+    Boolean(primaryFile?.id) && !existingPreviewUrl,
+  );
+  const previewUrl = existingPreviewUrl ?? signedUrl.data ?? undefined;
+
+  return (
+    <EvidenceCardV2
+      title={evidence.evidenceName || "Minh chứng chưa đặt tên"}
+      metadata={getEvidenceMetadata(evidence, applicationId)}
+      context={studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]}
+      processingDetail={getEvidenceProcessingDetail(evidence)}
+      status={mapEvidenceToProgressStatus(evidence)}
+      preview={getEvidencePreview(evidence, previewUrl, signedUrl.isLoading)}
+      onOpen={() => onViewEvidence(evidence)}
+      actionItems={[
+        { label: "Xem minh chứng", onSelect: () => onViewEvidence(evidence) },
+        ...(canEdit
+          ? [
+              {
+                label: "Xóa minh chứng",
+                onSelect: () => onDeleteEvidence(evidence),
+                destructive: true,
+              },
+            ]
+          : []),
+      ]}
+    />
   );
 }
 
@@ -3068,8 +3121,9 @@ function getRequirementDisplayValue(requirement?: RequirementItem) {
   if (requirement?.key === "no_violation") {
     if (requirement.status === "verified") return "Không vi phạm đã được xác minh";
     if (requirement.status === "rejected") return "Có ghi nhận cần xử lý";
+    if (isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt xác minh";
     if (requirement.status === "needs_verification" || requirement.status === "declared") {
-      return "Chờ nhà trường xác minh";
+      return "Chờ cán bộ xác minh";
     }
   }
   return undefined;
@@ -3078,6 +3132,7 @@ function getRequirementDisplayValue(requirement?: RequirementItem) {
 function getDisplayRequirementSourceLabel(requirement?: RequirementItem, fallbackValue?: string) {
   const response = getLatestRequirementResponse(requirement);
   if (response) return getResponseSourcePresentation(response);
+  if (isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt";
   if (fallbackValue) return "Sinh viên khai báo";
   if (requirement?.acceptedSources?.length) return formatSourceList(requirement.acceptedSources);
   return "Chưa có";
@@ -3108,11 +3163,37 @@ function numericPayloadValue(payloadJson: unknown, field: string) {
 }
 
 function noViolationPassiveCopy(requirement?: RequirementItem) {
-  if (requirement?.status === "verified") return "Đã được nhà trường xác minh.";
+  if (requirement?.status === "verified") return "Đã được cán bộ xác minh.";
   if (requirement?.status === "rejected") {
     return "Có ghi nhận cần xử lý theo hướng dẫn của cán bộ. Sinh viên bổ sung minh chứng nếu được yêu cầu.";
   }
-  return "Chờ nhà trường xác minh tình trạng vi phạm. Sinh viên không tự xác minh mục này.";
+  if (isReviewerOwnedRequirement(requirement)) {
+    return "Cán bộ xét duyệt sẽ xác minh sau khi nộp hồ sơ. Sinh viên không tự xác minh mục này.";
+  }
+  return "Chờ cán bộ xác minh tình trạng vi phạm. Sinh viên không tự xác minh mục này.";
+}
+
+function mapNoViolationRequirementStatus(
+  requirement?: RequirementItem,
+): StudentApplicationV2ProgressStatus {
+  if (requirement?.status === "verified") return "complete";
+  if (requirement?.status === "rejected") return "supplement";
+  if (isReviewerOwnedRequirement(requirement)) return "waiting";
+  return mapRequirementStatus(requirement?.status ?? "not_started");
+}
+
+function getNoViolationStatusLabel(requirement?: RequirementItem) {
+  if (requirement?.status === "verified") return "Đã xác minh";
+  if (requirement?.status === "rejected") return "Cần xử lý";
+  if (isReviewerOwnedRequirement(requirement)) return "Chờ cán bộ";
+  return getRequirementStatusLabel(requirement?.status ?? "not_started");
+}
+
+function isReviewerOwnedRequirement(requirement?: RequirementItem) {
+  return (
+    requirement?.blocksSubmission === false &&
+    (requirement.responsibility === "reviewer" || requirement.responsibility === "committee")
+  );
 }
 
 function academicGpaStatusLabel(requirement?: RequirementItem) {
@@ -3127,7 +3208,7 @@ function academicGpaStatusLabel(requirement?: RequirementItem) {
 function noFGradeStatusCopy(requirement?: RequirementItem) {
   if (requirement?.status === "verified") return "Không có điểm F đã được xác minh";
   if (requirement?.status === "rejected") return "Có điểm F cần cán bộ xử lý";
-  return "Chờ nhà trường xác minh tình trạng điểm F";
+  return "Chờ cán bộ xác minh tình trạng điểm F";
 }
 
 function academicPeriodLabel(requirement?: RequirementItem) {
@@ -3241,7 +3322,11 @@ function getEvidenceMetadata(evidence: EvidenceResponse, applicationId: string) 
     .join(" · ");
 }
 
-function getEvidencePreview(evidence: EvidenceResponse) {
+function getEvidencePreview(
+  evidence: EvidenceResponse,
+  previewUrl?: string,
+  previewLoading = false,
+) {
   const file = getPrimaryFile(evidence) as {
     mimeType?: string | null;
     fileName?: string | null;
@@ -3260,7 +3345,9 @@ function getEvidencePreview(evidence: EvidenceResponse) {
     criterion: evidence.criterion,
     sourceType: evidence.sourceType,
     isOfficialData: evidence.sourceType === "event_import",
+    isLoading: Boolean(previewLoading && file),
     isFailed: evidence.indexingStatus === "failed",
+    src: previewUrl,
     officialData:
       evidence.sourceType === "event_import"
         ? {

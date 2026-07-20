@@ -65,8 +65,8 @@ const decisionOptions: Array<{
   },
   {
     value: "resolution_needed",
-    label: "Chuyển hội ý / xử lý mập mờ",
-    description: "Cần hội đồng hoặc cấp có thẩm quyền xem xét.",
+    label: "Chuyển Hội đồng xem xét",
+    description: "Cần Hội đồng hoặc cấp có thẩm quyền xem xét.",
   },
 ];
 
@@ -154,7 +154,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const needsResolutionGuard = decision === "resolution_needed" && Boolean(primaryPrecedent);
   const guardValidationMessage =
     needsResolutionGuard && !resolutionGuardReason
-      ? "Vui lòng chọn lý do vẫn chuyển Resolution."
+      ? "Vui lòng chọn lý do vẫn chuyển Hội đồng."
       : null;
   const validationMessage = decision
     ? validateDecision({
@@ -173,7 +173,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
         : submitDecision.error
           ? "Không thể gửi kết luận xét duyệt."
           : escalateResolution.error
-            ? "Không thể chuyển Resolution."
+            ? "Không thể chuyển Hội đồng."
             : null;
   const warningText = getDecisionWarning(task);
   const ctaLabel = getCtaLabel(decision);
@@ -266,7 +266,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
       const refreshed = await precedentQuery.refetch();
       const guardPrecedent = refreshed.data?.items?.[0] ?? primaryPrecedent;
       if (guardPrecedent && !resolutionGuardReason) {
-        setFormError("Vui lòng chọn lý do vẫn chuyển Resolution.");
+        setFormError("Vui lòng chọn lý do vẫn chuyển Hội đồng.");
         return;
       }
     }
@@ -299,7 +299,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
         },
         {
           onSuccess: () => {
-            const message = "Đã chuyển Resolution Hub.";
+            const message = "Đã chuyển Hội đồng xem xét.";
             setSubmittedMessage(message);
             toast.success(message);
             onSuccess?.();
@@ -623,7 +623,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
             {isSubmitting
               ? "Đang gửi..."
               : decision === "resolution_needed" && primaryPrecedent
-                ? "Vẫn chuyển Resolution"
+                ? "Vẫn chuyển Hội đồng"
                 : ctaLabel}
           </Button>
         </div>
@@ -743,7 +743,7 @@ function ResolutionGuard({
   return (
     <section className="rounded-md border border-amber-200 bg-amber-50 p-3">
       <div className="text-sm font-semibold text-amber-950">
-        Có tiền lệ phù hợp trước khi chuyển Resolution
+        Có tiền lệ phù hợp trước khi chuyển Hội đồng xem xét
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
         <Button className="min-h-11" type="button" variant="outline" onClick={onView}>
@@ -918,7 +918,7 @@ function getCtaLabel(decision: TaskDecision | "") {
   if (decision === "accepted") return "Xác nhận đạt";
   if (decision === "rejected") return "Xác nhận không đạt";
   if (decision === "supplement_required") return "Gửi yêu cầu bổ sung";
-  if (decision === "resolution_needed") return "Chuyển Resolution Hub";
+  if (decision === "resolution_needed") return "Chuyển Hội đồng xem xét";
   return "Chọn quyết định";
 }
 

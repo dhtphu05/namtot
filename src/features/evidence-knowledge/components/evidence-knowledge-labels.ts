@@ -27,7 +27,7 @@ export function getLevelLabel(level?: Level | null) {
 }
 
 export function getApprovalSourceLabel(source: EvidenceKnowledgeApprovalSource) {
-  return source === "resolution" ? "Resolution đã chấp nhận" : "Cán bộ chuyên trách đã chấp nhận";
+  return source === "resolution" ? "Hội đồng xác nhận" : "Cán bộ chuyên trách xác nhận";
 }
 
 export function getApprovalSourcesLabel(sources: EvidenceKnowledgeApprovalSource[]) {
