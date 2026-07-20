@@ -608,10 +608,12 @@ function buildAssistantSearch({
   };
 }
 
-type StudentOverviewRoute = "/app/application" | "/app/feedback";
+type StudentOverviewRoute = "/app/application" | "/app/feedback" | "/app/result";
 
 function toStudentRoute(route: string): StudentOverviewRoute {
-  return route === "/app/feedback" ? "/app/feedback" : "/app/application";
+  if (route === "/app/feedback") return "/app/feedback";
+  if (route === "/app/result") return "/app/result";
+  return "/app/application";
 }
 
 function normalizeEvidences(value: unknown): EvidenceResponse[] {

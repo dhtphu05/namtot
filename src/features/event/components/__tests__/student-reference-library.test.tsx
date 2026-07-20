@@ -61,10 +61,11 @@ describe("student evidence reference library", () => {
     assert.match(source, /criterion: nextCriterion === "all" \? undefined : nextCriterion/);
   });
 
-  it("renders compact 01-05 official criterion filters without five large cards", () => {
+  it("renders compact all plus 01-05 official criterion filters without five large cards", () => {
     const source = referenceLibrarySource();
 
     assert.match(source, /referenceCriterionOptions/);
+    assert.match(source, /value: "all",\s*number: "00",\s*label: "Tất cả"/);
     assert.match(source, /"01",\s*label: "Đạo đức tốt"/);
     assert.match(source, /"02",\s*label: "Học tập tốt"/);
     assert.match(source, /"03",\s*label: "Thể lực tốt"/);
@@ -76,23 +77,23 @@ describe("student evidence reference library", () => {
     assert.doesNotMatch(source, /grid-cols-5|criterion-specific|emerald|amber/);
   });
 
-  it("uses title-only ReferenceEventTile results with responsive two-column layout", () => {
+  it("uses compact grouped ReferenceEventTile rows with safe usage metadata", () => {
     const source = referenceLibrarySource();
 
     assert.match(source, /function ReferenceEventTile/);
-    assert.match(
-      source,
-      /type StudentReferenceEvent = Pick<OfficialEventLibraryItem, "eventId" \| "title">/,
-    );
+    assert.match(source, /"eventId" \| "title" \| "criterion" \| "approvedUsageCount"/);
     assert.match(source, /eventId: item\.eventId/);
     assert.match(source, /title: item\.title/);
-    assert.match(source, /h-\[68px\]/);
+    assert.match(source, /approvedUsageCount: item\.approvedUsageCount \?\? 0/);
+    assert.match(source, /h-\[64px\]/);
     assert.match(source, /line-clamp-2/);
-    assert.match(source, /grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2/);
+    assert.match(source, /rounded-md border border-slate-200 bg-white/);
+    assert.match(source, /ChevronRight/);
+    assert.match(source, /lượt đã được duyệt/);
     assert.match(source, /focus-visible:ring-2/);
     assert.doesNotMatch(
       source,
-      /item\.organizer|item\.organizerLevel|item\.criterion|item\.state|approvalSource|acceptedCount|ocr|reviewer|confidence/i,
+      /item\.organizer|item\.organizerLevel|item\.state|approvalSource|ocr|reviewer|confidence/i,
     );
   });
 
@@ -117,22 +118,28 @@ describe("student evidence reference library", () => {
     assert.match(guard, /return role === "student"/);
   });
 
-  it("opens the existing Add Evidence drawer with canonical reference prefill", () => {
+  it("opens the existing Add Evidence modal with canonical reference prefill and autocomplete", () => {
     const page = pageSource();
     const drawer = drawerSource();
 
     assert.match(page, /<AddEvidenceDrawer/);
     assert.match(page, /eventId: referenceEvent\.eventId/);
     assert.match(page, /title: referenceEvent\.title/);
+    assert.match(page, /criterion: referenceEvent\.criterion \?\? selectedCriterion/);
+    assert.match(page, /approvedUsageCount: referenceEvent\.approvedUsageCount \?\? 0/);
     assert.match(page, /initialCriterion=\{selectedCriterion\}/);
     assert.match(page, /initialEvidenceName=\{referenceEvent\?\.title \?\? ""\}/);
-    assert.match(page, /submitLabel=\{referenceEvent \? "Dùng tên sự kiện"/);
-    assert.match(drawer, /eventId: referenceEvent\?\.eventId/);
-    assert.match(drawer, /eventId: referenceEvent\.eventId/);
-    assert.match(drawer, /referenceEventId: referenceEvent\.eventId/);
-    assert.match(drawer, /referenceEventTitle: referenceEvent\.title/);
+    assert.match(page, /submitLabel="Thêm vào hồ sơ"/);
+    assert.match(drawer, /DialogContent/);
+    assert.match(drawer, /useOfficialEventLibrary/);
+    assert.match(drawer, /selectedReferenceEvent\?\.eventId/);
+    assert.match(drawer, /referenceEventId: selectedReferenceEvent\.eventId/);
+    assert.match(drawer, /referenceEventTitle: selectedReferenceEvent\.title/);
     assert.match(drawer, /student_reference_library/);
     assert.match(drawer, /Bạn vẫn cần tải file minh chứng của mình/);
+    assert.match(drawer, /Ghi chú cho cán bộ/);
+    assert.match(drawer, /Thay file/);
+    assert.match(drawer, /Xóa file/);
     assert.doesNotMatch(page, /Import minh chứng/);
   });
 
@@ -143,7 +150,7 @@ describe("student evidence reference library", () => {
     assert.match(page, /function ReferencePageSkeleton/);
     assert.match(page, /h-11 w-full/);
     assert.match(source, /function ReferenceEventSkeleton/);
-    assert.match(source, /h-\[68px\]/);
+    assert.match(source, /h-\[64px\]/);
     assert.match(source, /function ReferenceEventEmpty/);
     assert.match(source, /Không tìm thấy sự kiện phù hợp/);
     assert.match(source, /function ReferenceEventError/);

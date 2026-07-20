@@ -74,6 +74,7 @@ export type ReviewTaskPermissionReason =
   | "committee_resolution_view"
   | "assigned_to_you"
   | "claimable_by_specialization"
+  | "demo_specialization_access"
   | "assigned_to_other"
   | "finalized"
   | "out_of_scope"

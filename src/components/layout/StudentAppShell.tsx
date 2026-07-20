@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Bell, BookOpenCheck, FileText, LayoutDashboard, LifeBuoy } from "lucide-react";
+import { BookOpenCheck, FileText, LayoutDashboard, LifeBuoy, Trophy } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { UserWorkspaceInfo } from "@/components/layout/UserWorkspaceInfo";
 import { ApplicationContextBar } from "@/features/application/ui-v2/components";
@@ -13,7 +13,7 @@ const mobileItems = [
   { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
   { label: "Hồ sơ", to: "/app/application", icon: FileText },
   { label: "Kho minh chứng", to: "/app/event-library", icon: BookOpenCheck },
-  { label: "Phản hồi", to: "/app/feedback", icon: Bell },
+  { label: "Kết quả", to: "/app/result", icon: Trophy },
   { label: "Trợ lý", to: "/app/assistant", icon: LifeBuoy },
 ];
 

@@ -88,6 +88,22 @@ test("completion fallback", () => {
   assert.equal(state.status, "in_progress");
 });
 
+test("reviewer-owned ethics verification still shows ready before submission", () => {
+  const state = getStudentCriterionDisplayState({
+    criterion: "ethics",
+    application: { status: "draft" },
+    completion: {
+      ...completion("ethics", "ready_for_precheck"),
+      completion: { satisfied: 2, required: 2, needsVerification: 0 },
+      nextAction: null,
+    },
+  });
+  assert.equal(state.source, "completion");
+  assert.equal(state.status, "ready");
+  assert.equal(state.label, "Sẵn sàng kiểm tra");
+  assert.equal(state.primaryAction, undefined);
+});
+
 test("ONE_OF empty", () => {
   const group = oneOfGroup([]);
   const presentation = getRequirementGroupPresentation(group);
@@ -183,7 +199,13 @@ test("unknown action", () => {
 test("waiting action non-interactive", () => {
   const action = getActionPresentation({ type: "wait_for_confirmation" });
   assert.equal(action?.isInteractive, false);
-  assert.equal(action?.label, "Đang chờ nhà trường/cán bộ xác nhận");
+  assert.equal(action?.label, "Đang chờ cán bộ xác minh");
+});
+
+test("reviewer verification action is passive", () => {
+  const action = getActionPresentation({ type: "reviewer_verification" });
+  assert.equal(action?.isInteractive, false);
+  assert.equal(action?.label, "Đang chờ cán bộ xác minh");
 });
 
 test("legacy evidence", () => {

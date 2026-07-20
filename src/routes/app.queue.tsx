@@ -1055,9 +1055,11 @@ function SequentialOfficerApplicationWorkspace({
   const evidenceKey = evidenceItems.map((evidence) => evidence.id).join("|");
   const currentEvidence = evidenceItems[activeEvidenceIndex] ?? null;
   const currentDraft = currentEvidence ? evidenceDecisions[currentEvidence.id] : undefined;
-  const nextCriterion = null;
-  const resolvedCount = evidenceItems.filter((evidence) => evidenceDecisions[evidence.id]).length;
-  const allEvidenceResolved = evidenceItems.length === 0 || resolvedCount === evidenceItems.length;
+  const nextCriterion =
+    group && activeTask ? getNextActionableCriterion(group, activeTask.criterion) : null;
+  const resolvedCount = evidenceItems.filter((evidence) =>
+    isEvidenceResolvedForCriterion(evidence, evidenceDecisions),
+  ).length;
   const isApplicationEvidenceLoading = isDetailLoading;
 
   useEffect(() => {
@@ -1195,16 +1197,16 @@ function SequentialOfficerApplicationWorkspace({
         </div>
       </div>
 
-      <ReviewBottomBar
-        activeIndex={activeEvidenceIndex}
-        allEvidenceResolved={allEvidenceResolved}
-        currentDraft={currentDraft}
-        evidenceCount={evidenceItems.length}
-        mode={reviewMode}
-        onFinalize={() => setReviewMode("criterion_finalize")}
-        onNext={goToNextStep}
-        onPrevious={() => goToEvidence(activeEvidenceIndex - 1)}
-      />
+      {reviewMode === "evidence_review" ? (
+        <ReviewBottomBar
+          activeIndex={activeEvidenceIndex}
+          currentDraft={currentDraft}
+          evidenceCount={evidenceItems.length}
+          mode={reviewMode}
+          onNext={goToNextStep}
+          onPrevious={() => goToEvidence(activeEvidenceIndex - 1)}
+        />
+      ) : null}
 
       <ReviewDrawers
         activeDetail={activeDetail}
@@ -1747,26 +1749,21 @@ function EvidenceInlineDecisionForm({
 
 function ReviewBottomBar({
   activeIndex,
-  allEvidenceResolved,
   currentDraft,
   evidenceCount,
   mode,
-  onFinalize,
   onNext,
   onPrevious,
 }: {
   activeIndex: number;
-  allEvidenceResolved: boolean;
   currentDraft?: EvidenceDecisionDraft;
   evidenceCount: number;
   mode: ReviewMode;
-  onFinalize: () => void;
   onNext: () => void;
   onPrevious: () => void;
 }) {
   const isLastEvidence = evidenceCount === 0 || activeIndex >= evidenceCount - 1;
   const hasDraft = Boolean(currentDraft);
-
   return (
     <div className="mt-3 shrink-0 rounded-xl border border-[#DCE7F2] bg-white p-2 shadow-sm">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -1776,36 +1773,18 @@ function ReviewBottomBar({
             : evidenceCount
               ? `Minh chứng ${activeIndex + 1}/${evidenceCount}`
               : "Tiêu chí chưa có minh chứng"}
-          {evidenceCount > 0 && !hasDraft && mode !== "criterion_finalize" ? (
+          {evidenceCount > 0 && !hasDraft ? (
             <span className="ml-2 font-normal text-muted-foreground">
               Có thể xem tiếp trước khi lưu quyết định.
             </span>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            disabled={activeIndex <= 0 || mode === "criterion_finalize"}
-            type="button"
-            variant="outline"
-            onClick={onPrevious}
-          >
+          <Button disabled={activeIndex <= 0} type="button" variant="outline" onClick={onPrevious}>
             Trước
           </Button>
-          <Button
-            disabled={mode === "criterion_finalize"}
-            type="button"
-            variant="outline"
-            onClick={onNext}
-          >
+          <Button disabled={false} type="button" variant="outline" onClick={onNext}>
             {isLastEvidence ? "Đi tới chốt tiêu chí" : "Minh chứng tiếp theo"}
-          </Button>
-          <Button
-            disabled={!allEvidenceResolved}
-            type="button"
-            variant="default"
-            onClick={onFinalize}
-          >
-            Chốt tiêu chí
           </Button>
         </div>
       </div>
@@ -1836,11 +1815,54 @@ function CriterionFinalizationPanel({
   const [decision, setDecision] = useState<EvidenceDecisionStatus>("accepted");
   const [note, setNote] = useState("");
   const summary = getEvidenceDecisionSummary(evidences, decisions);
-  const unresolvedCount = evidences.filter((evidence) => !decisions[evidence.id]).length;
+  const unresolvedCount = evidences.filter(
+    (evidence) => !isEvidenceResolvedForCriterion(evidence, decisions),
+  ).length;
+  const recommendedDecision = getRecommendedCriterionDecision(summary);
+  const effectiveDecision = unresolvedCount > 0 ? decision : recommendedDecision;
   const canAct = Boolean(activeTask.permissions?.canAct);
-  const noteRequired = decision !== "accepted";
+  const noteRequired = effectiveDecision !== "accepted";
   const canSubmit =
     canAct && activeDetail && unresolvedCount === 0 && (!noteRequired || note.trim().length >= 10);
+
+  useEffect(() => {
+    if (unresolvedCount === 0) setDecision(recommendedDecision);
+  }, [recommendedDecision, unresolvedCount]);
+
+  const submitCriterionDecision = () => {
+    if (!activeDetail) return;
+    submitDecision.mutate(
+      {
+        payload: {
+          decision: effectiveDecision,
+          officerSuggestedLevel:
+            effectiveDecision === "accepted" ? activeDetail.application.targetLevel : null,
+          note:
+            note.trim() ||
+            `Đã xét ${evidences.length} minh chứng cho tiêu chí ${getCriterionLabel(activeTask.criterion)}.`,
+          supplementRequestJson:
+            effectiveDecision === "supplement_required"
+              ? { evidenceDecisions: Object.values(decisions) }
+              : undefined,
+          evidenceDecisions: buildEvidenceDecisionPayloads(evidences, decisions),
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Đã chốt tiêu chí.");
+          if (nextCriterion) onSelectCriterion(nextCriterion);
+        },
+        onError: (error) => {
+          toast.error(getErrorMessage(error, "Không thể chốt tiêu chí. Vui lòng thử lại."));
+        },
+      },
+    );
+  };
+  const submitLabel = submitDecision.isPending
+    ? "Đang gửi..."
+    : nextCriterion
+      ? `${getCriterionDecisionCta(effectiveDecision)} và sang tiêu chí tiếp theo`
+      : getCriterionDecisionCta(effectiveDecision);
 
   if (!activeDetail) {
     return (
@@ -1925,54 +1947,26 @@ function CriterionFinalizationPanel({
           </button>
         ))}
       </div>
+      <div className="mt-4 flex flex-col gap-2 rounded-xl border border-[#DCE7F2] bg-[#F8FBFF] p-3 md:flex-row md:items-center md:justify-between">
+        <div className="text-sm text-muted-foreground">
+          {unresolvedCount
+            ? "Cần xử lý hết minh chứng trước khi chốt tiêu chí."
+            : "Cán bộ xác nhận quyết định cuối cùng cho tiêu chí này."}
+        </div>
+        <Button
+          disabled={!canSubmit || submitDecision.isPending}
+          type="button"
+          onClick={submitCriterionDecision}
+        >
+          {submitLabel}
+        </Button>
+      </div>
       <textarea
         className="mt-4 min-h-28 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm outline-none focus:border-[#0057C2]"
         placeholder="Ghi chú xét duyệt tiêu chí..."
         value={note}
         onChange={(event) => setNote(event.target.value)}
       />
-      <div className="mt-4 flex flex-wrap justify-end gap-2">
-        <Button
-          disabled={!canSubmit || submitDecision.isPending}
-          type="button"
-          onClick={() => {
-            submitDecision.mutate(
-              {
-                payload: {
-                  decision,
-                  officerSuggestedLevel:
-                    decision === "accepted" ? activeDetail.application.targetLevel : null,
-                  note:
-                    note.trim() ||
-                    `Đã xét ${evidences.length} minh chứng cho tiêu chí ${getCriterionLabel(activeTask.criterion)}.`,
-                  supplementRequestJson:
-                    decision === "supplement_required"
-                      ? { evidenceDecisions: Object.values(decisions) }
-                      : undefined,
-                  evidenceDecisions: evidences.map((evidence) => ({
-                    evidenceId: evidence.id,
-                    status: mapEvidenceDecisionToPayload(
-                      decisions[evidence.id]?.status ?? "rejected",
-                    ),
-                    note: decisions[evidence.id]?.note || decisions[evidence.id]?.reason,
-                  })),
-                },
-              },
-              {
-                onSuccess: () => {
-                  toast.success("Đã chốt tiêu chí.");
-                  if (nextCriterion) onSelectCriterion(nextCriterion);
-                },
-                onError: (error) => {
-                  toast.error(getErrorMessage(error, "Không thể chốt tiêu chí. Vui lòng thử lại."));
-                },
-              },
-            );
-          }}
-        >
-          {submitDecision.isPending ? "Đang gửi..." : getCriterionDecisionCta(decision)}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -3862,8 +3856,31 @@ function getNextUnresolvedEvidenceIndex(
   evidences: ReviewEvidence[],
   decisions: Record<string, EvidenceDecisionDraft>,
 ) {
-  const index = evidences.findIndex((evidence) => !decisions[evidence.id]);
+  const index = evidences.findIndex(
+    (evidence) => !isEvidenceResolvedForCriterion(evidence, decisions),
+  );
   return index >= 0 ? index : 0;
+}
+
+function getExistingEvidenceDecision(evidence: ReviewEvidence): EvidenceDecisionStatus | null {
+  if (evidence.status === "accepted") return "accepted";
+  if (evidence.status === "rejected") return "rejected";
+  if (evidence.status === "resolution_needed") return "resolution_needed";
+  return null;
+}
+
+function getEffectiveEvidenceDecision(
+  evidence: ReviewEvidence,
+  decisions: Record<string, EvidenceDecisionDraft>,
+): EvidenceDecisionStatus | null {
+  return decisions[evidence.id]?.status ?? getExistingEvidenceDecision(evidence);
+}
+
+function isEvidenceResolvedForCriterion(
+  evidence: ReviewEvidence,
+  decisions: Record<string, EvidenceDecisionDraft>,
+) {
+  return Boolean(getEffectiveEvidenceDecision(evidence, decisions));
 }
 
 function getEvidenceDecisionLabel(status: EvidenceDecisionStatus) {
@@ -3901,7 +3918,7 @@ function getEvidenceDecisionSummary(
 ) {
   return evidences.reduce(
     (summary, evidence) => {
-      const status = decisions[evidence.id]?.status;
+      const status = getEffectiveEvidenceDecision(evidence, decisions);
       if (status === "accepted") summary.accepted += 1;
       if (status === "supplement_required") summary.supplementRequired += 1;
       if (status === "rejected") summary.rejected += 1;
@@ -3910,6 +3927,33 @@ function getEvidenceDecisionSummary(
     },
     { accepted: 0, supplementRequired: 0, rejected: 0, resolutionNeeded: 0 },
   );
+}
+
+function getRecommendedCriterionDecision(
+  summary: ReturnType<typeof getEvidenceDecisionSummary>,
+): EvidenceDecisionStatus {
+  if (summary.resolutionNeeded > 0) return "resolution_needed";
+  if (summary.supplementRequired > 0) return "supplement_required";
+  if (summary.rejected > 0 && summary.accepted === 0) return "rejected";
+  return "accepted";
+}
+
+function buildEvidenceDecisionPayloads(
+  evidences: ReviewEvidence[],
+  decisions: Record<string, EvidenceDecisionDraft>,
+) {
+  return evidences
+    .map((evidence) => {
+      const draft = decisions[evidence.id];
+      const status = draft?.status ?? getExistingEvidenceDecision(evidence);
+      if (!status) return null;
+      return {
+        evidenceId: evidence.id,
+        status: mapEvidenceDecisionToPayload(status),
+        note: draft?.note || draft?.reason || evidence.reviewerNote || evidence.note || undefined,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
 }
 
 function getSystemFinalizationSuggestion(

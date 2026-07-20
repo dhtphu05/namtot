@@ -79,7 +79,12 @@ const organizerLevelLabel: Record<Level, string> = {
   central: "Cấp Trung ương",
 };
 
-const referenceCriterionOptions: Array<{ value: Criterion; number: string; label: string }> = [
+const referenceCriterionOptions: Array<{
+  value: Criterion | "all";
+  number: string;
+  label: string;
+}> = [
+  { value: "all", number: "00", label: "Tất cả" },
   { value: "ethics", number: "01", label: "Đạo đức tốt" },
   { value: "academic", number: "02", label: "Học tập tốt" },
   { value: "physical", number: "03", label: "Thể lực tốt" },
@@ -98,7 +103,10 @@ type StudentReferenceEventLibraryProps = {
   onAddEvidence: () => void;
 };
 
-type StudentReferenceEvent = Pick<OfficialEventLibraryItem, "eventId" | "title">;
+type StudentReferenceEvent = Pick<
+  OfficialEventLibraryItem,
+  "eventId" | "title" | "criterion" | "approvedUsageCount"
+>;
 
 export function StudentReferenceEventLibrary({
   applicationId,
@@ -126,8 +134,11 @@ export function StudentReferenceEventLibrary({
   const items: StudentReferenceEvent[] = (library.data?.items ?? []).map((item) => ({
     eventId: item.eventId,
     title: item.title,
+    criterion: item.criterion,
+    approvedUsageCount: item.approvedUsageCount ?? 0,
   }));
   const hasFilter = Boolean(debouncedSearch.trim() || criterion !== "all");
+  const resultCount = library.data?.total ?? items.length;
 
   return (
     <section className="min-w-0" aria-label="Tra cứu kho minh chứng">
@@ -183,10 +194,15 @@ export function StudentReferenceEventLibrary({
             onAddEvidence={onAddEvidence}
           />
         ) : (
-          <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2">
-            {items.map((item) => (
-              <ReferenceEventTile key={item.eventId} item={item} onSelect={onSelect} />
-            ))}
+          <div className="min-w-0">
+            <div className="mb-2 text-sm font-medium text-[var(--text-secondary)]">
+              {resultCount} kết quả phù hợp
+            </div>
+            <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
+              {items.map((item) => (
+                <ReferenceEventTile key={item.eventId} item={item} onSelect={onSelect} />
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -199,7 +215,7 @@ export function ReferenceCriterionFilter({
   onChange,
 }: {
   value: Criterion | "all";
-  onChange: (criterion: Criterion) => void;
+  onChange: (criterion: Criterion | "all") => void;
 }) {
   return (
     <div className="mt-4 min-w-0 overflow-x-auto pb-1" data-reference-criterion-filter>
@@ -225,9 +241,9 @@ export function ReferenceCriterionFilter({
               onClick={() => onChange(option.value)}
             >
               <span className="text-xs font-semibold text-[var(--text-muted)]">
-                {option.number}
+                {option.value === "all" ? "Tất cả" : option.number}
               </span>
-              <span>{option.label}</span>
+              {option.value !== "all" ? <span>{option.label}</span> : null}
             </button>
           );
         })}
@@ -246,10 +262,17 @@ export function ReferenceEventTile({
   return (
     <button
       type="button"
-      className="flex h-[68px] w-full min-w-0 items-center rounded-md border border-slate-200 bg-white px-4 text-left text-sm font-semibold leading-5 text-[var(--text-primary)] transition-colors hover:border-slate-300 hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+      className="flex h-[64px] w-full min-w-0 items-center gap-3 border-b border-slate-200 px-4 text-left text-sm leading-5 text-[var(--text-primary)] transition-colors last:border-b-0 hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
       onClick={() => onSelect(item)}
     >
-      <span className="line-clamp-2 min-w-0">{item.title}</span>
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 font-semibold">{item.title}</span>
+        <span className="mt-0.5 flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--text-secondary)]">
+          <span>{getReferenceCriterionLabel(item.criterion)}</span>
+          <span>{item.approvedUsageCount ?? 0} lượt đã được duyệt</span>
+        </span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
     </button>
   );
 }
@@ -257,13 +280,27 @@ export function ReferenceEventTile({
 export function ReferenceEventSkeleton() {
   return (
     <div
-      className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2"
+      className="overflow-hidden rounded-md border border-slate-200 bg-white"
       aria-label="Đang tải kho minh chứng"
     >
       {Array.from({ length: 8 }).map((_, index) => (
-        <Skeleton key={index} className="h-[68px] rounded-md" />
+        <div
+          key={index}
+          className="flex h-[64px] items-center border-b border-slate-200 px-4 last:border-b-0"
+        >
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-4 w-4/5 rounded-md" />
+            <Skeleton className="h-3 w-1/2 rounded-md" />
+          </div>
+        </div>
       ))}
     </div>
+  );
+}
+
+function getReferenceCriterionLabel(criterion?: Criterion) {
+  return (
+    referenceCriterionOptions.find((item) => item.value === criterion)?.label ?? "Chưa xác định"
   );
 }
 

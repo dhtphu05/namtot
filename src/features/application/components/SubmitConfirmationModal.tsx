@@ -50,8 +50,8 @@ export function SubmitConfirmationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6">
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-[#E3ECF6] px-5 py-4">
+      <div className="flex max-h-[calc(100dvh-32px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+        <div className="shrink-0 flex items-start justify-between gap-4 border-b border-[#E3ECF6] px-5 py-4">
           <div className="min-w-0">
             <Chip tone={isSupplement ? "brand" : "warning"}>{copy.badge}</Chip>
             <h3 className="mt-2 text-xl font-bold text-brand-deep">{copy.title}</h3>
@@ -67,7 +67,7 @@ export function SubmitConfirmationModal({
           </button>
         </div>
 
-        <div className="max-h-[calc(92vh-150px)] space-y-5 overflow-y-auto px-5 py-5">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
           {isLocked && (
             <div className="rounded-lg border border-[#E3ECF6] bg-[#F6F9FC] px-4 py-3 text-sm text-brand-deep">
               {mode === "completed"
@@ -139,7 +139,7 @@ export function SubmitConfirmationModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-[#E3ECF6] px-5 py-4">
+        <div className="shrink-0 flex flex-col-reverse gap-2 border-t border-[#E3ECF6] bg-white px-5 py-4 sm:flex-row sm:justify-end">
           <Button variant="ghost" onClick={onCancel} disabled={pending}>
             {secondaryLabel}
           </Button>

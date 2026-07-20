@@ -96,6 +96,8 @@ export function EvidenceCardV2({
 }) {
   const previewKind = "kind" in preview ? preview.kind : getEvidencePreviewKind(preview);
   const officialData = "officialData" in preview ? preview.officialData : undefined;
+  const previewMimeType = "mimeType" in preview ? preview.mimeType : undefined;
+  const previewFileName = "fileName" in preview ? preview.fileName : undefined;
 
   return (
     <article
@@ -109,6 +111,8 @@ export function EvidenceCardV2({
         src={preview.src}
         alt={preview.alt ?? title}
         title={title}
+        mimeType={previewMimeType}
+        fileName={previewFileName}
         officialData={officialData}
         onOpen={onOpen}
       />
@@ -176,11 +180,15 @@ export function EvidenceThumbnail({
   title,
   officialData,
   onOpen,
+  mimeType,
+  fileName,
 }: {
   kind: EvidencePreviewKind;
   src?: string;
   alt: string;
   title: string;
+  mimeType?: string | null;
+  fileName?: string | null;
   officialData?: OfficialDataTileProps;
   onOpen?: () => void;
 }) {
@@ -191,7 +199,14 @@ export function EvidenceThumbnail({
       onClick={onOpen}
       aria-label={`Xem minh chứng ${title}`}
     >
-      <EvidencePreviewFrame kind={kind} src={src} alt={alt} officialData={officialData} />
+      <EvidencePreviewFrame
+        kind={kind}
+        src={src}
+        alt={alt}
+        mimeType={mimeType}
+        fileName={fileName}
+        officialData={officialData}
+      />
       <span className="absolute inset-0 flex items-center justify-center bg-[rgba(22,32,51,0.10)] opacity-100 transition-opacity duration-[120ms] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-visible:opacity-100">
         <span className="inline-flex min-h-11 items-center gap-2 rounded-[var(--student-v2-radius-pill)] bg-[var(--student-v2-surface-primary)] px-4 text-[13px] font-semibold leading-[18px] text-[var(--student-v2-institutional-blue)]">
           <Eye className="h-4 w-4" aria-hidden="true" />
@@ -206,11 +221,15 @@ function EvidencePreviewFrame({
   kind,
   src,
   alt,
+  mimeType,
+  fileName,
   officialData,
 }: {
   kind: EvidencePreviewKind;
   src?: string;
   alt: string;
+  mimeType?: string | null;
+  fileName?: string | null;
   officialData?: OfficialDataTileProps;
 }) {
   if (kind === "loading") {
@@ -239,6 +258,21 @@ function EvidencePreviewFrame({
   }
 
   if (kind === "document" && src) {
+    if (isPdfPreview(mimeType, fileName)) {
+      return (
+        <iframe
+          src={src}
+          title={alt}
+          loading="lazy"
+          className="pointer-events-none h-full w-full border-0 bg-white"
+        />
+      );
+    }
+
+    return <img src={src} alt={alt} loading="lazy" className="h-full w-full object-contain p-3" />;
+  }
+
+  if (kind === "unknown" && src && isImagePreview(mimeType, fileName)) {
     return <img src={src} alt={alt} loading="lazy" className="h-full w-full object-contain p-3" />;
   }
 
@@ -259,6 +293,16 @@ function EvidencePreviewFrame({
             : "Tài liệu minh chứng"
       }
     />
+  );
+}
+
+function isPdfPreview(mimeType?: string | null, fileName?: string | null) {
+  return mimeType === "application/pdf" || Boolean(fileName && /\.pdf$/i.test(fileName));
+}
+
+function isImagePreview(mimeType?: string | null, fileName?: string | null) {
+  return Boolean(
+    mimeType?.startsWith("image/") || (fileName && /\.(png|jpe?g|webp|gif)$/i.test(fileName)),
   );
 }
 

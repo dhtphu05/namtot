@@ -167,6 +167,7 @@ export type OfficialEventLibraryItem = {
   organizer?: string | null;
   organizerLevel?: string | null;
   criterion?: Criterion;
+  approvedUsageCount?: number;
   state?: OfficialEventLibraryState;
   evidenceId?: string | null;
 };

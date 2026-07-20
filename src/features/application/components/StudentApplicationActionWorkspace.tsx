@@ -25,6 +25,7 @@ import {
   useCurrentApplication,
   useCriteriaCompletion,
   useAddIntegrationPathResponse,
+  useAddPhysicalPathEvidence,
   useAddVolunteerActivity,
   useDeclareAcademicGpa,
   useDeclareEthicsConductScore,
@@ -214,6 +215,7 @@ export function StudentApplicationActionWorkspace() {
   const declareEthicsConductScore = useDeclareEthicsConductScore();
   const declareAcademicGpa = useDeclareAcademicGpa();
   const declarePhysicalCourseResult = useDeclarePhysicalCourseResult();
+  const addPhysicalPathEvidence = useAddPhysicalPathEvidence();
   const addVolunteerActivity = useAddVolunteerActivity();
   const addIntegrationPathResponse = useAddIntegrationPathResponse();
   const runPrecheck = usePrecheck();
@@ -329,8 +331,10 @@ export function StudentApplicationActionWorkspace() {
   const canEditSelectedCriterion = canEditApplication && !isSelectedLocked;
   const selectedSupportsOfficialEventImport = supportsOfficialEventImport(selectedCompletion);
   const completedCriteria = criteriaStates.filter((item) => item.status === "ok").length;
+  const canSubmitPrecheckedApplication = application?.status === "prechecked";
   const hasSubmitCta =
     application?.status === "ready_to_submit" ||
+    canSubmitPrecheckedApplication ||
     (canSubmitApplication && completedCriteria === coreStudentCriteria.length);
 
   useEffect(() => {
@@ -540,7 +544,7 @@ export function StudentApplicationActionWorkspace() {
         }
       />
 
-      <div className="space-y-5 pb-8">
+      <div className="space-y-4 pb-6">
         <ApplicationMiniStatusBar
           application={application}
           completedCriteria={completedCriteria}
@@ -574,7 +578,7 @@ export function StudentApplicationActionWorkspace() {
           />
         ) : null}
 
-        <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[220px_minmax(0,1fr)_280px] 2xl:grid-cols-[240px_minmax(0,1fr)_300px]">
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[220px_minmax(0,1fr)_280px] 2xl:grid-cols-[240px_minmax(0,1fr)_300px]">
           <CriteriaSidebar
             criteriaStates={criteriaStates}
             activeCriterion={selectedCriterion}
@@ -662,6 +666,8 @@ export function StudentApplicationActionWorkspace() {
         </div>
 
         <BottomActionBar
+          activeCriterion={selectedCriterion}
+          activeState={selectedState}
           nextActions={nextActions}
           isReadonly={isReadonlyStatus && !isSupplementMode}
           isPrechecking={runPrecheck.isPending}
@@ -719,6 +725,16 @@ export function StudentApplicationActionWorkspace() {
             const nextEvidence = normalizeOptimisticEvidence(created, application.id);
             setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
             selectCriterion(nextEvidence.criterion, setSelectedCriterion);
+            if (
+              nextEvidence.criterion === "physical" &&
+              isPhysicalPathRequirementKey(evidenceDrawerContext.requirementKey)
+            ) {
+              addPhysicalPathEvidence.mutate({
+                id: application.id,
+                requirementKey: evidenceDrawerContext.requirementKey,
+                evidenceId: nextEvidence.id,
+              });
+            }
             void evidencesQuery.refetch();
           }}
         />
@@ -1071,14 +1087,14 @@ function CriterionWorkspace({
 
   return (
     <main className="min-w-0">
-      <SectionCard className="min-w-0">
-        <div className="flex min-w-0 flex-col gap-4">
+      <SectionCard className="min-w-0 p-4">
+        <div className="flex min-w-0 flex-col gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl font-bold text-[var(--text-primary)]">{state.label}</h2>
               <StatusBadge tone={state.tone} label={state.statusLabel} />
             </div>
-            <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
+            <p className="mt-1 line-clamp-2 max-w-3xl text-sm leading-5 text-[var(--text-secondary)]">
               {state.description || getCriterionShortDescription(state)}
             </p>
           </div>
@@ -1215,7 +1231,7 @@ function CriterionWorkspace({
         ) : null}
       </SectionCard>
 
-      <SectionCard title="Minh chứng đã có" className="mt-5 min-w-0">
+      <SectionCard title="Minh chứng đã có" className="mt-4 min-w-0 p-4">
         {evidenceLoading ? (
           <EvidenceSkeletonList />
         ) : evidenceError ? (
@@ -1243,7 +1259,7 @@ function CriterionWorkspace({
             }
           />
         ) : (
-          <div className="grid min-w-0 gap-3">
+          <div className="grid min-w-0 gap-2.5">
             {evidences.map((evidence) => (
               <StudentEvidenceCard
                 key={evidence.id}
@@ -2272,7 +2288,10 @@ function EthicsRequirementRow({
   source: string;
   action: ReactNode;
 }) {
-  const status = mapRequirementStatus(requirement?.status ?? "not_started");
+  const status =
+    requirement?.key === "no_violation"
+      ? mapNoViolationRequirementStatus(requirement)
+      : mapRequirementStatus(requirement?.status ?? "not_started");
   return (
     <div className="grid min-w-0 gap-3 px-3 py-3 md:grid-cols-[1fr_120px_120px_minmax(170px,1.3fr)] md:items-center">
       <div className="min-w-0">
@@ -2366,6 +2385,8 @@ function GuideBlock({ title, items }: { title: string; items: string[] }) {
 }
 
 function BottomActionBar({
+  activeCriterion,
+  activeState,
   nextActions,
   isReadonly,
   isPrechecking,
@@ -2376,6 +2397,8 @@ function BottomActionBar({
   onPrecheck,
   onSubmit,
 }: {
+  activeCriterion: Criterion;
+  activeState: CriteriaState;
   nextActions: NextAction[];
   isReadonly: boolean;
   isPrechecking: boolean;
@@ -2386,6 +2409,17 @@ function BottomActionBar({
   onPrecheck: () => void;
   onSubmit: () => void;
 }) {
+  const criterionAction = nextActions.find((action) => action.criterionKey === activeCriterion);
+  const displayedAction = criterionAction ?? nextActions[0];
+  const shouldShowDisplayedAction = Boolean(
+    displayedAction && (criterionAction || activeState.status !== "ok"),
+  );
+  const title =
+    criterionAction?.title ??
+    (activeState.status === "ok"
+      ? `${activeState.label} đã có đủ dữ liệu. Bạn có thể kiểm tra hồ sơ hoặc chuyển sang tiêu chí còn thiếu.`
+      : (displayedAction?.title ?? "Kiểm tra nhanh trước khi nộp chính thức."));
+
   if (isReadonly) {
     return (
       <InlineAlert
@@ -2396,20 +2430,20 @@ function BottomActionBar({
     );
   }
   return (
-    <SectionCard className="p-4">
-      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="text-sm font-bold text-[var(--text-primary)]">Bước tiếp theo</div>
-          <p className="mt-1 line-clamp-2 text-sm text-[var(--text-secondary)]">
-            {nextActions[0]?.title ?? "Kiểm tra nhanh trước khi nộp chính thức."}
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[var(--text-secondary)]">
+            {title}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          {nextActions[0]?.isInteractive === false ? (
-            <StatusBadge tone="info" label={nextActions[0].actionLabel} />
-          ) : nextActions[0] ? (
-            <AppButton onClick={() => onAction(nextActions[0])} variant="secondary" size="sm">
-              {nextActions[0].actionLabel}
+          {shouldShowDisplayedAction && displayedAction?.isInteractive === false ? (
+            <StatusBadge tone="info" label={displayedAction.actionLabel} />
+          ) : shouldShowDisplayedAction && displayedAction ? (
+            <AppButton onClick={() => onAction(displayedAction)} variant="secondary" size="sm">
+              {displayedAction.actionLabel}
             </AppButton>
           ) : null}
           <AppButton onClick={onPrecheck} disabled={isPrechecking} variant="secondary" size="sm">
@@ -2432,7 +2466,7 @@ function BottomActionBar({
           ) : null}
         </div>
       </div>
-    </SectionCard>
+    </div>
   );
 }
 
@@ -2482,8 +2516,9 @@ function getRequirementDisplayValue(requirement?: RequirementItem) {
     return `${payload.value}/${scale}`;
   }
   if (requirement?.key === "no_violation") {
-    if (requirement.status === "verified") return "Không vi phạm đã xác nhận";
-    if (requirement.status === "rejected") return "Có vi phạm đã ghi nhận";
+    if (requirement.status === "verified") return "Không vi phạm đã được xác minh";
+    if (requirement.status === "rejected") return "Có ghi nhận cần xử lý";
+    if (isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt xác minh";
     if (requirement.status === "needs_verification") return "Đang chờ xác minh";
   }
   return undefined;
@@ -2504,6 +2539,7 @@ function getDisplayRequirementSourceLabel(requirement?: RequirementItem) {
 
 function getRequirementSourceLabel(requirement?: RequirementItem) {
   const response = getLatestRequirementResponse(requirement);
+  if (!response && isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt";
   if (!response) return "Chưa có";
   const payload = toRecord(response.payloadJson);
   const sourceType = typeof payload.sourceType === "string" ? payload.sourceType : undefined;
@@ -2513,14 +2549,34 @@ function getRequirementSourceLabel(requirement?: RequirementItem) {
   if (response.responseKind === "legacy_event" || response.responseKind === "official_event") {
     return "Sự kiện xác nhận";
   }
-  if (response.responseKind === "system_confirmation") return "Nhà trường";
+  if (response.responseKind === "system_confirmation") return "Cán bộ xét duyệt";
   return response.source === "legacy" ? "Dữ liệu đã có" : "Khai báo";
 }
 
 function noViolationActionLabel(requirement?: RequirementItem) {
   if (requirement?.status === "rejected") return "Bổ sung giấy xác nhận theo yêu cầu cán bộ";
-  if (requirement?.status === "verified") return "Đã được nhà trường xác nhận";
-  return requirement?.nextAction?.label ?? "Chờ nhà trường xác nhận tình trạng vi phạm";
+  if (requirement?.status === "verified") return "Đã được cán bộ xác minh";
+  if (isReviewerOwnedRequirement(requirement)) {
+    return "Cán bộ xét duyệt sẽ xác minh sau khi nộp hồ sơ";
+  }
+  return requirement?.nextAction?.label ?? "Chờ cán bộ xác minh tình trạng vi phạm";
+}
+
+function mapNoViolationRequirementStatus(requirement?: RequirementItem): {
+  label: string;
+  tone: CriteriaState["tone"];
+} {
+  if (requirement?.status === "verified") return { label: "Đã xác minh", tone: "good" };
+  if (requirement?.status === "rejected") return { label: "Cần xử lý", tone: "danger" };
+  if (isReviewerOwnedRequirement(requirement)) return { label: "Chờ cán bộ", tone: "info" };
+  return mapRequirementStatus(requirement?.status ?? "not_started");
+}
+
+function isReviewerOwnedRequirement(requirement?: RequirementItem) {
+  return (
+    requirement?.blocksSubmission === false &&
+    (requirement.responsibility === "reviewer" || requirement.responsibility === "committee")
+  );
 }
 
 function academicGpaStatusLabel(requirement?: RequirementItem) {
@@ -2719,7 +2775,7 @@ function mapCompletionStatus(status: CriterionCompletionItem["status"]): {
 } {
   if (status === "accepted") return { status: "ok", label: "Đã xác nhận", tone: "good" };
   if (status === "ready_for_precheck") {
-    return { status: "ok", label: "Sẵn sàng tiền kiểm", tone: "good" };
+    return { status: "ok", label: "Đủ dữ liệu", tone: "good" };
   }
   if (status === "needs_verification") {
     return { status: "needs_review", label: "Cần xác minh", tone: "warning" };
@@ -2756,6 +2812,21 @@ function mapSupplementRequests(tasks: ApplicationReviewTaskSummary[]): Supplemen
       deadline: task.supplementRequestJson?.deadline ?? task.dueDate ?? null,
       requestedFields: task.supplementRequestJson?.requestedFields ?? [],
     }));
+}
+
+function isPhysicalPathRequirementKey(
+  value?: string,
+): value is
+  | "healthy_student_title"
+  | "sports_activity_or_award"
+  | "sports_team_member"
+  | "regular_sports_training" {
+  return (
+    value === "healthy_student_title" ||
+    value === "sports_activity_or_award" ||
+    value === "sports_team_member" ||
+    value === "regular_sports_training"
+  );
 }
 
 function normalizeEvidences(value: unknown): EvidenceResponse[] {

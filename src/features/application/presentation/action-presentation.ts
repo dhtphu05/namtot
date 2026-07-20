@@ -43,7 +43,7 @@ const copy: Record<
     interactive: true,
   },
   wait_for_confirmation: {
-    label: "Đang chờ nhà trường/cán bộ xác nhận",
+    label: "Đang chờ cán bộ xác minh",
     description: "Bạn chưa cần thao tác ở bước này.",
     interactive: false,
   },
@@ -74,8 +74,12 @@ export function getActionPresentation(
 ): PresentationAction | undefined {
   if (!action) return undefined;
   const rawType = typeof action.type === "string" ? action.type : "";
-  const type = knownActions.has(rawType as PresentationActionKind)
-    ? (rawType as PresentationActionKind)
+  const normalizedType =
+    rawType === "reviewer_verification" || rawType === "wait_system_confirmation"
+      ? "wait_for_confirmation"
+      : rawType;
+  const type = knownActions.has(normalizedType as PresentationActionKind)
+    ? (normalizedType as PresentationActionKind)
     : "unknown";
   const base = copy[type];
   return {

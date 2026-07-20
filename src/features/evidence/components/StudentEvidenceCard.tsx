@@ -23,6 +23,7 @@ import {
   getFileName,
   getPrimaryFile,
   isImageFile,
+  isPdfFile,
   sourceTypeLabel,
   studentCriterionLabel,
 } from "./student-evidence-utils";
@@ -65,7 +66,7 @@ export function StudentEvidenceCard({
   useEffect(() => {
     let active = true;
     setPreviewUrl(null);
-    if (!primaryFile?.id || !isImageFile(primaryFile)) return;
+    if (!primaryFile?.id || (!isImageFile(primaryFile) && !isPdfFile(primaryFile))) return;
 
     evidenceApi
       .getSignedFileUrl(primaryFile.id)
@@ -119,7 +120,7 @@ export function StudentEvidenceCard({
   };
 
   return (
-    <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-[#9FC4EA]">
+    <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:border-[#9FC4EA]">
       <input
         ref={inputRef}
         type="file"
@@ -129,12 +130,22 @@ export function StudentEvidenceCard({
         disabled={!canEdit || uploadFile.isPending}
       />
 
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-[#F8FBFE] text-[#0057C2] sm:w-28"
-          onClick={() => onViewDetails(evidence)}
-          disabled={isBusy}
+      <div className="flex min-w-0 flex-col gap-3 md:flex-row">
+        <div
+          role="button"
+          tabIndex={isBusy ? -1 : 0}
+          className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-[#F8FBFE] text-[#0057C2] md:w-40"
+          onClick={() => {
+            if (!isBusy) onViewDetails(evidence);
+          }}
+          onKeyDown={(event) => {
+            if (isBusy) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onViewDetails(evidence);
+            }
+          }}
+          aria-label="Xem minh chứng"
           title="Xem minh chứng"
         >
           {uploadFile.isPending ? (
@@ -145,15 +156,21 @@ export function StudentEvidenceCard({
             <img
               src={previewUrl}
               alt={evidence.evidenceName}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
+            />
+          ) : previewUrl && primaryFile && isPdfFile(primaryFile) ? (
+            <iframe
+              title={evidence.evidenceName}
+              src={previewUrl}
+              className="pointer-events-none h-full w-full bg-white"
             />
           ) : (
             <PreviewFallback evidence={evidence} fileName={getFileName(primaryFile)} />
           )}
-        </button>
+        </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-2">
             <div className="min-w-0">
               {renaming ? (
                 <div className="flex min-w-0 gap-2">
@@ -182,7 +199,7 @@ export function StudentEvidenceCard({
                   : (sourceTypeLabel[evidence.sourceType] ?? "Nguồn khác")}
               </p>
             </div>
-            <div className="shrink-0">
+            <div>
               <StatusBadge
                 tone={PRESENTATION_SEMANTICS_V2 ? display.tone : status.tone}
                 label={PRESENTATION_SEMANTICS_V2 ? display.statusLabel : status.label}
