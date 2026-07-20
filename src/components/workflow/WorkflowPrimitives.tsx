@@ -17,7 +17,9 @@ export function SummaryCard({
   tone?: "default" | "warning" | "success" | "info" | "error";
 }) {
   return (
-    <section className={`rounded-2xl p-4 shadow-[var(--shadow-card)] md:p-5 ${summaryToneClass[tone]}`}>
+    <section
+      className={`rounded-2xl p-4 shadow-[var(--shadow-card)] md:p-5 ${summaryToneClass[tone]}`}
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -49,7 +51,9 @@ export function NextActionList({
         {children || (
           <EmptyState
             title="Không có việc cần xử lý"
-            description={emptyText ?? "Các việc cần làm sẽ hiển thị tại đây khi hệ thống có dữ liệu mới."}
+            description={
+              emptyText ?? "Các việc cần làm sẽ hiển thị tại đây khi hệ thống có dữ liệu mới."
+            }
           />
         )}
       </div>
@@ -101,7 +105,9 @@ export function EmptyState({
   return (
     <div className="rounded-xl bg-[var(--surface-muted)] px-4 py-5 text-center">
       <div className="font-semibold text-brand-deep">{title}</div>
-      {description ? <p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-[#475569]">{description}</p> : null}
+      {description ? (
+        <p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-[#475569]">{description}</p>
+      ) : null}
       {actionLabel && onAction ? (
         <Button className="mt-3" size="sm" variant="secondary" onClick={onAction}>
           {actionLabel}

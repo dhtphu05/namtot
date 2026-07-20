@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { Bot, Send, User } from "lucide-react";
-import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
 import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
@@ -71,8 +70,11 @@ export function SmartbotPanel({
   const [isSending, setIsSending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const composerId = useId();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { trackAction, trackClick } = useSmartUXTracking();
+  const suggestions = quickPrompts ?? providedDefaultPrompts ?? defaultSuggestions;
+  const hasConversationStarted = messages.some((message) => message.from === "user");
   const smartUXRole = contextScope === "reviewer_copilot" ? "officer" : "student";
   const smartUXOpenTag =
     contextScope === "reviewer_copilot" ? "officer_use_ai_draft" : "student_open_chatbot";
@@ -201,15 +203,36 @@ export function SmartbotPanel({
   };
 
   return (
-    <>
-      {!compact && <TopBar title={title} subtitle={subtitle} />}
+    <section
+      className={cn(
+        "flex min-h-0 flex-col",
+        compact ? "h-full" : "h-[calc(100vh-128px)] max-h-[calc(100vh-128px)]",
+      )}
+    >
       <Card
         className={cn(
-          "flex flex-col !p-0 overflow-hidden",
-          compact ? "h-full min-h-[520px]" : "min-h-[calc(100vh-190px)]",
+          "flex min-h-0 flex-1 flex-col overflow-hidden !p-0 !shadow-none",
+          compact ? "h-full min-h-[520px]" : "h-full",
         )}
       >
-        <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-5">
+        {!compact ? (
+          <header className="shrink-0 border-b border-[var(--student-v2-divider)] bg-[var(--student-v2-surface-primary)] px-5 py-4">
+            <h1 className="text-[24px] font-semibold leading-tight text-[var(--student-v2-text-primary)]">
+              {title}
+            </h1>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--student-v2-text-secondary)]">
+              {subtitle}
+            </p>
+          </header>
+        ) : null}
+
+        <div
+          ref={scrollRef}
+          role="log"
+          aria-live={isStreaming ? "off" : "polite"}
+          aria-relevant="additions"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5"
+        >
           {messages.map((message) => {
             const renderableCards =
               message.from === "bot" ? getRenderableCards(message.cards, message.text) : [];
@@ -233,14 +256,14 @@ export function SmartbotPanel({
                     className={cn(
                       "rounded-lg px-4 py-3 text-sm leading-6",
                       message.from === "user"
-                        ? "bg-[#0057C2] text-white"
-                        : "bg-[#F4FAFF] text-foreground",
+                        ? "bg-[var(--student-v2-primary-action-blue)] text-[var(--student-v2-text-inverse)]"
+                        : "bg-[var(--student-v2-surface-selected)] text-[var(--student-v2-text-primary)]",
                     )}
                   >
                     <p className="whitespace-pre-wrap">{message.text}</p>
                   </div>
                   {message.from === "bot" && renderableCards.length > 0 && (
-                    <div className="space-y-3 rounded-lg border border-[#E2E8F0] bg-white p-3">
+                    <div className="space-y-3 rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-3">
                       {renderableCards.map((card, index) => (
                         <SmartbotCardRenderer
                           key={`${card.type}-${index}`}
@@ -267,60 +290,75 @@ export function SmartbotPanel({
             );
           })}
           {isStreaming && (
-            <div className="flex gap-3">
+            <div className="flex gap-3" aria-live="polite">
               <Avatar icon={<Bot className="h-4 w-4" />} />
-              <div className="rounded-lg bg-[#F4FAFF] px-4 py-3 text-sm text-muted-foreground">
+              <div className="rounded-lg bg-[var(--student-v2-surface-selected)] px-4 py-3 text-sm text-[var(--student-v2-text-muted)]">
                 Đang trả lời...
               </div>
             </div>
           )}
         </div>
 
-        <div className="border-t border-[#EEF2F7] bg-white p-4">
+        <form
+          className="sticky bottom-0 z-10 shrink-0 border-t border-[var(--student-v2-divider)] bg-[var(--student-v2-surface-primary)] p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void send(input);
+          }}
+        >
           {error && (
             <div className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
               {error}
             </div>
           )}
-          <div className="mb-3 flex flex-wrap gap-2">
-            {(quickPrompts ?? providedDefaultPrompts ?? defaultSuggestions).map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => {
-                  trackClick(smartUXOpenTag, {
-                    role: smartUXRole,
-                    page: inferredPageContext.page,
-                  });
-                  void send(suggestion);
-                }}
-                className="chip hover:bg-[#E5EFFA]"
-                data-smartux-tag={smartUXOpenTag}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
+          {!hasConversationStarted ? (
+            <div
+              className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
+              data-assistant-quick-suggestions="mobile-scroll"
+            >
+              {suggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => {
+                    trackClick(smartUXOpenTag, {
+                      role: smartUXRole,
+                      page: inferredPageContext.page,
+                    });
+                    void send(suggestion);
+                  }}
+                  className="chip min-h-11 shrink-0 hover:bg-[var(--student-v2-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--student-v2-focus-ring)]"
+                  data-smartux-tag={smartUXOpenTag}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="flex gap-2">
+            <label htmlFor={composerId} className="sr-only">
+              Nhập câu hỏi cho trợ lý
+            </label>
             <input
+              id={composerId}
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => event.key === "Enter" && void send(input)}
               disabled={isSending || isStreaming}
               placeholder="Hỏi về hồ sơ cấp Trường, minh chứng hoặc bước tiếp theo..."
-              className="min-w-0 flex-1 rounded-lg bg-[#F6F9FC] px-4 py-3 text-sm outline-none ring-[#0057C2]/30 focus:ring-2"
+              className="min-h-11 min-w-0 flex-1 rounded-lg bg-[var(--student-v2-surface-secondary)] px-4 py-3 text-sm text-[var(--student-v2-text-primary)] outline-none ring-[var(--student-v2-focus-ring)] focus:ring-2"
             />
             <Button
-              type="button"
+              type="submit"
               disabled={isSending || isStreaming}
-              onClick={() => void send(input)}
+              className="min-h-11 min-w-11"
               data-smartux-tag={smartUXQuestionEvent}
             >
               <Send className="h-4 w-4" /> Gửi
             </Button>
           </div>
-        </div>
+        </form>
       </Card>
-    </>
+    </section>
   );
 }
 
@@ -366,7 +404,7 @@ function actionKey(action: SmartbotAction): string {
 
 function Avatar({ icon }: { icon: React.ReactNode }) {
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0057C2] text-white">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--student-v2-primary-action-blue)] text-[var(--student-v2-text-inverse)]">
       {icon}
     </div>
   );

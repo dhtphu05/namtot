@@ -34,7 +34,9 @@ export function useJobPolling(jobId?: string, applicationId?: string) {
       }
       toast.success("Trích xuất dữ liệu hoàn tất!");
     } else if (query.data?.status === "failed") {
-      toast.error(`Trích xuất dữ liệu thất bại: ${query.data.error?.message || "Lỗi không xác định"}`);
+      toast.error(
+        `Trích xuất dữ liệu thất bại: ${query.data.error?.message || "Lỗi không xác định"}`,
+      );
     }
   }, [query.data?.status, applicationId, queryClient]);
 

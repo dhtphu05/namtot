@@ -36,14 +36,62 @@ const bucketConfig: Array<{
   icon: typeof Inbox;
   tone: "brand" | "success" | "warning" | "danger" | "muted";
 }> = [
-  { key: "all", label: "Tất cả việc cần xử lý", desc: "Ưu tiên cao hiển thị trước", icon: Inbox, tone: "brand" },
-  { key: "ready_to_finalize", label: "Có thể chốt ngay", desc: "Đủ task, không còn case mở", icon: CheckCircle2, tone: "success" },
-  { key: "needs_resolution", label: "Cần hội ý", desc: "Resolution đang mở", icon: ShieldQuestion, tone: "danger" },
-  { key: "downgraded", label: "Bị hạ cấp", desc: "Target cao hơn đề xuất", icon: AlertTriangle, tone: "warning" },
-  { key: "no_eligible_level", label: "Không đạt cấp nào", desc: "Suggested level rỗng", icon: FileWarning, tone: "danger" },
-  { key: "supplement_required", label: "Cần bổ sung", desc: "Sinh viên/cán bộ cần bổ sung", icon: RotateCcw, tone: "warning" },
-  { key: "overdue", label: "Quá hạn", desc: "Task/case lâu chưa xử lý", icon: Clock3, tone: "danger" },
-  { key: "recently_finalized", label: "Đã chốt gần đây", desc: "Theo dõi sau chốt", icon: CheckCircle2, tone: "muted" },
+  {
+    key: "all",
+    label: "Tất cả việc cần xử lý",
+    desc: "Ưu tiên cao hiển thị trước",
+    icon: Inbox,
+    tone: "brand",
+  },
+  {
+    key: "ready_to_finalize",
+    label: "Có thể chốt ngay",
+    desc: "Đủ task, không còn case mở",
+    icon: CheckCircle2,
+    tone: "success",
+  },
+  {
+    key: "needs_resolution",
+    label: "Cần hội ý",
+    desc: "Resolution đang mở",
+    icon: ShieldQuestion,
+    tone: "danger",
+  },
+  {
+    key: "downgraded",
+    label: "Bị hạ cấp",
+    desc: "Target cao hơn đề xuất",
+    icon: AlertTriangle,
+    tone: "warning",
+  },
+  {
+    key: "no_eligible_level",
+    label: "Không đạt cấp nào",
+    desc: "Suggested level rỗng",
+    icon: FileWarning,
+    tone: "danger",
+  },
+  {
+    key: "supplement_required",
+    label: "Cần bổ sung",
+    desc: "Sinh viên/cán bộ cần bổ sung",
+    icon: RotateCcw,
+    tone: "warning",
+  },
+  {
+    key: "overdue",
+    label: "Quá hạn",
+    desc: "Task/case lâu chưa xử lý",
+    icon: Clock3,
+    tone: "danger",
+  },
+  {
+    key: "recently_finalized",
+    label: "Đã chốt gần đây",
+    desc: "Theo dõi sau chốt",
+    icon: CheckCircle2,
+    tone: "muted",
+  },
 ];
 
 function CommitteeInboxRoute() {
@@ -63,7 +111,8 @@ function CommitteeInboxRoute() {
     () =>
       bucketConfig.map((bucket) => ({
         ...bucket,
-        count: bucket.key === "all" ? totalActionable(summary) : getBucketCount(summary, bucket.key),
+        count:
+          bucket.key === "all" ? totalActionable(summary) : getBucketCount(summary, bucket.key),
       })),
     [summary],
   );
@@ -148,9 +197,7 @@ function CommitteeInboxRoute() {
       ) : items.length === 0 ? (
         <Card>
           <div className="py-12 text-center">
-            <div className="font-semibold text-brand-deep">
-              Không có việc cần xử lý lúc này.
-            </div>
+            <div className="font-semibold text-brand-deep">Không có việc cần xử lý lúc này.</div>
             <div className="mt-2 text-sm text-muted-foreground">
               Bạn có thể xem danh sách đã chốt hoặc theo dõi thống kê mùa xét.
             </div>
@@ -189,7 +236,9 @@ function InboxItemCard({ item }: { item: CommitteeInboxItem }) {
           </div>
           <div className="mt-3 text-base font-bold text-brand-deep">
             {item.studentName ?? "Chưa rõ sinh viên"}
-            <span className="ml-2 text-sm font-semibold text-muted-foreground">{item.studentCode ?? "--"}</span>
+            <span className="ml-2 text-sm font-semibold text-muted-foreground">
+              {item.studentCode ?? "--"}
+            </span>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
             {item.className ?? "--"} · {item.faculty ?? "--"} · Đăng ký{" "}
@@ -200,7 +249,10 @@ function InboxItemCard({ item }: { item: CommitteeInboxItem }) {
           {item.blockers.length ? (
             <div className="mt-2 flex flex-wrap gap-2">
               {item.blockers.slice(0, 3).map((blocker) => (
-                <span key={blocker} className="rounded-md bg-[#F6F9FC] px-2 py-1 text-xs text-muted-foreground">
+                <span
+                  key={blocker}
+                  className="rounded-md bg-[#F6F9FC] px-2 py-1 text-xs text-muted-foreground"
+                >
                   {blocker}
                 </span>
               ))}
@@ -226,7 +278,10 @@ function InboxItemCard({ item }: { item: CommitteeInboxItem }) {
             </Button>
           )}
           <Button asChild variant="outline">
-            <Link to="/app/manager/results/$applicationId" params={{ applicationId: item.applicationId }}>
+            <Link
+              to="/app/manager/results/$applicationId"
+              params={{ applicationId: item.applicationId }}
+            >
               Xem hồ sơ
             </Link>
           </Button>
@@ -237,7 +292,9 @@ function InboxItemCard({ item }: { item: CommitteeInboxItem }) {
 }
 
 function normalizeBucket(value: string): CommitteeInboxBucket {
-  return bucketConfig.some((bucket) => bucket.key === value) ? (value as CommitteeInboxBucket) : "all";
+  return bucketConfig.some((bucket) => bucket.key === value)
+    ? (value as CommitteeInboxBucket)
+    : "all";
 }
 
 function getBucketCount(summary: CommitteeInboxSummary | undefined, bucket: CommitteeInboxBucket) {
@@ -305,5 +362,9 @@ function formatDate(value?: string | null) {
   if (!value) return "--";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "--";
-  return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
 }

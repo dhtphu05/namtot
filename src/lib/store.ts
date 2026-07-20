@@ -1,19 +1,42 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
-  AUDIT_SEED, CURRENT_APPLICATION, EVIDENCE_SEED, EVENT_PARTICIPANTS, EVENT_REGISTRY,
-  METRIC_SEED, NOTIFICATIONS_SEED, REVIEW_TASKS, type CriterionKey, type Evidence,
-  type EvidenceSourceType, type IndexingStatus, type MetricInput, type ProfileLifecycle, type ReviewTask, type Role,
+  AUDIT_SEED,
+  CURRENT_APPLICATION,
+  EVIDENCE_SEED,
+  EVENT_PARTICIPANTS,
+  EVENT_REGISTRY,
+  METRIC_SEED,
+  NOTIFICATIONS_SEED,
+  REVIEW_TASKS,
+  type CriterionKey,
+  type Evidence,
+  type EvidenceSourceType,
+  type IndexingStatus,
+  type MetricInput,
+  type ProfileLifecycle,
+  type ReviewTask,
+  type Role,
 } from "./mock-data";
 
 export interface Notification {
-  id: string; title: string; desc: string; time: string;
-  type: "info" | "success" | "warning" | "error"; read?: boolean;
+  id: string;
+  title: string;
+  desc: string;
+  time: string;
+  type: "info" | "success" | "warning" | "error";
+  read?: boolean;
 }
 
 export interface AuditEvent {
-  id: string; time: string; actor: string; role: string;
-  action: string; before: string; after: string; reason: string;
+  id: string;
+  time: string;
+  actor: string;
+  role: string;
+  action: string;
+  before: string;
+  after: string;
+  reason: string;
 }
 
 export interface ApplicationState {
@@ -127,11 +150,15 @@ export const useApp = create<AppState>()(
 
       notifications: initialSessionState.notifications,
       pushNotification: (n) =>
-        set((s) => ({ notifications: [{ id: `n-${Date.now()}`, time: "vừa xong", ...n }, ...s.notifications] })),
-      markAllRead: () => set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
+        set((s) => ({
+          notifications: [{ id: `n-${Date.now()}`, time: "vừa xong", ...n }, ...s.notifications],
+        })),
+      markAllRead: () =>
+        set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
 
       audit: initialSessionState.audit,
-      pushAudit: (e) => set((s) => ({ audit: [{ id: `a-${Date.now()}`, time: nowStr(), ...e }, ...s.audit] })),
+      pushAudit: (e) =>
+        set((s) => ({ audit: [{ id: `a-${Date.now()}`, time: nowStr(), ...e }, ...s.audit] })),
 
       application: initialSessionState.application,
       get profile() {
@@ -148,7 +175,9 @@ export const useApp = create<AppState>()(
       evidence: initialSessionState.evidence,
       addEvidence: (ev) => set((s) => ({ evidence: [ev, ...s.evidence] })),
       advanceIndexing: (id, to) =>
-        set((s) => ({ evidence: s.evidence.map((e) => (e.id === id ? { ...e, indexingStatus: to } : e)) })),
+        set((s) => ({
+          evidence: s.evidence.map((e) => (e.id === id ? { ...e, indexingStatus: to } : e)),
+        })),
 
       metrics: initialSessionState.metrics,
       upsertMetric: (m) =>
@@ -163,7 +192,9 @@ export const useApp = create<AppState>()(
       indexEventRoster: (eventId) =>
         set((s) => ({
           events: s.events.map((e) =>
-            e.id === eventId ? { ...e, rosterIndexed: true, indexingStatus: "indexed", status: "indexed" } : e,
+            e.id === eventId
+              ? { ...e, rosterIndexed: true, indexingStatus: "indexed", status: "indexed" }
+              : e,
           ),
         })),
 
@@ -171,17 +202,21 @@ export const useApp = create<AppState>()(
       decideTask: (id, status) =>
         set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, status } : t)) })),
       assignTask: (id, officerId) =>
-        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, assignedOfficerId: officerId } : t)) })),
+        set((s) => ({
+          tasks: s.tasks.map((t) => (t.id === id ? { ...t, assignedOfficerId: officerId } : t)),
+        })),
 
       submittedIds: initialSessionState.submittedIds,
-      submitProfile: (id) => set((s) => ({ submittedIds: Array.from(new Set([...s.submittedIds, id])) })),
+      submitProfile: (id) =>
+        set((s) => ({ submittedIds: Array.from(new Set([...s.submittedIds, id])) })),
 
       demoStep: initialSessionState.demoStep,
       setDemoStep: (demoStep) => set({ demoStep }),
 
       wizardType: initialSessionState.wizardType,
       wizardLevel: initialSessionState.wizardLevel,
-      setWizard: (p) => set((s) => ({ wizardType: p.type ?? s.wizardType, wizardLevel: p.level ?? s.wizardLevel })),
+      setWizard: (p) =>
+        set((s) => ({ wizardType: p.type ?? s.wizardType, wizardLevel: p.level ?? s.wizardLevel })),
       currentDraftId: initialSessionState.currentDraftId,
       setCurrentDraftId: (id) => set({ currentDraftId: id }),
     }),

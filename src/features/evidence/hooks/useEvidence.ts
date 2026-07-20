@@ -29,6 +29,7 @@ function invalidateStudentState(
   if (applicationId) {
     queryClient.invalidateQueries({ queryKey: evidenceKeys.list(applicationId) });
     queryClient.invalidateQueries({ queryKey: applicationKeys.latestPrecheck(applicationId) });
+    queryClient.invalidateQueries({ queryKey: applicationKeys.criteriaCompletion(applicationId) });
   } else {
     queryClient.invalidateQueries({ queryKey: evidenceKeys.all });
   }
@@ -93,6 +94,19 @@ export function useEvidenceAudit(evidenceId: string | undefined, enabled = true)
       return res.data ?? { items: [] };
     },
     enabled: !!evidenceId && enabled,
+  });
+}
+
+export function useSignedFileUrl(fileId?: string, enabled = false) {
+  return useQuery({
+    queryKey: evidenceKeys.signedUrl(fileId ?? ""),
+    queryFn: async () => {
+      if (!fileId) return null;
+      const res = await evidenceApi.getSignedFileUrl(fileId);
+      return res.data?.url ?? null;
+    },
+    enabled: Boolean(fileId) && enabled,
+    staleTime: 4 * 60 * 1000,
   });
 }
 

@@ -4,7 +4,8 @@ import { notificationsApi } from "../api/notifications";
 
 export const notificationKeys = {
   all: ["notifications"] as const,
-  list: (filters: { page?: number; limit?: number }) => [...notificationKeys.all, "list", filters] as const,
+  list: (filters: { page?: number; limit?: number }) =>
+    [...notificationKeys.all, "list", filters] as const,
 };
 
 export function useNotifications(filters: { page?: number; limit?: number } = {}) {

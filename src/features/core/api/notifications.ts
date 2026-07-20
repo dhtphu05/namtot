@@ -29,19 +29,23 @@ export const notificationsApi = {
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) query.append(key, String(value));
     });
-    const res = await apiClient<NotificationListPayload>(`/api/notifications${query.size ? `?${query.toString()}` : ""}`);
+    const res = await apiClient<NotificationListPayload>(
+      `/api/notifications${query.size ? `?${query.toString()}` : ""}`,
+    );
     const payload = res.data;
     const items = Array.isArray(payload)
       ? payload
-      : payload?.items ?? payload?.data ?? payload?.notifications ?? [];
+      : (payload?.items ?? payload?.data ?? payload?.notifications ?? []);
     const pagination = Array.isArray(payload)
       ? (res.meta.pagination as Pagination | undefined)
-      : payload?.pagination ?? (res.meta.pagination as Pagination | undefined);
+      : (payload?.pagination ?? (res.meta.pagination as Pagination | undefined));
     return { items, pagination };
   },
 
   markRead: async (id: string) => {
-    const res = await apiClient<NotificationItem>(`/api/notifications/${id}/read`, { method: "PATCH" });
+    const res = await apiClient<NotificationItem>(`/api/notifications/${id}/read`, {
+      method: "PATCH",
+    });
     return res.data;
   },
 };

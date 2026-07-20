@@ -16,6 +16,7 @@ import { useEvidenceCardPolling } from "@/hooks/useEvidenceCardPolling";
 import { useJobPolling } from "@/hooks/useJobPolling";
 import type { EvidenceResponse } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
+import { getSourcePresentation } from "@/features/application/presentation";
 import {
   useEvidenceCard,
   useEvidenceDetail,
@@ -132,7 +133,10 @@ export function EvidenceDetailModal({
                     <Badge variant="outline">
                       {studentCriterionLabel[activeEvidence.criterion]}
                     </Badge>
-                    <Badge variant="outline">{sourceTypeCopy[activeEvidence.sourceType]}</Badge>
+                    <Badge variant="outline">
+                      {sourceTypeCopy[activeEvidence.sourceType] ??
+                        getSourcePresentation(activeEvidence.sourceType)}
+                    </Badge>
                     <Badge variant="outline">
                       {getStudentEvidenceStatus(activeEvidence, card).label}
                     </Badge>
@@ -146,7 +150,7 @@ export function EvidenceDetailModal({
             </div>
             <button
               type="button"
-              className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]"
               aria-label="Đóng"
               onClick={onClose}
             >
@@ -159,6 +163,7 @@ export function EvidenceDetailModal({
               type="button"
               variant={tab === "card" ? "default" : "outline"}
               size="sm"
+              className="min-h-11"
               onClick={() => setTab("card")}
             >
               Minh chứng
@@ -167,6 +172,7 @@ export function EvidenceDetailModal({
               type="button"
               variant={tab === "files" ? "default" : "outline"}
               size="sm"
+              className="min-h-11"
               onClick={() => setTab("files")}
             >
               File
@@ -176,6 +182,7 @@ export function EvidenceDetailModal({
                 type="button"
                 variant="outline"
                 size="sm"
+                className="min-h-11"
                 onClick={() => void retry()}
                 disabled={retryJob.isPending}
               >
@@ -196,6 +203,7 @@ export function EvidenceDetailModal({
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="min-h-11"
                   disabled={uploadFile.isPending || startIndexing.isPending}
                   onClick={() => fileInputRef.current?.click()}
                 >

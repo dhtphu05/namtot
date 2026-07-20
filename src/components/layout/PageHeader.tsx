@@ -33,8 +33,8 @@ export function PageHeader({
 
   return (
     <header className="sticky top-0 z-20 -mx-4 mb-5 bg-[var(--surface-app)]/95 px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.05)] backdrop-blur sm:-mx-5 sm:px-5 lg:-mx-7 lg:px-7">
-      <div className="mx-auto flex min-h-12 max-w-[1280px] min-w-0 flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
+      <div className="mx-auto flex min-h-12 max-w-[1280px] min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 lg:flex-1">
           <h1 className="truncate text-[20px] font-bold leading-tight text-[var(--text-primary)] md:text-[24px]">
             {title}
           </h1>
@@ -44,7 +44,7 @@ export function PageHeader({
             </p>
           ) : null}
         </div>
-        <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+        <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 sm:gap-3 lg:shrink-0 lg:justify-end">
           {shouldShowSearch ? (
             <div className="hidden h-9 w-60 max-w-full items-center gap-2 rounded-xl bg-white px-3 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] lg:flex xl:w-72">
               <Search className="h-4 w-4 text-[var(--text-muted)]" />

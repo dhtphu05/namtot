@@ -30,13 +30,7 @@ type ReviewFiltersProps = {
 };
 
 const allValue = "all";
-const criteria: Criterion[] = [
-  "ethics",
-  "academic",
-  "physical",
-  "volunteer",
-  "integration",
-];
+const criteria: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
 const statuses: ReviewTaskStatus[] = [
   "waiting",
   "reviewing",
@@ -158,7 +152,10 @@ export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps)
           disabled={disabled}
           value={value.riskLevel ?? allValue}
           onValueChange={(nextValue) =>
-            updateFilter("riskLevel", nextValue === allValue ? undefined : (nextValue as ReviewTaskListParams["riskLevel"]))
+            updateFilter(
+              "riskLevel",
+              nextValue === allValue ? undefined : (nextValue as ReviewTaskListParams["riskLevel"]),
+            )
           }
         >
           <SelectTrigger aria-label="Lọc mức ưu tiên">
@@ -178,19 +175,45 @@ export function ReviewFilters({ value, onChange, disabled }: ReviewFiltersProps)
         </Button>
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        <QuickToggle active={value.aiConfidenceMax === 0.7} disabled={disabled} onClick={() => updateFilter("aiConfidenceMax", value.aiConfidenceMax === 0.7 ? undefined : 0.7)}>
+        <QuickToggle
+          active={value.aiConfidenceMax === 0.7}
+          disabled={disabled}
+          onClick={() =>
+            updateFilter("aiConfidenceMax", value.aiConfidenceMax === 0.7 ? undefined : 0.7)
+          }
+        >
           Cần kiểm tra thêm
         </QuickToggle>
-        <QuickToggle active={Boolean(value.dueSoon)} disabled={disabled} onClick={() => updateFilter("dueSoon", value.dueSoon ? undefined : true)}>
+        <QuickToggle
+          active={Boolean(value.dueSoon)}
+          disabled={disabled}
+          onClick={() => updateFilter("dueSoon", value.dueSoon ? undefined : true)}
+        >
           Sắp quá hạn
         </QuickToggle>
-        <QuickToggle active={Boolean(value.overdue)} disabled={disabled} onClick={() => updateFilter("overdue", value.overdue ? undefined : true)}>
+        <QuickToggle
+          active={Boolean(value.overdue)}
+          disabled={disabled}
+          onClick={() => updateFilter("overdue", value.overdue ? undefined : true)}
+        >
           Quá hạn
         </QuickToggle>
-        <QuickToggle active={Boolean(value.supplementRequired)} disabled={disabled} onClick={() => updateFilter("supplementRequired", value.supplementRequired ? undefined : true)}>
+        <QuickToggle
+          active={Boolean(value.supplementRequired)}
+          disabled={disabled}
+          onClick={() =>
+            updateFilter("supplementRequired", value.supplementRequired ? undefined : true)
+          }
+        >
           Cần bổ sung
         </QuickToggle>
-        <QuickToggle active={Boolean(value.resolutionNeeded)} disabled={disabled} onClick={() => updateFilter("resolutionNeeded", value.resolutionNeeded ? undefined : true)}>
+        <QuickToggle
+          active={Boolean(value.resolutionNeeded)}
+          disabled={disabled}
+          onClick={() =>
+            updateFilter("resolutionNeeded", value.resolutionNeeded ? undefined : true)
+          }
+        >
           Cần hội ý
         </QuickToggle>
       </div>
@@ -219,7 +242,13 @@ function QuickToggle({
   onClick: () => void;
 }) {
   return (
-    <Button disabled={disabled} size="sm" type="button" variant={active ? "default" : "secondary"} onClick={onClick}>
+    <Button
+      disabled={disabled}
+      size="sm"
+      type="button"
+      variant={active ? "default" : "secondary"}
+      onClick={onClick}
+    >
       {children}
     </Button>
   );

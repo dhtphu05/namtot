@@ -21,6 +21,7 @@ import { chatbotApi } from "@/features/chatbot/api/chatbot";
 import { SmartbotCardRenderer } from "@/features/chatbot/components/SmartbotCardRenderer";
 import type { ChatbotResponse } from "@/features/chatbot/types";
 import { useCurrentApplication } from "@/features/application/hooks/useApplication";
+import { getSourcePresentation } from "@/features/application/presentation";
 import { useAuth } from "@/features/auth/store/auth-store";
 import type { KnowledgeBaseItem } from "@/features/evidence/api/knowledge-base";
 import { useEvidences } from "@/features/evidence/hooks/useEvidence";
@@ -160,7 +161,10 @@ function EvidenceWorkspace() {
         subtitle="Hệ thống tự kiểm tra danh sách chính thức trước khi bạn upload."
       />
 
-      <EvidenceAssistantCard applicationId={applicationId} onUploadPhysical={() => openUpload("physical")} />
+      <EvidenceAssistantCard
+        applicationId={applicationId}
+        onUploadPhysical={() => openUpload("physical")}
+      />
 
       {evidenceQuery.isLoading ? (
         <LoadingState label="Đang tải minh chứng..." />
@@ -247,9 +251,7 @@ function EvidenceAssistantCard({
             <MessageSquare className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-base font-bold text-brand-deep">
-              Trợ lý minh chứng cấp Trường
-            </h2>
+            <h2 className="text-base font-bold text-brand-deep">Trợ lý minh chứng cấp Trường</h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
               Tìm minh chứng đã được xác nhận trước khi upload hoặc mở nhanh đúng tiêu chí cần bổ
               sung.
@@ -922,7 +924,9 @@ function CompactEvidenceRow({
           <div className="line-clamp-1 font-semibold text-foreground">{evidence.evidenceName}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <StatusTag status={status} />
-            <span>{sourceTypeCopy[evidence.sourceType] ?? evidence.sourceType}</span>
+            <span>
+              {sourceTypeCopy[evidence.sourceType] ?? getSourcePresentation(evidence.sourceType)}
+            </span>
             <span className="inline-flex items-center gap-1">
               <CalendarClock className="h-3.5 w-3.5" />
               {formatStudentDate(evidence.updatedAt)}

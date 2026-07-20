@@ -88,7 +88,9 @@ function buildQuery(filters?: Record<string, unknown>) {
 
 export const managerApi = {
   listApplications: async (filters?: ManagerApplicationFilters) => {
-    const res = await apiClient<ManagerApplication[]>(`/api/manager/applications${buildQuery(filters)}`);
+    const res = await apiClient<ManagerApplication[]>(
+      `/api/manager/applications${buildQuery(filters)}`,
+    );
     return { items: res.data, pagination: res.meta.pagination as Pagination | undefined };
   },
 
@@ -106,7 +108,9 @@ export const managerApi = {
   },
 
   getApplicationAggregation: async (applicationId: string) => {
-    const res = await apiClient<ApplicationAggregation>(`/api/manager/applications/${applicationId}/aggregation`);
+    const res = await apiClient<ApplicationAggregation>(
+      `/api/manager/applications/${applicationId}/aggregation`,
+    );
     return res.data;
   },
 

@@ -309,6 +309,7 @@ export const evidenceApi = {
       evidenceName: string;
       criterion: Criterion;
       sourceType: EvidenceSourceType;
+      eventId?: string;
       description?: string;
       note?: string;
       metadata?: Record<string, unknown>;

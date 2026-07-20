@@ -30,7 +30,9 @@ export function StudentFlowStepper({
   onTrack?: () => void;
   busy?: boolean;
 }) {
-  const needsSupplement = state.applicationStatus === "supplement_required" || String(state.applicationStatus) === "draft_supplement";
+  const needsSupplement =
+    state.applicationStatus === "supplement_required" ||
+    String(state.applicationStatus) === "draft_supplement";
   const finalDone = hasFinalResult(state.applicationStatus);
   const inReview = isInReview(state.applicationStatus);
   const hasMissingWork = (state.missingWorkCount ?? 0) > 0;
@@ -45,7 +47,11 @@ export function StudentFlowStepper({
     {
       label: "Điền 5 tiêu chí",
       icon: ClipboardCheck,
-      status: !state.applicationExists ? "Bị khóa" : state.criteriaTouched ? "Hoàn thành" : "Đang làm",
+      status: !state.applicationExists
+        ? "Bị khóa"
+        : state.criteriaTouched
+          ? "Hoàn thành"
+          : "Đang làm",
       actionLabel: "Điền 5 tiêu chí",
       action: onUpload,
     },
@@ -84,25 +90,28 @@ export function StudentFlowStepper({
               ? "Chưa thể nộp"
               : "Nộp / Theo dõi",
       icon: Send,
-      status: !state.applicationExists || finalDone || inReview || needsSupplement
-        ? finalDone
-          ? "Hoàn thành"
-          : needsSupplement
-            ? "Cần bổ sung"
-            : inReview
-              ? "Đang xét duyệt"
-              : "Bị khóa"
-        : hasMissingWork
-          ? "Đang làm"
-        : state.latestPrecheck
-          ? "Đang làm"
-          : "Bị khóa",
-      actionLabel: finalDone || inReview || needsSupplement
-        ? "Theo dõi xét duyệt"
-        : hasMissingWork
-          ? "Hoàn thiện phần còn thiếu"
-          : "Nộp hồ sơ",
-      action: finalDone || inReview || needsSupplement ? onTrack : hasMissingWork ? onUpload : onSubmit,
+      status:
+        !state.applicationExists || finalDone || inReview || needsSupplement
+          ? finalDone
+            ? "Hoàn thành"
+            : needsSupplement
+              ? "Cần bổ sung"
+              : inReview
+                ? "Đang xét duyệt"
+                : "Bị khóa"
+          : hasMissingWork
+            ? "Đang làm"
+            : state.latestPrecheck
+              ? "Đang làm"
+              : "Bị khóa",
+      actionLabel:
+        finalDone || inReview || needsSupplement
+          ? "Theo dõi xét duyệt"
+          : hasMissingWork
+            ? "Hoàn thiện phần còn thiếu"
+            : "Nộp hồ sơ",
+      action:
+        finalDone || inReview || needsSupplement ? onTrack : hasMissingWork ? onUpload : onSubmit,
     },
   ] satisfies Array<{
     label: string;
@@ -119,7 +128,11 @@ export function StudentFlowStepper({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-bold text-brand-deep">Lộ trình hồ sơ</h3>
-          {active ? <p className="mt-0.5 truncate text-xs text-muted-foreground">Bước hiện tại: {active.label}</p> : null}
+          {active ? (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              Bước hiện tại: {active.label}
+            </p>
+          ) : null}
         </div>
         {active?.action && (
           <Button size="sm" onClick={active.action} disabled={busy || active.status === "Bị khóa"}>
@@ -138,7 +151,11 @@ export function StudentFlowStepper({
               disabled={!step.action || busy || step.status === "Bị khóa"}
             >
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[#0057C2]">
-                {step.status === "Hoàn thành" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                {step.status === "Hoàn thành" ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <Icon className="h-3.5 w-3.5" />
+                )}
               </span>
               <span className="text-[11px] font-bold text-muted-foreground">{index + 1}</span>
               <span className="text-xs font-bold text-brand-deep">{step.label}</span>

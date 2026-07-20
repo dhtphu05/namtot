@@ -6,8 +6,6 @@ import { motion } from "framer-motion";
 import { useApp } from "@/lib/store";
 import { toast } from "sonner";
 
-
-
 export function EkycIntegration() {
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
@@ -20,12 +18,23 @@ export function EkycIntegration() {
       setStep(i + 1);
     }
     setDone(true);
-    pushAudit({ actor: "VNPT eKYC", role: "AI", action: "Xác thực sinh viên", before: "Chưa xác thực", after: "Đã xác thực", reason: "OCR + Liveness + Compare face thành công" });
+    pushAudit({
+      actor: "VNPT eKYC",
+      role: "AI",
+      action: "Xác thực sinh viên",
+      before: "Chưa xác thực",
+      after: "Đã xác thực",
+      reason: "OCR + Liveness + Compare face thành công",
+    });
     toast.success("Đã xác thực thông tin sinh viên");
   };
 
   const steps = [
-    { t: "OCR thẻ sinh viên", desc: "VNPT eKYC bóc tách Họ tên / MSSV / Khoa từ ảnh thẻ", icon: IdCard },
+    {
+      t: "OCR thẻ sinh viên",
+      desc: "VNPT eKYC bóc tách Họ tên / MSSV / Khoa từ ảnh thẻ",
+      icon: IdCard,
+    },
     { t: "Liveness card", desc: "Kiểm tra thẻ là thật, không phải ảnh chụp lại", icon: ScanFace },
     { t: "Liveness face", desc: "Kiểm tra khuôn mặt thật, chống deepfake", icon: Camera },
     { t: "Compare face", desc: "Đối chiếu khuôn mặt với ảnh trên thẻ", icon: Check },
@@ -43,13 +52,27 @@ export function EkycIntegration() {
               const isDone = step > idx;
               const isActive = step === idx;
               return (
-                <motion.div key={s.t} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className={`p-4 rounded-2xl flex items-center gap-4 transition-all ${isDone ? "bg-emerald-50" : isActive ? "gradient-brand text-white shadow-[var(--shadow-glow)]" : "bg-[#F4FBFF]"}`}>
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDone ? "bg-emerald-500 text-white" : isActive ? "bg-white text-[#0057C2]" : "bg-white text-[#0057C2]"}`}>
+                <motion.div
+                  key={s.t}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className={`p-4 rounded-2xl flex items-center gap-4 transition-all ${isDone ? "bg-emerald-50" : isActive ? "gradient-brand text-white shadow-[var(--shadow-glow)]" : "bg-[#F4FBFF]"}`}
+                >
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDone ? "bg-emerald-500 text-white" : isActive ? "bg-white text-[#0057C2]" : "bg-white text-[#0057C2]"}`}
+                  >
                     {isDone ? <Check className="w-6 h-6" /> : <s.icon className="w-6 h-6" />}
                   </div>
                   <div className="flex-1">
-                    <div className={`font-semibold ${isActive ? "text-white" : "text-brand-deep"}`}>{s.t}</div>
-                    <div className={`text-xs ${isActive ? "text-white/85" : "text-muted-foreground"}`}>{s.desc}</div>
+                    <div className={`font-semibold ${isActive ? "text-white" : "text-brand-deep"}`}>
+                      {s.t}
+                    </div>
+                    <div
+                      className={`text-xs ${isActive ? "text-white/85" : "text-muted-foreground"}`}
+                    >
+                      {s.desc}
+                    </div>
                   </div>
                   {isActive && <div className="shimmer h-2 w-20 rounded-full" />}
                 </motion.div>
@@ -57,8 +80,15 @@ export function EkycIntegration() {
             })}
           </div>
           <div className="flex gap-3 mt-6">
-            <Button onClick={run} disabled={step > 0 && !done}>{done ? "Xác thực lại" : "Bắt đầu xác thực"}</Button>
-            <Button variant="ghost" onClick={() => toast.info("Đã bỏ qua eKYC — có thể bổ sung sau")}>Bỏ qua, bổ sung sau</Button>
+            <Button onClick={run} disabled={step > 0 && !done}>
+              {done ? "Xác thực lại" : "Bắt đầu xác thực"}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => toast.info("Đã bỏ qua eKYC — có thể bổ sung sau")}
+            >
+              Bỏ qua, bổ sung sau
+            </Button>
           </div>
         </Card>
 
@@ -70,10 +100,14 @@ export function EkycIntegration() {
                 <Check className="w-10 h-10" />
               </div>
               <div className="font-bold text-emerald-700">Đã xác thực sinh viên</div>
-              <p className="text-xs text-muted-foreground mt-2">Hồ sơ được đánh dấu "Verified" trong audit log</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Hồ sơ được đánh dấu "Verified" trong audit log
+              </p>
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground text-center py-10">Chưa có kết quả — bấm "Bắt đầu xác thực"</div>
+            <div className="text-sm text-muted-foreground text-center py-10">
+              Chưa có kết quả — bấm "Bắt đầu xác thực"
+            </div>
           )}
         </Card>
       </div>

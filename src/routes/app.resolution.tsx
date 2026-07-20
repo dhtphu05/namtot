@@ -21,10 +21,7 @@ import { ReviewErrorState } from "@/features/review/components/ReviewErrorState"
 import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingState";
 import type { Criterion, Level, Role } from "@/features/review/types";
 import { getErrorMessage } from "@/features/review/utils/errors";
-import {
-  formatDateTime,
-  getCriterionLabel,
-} from "@/features/review/utils/formatters";
+import { formatDateTime, getCriterionLabel } from "@/features/review/utils/formatters";
 import { useResolutionCases } from "@/features/resolution/hooks/useResolution";
 import type {
   ResolutionCaseListItem,
@@ -98,12 +95,7 @@ function ResolutionCasesContent({ role }: { role: Role }) {
     if (!escalator) return rawItems;
 
     return rawItems.filter((item) =>
-      [
-        item.escalatedByName,
-        item.escalatedByRole,
-        item.createdByName,
-        item.createdByRole,
-      ]
+      [item.escalatedByName, item.escalatedByRole, item.createdByName, item.createdByRole]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(escalator)),
     );
@@ -299,14 +291,18 @@ function ResolutionCasesContent({ role }: { role: Role }) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${resolutionStatusClass(item.status)}`}>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${resolutionStatusClass(item.status)}`}
+                      >
                         {getResolutionStatusLabel(item.status)}
                       </span>
                     </TableCell>
                     <TableCell>{getCreatorLabel(item)}</TableCell>
                     <TableCell>{formatDateTime(item.createdAt)}</TableCell>
                     <TableCell>
-                      {item.evidenceIds?.length ? `${item.evidenceIds.length} minh chứng` : "Chưa liên kết"}
+                      {item.evidenceIds?.length
+                        ? `${item.evidenceIds.length} minh chứng`
+                        : "Chưa liên kết"}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

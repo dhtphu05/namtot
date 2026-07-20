@@ -197,12 +197,12 @@ Khuyến nghị:
 
 Workspace hiện có 4 tab:
 
-| Tab | Mục đích | Tình trạng |
-| --- | --- | --- |
-| `Thông tin & cấp xét` | Xem/chọn cấp xét, xem điều kiện cấp | Đã có |
-| `5 tiêu chí` | Nhập chỉ số, thêm minh chứng theo từng tiêu chí | Đã có |
-| `Kiểm tra hồ sơ` | Xem readiness, missing items, mở modal nộp | Đã có |
-| `Theo dõi sau khi nộp` | Xem trạng thái và kết quả | Có nhưng còn đơn giản |
+| Tab                    | Mục đích                                        | Tình trạng            |
+| ---------------------- | ----------------------------------------------- | --------------------- |
+| `Thông tin & cấp xét`  | Xem/chọn cấp xét, xem điều kiện cấp             | Đã có                 |
+| `5 tiêu chí`           | Nhập chỉ số, thêm minh chứng theo từng tiêu chí | Đã có                 |
+| `Kiểm tra hồ sơ`       | Xem readiness, missing items, mở modal nộp      | Đã có                 |
+| `Theo dõi sau khi nộp` | Xem trạng thái và kết quả                       | Có nhưng còn đơn giản |
 
 UX:
 

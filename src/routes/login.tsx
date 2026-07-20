@@ -2,7 +2,15 @@ import { Link, createFileRoute, redirect, useNavigate } from "@tanstack/react-ro
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, BarChart3, FileText, Loader2, ShieldCheck, UsersRound } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  FileText,
+  Loader2,
+  ShieldCheck,
+  UserCog,
+  UsersRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/features/auth/api/auth";
 import { authKeys } from "@/features/auth/hooks/useMe";
@@ -53,6 +61,12 @@ const quickRoles = [
     desc: "Theo dõi tiến độ, phân công và chốt kết quả cuối.",
     email: "manager@dut.udn.vn",
     icon: BarChart3,
+  },
+  {
+    label: "Quản trị hệ thống",
+    desc: "Quản lý danh sách trường triển khai và trạng thái đăng ký.",
+    email: "admin@dut.udn.vn",
+    icon: UserCog,
   },
   {
     label: "Tập thể / Chi hội",

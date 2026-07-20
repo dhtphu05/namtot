@@ -35,7 +35,14 @@ export type ManagerResultFilters = {
     | "unfinished";
   page?: number;
   pageSize?: number;
-  sortBy?: "lastActivityAt" | "updatedAt" | "newest" | "oldest" | "readiness_desc" | "unfinalized_first" | "target_level_desc";
+  sortBy?:
+    | "lastActivityAt"
+    | "updatedAt"
+    | "newest"
+    | "oldest"
+    | "readiness_desc"
+    | "unfinalized_first"
+    | "target_level_desc";
   sortOrder?: "asc" | "desc";
 };
 

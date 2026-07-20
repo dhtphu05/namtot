@@ -164,10 +164,7 @@ export const exportApi = {
   },
 
   downloadReviewTasksExport: async (params?: ExportApplicationsParams): Promise<Blob> => {
-    const response = await fetchWithAuth(
-      `${BASE_URL}${buildReviewTasksEndpoint(params)}`,
-      "csv",
-    );
+    const response = await fetchWithAuth(`${BASE_URL}${buildReviewTasksEndpoint(params)}`, "csv");
 
     if (!response.ok) {
       throw new Error(await parseError(response));

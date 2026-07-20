@@ -2,8 +2,6 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Card, Chip } from "@/components/ui-kit";
 import { useApp } from "@/lib/store";
 
-
-
 export function AuditLogs() {
   const audit = useApp((s) => s.audit);
   return (
@@ -26,9 +24,25 @@ export function AuditLogs() {
             <tbody>
               {audit.map((e) => (
                 <tr key={e.id} className="hover:bg-[#F4FBFF] transition-colors">
-                  <td className="py-3 px-3 text-xs text-muted-foreground whitespace-nowrap">{e.time}</td>
+                  <td className="py-3 px-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {e.time}
+                  </td>
                   <td className="py-3 px-3 font-semibold text-brand-deep">{e.actor}</td>
-                  <td className="py-3 px-3"><Chip tone={e.role === "AI" ? "brand" : e.role === "Sinh viên" ? "muted" : e.role === "Cán bộ" ? "success" : "warning"}>{e.role}</Chip></td>
+                  <td className="py-3 px-3">
+                    <Chip
+                      tone={
+                        e.role === "AI"
+                          ? "brand"
+                          : e.role === "Sinh viên"
+                            ? "muted"
+                            : e.role === "Cán bộ"
+                              ? "success"
+                              : "warning"
+                      }
+                    >
+                      {e.role}
+                    </Chip>
+                  </td>
                   <td className="py-3 px-3">{e.action}</td>
                   <td className="py-3 px-3 text-xs text-muted-foreground">{e.before}</td>
                   <td className="py-3 px-3 text-xs font-semibold text-brand-deep">→ {e.after}</td>

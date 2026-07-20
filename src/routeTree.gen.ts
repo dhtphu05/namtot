@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppWizardRouteImport } from './routes/app.wizard'
@@ -28,6 +29,7 @@ import { Route as AppMyApplicationRouteImport } from './routes/app.my-applicatio
 import { Route as AppFeedbackRouteImport } from './routes/app.feedback'
 import { Route as AppExportRouteImport } from './routes/app.export'
 import { Route as AppEvidenceSearchRouteImport } from './routes/app.evidence-search'
+import { Route as AppEvidenceKnowledgeRouteImport } from './routes/app.evidence-knowledge'
 import { Route as AppEvidenceRouteImport } from './routes/app.evidence'
 import { Route as AppEventRegistryRouteImport } from './routes/app.event-registry'
 import { Route as AppEventLibraryRouteImport } from './routes/app.event-library'
@@ -51,7 +53,10 @@ import { Route as AppManagerCollectiveRouteImport } from './routes/app.manager.c
 import { Route as AppDecisionImportsDecisionImportIdRouteImport } from './routes/app.decision-imports.$decisionImportId'
 import { Route as AppCommitteeInboxRouteImport } from './routes/app.committee.inbox'
 import { Route as AppCollectiveIdRouteImport } from './routes/app.collective.$id'
+import { Route as AppAdminWorkspacesRouteImport } from './routes/app.admin.workspaces'
+import { Route as AppAdminWorkspaceRouteImport } from './routes/app.admin.workspace'
 import { Route as AppManagerResultsApplicationIdRouteImport } from './routes/app.manager.results.$applicationId'
+import { Route as AppAdminWorkspacesWorkspaceIdRouteImport } from './routes/app.admin.workspaces.$workspaceId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -66,6 +71,11 @@ const LoginRoute = LoginRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -146,6 +156,11 @@ const AppExportRoute = AppExportRouteImport.update({
 const AppEvidenceSearchRoute = AppEvidenceSearchRouteImport.update({
   id: '/evidence-search',
   path: '/evidence-search',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEvidenceKnowledgeRoute = AppEvidenceKnowledgeRouteImport.update({
+  id: '/evidence-knowledge',
+  path: '/evidence-knowledge',
   getParentRoute: () => AppRoute,
 } as any)
 const AppEvidenceRoute = AppEvidenceRouteImport.update({
@@ -264,15 +279,32 @@ const AppCollectiveIdRoute = AppCollectiveIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppCollectiveRoute,
 } as any)
+const AppAdminWorkspacesRoute = AppAdminWorkspacesRouteImport.update({
+  id: '/admin/workspaces',
+  path: '/admin/workspaces',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminWorkspaceRoute = AppAdminWorkspaceRouteImport.update({
+  id: '/admin/workspace',
+  path: '/admin/workspace',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppManagerResultsApplicationIdRoute =
   AppManagerResultsApplicationIdRouteImport.update({
     id: '/$applicationId',
     path: '/$applicationId',
     getParentRoute: () => AppManagerResultsRoute,
   } as any)
+const AppAdminWorkspacesWorkspaceIdRoute =
+  AppAdminWorkspacesWorkspaceIdRouteImport.update({
+    id: '/$workspaceId',
+    path: '/$workspaceId',
+    getParentRoute: () => AppAdminWorkspacesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -291,6 +323,7 @@ export interface FileRoutesByFullPath {
   '/app/event-library': typeof AppEventLibraryRoute
   '/app/event-registry': typeof AppEventRegistryRoute
   '/app/evidence': typeof AppEvidenceRoute
+  '/app/evidence-knowledge': typeof AppEvidenceKnowledgeRoute
   '/app/evidence-search': typeof AppEvidenceSearchRoute
   '/app/export': typeof AppExportRoute
   '/app/feedback': typeof AppFeedbackRoute
@@ -306,6 +339,8 @@ export interface FileRoutesByFullPath {
   '/app/vnpt': typeof AppVnptRoute
   '/app/wizard': typeof AppWizardRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/workspace': typeof AppAdminWorkspaceRoute
+  '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
   '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
@@ -314,10 +349,12 @@ export interface FileRoutesByFullPath {
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
   '/app/resolution/$id': typeof AppResolutionIdRoute
   '/app/review/$id': typeof AppReviewIdRoute
+  '/app/admin/workspaces/$workspaceId': typeof AppAdminWorkspacesWorkspaceIdRoute
   '/app/manager/results/$applicationId': typeof AppManagerResultsApplicationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/app/ai-precheck': typeof AppAiPrecheckRoute
@@ -335,6 +372,7 @@ export interface FileRoutesByTo {
   '/app/event-library': typeof AppEventLibraryRoute
   '/app/event-registry': typeof AppEventRegistryRoute
   '/app/evidence': typeof AppEvidenceRoute
+  '/app/evidence-knowledge': typeof AppEvidenceKnowledgeRoute
   '/app/evidence-search': typeof AppEvidenceSearchRoute
   '/app/export': typeof AppExportRoute
   '/app/feedback': typeof AppFeedbackRoute
@@ -350,6 +388,8 @@ export interface FileRoutesByTo {
   '/app/vnpt': typeof AppVnptRoute
   '/app/wizard': typeof AppWizardRoute
   '/app': typeof AppIndexRoute
+  '/app/admin/workspace': typeof AppAdminWorkspaceRoute
+  '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
   '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
@@ -358,11 +398,13 @@ export interface FileRoutesByTo {
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
   '/app/resolution/$id': typeof AppResolutionIdRoute
   '/app/review/$id': typeof AppReviewIdRoute
+  '/app/admin/workspaces/$workspaceId': typeof AppAdminWorkspacesWorkspaceIdRoute
   '/app/manager/results/$applicationId': typeof AppManagerResultsApplicationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -381,6 +423,7 @@ export interface FileRoutesById {
   '/app/event-library': typeof AppEventLibraryRoute
   '/app/event-registry': typeof AppEventRegistryRoute
   '/app/evidence': typeof AppEvidenceRoute
+  '/app/evidence-knowledge': typeof AppEvidenceKnowledgeRoute
   '/app/evidence-search': typeof AppEvidenceSearchRoute
   '/app/export': typeof AppExportRoute
   '/app/feedback': typeof AppFeedbackRoute
@@ -396,6 +439,8 @@ export interface FileRoutesById {
   '/app/vnpt': typeof AppVnptRoute
   '/app/wizard': typeof AppWizardRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/workspace': typeof AppAdminWorkspaceRoute
+  '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
   '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
@@ -404,12 +449,14 @@ export interface FileRoutesById {
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
   '/app/resolution/$id': typeof AppResolutionIdRoute
   '/app/review/$id': typeof AppReviewIdRoute
+  '/app/admin/workspaces/$workspaceId': typeof AppAdminWorkspacesWorkspaceIdRoute
   '/app/manager/results/$applicationId': typeof AppManagerResultsApplicationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/app'
     | '/login'
     | '/signup'
@@ -428,6 +475,7 @@ export interface FileRouteTypes {
     | '/app/event-library'
     | '/app/event-registry'
     | '/app/evidence'
+    | '/app/evidence-knowledge'
     | '/app/evidence-search'
     | '/app/export'
     | '/app/feedback'
@@ -443,6 +491,8 @@ export interface FileRouteTypes {
     | '/app/vnpt'
     | '/app/wizard'
     | '/app/'
+    | '/app/admin/workspace'
+    | '/app/admin/workspaces'
     | '/app/collective/$id'
     | '/app/committee/inbox'
     | '/app/decision-imports/$decisionImportId'
@@ -451,10 +501,12 @@ export interface FileRouteTypes {
     | '/app/manager/results'
     | '/app/resolution/$id'
     | '/app/review/$id'
+    | '/app/admin/workspaces/$workspaceId'
     | '/app/manager/results/$applicationId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/login'
     | '/signup'
     | '/app/ai-precheck'
@@ -472,6 +524,7 @@ export interface FileRouteTypes {
     | '/app/event-library'
     | '/app/event-registry'
     | '/app/evidence'
+    | '/app/evidence-knowledge'
     | '/app/evidence-search'
     | '/app/export'
     | '/app/feedback'
@@ -487,6 +540,8 @@ export interface FileRouteTypes {
     | '/app/vnpt'
     | '/app/wizard'
     | '/app'
+    | '/app/admin/workspace'
+    | '/app/admin/workspaces'
     | '/app/collective/$id'
     | '/app/committee/inbox'
     | '/app/decision-imports/$decisionImportId'
@@ -495,10 +550,12 @@ export interface FileRouteTypes {
     | '/app/manager/results'
     | '/app/resolution/$id'
     | '/app/review/$id'
+    | '/app/admin/workspaces/$workspaceId'
     | '/app/manager/results/$applicationId'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/app'
     | '/login'
     | '/signup'
@@ -517,6 +574,7 @@ export interface FileRouteTypes {
     | '/app/event-library'
     | '/app/event-registry'
     | '/app/evidence'
+    | '/app/evidence-knowledge'
     | '/app/evidence-search'
     | '/app/export'
     | '/app/feedback'
@@ -532,6 +590,8 @@ export interface FileRouteTypes {
     | '/app/vnpt'
     | '/app/wizard'
     | '/app/'
+    | '/app/admin/workspace'
+    | '/app/admin/workspaces'
     | '/app/collective/$id'
     | '/app/committee/inbox'
     | '/app/decision-imports/$decisionImportId'
@@ -540,11 +600,13 @@ export interface FileRouteTypes {
     | '/app/manager/results'
     | '/app/resolution/$id'
     | '/app/review/$id'
+    | '/app/admin/workspaces/$workspaceId'
     | '/app/manager/results/$applicationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
@@ -571,6 +633,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -683,6 +752,13 @@ declare module '@tanstack/react-router' {
       path: '/evidence-search'
       fullPath: '/app/evidence-search'
       preLoaderRoute: typeof AppEvidenceSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/evidence-knowledge': {
+      id: '/app/evidence-knowledge'
+      path: '/evidence-knowledge'
+      fullPath: '/app/evidence-knowledge'
+      preLoaderRoute: typeof AppEvidenceKnowledgeRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/evidence': {
@@ -846,12 +922,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCollectiveIdRouteImport
       parentRoute: typeof AppCollectiveRoute
     }
+    '/app/admin/workspaces': {
+      id: '/app/admin/workspaces'
+      path: '/admin/workspaces'
+      fullPath: '/app/admin/workspaces'
+      preLoaderRoute: typeof AppAdminWorkspacesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/admin/workspace': {
+      id: '/app/admin/workspace'
+      path: '/admin/workspace'
+      fullPath: '/app/admin/workspace'
+      preLoaderRoute: typeof AppAdminWorkspaceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/manager/results/$applicationId': {
       id: '/app/manager/results/$applicationId'
       path: '/$applicationId'
       fullPath: '/app/manager/results/$applicationId'
       preLoaderRoute: typeof AppManagerResultsApplicationIdRouteImport
       parentRoute: typeof AppManagerResultsRoute
+    }
+    '/app/admin/workspaces/$workspaceId': {
+      id: '/app/admin/workspaces/$workspaceId'
+      path: '/$workspaceId'
+      fullPath: '/app/admin/workspaces/$workspaceId'
+      preLoaderRoute: typeof AppAdminWorkspacesWorkspaceIdRouteImport
+      parentRoute: typeof AppAdminWorkspacesRoute
     }
   }
 }
@@ -892,6 +989,17 @@ const AppResolutionRouteWithChildren = AppResolutionRoute._addFileChildren(
   AppResolutionRouteChildren,
 )
 
+interface AppAdminWorkspacesRouteChildren {
+  AppAdminWorkspacesWorkspaceIdRoute: typeof AppAdminWorkspacesWorkspaceIdRoute
+}
+
+const AppAdminWorkspacesRouteChildren: AppAdminWorkspacesRouteChildren = {
+  AppAdminWorkspacesWorkspaceIdRoute: AppAdminWorkspacesWorkspaceIdRoute,
+}
+
+const AppAdminWorkspacesRouteWithChildren =
+  AppAdminWorkspacesRoute._addFileChildren(AppAdminWorkspacesRouteChildren)
+
 interface AppManagerResultsRouteChildren {
   AppManagerResultsApplicationIdRoute: typeof AppManagerResultsApplicationIdRoute
 }
@@ -919,6 +1027,7 @@ interface AppRouteChildren {
   AppEventLibraryRoute: typeof AppEventLibraryRoute
   AppEventRegistryRoute: typeof AppEventRegistryRoute
   AppEvidenceRoute: typeof AppEvidenceRoute
+  AppEvidenceKnowledgeRoute: typeof AppEvidenceKnowledgeRoute
   AppEvidenceSearchRoute: typeof AppEvidenceSearchRoute
   AppExportRoute: typeof AppExportRoute
   AppFeedbackRoute: typeof AppFeedbackRoute
@@ -934,6 +1043,8 @@ interface AppRouteChildren {
   AppVnptRoute: typeof AppVnptRoute
   AppWizardRoute: typeof AppWizardRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAdminWorkspaceRoute: typeof AppAdminWorkspaceRoute
+  AppAdminWorkspacesRoute: typeof AppAdminWorkspacesRouteWithChildren
   AppCommitteeInboxRoute: typeof AppCommitteeInboxRoute
   AppManagerCollectiveRoute: typeof AppManagerCollectiveRoute
   AppManagerResultRoute: typeof AppManagerResultRoute
@@ -957,6 +1068,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEventLibraryRoute: AppEventLibraryRoute,
   AppEventRegistryRoute: AppEventRegistryRoute,
   AppEvidenceRoute: AppEvidenceRoute,
+  AppEvidenceKnowledgeRoute: AppEvidenceKnowledgeRoute,
   AppEvidenceSearchRoute: AppEvidenceSearchRoute,
   AppExportRoute: AppExportRoute,
   AppFeedbackRoute: AppFeedbackRoute,
@@ -972,6 +1084,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppVnptRoute: AppVnptRoute,
   AppWizardRoute: AppWizardRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAdminWorkspaceRoute: AppAdminWorkspaceRoute,
+  AppAdminWorkspacesRoute: AppAdminWorkspacesRouteWithChildren,
   AppCommitteeInboxRoute: AppCommitteeInboxRoute,
   AppManagerCollectiveRoute: AppManagerCollectiveRoute,
   AppManagerResultRoute: AppManagerResultRoute,
@@ -983,6 +1097,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,

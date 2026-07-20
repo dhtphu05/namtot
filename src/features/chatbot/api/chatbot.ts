@@ -1,5 +1,9 @@
 import { apiClient } from "@/lib/api/client";
-import type { ChatbotActionExecutionResult, ChatbotMessageRequest, ChatbotResponse } from "../types";
+import type {
+  ChatbotActionExecutionResult,
+  ChatbotMessageRequest,
+  ChatbotResponse,
+} from "../types";
 
 export const chatbotApi = {
   sendMessage: async (payload: ChatbotMessageRequest) => {

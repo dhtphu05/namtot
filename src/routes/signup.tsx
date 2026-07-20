@@ -1,15 +1,36 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  ChevronsUpDown,
+  Eye,
+  EyeOff,
+  Loader2,
+  RefreshCw,
+  UserPlus,
+} from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { authApi } from "@/features/auth/api/auth";
 import { authKeys } from "@/features/auth/hooks/useMe";
 import { getDefaultAppPathForRole, toUiRole } from "@/features/auth/role-map";
 import { useAuth, waitForAuthHydration } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
 import { useApp } from "@/lib/store";
+import type { WorkspaceSummary } from "@/lib/api/types";
 
 const onboardingSteps = [
   "Tạo tài khoản sinh viên",
@@ -45,7 +66,8 @@ function Signup() {
   const [fullName, setFullName] = useState("");
   const [studentCode, setStudentCode] = useState("");
   const [email, setEmail] = useState("");
-  const [school, setSchool] = useState("");
+  const [workspaceId, setWorkspaceId] = useState("");
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [className, setClassName] = useState("");
   const [faculty, setFaculty] = useState("");
   const [phone, setPhone] = useState("");
@@ -54,6 +76,25 @@ function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const {
+    data: workspaces = [],
+    isLoading: isWorkspaceLoading,
+    isFetching: isWorkspaceFetching,
+    isError: isWorkspaceError,
+    refetch: refetchWorkspaces,
+  } = useQuery({
+    queryKey: ["workspaces", "registration"],
+    queryFn: async () => {
+      const res = await authApi.getRegistrationWorkspaces();
+      return res.data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const selectedWorkspace = workspaces.find((workspace) => workspace.id === workspaceId) ?? null;
+  const workspaceSubmitBlocked =
+    isWorkspaceLoading || isWorkspaceError || workspaces.length === 0 || !workspaceId;
 
   const handleSignup = async (e: FormEvent) => {
     e.preventDefault();
@@ -68,6 +109,19 @@ function Signup() {
       return;
     }
 
+    if (workspaceSubmitBlocked) {
+      if (isWorkspaceLoading) {
+        toast.error("Vui lòng chờ tải danh sách trường đại học.");
+      } else if (isWorkspaceError) {
+        toast.error("Không thể tải danh sách trường. Vui lòng thử lại.");
+      } else if (workspaces.length === 0) {
+        toast.error("Hiện chưa có trường nào mở đăng ký.");
+      } else {
+        toast.error("Vui lòng chọn trường đại học.");
+      }
+      return;
+    }
+
     setIsLoading(true);
     try {
       const res = await authApi.register({
@@ -75,7 +129,7 @@ function Signup() {
         studentCode: studentCode.trim(),
         email: email.trim(),
         password,
-        school: school.trim() || undefined,
+        workspaceId,
         className: className.trim() || undefined,
         faculty: faculty.trim() || undefined,
         phone: phone.trim() || undefined,
@@ -90,6 +144,13 @@ function Signup() {
       nav({ to: getDefaultAppPathForRole(res.data.user.role) });
     } catch (err) {
       if (err instanceof ApiError) {
+        if (
+          err.code === "WORKSPACE_REGISTRATION_CLOSED" ||
+          err.code === "WORKSPACE_INACTIVE" ||
+          err.code === "WORKSPACE_NOT_FOUND"
+        ) {
+          void refetchWorkspaces();
+        }
         toast.error(`Đăng ký thất bại: ${err.message}`);
       } else {
         toast.error("Đăng ký thất bại. Vui lòng thử lại.");
@@ -191,16 +252,18 @@ function Signup() {
                 />
               </Field>
 
-              <Field label="Trường" required className="md:col-span-2">
-                <input
-                  type="text"
-                  required
-                  autoComplete="organization"
-                  className="field"
-                  placeholder="Trường Đại học Bách khoa - ĐHĐN"
-                  value={school}
-                  onChange={(e) => setSchool(e.target.value)}
+              <Field label="Trường đại học" required className="md:col-span-2">
+                <WorkspaceSelector
+                  open={workspaceOpen}
+                  onOpenChange={setWorkspaceOpen}
+                  workspaces={workspaces}
+                  selectedWorkspace={selectedWorkspace}
+                  isLoading={isWorkspaceLoading}
+                  isFetching={isWorkspaceFetching}
+                  isError={isWorkspaceError}
                   disabled={isLoading}
+                  onSelect={setWorkspaceId}
+                  onRetry={() => void refetchWorkspaces()}
                 />
               </Field>
 
@@ -296,7 +359,7 @@ function Signup() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || workspaceSubmitBlocked}
               className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#0057C2] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#004ba8] disabled:pointer-events-none disabled:opacity-50"
             >
               {isLoading ? (
@@ -320,6 +383,112 @@ function Signup() {
       </div>
     </div>
   );
+}
+
+function WorkspaceSelector({
+  open,
+  onOpenChange,
+  workspaces,
+  selectedWorkspace,
+  isLoading,
+  isFetching,
+  isError,
+  disabled,
+  onSelect,
+  onRetry,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  workspaces: WorkspaceSummary[];
+  selectedWorkspace: WorkspaceSummary | null;
+  isLoading: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  disabled: boolean;
+  onSelect: (workspaceId: string) => void;
+  onRetry: () => void;
+}) {
+  const empty = !isLoading && !isError && workspaces.length === 0;
+  const unavailable = disabled || isLoading || isError || empty;
+
+  return (
+    <div className="space-y-2">
+      <Popover open={open && !unavailable} onOpenChange={onOpenChange}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            aria-label="Chọn trường đại học"
+            disabled={unavailable}
+            className="h-11 w-full justify-between rounded-xl border-0 bg-[#F8FAFC] px-3 text-left text-sm font-medium text-[#0F172A] hover:bg-[#F8FAFC]"
+          >
+            <span className="min-w-0 truncate">
+              {isLoading
+                ? "Đang tải danh sách trường..."
+                : selectedWorkspace
+                  ? workspaceDisplayName(selectedWorkspace)
+                  : "Chọn trường đại học"}
+            </span>
+            {isFetching ? (
+              <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin text-[#64748B]" />
+            ) : (
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-[#64748B]" />
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[min(36rem,calc(100vw-3rem))] p-0">
+          <Command>
+            <CommandInput placeholder="Tìm trường đại học..." />
+            <CommandList>
+              <CommandEmpty>Không tìm thấy trường phù hợp.</CommandEmpty>
+              <CommandGroup>
+                {workspaces.map((workspace) => (
+                  <CommandItem
+                    key={workspace.id}
+                    value={`${workspace.name} ${workspace.shortName ?? ""} ${workspace.code}`}
+                    onSelect={() => {
+                      onSelect(workspace.id);
+                      onOpenChange(false);
+                    }}
+                  >
+                    <Check
+                      className={`h-4 w-4 ${
+                        selectedWorkspace?.id === workspace.id ? "opacity-100" : "opacity-0"
+                      }`}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {workspaceDisplayName(workspace)}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
+      {isError ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-rose-700">
+          <span>Không thể tải danh sách trường.</span>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 font-bold text-[#0057C2] hover:underline"
+            onClick={onRetry}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Tải lại
+          </button>
+        </div>
+      ) : null}
+      {empty ? <p className="text-sm text-[#64748B]">Hiện chưa có trường nào mở đăng ký.</p> : null}
+    </div>
+  );
+}
+
+function workspaceDisplayName(workspace: WorkspaceSummary) {
+  return workspace.shortName ? `${workspace.name} (${workspace.shortName})` : workspace.name;
 }
 
 function Field({

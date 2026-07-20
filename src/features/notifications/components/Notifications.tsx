@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Bell,
@@ -9,12 +9,16 @@ import {
   ChevronRight,
   FileText,
   Info,
-  MessageSquareText,
   RefreshCw,
   User,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip } from "@/components/ui-kit";
+import {
+  ButtonV2,
+  StatusPillV2,
+  type StudentApplicationV2ProgressStatus,
+} from "@/features/application/ui-v2/components";
 import { toUiRole } from "@/features/auth/role-map";
 import { useAuth } from "@/features/auth/store/auth-store";
 import type { Notification } from "@/features/notifications/api/notifications";
@@ -23,14 +27,7 @@ import {
   useNotifications,
 } from "@/features/notifications/hooks/useNotifications";
 import { formatCriterionLabel, formatLevelLabel } from "@/features/review/utils/formatters";
-import {
-  AppButton,
-  EmptyState as StudentEmptyState,
-  PageHeader,
-  SectionCard,
-  ScrollSafeModal,
-  StatusBadge,
-} from "@/features/student/components/primitives";
+import { PageHeader, ScrollSafeModal } from "@/features/student/components/primitives";
 import { criterionLabels, getFeedbackUiItems } from "@/features/student/selectors/student-ui";
 
 type NotificationFilter = "all" | "unread" | "action" | "result";
@@ -232,6 +229,7 @@ function StudentFeedbackCenter({
 }) {
   const [tab, setTab] = useState<StudentFeedbackTab>("action");
   const [expandedItem, setExpandedItem] = useState<FeedbackItem | null>(null);
+  const [page, setPage] = useState(1);
   const feedbackItems = getFeedbackUiItems(items);
   const actionableCount = feedbackItems.filter((item) => item.isActionable).length;
   const handledCount = feedbackItems.filter(
@@ -242,20 +240,32 @@ function StudentFeedbackCenter({
     if (tab === "handled") return !item.isActionable && item.status === "read";
     return true;
   });
+  const pageSize = 12;
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const visibleItems = filteredItems.slice((page - 1) * pageSize, page * pageSize);
+  const unreadCount = items.filter((item) => !item.readAt).length;
+  const showPartialError = isError && feedbackItems.length > 0;
 
-  if (isError) {
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  if (isError && feedbackItems.length === 0) {
     return (
       <>
         <PageHeader
           title="Phản hồi"
           description="Xem yêu cầu bổ sung, kết quả và phản hồi liên quan đến hồ sơ của bạn."
         />
-        <StudentEmptyState
-          variant="error"
-          title="Chưa tải được phản hồi"
-          description="Vui lòng thử lại sau. Các minh chứng đã lưu của bạn không bị mất."
-          primaryAction={<AppButton onClick={onRetry}>Thử lại</AppButton>}
-        />
+        <div className="rounded-[12px] border border-[var(--student-v2-critical-text)]/25 bg-[var(--student-v2-critical-bg)] px-4 py-3 text-sm text-[var(--student-v2-critical-text)]">
+          <div className="font-semibold">Chưa tải được phản hồi</div>
+          <p className="mt-1 text-[13px] leading-5">
+            Vui lòng thử lại sau. Các minh chứng đã lưu của bạn không bị mất.
+          </p>
+          <ButtonV2 className="mt-3" size="compact" onClick={onRetry}>
+            <RefreshCw className="h-4 w-4" /> Thử lại
+          </ButtonV2>
+        </div>
       </>
     );
   }
@@ -266,8 +276,8 @@ function StudentFeedbackCenter({
         title="Phản hồi"
         description="Xem yêu cầu bổ sung, kết quả và phản hồi liên quan đến hồ sơ của bạn."
         rightAction={
-          items.some((item) => !item.readAt) ? (
-            <AppButton
+          unreadCount > 0 ? (
+            <ButtonV2
               variant="secondary"
               disabled={isPending}
               onClick={() =>
@@ -275,62 +285,91 @@ function StudentFeedbackCenter({
               }
             >
               <Check className="h-4 w-4" /> Đã đọc tất cả
-            </AppButton>
+            </ButtonV2>
           ) : undefined
         }
       />
 
-      <div className="mb-4 flex min-w-0 flex-wrap gap-1.5 rounded-2xl bg-slate-100 p-1.5">
+      <div
+        role="tablist"
+        aria-label="Bộ lọc phản hồi"
+        className="mb-4 flex min-w-0 flex-wrap gap-1 rounded-[10px] bg-[var(--student-v2-surface-secondary)] p-1"
+      >
         <FeedbackTab
           active={tab === "action"}
           label="Cần xử lý"
           count={actionableCount}
-          onClick={() => setTab("action")}
+          onClick={() => {
+            setTab("action");
+            setPage(1);
+          }}
         />
         <FeedbackTab
           active={tab === "handled"}
           label="Đã xử lý"
           count={handledCount}
-          onClick={() => setTab("handled")}
+          onClick={() => {
+            setTab("handled");
+            setPage(1);
+          }}
         />
         <FeedbackTab
           active={tab === "all"}
           label="Tất cả"
           count={feedbackItems.length}
-          onClick={() => setTab("all")}
+          onClick={() => {
+            setTab("all");
+            setPage(1);
+          }}
         />
       </div>
 
-      <SectionCard>
+      <section className="overflow-hidden rounded-[12px] border border-[var(--student-v2-divider)] bg-[var(--student-v2-surface-primary)]">
+        <div className="flex min-h-12 items-center justify-between gap-3 border-b border-[var(--student-v2-divider)] px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="text-[16px] font-semibold text-[var(--student-v2-text-primary)]">
+              Hộp thư phản hồi
+            </h2>
+            <p className="mt-0.5 text-[13px] text-[var(--student-v2-text-muted)]">
+              {filteredItems.length} mục trong bộ lọc hiện tại
+            </p>
+          </div>
+          {showPartialError ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="min-h-11 shrink-0 rounded-[8px] px-3 text-sm font-semibold text-[var(--student-v2-critical-text)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--student-v2-focus-ring)]"
+            >
+              Tải lại
+            </button>
+          ) : null}
+        </div>
+        {showPartialError ? (
+          <div className="border-b border-[var(--student-v2-divider)] bg-[var(--student-v2-critical-bg)] px-4 py-2 text-[13px] text-[var(--student-v2-critical-text)]">
+            Một phần phản hồi có thể chưa cập nhật. Danh sách bên dưới vẫn giữ dữ liệu đã tải.
+          </div>
+        ) : null}
         {isLoading ? (
-          <div className="space-y-3 py-2">
-            <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
-            <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
-            <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="divide-y divide-[var(--student-v2-divider)]">
+            <div className="h-[76px] animate-pulse bg-[var(--student-v2-surface-secondary)]" />
+            <div className="h-[76px] animate-pulse bg-white" />
+            <div className="h-[76px] animate-pulse bg-[var(--student-v2-surface-secondary)]" />
           </div>
         ) : filteredItems.length === 0 ? (
-          <StudentEmptyState
-            variant="noData"
-            title={
-              tab === "action" ? "Không có phản hồi cần xử lý" : "Chưa có phản hồi trong mục này"
-            }
-            description={
-              tab === "action"
+          <div className="px-4 py-8 text-sm text-[var(--student-v2-text-secondary)]">
+            <div className="font-semibold text-[var(--student-v2-text-primary)]">
+              {tab === "action" ? "Không có phản hồi cần xử lý" : "Chưa có phản hồi trong mục này"}
+            </div>
+            <p className="mt-1 max-w-2xl text-[13px] leading-5">
+              {tab === "action"
                 ? "Khi cán bộ yêu cầu bổ sung minh chứng hoặc hồ sơ có kết quả, thông tin sẽ xuất hiện tại đây."
-                : "Các phản hồi phù hợp sẽ xuất hiện khi hồ sơ của bạn được cập nhật."
-            }
-            primaryAction={
-              tab === "action" ? (
-                <AppButton asChild variant="secondary">
-                  <Link to="/app/application">Quay lại hồ sơ</Link>
-                </AppButton>
-              ) : undefined
-            }
-          />
+                : "Các phản hồi phù hợp sẽ xuất hiện khi hồ sơ của bạn được cập nhật."}
+            </p>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {filteredItems.map((item) => (
-              <FeedbackCard
+          <div className="divide-y divide-[var(--student-v2-divider)]">
+            {visibleItems.map((item) => (
+              <FeedbackRow
                 key={item.id}
                 item={item}
                 isPending={isPending}
@@ -340,7 +379,15 @@ function StudentFeedbackCenter({
             ))}
           </div>
         )}
-      </SectionCard>
+        {filteredItems.length > pageSize ? (
+          <FeedbackPagination
+            page={page}
+            pageCount={pageCount}
+            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+            onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
+          />
+        ) : null}
+      </section>
 
       <ScrollSafeModal
         open={Boolean(expandedItem)}
@@ -352,7 +399,7 @@ function StudentFeedbackCenter({
         widthClassName="max-w-2xl"
         footer={
           <div className="flex justify-end">
-            <AppButton onClick={() => setExpandedItem(null)}>Đóng</AppButton>
+            <ButtonV2 onClick={() => setExpandedItem(null)}>Đóng</ButtonV2>
           </div>
         }
       >
@@ -378,9 +425,13 @@ function FeedbackTab({
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
-        active ? "bg-white text-[#0057C2] shadow-sm" : "text-slate-600 hover:bg-white/70"
+      className={`min-h-11 rounded-[8px] px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--student-v2-focus-ring)] ${
+        active
+          ? "bg-[var(--student-v2-surface-primary)] text-[var(--student-v2-primary-action-blue)]"
+          : "text-[var(--student-v2-text-secondary)] hover:bg-white/70"
       }`}
     >
       {label} ({count})
@@ -388,7 +439,7 @@ function FeedbackTab({
   );
 }
 
-function FeedbackCard({
+function FeedbackRow({
   item,
   isPending,
   onMarkRead,
@@ -413,77 +464,134 @@ function FeedbackCard({
   });
   const isLong = item.message.length > 180;
   const isAcknowledgeOnly = item.actionLabel === "Đã hiểu";
+  const source = getFeedbackSourceLabel(item);
+  const progressStatus = getFeedbackProgressStatus(item);
 
   return (
-    <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <StatusBadge
-              tone={item.isActionable ? "warning" : item.status === "new" ? "info" : "neutral"}
-              label={item.statusLabel}
-            />
-            {item.criterionKey ? (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
-                {item.criterionLabel || criterionLabels[item.criterionKey]}
-              </span>
-            ) : null}
-          </div>
-          <h3 className="mt-3 line-clamp-2 text-base font-bold text-[var(--text-primary)]">
-            {item.title}
-          </h3>
-          <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--text-secondary)]">
-            {item.message}
-          </p>
-          {isLong ? (
-            <button
-              type="button"
-              className="mt-1 text-sm font-bold text-[#0057C2]"
-              onClick={() => onExpand(item)}
-            >
-              Xem thêm
-            </button>
-          ) : null}
+    <article className="grid min-w-0 gap-3 px-4 py-3 transition-colors hover:bg-[var(--student-v2-surface-secondary)] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--student-v2-text-muted)]">
+          <span className="font-semibold text-[var(--student-v2-text-secondary)]">{source}</span>
+          {item.criterionKey ? (
+            <span>{item.criterionLabel || criterionLabels[item.criterionKey]}</span>
+          ) : (
+            <span>Hệ thống</span>
+          )}
+          <time dateTime={item.createdAt}>{formatFeedbackTimestamp(item.createdAt)}</time>
           {item.dueDate ? (
-            <div className="mt-3 text-sm font-semibold text-amber-700">
-              Hạn bổ sung: {formatFeedbackDate(item.dueDate)}
-            </div>
+            <span className="font-semibold text-[var(--student-v2-progress-supplement-text)]">
+              Hạn: {formatFeedbackDate(item.dueDate)}
+            </span>
           ) : null}
         </div>
-        <MessageSquareText className="hidden h-5 w-5 shrink-0 text-[#0057C2] sm:block" />
+        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+          <h3 className="min-w-0 text-[15px] font-semibold leading-6 text-[var(--student-v2-text-primary)]">
+            {item.title}
+          </h3>
+          <StatusPillV2 status={progressStatus} label={item.statusLabel} />
+        </div>
+        <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
+          {item.message}
+        </p>
+        {isLong ? (
+          <button
+            type="button"
+            className="mt-1 min-h-11 text-[13px] font-semibold text-[var(--student-v2-primary-action-blue)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--student-v2-focus-ring)]"
+            onClick={() => onExpand(item)}
+          >
+            Xem đầy đủ
+          </button>
+        ) : null}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
         {isAcknowledgeOnly ? (
-          <AppButton
-            size="sm"
+          <ButtonV2
+            size="compact"
             variant="secondary"
             disabled={isPending || item.status === "read"}
             onClick={() => onMarkRead(item.id)}
           >
-            Đã hiểu
-          </AppButton>
+            {isPending ? "Đang lưu" : "Đã hiểu"}
+          </ButtonV2>
         ) : (
-          <AppButton asChild size="sm" variant={item.isActionable ? "primary" : "secondary"}>
+          <ButtonV2 asChild size="compact" variant={item.isActionable ? "primary" : "secondary"}>
             <Link to={toStudentHref(actionHref)}>{item.actionLabel}</Link>
-          </AppButton>
+          </ButtonV2>
         )}
-        <AppButton asChild size="sm" variant="ghost">
-          <Link to={toStudentHref(assistantHref)}>Hỏi cách xử lý</Link>
-        </AppButton>
+        <ButtonV2 asChild size="compact" variant="tertiary">
+          <Link to={toStudentHref(assistantHref)}>Hỏi trợ lý</Link>
+        </ButtonV2>
         {!isAcknowledgeOnly && (item.status === "new" || item.isActionable) ? (
-          <AppButton
-            size="sm"
-            variant="ghost"
+          <ButtonV2
+            size="compact"
+            variant="tertiary"
             disabled={isPending}
             onClick={() => onMarkRead(item.id)}
           >
-            Đã hiểu
-          </AppButton>
+            {isPending ? "Đang lưu" : "Đã hiểu"}
+          </ButtonV2>
         ) : null}
       </div>
     </article>
   );
+}
+
+function FeedbackPagination({
+  page,
+  pageCount,
+  onPrevious,
+  onNext,
+}: {
+  page: number;
+  pageCount: number;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <nav
+      className="flex items-center justify-between gap-3 border-t border-[var(--student-v2-divider)] px-4 py-3 text-sm"
+      aria-label="Phân trang phản hồi"
+    >
+      <span className="text-[var(--student-v2-text-muted)]">
+        Trang {page}/{pageCount}
+      </span>
+      <div className="flex gap-2">
+        <ButtonV2 size="compact" variant="secondary" disabled={page <= 1} onClick={onPrevious}>
+          Trước
+        </ButtonV2>
+        <ButtonV2 size="compact" variant="secondary" disabled={page >= pageCount} onClick={onNext}>
+          Sau
+        </ButtonV2>
+      </div>
+    </nav>
+  );
+}
+
+function getFeedbackProgressStatus(item: FeedbackItem): StudentApplicationV2ProgressStatus {
+  if (item.isActionable) return "supplement";
+  if (item.status === "read") return "complete";
+  return "waiting";
+}
+
+function getFeedbackSourceLabel(item: FeedbackItem) {
+  if (item.feedbackType === "action") return "Yêu cầu bổ sung";
+  if (item.feedbackType === "result") return "Kết quả";
+  if (item.feedbackType === "review") return "Cập nhật trạng thái";
+  if (item.feedbackType === "system") return "Thông báo hệ thống";
+  return "Phản hồi";
+}
+
+function formatFeedbackTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function buildAssistantHref({

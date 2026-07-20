@@ -1,0 +1,31 @@
+{
+  "screenshots": [
+    "D:\\02_PROJECTS\\5TOT\\namtot\\artifacts\\phase-7-5\\overview-default-768x1024.png"
+  ],
+  "observations": [
+    {
+      "label": "overview-default",
+      "viewport": "768x1024",
+      "title": "5TOT Platform — Hồ sơ Sinh viên 5 tốt",
+      "url": "http://127.0.0.1:5173/app",
+      "bodySample": "HỘI SINH VIÊN VIỆT NAM DDK Hệ thống Sinh viên 5 tốt VS Nguyễn Văn Sinh Sinh viên Trường Đại học Bách khoa - Đại học Đà Nẵng 102220001 Khoa Công nghệ Thông tin 22T_DT1 Tổng quan Hồ sơ & minh chứng Phản hồi Trợ lý Đăng xuất Xin chào, Sinh Hoà",
+      "overflowX": 0,
+      "scrollHeight": 1024,
+      "clientHeight": 1024,
+      "smallTargets": [],
+      "largeRadii": [],
+      "shadows": [],
+      "rawEnums": [],
+      "images": [
+        {
+          "alt": "",
+          "objectFit": "contain",
+          "width": 48,
+          "height": 48,
+          "src": "http://127.0.0.1:5173/src/assets/hsvvn-emblem.webp"
+        }
+      ]
+    }
+  ],
+  "seriousLogs": []
+}

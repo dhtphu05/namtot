@@ -1,0 +1,644 @@
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowRight, BookOpenCheck, Clock3, Loader2, Plus } from "lucide-react";
+import { useMemo } from "react";
+import {
+  useCriteriaCompletion,
+  useCurrentApplication,
+  useLatestPrecheck,
+  useStartApplication,
+} from "@/features/application/hooks/useApplication";
+import {
+  applyActionPresentationToUiAction,
+  getStudentCriterionDisplayState,
+} from "@/features/application/presentation";
+import { useAuth } from "@/features/auth/store/auth-store";
+import { useEvidences } from "@/features/evidence/hooks/useEvidence";
+import type { Notification } from "@/features/notifications/api/notifications";
+import { useNotifications } from "@/features/notifications/hooks/useNotifications";
+import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
+import type {
+  ApplicationState,
+  Criterion,
+  CriterionCompletionItem,
+  EvidenceResponse,
+  PrecheckResult,
+} from "@/lib/api/types";
+import { cn } from "@/lib/utils";
+import {
+  coreStudentCriteria,
+  applyCompletionToCriteriaState,
+  criterionLabels,
+  getCriteriaUiState,
+  getFeedbackUiItems,
+  getNextActions,
+  getStudentApplicationSummary,
+} from "@/features/student/selectors/student-ui";
+import {
+  ButtonV2,
+  CompactEmptyState,
+  FiveCriteriaSpineV2,
+  HairlineList,
+  InlineStateMessage,
+  SectionHeading,
+  StatusPillV2,
+  mapStudentDisplayStatusToV2ProgressStatus,
+  type FiveCriteriaSpineV2Item,
+  type StudentApplicationV2ProgressStatus,
+} from "./components";
+
+const SCHOOL_YEAR = "2025-2026";
+
+type ApplicationWithOverviewData = ApplicationState & {
+  deadline?: string | null;
+  submitDeadline?: string | null;
+  dueDate?: string | null;
+  summary?: {
+    deadline?: string | null;
+  };
+  latestPrecheckResult?: PrecheckResult | null;
+  reviewTasks?: Array<{
+    criterion?: Criterion;
+    status?: string | null;
+    decision?: string | null;
+    officerNote?: string | null;
+    decisionReason?: string | null;
+    supplementRequestJson?: {
+      reason?: string;
+      deadline?: string | null;
+      requestedFields?: string[];
+      [key: string]: unknown;
+    } | null;
+  }>;
+};
+
+type NextAction = ReturnType<typeof getNextActions>[number] & { isInteractive?: boolean };
+
+const overviewActionLinkClassName = "inline-flex min-h-11 items-center justify-center gap-2";
+
+type AssistantSearch = {
+  source: "overview";
+  applicationId?: string;
+  status?: string;
+  nextActions?: string;
+};
+
+type OverviewUpdate = {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+};
+
+export function StudentOverviewV2() {
+  const navigate = useNavigate();
+  const user = useAuth((state) => state.user);
+  const current = useCurrentApplication(SCHOOL_YEAR);
+  const application = current.data?.application as ApplicationWithOverviewData | null | undefined;
+  const applicationId = application?.id;
+  const latestPrecheck = useLatestPrecheck(applicationId);
+  const criteriaCompletion = useCriteriaCompletion(applicationId);
+  const evidencesQuery = useEvidences(applicationId, { limit: 100 });
+  const notifications = useNotifications({ page: 1, limit: 20 });
+  const startApplication = useStartApplication();
+  const { trackClick } = useSmartUXTracking();
+
+  const firstName = getFirstName(user?.fullName);
+  const evidences = useMemo(() => normalizeEvidences(evidencesQuery.data), [evidencesQuery.data]);
+  const feedbackItems = useMemo(() => getFeedbackUiItems(notifications.data), [notifications.data]);
+  const precheck = (latestPrecheck.data ??
+    application?.latestPrecheckResult ??
+    null) as PrecheckResult | null;
+  const completionItems = useMemo(
+    () => criteriaCompletion.data?.items ?? [],
+    [criteriaCompletion.data?.items],
+  );
+  const applicationForSummary = useMemo(
+    () => (application ? { ...application, evidences } : null),
+    [application, evidences],
+  );
+
+  const criteriaStates = useMemo(
+    () =>
+      coreStudentCriteria.map((criterion, index) =>
+        buildSpineItem({
+          application,
+          completion: completionItems.find((item) => item.criterion === criterion),
+          criterion,
+          index,
+          precheck,
+        }),
+      ),
+    [application, completionItems, precheck],
+  );
+  const criteriaUiStates = useMemo(
+    () =>
+      coreStudentCriteria.map((criterion) =>
+        applyCompletionToCriteriaState(
+          getCriteriaUiState(criterion, evidences, precheck, feedbackItems),
+          completionItems.find((item) => item.criterion === criterion),
+        ),
+      ),
+    [completionItems, evidences, feedbackItems, precheck],
+  );
+
+  const summary = getStudentApplicationSummary(
+    applicationForSummary,
+    precheck,
+    null,
+    feedbackItems,
+    criteriaUiStates,
+  );
+
+  const nextActions = useMemo(
+    () =>
+      getNextActions(applicationForSummary, criteriaUiStates, feedbackItems, precheck).map(
+        (action) => applyActionPresentationToUiAction(action),
+      ),
+    [applicationForSummary, criteriaUiStates, feedbackItems, precheck],
+  );
+
+  const updates = useMemo(
+    () => buildOverviewUpdates(notifications.data, feedbackItems, precheck),
+    [notifications.data, feedbackItems, precheck],
+  );
+
+  const assistantSearch = buildAssistantSearch({
+    applicationId,
+    nextActions: nextActions.map((action) => action.title),
+    status: application?.status ?? summary.statusBadge.label,
+  });
+
+  const handleStart = () => {
+    trackClick("student_start_application", {
+      role: "student",
+      page: "overview_v2",
+      target_level: "school",
+    });
+    startApplication.mutate({
+      schoolYear: SCHOOL_YEAR,
+      targetLevel: "school",
+      applicationType: "individual",
+    });
+  };
+
+  if (current.isLoading) {
+    return <StudentOverviewV2Skeleton firstName={firstName} />;
+  }
+
+  if (current.isError) {
+    return (
+      <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-0 py-5">
+        <OverviewHeading firstName={firstName} />
+        <InlineStateMessage
+          tone="critical"
+          title="Chưa tải được tổng quan hồ sơ"
+          description="Dữ liệu có thể đang mất kết nối tạm thời. Vui lòng thử lại."
+          action={
+            <ButtonV2
+              type="button"
+              variant="tertiary"
+              size="compact"
+              onClick={() => current.refetch()}
+            >
+              Thử tải lại
+            </ButtonV2>
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-0 py-5">
+      <OverviewHeading firstName={firstName} />
+
+      <PrimaryStatusStrip
+        application={application ?? null}
+        isStarting={startApplication.isPending}
+        onStart={handleStart}
+        assistantSearch={assistantSearch}
+        summary={summary}
+      />
+
+      <FiveCriteriaSpineV2
+        items={criteriaStates}
+        onSelect={(key) =>
+          navigate({
+            to: "/app/application",
+            search: { criterion: key as Criterion },
+          })
+        }
+      />
+
+      <section className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)]">
+        <ActionList actions={nextActions} />
+        <UpdateLedger updates={updates} />
+      </section>
+    </div>
+  );
+}
+
+function OverviewHeading({ firstName }: { firstName: string }) {
+  return (
+    <header className="min-w-0">
+      <h1 className="m-0 truncate text-[28px] font-bold leading-9 text-[var(--student-v2-text-primary)]">
+        Xin chào, {firstName}
+      </h1>
+      <p className="mt-1 line-clamp-1 max-w-3xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+        Hoàn thiện hồ sơ Sinh viên 5 tốt theo đúng yêu cầu đang áp dụng tại đơn vị của bạn.
+      </p>
+    </header>
+  );
+}
+
+function PrimaryStatusStrip({
+  application,
+  assistantSearch,
+  isStarting,
+  onStart,
+  summary,
+}: {
+  application: ApplicationWithOverviewData | null;
+  assistantSearch: AssistantSearch;
+  isStarting: boolean;
+  onStart: () => void;
+  summary: ReturnType<typeof getStudentApplicationSummary>;
+}) {
+  const progressStatus = mapApplicationStatusToProgress(application?.status);
+  const secondaryAction = summary.secondaryAction ?? {
+    label: "Kiểm tra hồ sơ",
+    route: "/app/application",
+  };
+
+  return (
+    <section
+      className="relative flex min-h-[144px] w-full min-w-0 overflow-hidden rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-5 sm:p-6"
+      aria-labelledby="student-overview-status-heading"
+    >
+      <div className="absolute inset-y-0 left-0 w-1 bg-[var(--student-v2-institutional-cyan)]" />
+      <div className="flex min-w-0 flex-1 flex-col justify-center pl-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="text-[12px] font-semibold uppercase leading-[17px] text-[var(--student-v2-text-muted)]">
+            Trạng thái hồ sơ
+          </span>
+          <StatusPillV2 status={progressStatus} label={summary.statusBadge.label} />
+        </div>
+        <h2
+          id="student-overview-status-heading"
+          className="mt-2 line-clamp-2 max-w-4xl text-[22px] font-bold leading-7 text-[var(--student-v2-text-primary)] sm:text-[24px] sm:leading-8"
+        >
+          {summary.headline}
+        </h2>
+        <p className="mt-1 line-clamp-2 max-w-3xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+          {summary.description}
+        </p>
+        <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          {application ? (
+            <ButtonV2 asChild>
+              <Link
+                to={toStudentRoute(summary.primaryAction.route)}
+                className={overviewActionLinkClassName}
+              >
+                {summary.primaryAction.label}
+                <ArrowRight aria-hidden="true" />
+              </Link>
+            </ButtonV2>
+          ) : (
+            <ButtonV2 type="button" onClick={onStart} disabled={isStarting}>
+              {isStarting ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Plus aria-hidden="true" />
+              )}
+              {summary.primaryAction.label}
+            </ButtonV2>
+          )}
+          {application ? (
+            <ButtonV2 asChild variant="secondary">
+              <Link
+                to={toStudentRoute(secondaryAction.route)}
+                className={overviewActionLinkClassName}
+              >
+                <BookOpenCheck aria-hidden="true" />
+                {secondaryAction.label}
+              </Link>
+            </ButtonV2>
+          ) : (
+            <ButtonV2 type="button" variant="secondary" disabled>
+              <BookOpenCheck aria-hidden="true" />
+              Kiểm tra hồ sơ
+            </ButtonV2>
+          )}
+          <ButtonV2 asChild variant="tertiary">
+            <Link
+              to="/app/assistant"
+              search={assistantSearch}
+              className={overviewActionLinkClassName}
+            >
+              Hỏi trợ lý
+            </Link>
+          </ButtonV2>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ActionList({ actions }: { actions: NextAction[] }) {
+  const visibleActions = actions.slice(0, 3);
+
+  return (
+    <section className="min-w-0">
+      <SectionHeading title="Việc bạn có thể làm" />
+      <div className="mt-3 overflow-hidden rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]">
+        {visibleActions.length ? (
+          <>
+            <HairlineList className="border-y-0">
+              {visibleActions.map((action, index) => (
+                <TaskRow
+                  key={`${action.title}-${index}`}
+                  action={action}
+                  index={index}
+                  className={index >= 2 ? "hidden sm:flex" : undefined}
+                />
+              ))}
+            </HairlineList>
+            {actions.length > 2 ? (
+              <div className="border-t border-[var(--student-v2-divider)] px-4 py-3">
+                <ButtonV2 asChild variant="tertiary" size="compact">
+                  <Link to="/app/application" className={overviewActionLinkClassName}>
+                    Xem tất cả
+                  </Link>
+                </ButtonV2>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <CompactEmptyState
+            title="Bạn chưa có việc cần xử lý"
+            description="Khi hồ sơ cần bổ sung hoặc có phản hồi mới, hệ thống sẽ hiển thị tại đây."
+            className="border-0"
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function TaskRow({
+  action,
+  className,
+  index,
+}: {
+  action: NextAction;
+  className?: string;
+  index: number;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-16 min-w-0 items-center gap-3 px-4 py-3 sm:min-h-[72px]",
+        className,
+      )}
+    >
+      <Clock3
+        className="hidden h-4 w-4 shrink-0 text-[var(--student-v2-text-muted)] sm:block"
+        aria-hidden="true"
+      />
+      <div className="min-w-0 flex-1">
+        <h3 className="line-clamp-1 text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)]">
+          {action.title}
+        </h3>
+        <p className="line-clamp-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
+          {action.description}
+        </p>
+      </div>
+      {action.isInteractive === false ? (
+        <StatusPillV2 status="waiting" />
+      ) : (
+        <ButtonV2 asChild variant={index === 0 ? "secondary" : "tertiary"} size="compact">
+          <Link
+            to={action.criterionKey ? "/app/application" : toStudentRoute(action.route)}
+            search={action.criterionKey ? { criterion: action.criterionKey } : undefined}
+            className={overviewActionLinkClassName}
+          >
+            {action.actionLabel}
+          </Link>
+        </ButtonV2>
+      )}
+    </div>
+  );
+}
+
+function UpdateLedger({ updates }: { updates: OverviewUpdate[] }) {
+  return (
+    <section className="min-w-0">
+      <SectionHeading title="Cập nhật hồ sơ" />
+      <div className="mt-3 overflow-hidden rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]">
+        {updates.length ? (
+          <HairlineList className="border-y-0">
+            {updates.slice(0, 4).map((update) => (
+              <div key={update.id} className="min-h-16 px-4 py-3">
+                <div className="text-[12px] font-medium leading-[17px] text-[var(--student-v2-text-muted)]">
+                  {update.timestamp}
+                </div>
+                <h3 className="mt-1 line-clamp-1 text-[14px] font-semibold leading-[22px] text-[var(--student-v2-text-primary)]">
+                  {update.title}
+                </h3>
+                <p className="line-clamp-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
+                  {update.description}
+                </p>
+              </div>
+            ))}
+          </HairlineList>
+        ) : (
+          <CompactEmptyState
+            title="Chưa có cập nhật mới"
+            description="Các thay đổi về kiểm tra và phản hồi hồ sơ sẽ xuất hiện tại đây."
+            className="min-h-28 border-0"
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function StudentOverviewV2Skeleton({ firstName }: { firstName: string }) {
+  return (
+    <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-0 py-5" aria-busy="true">
+      <OverviewHeading firstName={firstName} />
+      <div className="min-h-[144px] rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-6">
+        <SkeletonLine className="h-4 w-36" />
+        <SkeletonLine className="mt-4 h-7 w-2/3" />
+        <SkeletonLine className="mt-3 h-4 w-1/2" />
+        <div className="mt-5 flex gap-2">
+          <SkeletonLine className="h-10 w-36" />
+          <SkeletonLine className="h-10 w-32" />
+        </div>
+      </div>
+      <div className="min-h-[104px] rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)]">
+        <SkeletonPanel />
+        <SkeletonPanel />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonPanel() {
+  return (
+    <div className="rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-4">
+      <SkeletonLine className="h-5 w-36" />
+      <SkeletonLine className="mt-5 h-16 w-full" />
+      <SkeletonLine className="mt-3 h-16 w-full" />
+    </div>
+  );
+}
+
+function SkeletonLine({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "animate-pulse rounded-full bg-[var(--student-v2-surface-secondary)]",
+        className,
+      )}
+    />
+  );
+}
+
+function buildSpineItem({
+  application,
+  completion,
+  criterion,
+  index,
+  precheck,
+}: {
+  application?: ApplicationWithOverviewData | null;
+  completion?: CriterionCompletionItem;
+  criterion: Criterion;
+  index: number;
+  precheck: PrecheckResult | null;
+}): FiveCriteriaSpineV2Item {
+  if (!application) {
+    return {
+      key: criterion,
+      number: String(index + 1).padStart(2, "0"),
+      title: criterionLabels[criterion],
+      status: "not-started",
+    };
+  }
+
+  const display = getStudentCriterionDisplayState({
+    criterion,
+    application,
+    completion,
+    reviewTask: application.reviewTasks?.find((item) => item.criterion === criterion),
+    precheckAction: precheck?.criteriaResults?.find((item) => item.criterion === criterion)
+      ?.nextAction,
+  });
+
+  return {
+    key: criterion,
+    number: String(index + 1).padStart(2, "0"),
+    title: criterionLabels[criterion],
+    status: mapStudentDisplayStatusToV2ProgressStatus(display),
+  };
+}
+
+function buildOverviewUpdates(
+  notifications: Notification[] | undefined,
+  feedbackItems: ReturnType<typeof getFeedbackUiItems>,
+  precheck: PrecheckResult | null,
+): OverviewUpdate[] {
+  const actionableIds = new Set(
+    feedbackItems.filter((item) => item.isActionable).map((item) => item.id),
+  );
+  const notificationUpdates = (notifications ?? [])
+    .filter((item) => !actionableIds.has(item.id))
+    .slice(0, 3)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.message || "Có cập nhật mới về hồ sơ.",
+      timestamp: formatTimestamp(item.createdAt),
+    }));
+
+  const precheckUpdate = precheck?.createdAt
+    ? [
+        {
+          id: `precheck-${precheck.createdAt}`,
+          title: "Đã ghi nhận lần kiểm tra sơ bộ",
+          description: precheck.readyToSubmit
+            ? "Hồ sơ đã sẵn sàng cho bước nộp chính thức."
+            : "Hệ thống đã cập nhật kết quả kiểm tra gần nhất.",
+          timestamp: formatTimestamp(precheck.createdAt),
+        },
+      ]
+    : [];
+
+  return [...precheckUpdate, ...notificationUpdates].slice(0, 4);
+}
+
+function mapApplicationStatusToProgress(
+  status?: string | null,
+): StudentApplicationV2ProgressStatus {
+  if (status === "ready_to_submit" || status === "completed") return "complete";
+  if (status === "supplement_required") return "supplement";
+  if (status === "submitted" || status === "under_review" || status === "resolution_needed") {
+    return "waiting";
+  }
+  if (status === "draft" || status === "prechecked") return "waiting";
+  return "not-started";
+}
+
+function buildAssistantSearch({
+  applicationId,
+  nextActions,
+  status,
+}: {
+  applicationId?: string;
+  nextActions?: string[];
+  status?: string;
+}): AssistantSearch {
+  return {
+    source: "overview",
+    applicationId,
+    status,
+    nextActions: nextActions?.length ? nextActions.slice(0, 3).join("|") : undefined,
+  };
+}
+
+type StudentOverviewRoute = "/app/application" | "/app/feedback";
+
+function toStudentRoute(route: string): StudentOverviewRoute {
+  return route === "/app/feedback" ? "/app/feedback" : "/app/application";
+}
+
+function normalizeEvidences(value: unknown): EvidenceResponse[] {
+  if (Array.isArray(value)) return value as EvidenceResponse[];
+  if (value && typeof value === "object") {
+    const record = value as { evidences?: unknown; items?: unknown; data?: unknown };
+    if (Array.isArray(record.evidences)) return record.evidences as EvidenceResponse[];
+    if (Array.isArray(record.items)) return record.items as EvidenceResponse[];
+    if (Array.isArray(record.data)) return record.data as EvidenceResponse[];
+  }
+  return [];
+}
+
+function formatTimestamp(value?: string | null) {
+  if (!value) return "Chưa rõ thời gian";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+function getFirstName(fullName?: string | null) {
+  const parts = fullName?.trim().split(/\s+/).filter(Boolean) ?? [];
+  return parts.at(-1) ?? "bạn";
+}

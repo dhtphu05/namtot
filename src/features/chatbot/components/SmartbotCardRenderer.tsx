@@ -15,7 +15,10 @@ export function SmartbotCardRenderer({ card, onPostback }: Props) {
         {card.text && <p className="whitespace-pre-wrap text-sm leading-6">{card.text}</p>}
         <div className="grid gap-3 md:grid-cols-2">
           {(card.items ?? []).map((item, index) => (
-            <div key={`${item.title ?? "item"}-${index}`} className="rounded-lg border border-[#E2E8F0] bg-white p-3">
+            <div
+              key={`${item.title ?? "item"}-${index}`}
+              className="rounded-lg border border-[#E2E8F0] bg-white p-3"
+            >
               <CardBody card={item} onPostback={onPostback} />
             </div>
           ))}
@@ -29,12 +32,19 @@ export function SmartbotCardRenderer({ card, onPostback }: Props) {
       <div className="space-y-4">
         <div className="space-y-1">
           {card.title && <div className="text-base font-bold text-brand-deep">{card.title}</div>}
-          {card.subtitle && <p className="text-sm leading-6 text-muted-foreground">{card.subtitle}</p>}
-          {card.text && <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{card.text}</p>}
+          {card.subtitle && (
+            <p className="text-sm leading-6 text-muted-foreground">{card.subtitle}</p>
+          )}
+          {card.text && (
+            <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{card.text}</p>
+          )}
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           {(card.items ?? []).map((item, index) => (
-            <div key={`${item.title ?? "item"}-${index}`} className="rounded-lg border border-[#E2E8F0] bg-[#FBFDFF] p-4">
+            <div
+              key={`${item.title ?? "item"}-${index}`}
+              className="rounded-lg border border-[#E2E8F0] bg-[#FBFDFF] p-4"
+            >
               <CardBody card={item} onPostback={onPostback} />
             </div>
           ))}
@@ -78,10 +88,18 @@ function CardBody({ card, onPostback }: Props) {
         {card.status && <Chip tone={statusTone(card)}>{card.status}</Chip>}
       </div>
       {card.subtitle && <div className="text-sm text-muted-foreground">{card.subtitle}</div>}
-      {card.text && <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{card.text}</p>}
-      {card.description && <p className="text-sm leading-6 text-muted-foreground">{card.description}</p>}
+      {card.text && (
+        <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{card.text}</p>
+      )}
+      {card.description && (
+        <p className="text-sm leading-6 text-muted-foreground">{card.description}</p>
+      )}
       {card.type === "image" && card.url && (
-        <img src={card.url} alt={card.title ?? "Smartbot"} className="max-h-56 rounded-lg object-contain" />
+        <img
+          src={card.url}
+          alt={card.title ?? "Smartbot"}
+          className="max-h-56 rounded-lg object-contain"
+        />
       )}
       {(card.buttons ?? []).length > 0 && (
         <div className="flex max-w-full flex-wrap gap-2">
@@ -115,7 +133,13 @@ function labelForType(type: SmartbotMessageCard["type"]) {
 
 function statusTone(card: SmartbotMessageCard) {
   const status = card.status ?? "";
-  if (status.includes("Đã ghi nhận") || status.includes("Có dữ liệu") || status.includes("Đã đọc được") || card.type === "matching_event") return "success";
+  if (
+    status.includes("Đã ghi nhận") ||
+    status.includes("Có dữ liệu") ||
+    status.includes("Đã đọc được") ||
+    card.type === "matching_event"
+  )
+    return "success";
   if (card.type === "handoff" || card.type === "gap_item") return "warning";
   return "brand";
 }
@@ -123,9 +147,9 @@ function statusTone(card: SmartbotMessageCard) {
 function isEvidenceState(status?: string) {
   return Boolean(
     status &&
-      (status.includes("Đã ghi nhận") ||
-        status.includes("Có dữ liệu") ||
-        status.includes("Chưa có minh chứng") ||
-        status.includes("Cần kiểm tra thêm")),
+    (status.includes("Đã ghi nhận") ||
+      status.includes("Có dữ liệu") ||
+      status.includes("Chưa có minh chứng") ||
+      status.includes("Cần kiểm tra thêm")),
   );
 }

@@ -9,10 +9,8 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-[var(--brand-primary-soft)] text-[var(--brand-primary)] hover:bg-[#DCEBFF]",
-        secondary:
-          "bg-[var(--surface-muted)] text-slate-700 hover:bg-slate-100",
-        destructive:
-          "bg-[var(--surface-danger)] text-rose-700 hover:bg-rose-100",
+        secondary: "bg-[var(--surface-muted)] text-slate-700 hover:bg-slate-100",
+        destructive: "bg-[var(--surface-danger)] text-rose-700 hover:bg-rose-100",
         outline: "bg-[var(--surface-warning)] text-amber-800",
       },
     },

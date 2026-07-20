@@ -26,7 +26,9 @@ function getStatusClass(status?: ReviewTaskStatus | ApplicationStatus | Evidence
 
 export function ReviewStatusBadge({ status }: ReviewStatusBadgeProps) {
   return (
-    <span className={`inline-flex max-w-full items-center rounded-md px-2 py-0.5 text-[11px] font-semibold leading-5 ${getStatusClass(status)}`}>
+    <span
+      className={`inline-flex max-w-full items-center rounded-md px-2 py-0.5 text-[11px] font-semibold leading-5 ${getStatusClass(status)}`}
+    >
       <span className="truncate">{getTaskStatusLabel(status)}</span>
     </span>
   );

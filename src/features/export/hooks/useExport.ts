@@ -1,5 +1,10 @@
 import { useCallback, useState } from "react";
-import { exportApi, type ExportApplicationsParams, type ExportDataset, type ExportFormat } from "../api/export";
+import {
+  exportApi,
+  type ExportApplicationsParams,
+  type ExportDataset,
+  type ExportFormat,
+} from "../api/export";
 
 function getFilename(dataset: ExportDataset, format: ExportFormat) {
   const date = new Date().toISOString().slice(0, 10);
@@ -27,37 +32,39 @@ export function useExportApplications() {
     return exportApi.getApplicationsExportUrl(format, params);
   }, []);
 
-  const downloadDataset = useCallback(async (
-    dataset: ExportDataset,
-    format: ExportFormat,
-    params?: ExportApplicationsParams,
-  ) => {
-    setExportingFormat(format);
-    setExportingDataset(dataset);
-    setError(null);
+  const downloadDataset = useCallback(
+    async (dataset: ExportDataset, format: ExportFormat, params?: ExportApplicationsParams) => {
+      setExportingFormat(format);
+      setExportingDataset(dataset);
+      setError(null);
 
-    try {
-      const blob =
-        dataset === "applications"
-          ? await exportApi.downloadApplicationsExport(format, params)
-          : dataset === "reviewTasks"
-            ? await exportApi.downloadReviewTasksExport(params)
-            : await exportApi.downloadReviewResultsExport(format, params);
-      triggerBlobDownload(blob, getFilename(dataset, format));
-    } catch (caughtError) {
-      const message =
-        caughtError instanceof Error ? caughtError.message : "Không thể xuất dữ liệu hồ sơ.";
-      setError(message);
-      throw caughtError;
-    } finally {
-      setExportingFormat(null);
-      setExportingDataset(null);
-    }
-  }, []);
+      try {
+        const blob =
+          dataset === "applications"
+            ? await exportApi.downloadApplicationsExport(format, params)
+            : dataset === "reviewTasks"
+              ? await exportApi.downloadReviewTasksExport(params)
+              : await exportApi.downloadReviewResultsExport(format, params);
+        triggerBlobDownload(blob, getFilename(dataset, format));
+      } catch (caughtError) {
+        const message =
+          caughtError instanceof Error ? caughtError.message : "Không thể xuất dữ liệu hồ sơ.";
+        setError(message);
+        throw caughtError;
+      } finally {
+        setExportingFormat(null);
+        setExportingDataset(null);
+      }
+    },
+    [],
+  );
 
-  const download = useCallback(async (format: ExportFormat, params?: ExportApplicationsParams) => {
-    await downloadDataset("applications", format, params);
-  }, [downloadDataset]);
+  const download = useCallback(
+    async (format: ExportFormat, params?: ExportApplicationsParams) => {
+      await downloadDataset("applications", format, params);
+    },
+    [downloadDataset],
+  );
 
   const downloadCsv = useCallback(
     async (params?: ExportApplicationsParams) => {

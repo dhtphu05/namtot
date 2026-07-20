@@ -21,6 +21,7 @@ import type {
   ReviewTaskListResponse,
   ReviewTaskMetric,
   ReviewTaskPermissions,
+  ReviewTaskPrecedentCheckResponse,
   ReviewTaskStatus,
   Role,
   SubmitReviewDecisionRequest,
@@ -573,6 +574,16 @@ export const reviewApi = {
     return apiClient<unknown[]>(`/api/review/tasks/${id}/timeline`);
   },
 
+  getReviewTaskPrecedents: async (
+    id: string,
+    limit = 3,
+  ): Promise<ApiResponse<ReviewTaskPrecedentCheckResponse>> => {
+    const response = await apiClient<ReviewTaskPrecedentCheckResponse>(
+      `/api/review/tasks/${id}/precedents/check${buildQueryString({ limit })}`,
+    );
+    return withDataFallback(response, { items: [], hasStrongPrecedent: false });
+  },
+
   getSignedFileUrl: async (fileId: string) => {
     return apiClient<{ url: string }>(`/api/files/${fileId}/signed-url`);
   },
@@ -590,6 +601,9 @@ export const reviewApi = {
         levelAssessmentJson: payload.levelAssessmentJson,
         supplementRequestJson: payload.supplementRequestJson,
         officerNote: payload.note,
+        precedentId: payload.precedentId,
+        precedentEventId: payload.precedentEventId,
+        precedentEvidenceId: payload.precedentEvidenceId,
         evidenceDecisions: payload.evidenceDecisions,
         evidenceAssessments: payload.evidenceAssessments,
       },
@@ -626,6 +640,9 @@ export const reviewApi = {
         reason: payload.reason,
         evidenceId: payload.evidenceIds?.[0],
         evidenceIds: payload.evidenceIds ?? [],
+        precedentId: payload.precedentId,
+        precedentGuardViewed: payload.precedentGuardViewed,
+        precedentGuardReason: payload.precedentGuardReason,
       },
     });
 

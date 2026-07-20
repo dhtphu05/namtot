@@ -9,11 +9,7 @@ export function Card({
 }: React.HTMLAttributes<HTMLDivElement> & { glow?: boolean }) {
   return (
     <div
-      className={cn(
-        glow ? "card-glow" : "card-soft",
-        "min-w-0 max-w-full p-4 md:p-5",
-        className,
-      )}
+      className={cn(glow ? "card-glow" : "card-soft", "min-w-0 max-w-full p-4 md:p-5", className)}
       {...rest}
     >
       {children}
@@ -38,9 +34,13 @@ export function StatCard({
     <div className="card-soft min-w-0 max-w-full p-3.5 md:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">{label}</div>
+          <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
+            {label}
+          </div>
           <div className="text-[26px] font-bold text-brand-deep mt-1 leading-none">{value}</div>
-          {delta && <div className="text-[11px] text-emerald-600 mt-1.5 font-semibold">{delta}</div>}
+          {delta && (
+            <div className="text-[11px] text-emerald-600 mt-1.5 font-semibold">{delta}</div>
+          )}
         </div>
         {icon && (
           <div
@@ -55,7 +55,13 @@ export function StatCard({
   );
 }
 
-export function Chip({ children, tone = "brand" }: { children: React.ReactNode; tone?: "brand" | "success" | "warning" | "error" | "muted" }) {
+export function Chip({
+  children,
+  tone = "brand",
+}: {
+  children: React.ReactNode;
+  tone?: "brand" | "success" | "warning" | "error" | "muted";
+}) {
   const map = {
     brand: "bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]",
     success: "bg-[var(--surface-success)] text-emerald-700",
@@ -64,7 +70,12 @@ export function Chip({ children, tone = "brand" }: { children: React.ReactNode; 
     muted: "bg-[var(--surface-muted)] text-slate-700",
   };
   return (
-    <span className={cn("inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold", map[tone])}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold",
+        map[tone],
+      )}
+    >
       {children}
     </span>
   );
@@ -87,7 +98,8 @@ export function Button({
     primary: "bg-[var(--brand-primary)] text-white hover:bg-[#004BA8]",
     secondary: "bg-[var(--brand-primary-soft)] text-[var(--brand-primary)] hover:bg-[#DCEBFF]",
     ghost: "text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]",
-    outline: "bg-white text-[var(--brand-primary)] shadow-[0_0_0_1px_rgba(15,23,42,0.08)] hover:bg-[var(--brand-primary-soft)]",
+    outline:
+      "bg-white text-[var(--brand-primary)] shadow-[0_0_0_1px_rgba(15,23,42,0.08)] hover:bg-[var(--brand-primary-soft)]",
     danger: "bg-rose-500 text-white hover:bg-rose-600",
     success: "bg-emerald-600 text-white hover:bg-emerald-700",
   };

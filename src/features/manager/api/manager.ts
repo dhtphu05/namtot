@@ -1,10 +1,6 @@
 import { apiClient } from "@/lib/api/client";
 import type { ApiResponse, QueryValue } from "@/features/review/types";
-import type {
-  CollectiveStatus,
-  FinalStatus,
-  Level,
-} from "@/lib/api/types";
+import type { CollectiveStatus, FinalStatus, Level } from "@/lib/api/types";
 import type {
   ManagerApplicationsParams,
   ManagerApplicationsResponse,
@@ -200,7 +196,8 @@ export const managerApi = {
       `/api/manager/collective-profiles${buildQueryString(params)}`,
     );
     const data = response.data;
-    const pagination = response.meta?.pagination as ManagerCollectivesResponse["pagination"] | undefined;
+    const pagination = response.meta?.pagination as
+      ManagerCollectivesResponse["pagination"] | undefined;
 
     return withDataFallback(
       {
@@ -244,7 +241,12 @@ export const managerApi = {
 
     return withDataFallback(response, {
       items: [],
-      pagination: { page: params?.page ?? 1, pageSize: params?.pageSize ?? 10, total: 0, totalPages: 0 },
+      pagination: {
+        page: params?.page ?? 1,
+        pageSize: params?.pageSize ?? 10,
+        total: 0,
+        totalPages: 0,
+      },
       sort: { sortBy: params?.sortBy ?? "lastActivityAt", sortOrder: params?.sortOrder ?? "desc" },
     });
   },

@@ -124,7 +124,6 @@ export function EvidenceCardPanel({
                 label={field.label}
                 value={field.value}
                 source={field.source}
-                confidence={field.confidence}
                 missing={field.missing}
               />
             ))}
@@ -147,7 +146,6 @@ export function EvidenceCardPanel({
               label="GPA SmartReader gợi ý"
               value={academic.suggestionDisplay}
               source="SmartReader gợi ý"
-              confidence={academic.suggestionConfidence}
               missing={!academic.suggestionDisplay}
             />
             <FieldInfo
@@ -365,13 +363,11 @@ function FieldInfo({
   label,
   value,
   source,
-  confidence,
   missing,
 }: {
   label: string;
   value?: string | null;
   source: "Hồ sơ" | "Sinh viên nhập" | "SmartReader gợi ý" | "Kho chính thức" | "Cán bộ xác nhận";
-  confidence?: number;
   missing?: boolean;
 }) {
   return (
@@ -381,14 +377,6 @@ function FieldInfo({
         <Badge variant="outline" className="border-slate-200 bg-background px-1.5 py-0 text-[10px]">
           {source}
         </Badge>
-        {typeof confidence === "number" ? (
-          <Badge
-            variant="outline"
-            className={`px-1.5 py-0 text-[10px] ${confidenceBadgeClass(confidence)}`}
-          >
-            {confidenceLabel(confidence)}
-          </Badge>
-        ) : null}
       </div>
       <div
         className={`mt-1 break-words font-semibold ${
@@ -579,18 +567,6 @@ function criterionLabel(value: string) {
     integration: "Hội nhập tốt",
   };
   return labels[value] ?? value;
-}
-
-function confidenceLabel(value: number) {
-  if (value >= 0.75) return "Chắc chắn cao";
-  if (value >= 0.55) return "Cần xem lại";
-  return "Chưa chắc chắn";
-}
-
-function confidenceBadgeClass(value: number) {
-  if (value >= 0.75) return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (value >= 0.55) return "border-amber-200 bg-amber-50 text-amber-800";
-  return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
 function normalizeCompare(value?: string | null) {

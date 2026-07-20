@@ -14,12 +14,7 @@ export type ApplicationStatusLabelKey =
   | "rejected";
 
 export type ReviewTaskStatusLabelKey =
-  | "waiting"
-  | "reviewing"
-  | "supplement_required"
-  | "accepted"
-  | "rejected"
-  | "resolution_needed";
+  "waiting" | "reviewing" | "supplement_required" | "accepted" | "rejected" | "resolution_needed";
 
 export type EvidenceStatusLabelKey =
   | "draft"
@@ -155,7 +150,10 @@ export function getApplicationStatusLabel(status?: StudentApplicationStatus | nu
 
 export function getStudentApplicationStatusLabel(status?: StudentApplicationStatus | null) {
   if (!status) return fallbackStatusLabel;
-  return studentApplicationStatusLabel[String(status) as ApplicationStatusLabelKey] ?? fallbackStatusLabel;
+  return (
+    studentApplicationStatusLabel[String(status) as ApplicationStatusLabelKey] ??
+    fallbackStatusLabel
+  );
 }
 
 export function getReviewTaskStatusLabel(status?: string | null) {

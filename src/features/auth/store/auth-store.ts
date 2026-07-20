@@ -7,11 +7,7 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
 
-  setAuthData: (
-    user: SafeUser,
-    accessToken: string,
-    refreshToken: string
-  ) => void;
+  setAuthData: (user: SafeUser, accessToken: string, refreshToken: string) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
   setUser: (user: SafeUser) => void;
   clearAuth: () => void;
@@ -43,8 +39,8 @@ export const useAuth = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
       }),
-    }
-  )
+    },
+  ),
 );
 
 export function waitForAuthHydration() {

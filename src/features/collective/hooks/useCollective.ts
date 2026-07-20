@@ -6,7 +6,8 @@ import { toast } from "sonner";
 
 export const collectiveKeys = {
   all: ["collective"] as const,
-  current: (userId?: string | null) => [...collectiveKeys.all, "current", userId ?? "anonymous"] as const,
+  current: (userId?: string | null) =>
+    [...collectiveKeys.all, "current", userId ?? "anonymous"] as const,
   detail: (id: string) => [...collectiveKeys.all, "detail", id] as const,
   latestPrecheck: (id: string) => [...collectiveKeys.all, "precheck", "latest", id] as const,
 };
@@ -47,8 +48,11 @@ export function useStartCollective() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(
-        [...collectiveKeys.current(userId), { schoolYear: data.collective.schoolYear, className: data.collective.className }],
-        data
+        [
+          ...collectiveKeys.current(userId),
+          { schoolYear: data.collective.schoolYear, className: data.collective.className },
+        ],
+        data,
       );
       queryClient.invalidateQueries({ queryKey: collectiveKeys.current(userId) });
     },
@@ -63,7 +67,13 @@ export function useUpdateCollective() {
   const userId = useAuth((s) => s.user?.id);
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { targetLevel?: Level; className?: string; note?: string } }) => {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: { targetLevel?: Level; className?: string; note?: string };
+    }) => {
       const res = await collectiveApi.update(id, data);
       return res.data;
     },
@@ -80,7 +90,13 @@ export function useSubmitCollective() {
   const userId = useAuth((s) => s.user?.id);
 
   return useMutation({
-    mutationFn: async ({ id, options }: { id: string; options: { allowSubmitWithWarnings?: boolean; note?: string } }) => {
+    mutationFn: async ({
+      id,
+      options,
+    }: {
+      id: string;
+      options: { allowSubmitWithWarnings?: boolean; note?: string };
+    }) => {
       const res = await collectiveApi.submit(id, options);
       return res.data;
     },

@@ -1,21 +1,33 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Bell, FileText, LayoutDashboard, LifeBuoy } from "lucide-react";
+import { Bell, BookOpenCheck, FileText, LayoutDashboard, LifeBuoy } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { UserWorkspaceInfo } from "@/components/layout/UserWorkspaceInfo";
+import { ApplicationContextBar } from "@/features/application/ui-v2/components";
+import { useAuth } from "@/features/auth/store/auth-store";
 import { StudentPageShell } from "@/features/student/components/primitives";
+import { STUDENT_APPLICATION_UI_V2 } from "@/lib/student-application-ui-v2";
+import { useApp } from "@/lib/store";
 
 const mobileItems = [
   { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
   { label: "Hồ sơ", to: "/app/application", icon: FileText },
+  { label: "Kho minh chứng", to: "/app/event-library", icon: BookOpenCheck },
   { label: "Phản hồi", to: "/app/feedback", icon: Bell },
   { label: "Trợ lý", to: "/app/assistant", icon: LifeBuoy },
 ];
 
 export function StudentAppShell() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const user = useAuth((s) => s.user);
+  const schoolYear = useApp((s) => s.application.schoolYear);
 
   return (
-    <div className="flex h-[100dvh] min-w-0 overflow-hidden bg-[var(--surface-app)] text-[var(--text-primary)]">
+    <div
+      className={`flex h-[100dvh] min-w-0 overflow-hidden text-[var(--text-primary)] ${
+        STUDENT_APPLICATION_UI_V2 ? "bg-[var(--student-v2-surface-app)]" : "bg-[var(--surface-app)]"
+      }`}
+    >
       <Sidebar />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <motion.div
@@ -25,12 +37,26 @@ export function StudentAppShell() {
           transition={{ duration: 0.22 }}
           key={typeof window !== "undefined" ? window.location.pathname : ""}
         >
-          <StudentPageShell>
+          <StudentPageShell
+            className={
+              STUDENT_APPLICATION_UI_V2 ? "max-w-[1280px] px-4 sm:px-6 lg:px-8" : undefined
+            }
+          >
+            {STUDENT_APPLICATION_UI_V2 ? (
+              <ApplicationContextBar
+                workspaceName={user?.workspace?.name}
+                workspaceShortName={user?.workspace?.shortName}
+                schoolYear={schoolYear}
+                className="mb-3 md:hidden"
+              />
+            ) : (
+              <UserWorkspaceInfo user={user} variant="mobile" className="mb-3 md:hidden" />
+            )}
             <Outlet />
           </StudentPageShell>
         </motion.div>
         <nav className="shrink-0 border-t border-slate-200 bg-white px-2 py-2 md:hidden">
-          <ul className="grid grid-cols-4 gap-1">
+          <ul className="grid grid-cols-5 gap-1">
             {mobileItems.map((item) => {
               const Icon = item.icon;
               const active = isActiveStudentPath(pathname, item.to);
@@ -64,6 +90,7 @@ function isActiveStudentPath(pathname: string, to: string) {
 
 function normalizeStudentPath(pathname: string) {
   if (pathname === "/app/overview") return "/app";
+  if (pathname.startsWith("/app/event-library")) return "/app/event-library";
   if (
     pathname.startsWith("/app/drafts") ||
     pathname.startsWith("/app/evidence") ||

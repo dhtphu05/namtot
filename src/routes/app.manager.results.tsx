@@ -1,25 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import {
-  ClipboardCheck,
-  FileSearch,
-  Loader2,
-  Search,
-  ShieldCheck,
-  XCircle,
-} from "lucide-react";
+import { ClipboardCheck, FileSearch, Loader2, Search, ShieldCheck, XCircle } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip, StatCard } from "@/components/ui-kit";
 import { useAuth } from "@/features/auth/store/auth-store";
-import {
-  useManagerDashboardSummary,
-  useManagerResults,
-} from "@/features/manager/hooks/useManager";
+import { useManagerDashboardSummary, useManagerResults } from "@/features/manager/hooks/useManager";
 import { FinalizationDialog } from "@/features/manager/components/FinalizationDialog";
 import type { ManagerResultFilters, ManagerResultItem } from "@/features/manager/types";
 import type { Criterion, Level, ReviewTaskStatus, Role } from "@/features/review/types";
 import type { FinalStatus } from "@/lib/api/types";
-import { ACTIVE_LEVELS, getDownrankReason, getFinalizeActionLabel, getLevelLabel, isLegacyCentral } from "@/lib/levels";
+import {
+  ACTIVE_LEVELS,
+  getDownrankReason,
+  getFinalizeActionLabel,
+  getLevelLabel,
+  isLegacyCentral,
+} from "@/lib/levels";
 import {
   finalStatusTone,
   getApplicationStatusLabel,
@@ -101,7 +97,8 @@ function ManagerResultsContent({ role }: { role: Role }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState<NonNullable<ManagerResultFilters["sortBy"]>>("lastActivityAt");
+  const [sortBy, setSortBy] =
+    useState<NonNullable<ManagerResultFilters["sortBy"]>>("lastActivityAt");
   const [selected, setSelected] = useState<ManagerResultItem | null>(null);
   const canFinalize = finalizerRoles.includes(role);
   const summaryQuery = useManagerDashboardSummary();
@@ -218,7 +215,9 @@ function ManagerResultsContent({ role }: { role: Role }) {
           </div>
           <select
             value={sortBy}
-            onChange={(event) => setSortBy(event.target.value as NonNullable<ManagerResultFilters["sortBy"]>)}
+            onChange={(event) =>
+              setSortBy(event.target.value as NonNullable<ManagerResultFilters["sortBy"]>)
+            }
             className="rounded-lg border border-[#DCE7F2] bg-white px-3 py-2 text-[13px] font-medium text-brand-deep outline-none focus:ring-2 focus:ring-[#0057C2]/20"
           >
             <option value="lastActivityAt">Mới cập nhật nhất</option>
@@ -396,8 +395,14 @@ function ResultSummaryCard({
 
         <section className="flex min-w-0 flex-col gap-3 xl:items-end">
           <div className="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-1">
-            <SmallInfo label="Trạng thái" value={getApplicationStatusLabel(item.applicationStatus)} />
-            <SmallInfo label="Cập nhật" value={formatDateTime(item.lastActivityAt ?? item.updatedAt)} />
+            <SmallInfo
+              label="Trạng thái"
+              value={getApplicationStatusLabel(item.applicationStatus)}
+            />
+            <SmallInfo
+              label="Cập nhật"
+              value={formatDateTime(item.lastActivityAt ?? item.updatedAt)}
+            />
           </div>
           <div className="flex w-full flex-wrap gap-2 xl:justify-end">
             <Button asChild size="sm" variant="outline">
@@ -431,7 +436,9 @@ function ResultSummaryCard({
 function SmallInfo({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="min-w-0 rounded-lg border bg-white px-3 py-2">
-      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
       <div className="mt-1 truncate text-sm font-semibold text-brand-deep">{value}</div>
     </div>
   );

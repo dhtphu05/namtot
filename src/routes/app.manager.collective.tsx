@@ -117,7 +117,11 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
       />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Tổng hồ sơ" value={pagination.total} icon={<UsersRound className="h-5 w-5" />} />
+        <StatCard
+          label="Tổng hồ sơ"
+          value={pagination.total}
+          icon={<UsersRound className="h-5 w-5" />}
+        />
         <StatCard label="Có thể chốt" value={readyCount} tint="#22C55E" />
         <StatCard label="Đang bị chặn" value={blockedCount} tint="#F59E0B" />
         <StatCard label="Đã chốt" value={finalizedCount} tint="#0057C2" />
@@ -215,9 +219,12 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
                         </Chip>
                       </td>
                       <td className="py-3 pr-4">
-                        <div className="font-semibold text-brand-deep">{Math.round(item.readinessScore ?? 0)}%</div>
+                        <div className="font-semibold text-brand-deep">
+                          {Math.round(item.readinessScore ?? 0)}%
+                        </div>
                         <div className="text-xs text-muted-foreground">
-                          {item._count?.members ?? 0} thành viên · {item._count?.reviewTasks ?? 0} task
+                          {item._count?.members ?? 0} thành viên · {item._count?.reviewTasks ?? 0}{" "}
+                          task
                         </div>
                       </td>
                       <td className="max-w-[260px] py-3 pr-4">
@@ -234,7 +241,9 @@ function ManagerCollectiveContent({ role }: { role: Role }) {
                           {getFinalStatusLabel(item.finalStatus)}
                         </Chip>
                         {item.finalLevel ? (
-                          <div className="mt-1 text-xs text-muted-foreground">{getLevelLabel(item.finalLevel)}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {getLevelLabel(item.finalLevel)}
+                          </div>
                         ) : null}
                       </td>
                       <td className="py-3 text-right">
@@ -312,10 +321,12 @@ function CollectiveFinalizeDialog({
   const levelRequired = finalStatus !== "failed" && finalLevel === "none";
   const noteRequired = finalNote.trim().length === 0;
   const blockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
-  const savedFinalLevel = finalStatus === "failed" ? null : (finalLevel === "none" ? null : finalLevel);
-  const savedResultText = finalStatus === "failed"
-    ? "failed + không có cấp đạt"
-    : `${finalStatus} + ${savedFinalLevel ? getLevelLabel(savedFinalLevel) : "--"}`;
+  const savedFinalLevel =
+    finalStatus === "failed" ? null : finalLevel === "none" ? null : finalLevel;
+  const savedResultText =
+    finalStatus === "failed"
+      ? "failed + không có cấp đạt"
+      : `${finalStatus} + ${savedFinalLevel ? getLevelLabel(savedFinalLevel) : "--"}`;
 
   const submit = () => {
     if (!canFinalizeRole || !item.canFinalize || levelRequired || noteRequired) return;
@@ -362,17 +373,31 @@ function CollectiveFinalizeDialog({
             <SummaryMetric label="Minh chứng" value={`${item._count?.evidences ?? 0}`} />
             <SummaryMetric label="Task xét duyệt" value={`${item._count?.reviewTasks ?? 0}`} />
             <SummaryMetric label="Blocker" value={`${item.blockingReasons?.length ?? 0}`} />
-            <SummaryMetric label="Tỷ lệ tham gia" value={formatPercent(item.memberSummary?.participationRate)} />
-            <SummaryMetric label="SV5T cấp trường" value={formatPercent(item.memberSummary?.schoolSv5tRate)} />
-            <SummaryMetric label="Đạt cấp cao hơn" value={`${item.memberSummary?.higherLevelAchieverCount ?? 0}`} />
+            <SummaryMetric
+              label="Tỷ lệ tham gia"
+              value={formatPercent(item.memberSummary?.participationRate)}
+            />
+            <SummaryMetric
+              label="SV5T cấp trường"
+              value={formatPercent(item.memberSummary?.schoolSv5tRate)}
+            />
+            <SummaryMetric
+              label="Đạt cấp cao hơn"
+              value={`${item.memberSummary?.higherLevelAchieverCount ?? 0}`}
+            />
             <SummaryMetric label="Readiness" value={`${item.readinessScore}%`} />
-            <SummaryMetric label="Cấp đề xuất" value={getLevelLabel(item.finalLevel ?? item.targetLevel)} />
+            <SummaryMetric
+              label="Cấp đề xuất"
+              value={getLevelLabel(item.finalLevel ?? item.targetLevel)}
+            />
             <SummaryMetric label="Kết quả sẽ lưu" value={savedResultText} />
           </div>
           <div className="mt-3 rounded-md border bg-white p-3 text-sm">
             <div className="font-semibold text-brand-deep">Blocker chính</div>
             <div className="mt-1 text-muted-foreground">
-              {item.blockingReasons?.length ? item.blockingReasons.join(" ") : "Không có blocker chính."}
+              {item.blockingReasons?.length
+                ? item.blockingReasons.join(" ")
+                : "Không có blocker chính."}
             </div>
           </div>
         </div>
@@ -382,7 +407,9 @@ function CollectiveFinalizeDialog({
             <span className="font-medium text-brand-deep">Kết quả cuối</span>
             <select
               value={finalStatus}
-              onChange={(event) => setFinalStatus(event.target.value as Exclude<FinalStatus, "pending">)}
+              onChange={(event) =>
+                setFinalStatus(event.target.value as Exclude<FinalStatus, "pending">)
+              }
               className="h-10 w-full rounded-md border border-[#DDE5EF] bg-white px-3 text-sm outline-none focus:border-brand"
             >
               <option value="passed">Đạt</option>
@@ -416,7 +443,9 @@ function CollectiveFinalizeDialog({
               onChange={(event) => setFinalNote(event.target.value)}
               placeholder="Nhập căn cứ hoặc ghi chú kết quả"
             />
-            {noteRequired ? <span className="text-xs text-red-600">Ghi chú là bắt buộc.</span> : null}
+            {noteRequired ? (
+              <span className="text-xs text-red-600">Ghi chú là bắt buộc.</span>
+            ) : null}
           </label>
         </div>
 

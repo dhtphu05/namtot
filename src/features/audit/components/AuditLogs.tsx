@@ -1,9 +1,38 @@
 import { TopBar } from "@/components/layout/TopBar";
 import { Card, Button, Chip } from "@/components/ui-kit";
-import { useCurrentApplication, useApplicationTimeline } from "@/features/application/hooks/useApplication";
+import {
+  useCurrentApplication,
+  useApplicationTimeline,
+} from "@/features/application/hooks/useApplication";
 import { levelLabel, applicationStatusLabel } from "@/lib/api/types";
-import { Loader2, History, AlertTriangle, Play, RefreshCw, Layers, Save, Activity, Upload, Send, ShieldAlert, Award } from "lucide-react";
+import {
+  Loader2,
+  History,
+  AlertTriangle,
+  Play,
+  RefreshCw,
+  Layers,
+  Save,
+  Activity,
+  Upload,
+  Send,
+  ShieldAlert,
+  Award,
+} from "lucide-react";
 import { Link } from "@tanstack/react-router";
+
+type TimelineLog = {
+  id?: string;
+  action?: string;
+  actorName?: string | null;
+  actor?: string | null;
+  actorRole?: string | null;
+  role?: string | null;
+  createdAt?: string | null;
+  time?: string | null;
+  note?: string | null;
+  message?: string | null;
+};
 
 // Map actions to Vietnamese labels
 const actionLabelMap: Record<string, string> = {
@@ -69,11 +98,22 @@ function borderForAction(action: string) {
 }
 
 export function AuditLogs() {
-  const { data: appRes, isLoading: appLoading, isError: appError, refetch: refetchApp } = useCurrentApplication();
+  const {
+    data: appRes,
+    isLoading: appLoading,
+    isError: appError,
+    refetch: refetchApp,
+  } = useCurrentApplication();
   const applicationId = appRes?.application?.id;
-  const { data: timelineData = [], isLoading: timelineLoading, isError: timelineError, refetch: refetchTimeline } = useApplicationTimeline(applicationId);
+  const {
+    data: timelineData = [],
+    isLoading: timelineLoading,
+    isError: timelineError,
+    refetch: refetchTimeline,
+  } = useApplicationTimeline(applicationId);
 
-  const logs = Array.isArray(timelineData) ? timelineData : (timelineData as any)?.data || [];
+  const timelinePayload = timelineData as TimelineLog[] | { data?: TimelineLog[] };
+  const logs = Array.isArray(timelinePayload) ? timelinePayload : (timelinePayload.data ?? []);
 
   const handleRetry = () => {
     refetchApp();
@@ -99,7 +139,9 @@ export function AuditLogs() {
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <AlertTriangle className="w-10 h-10 text-rose-500" />
         <div className="text-red-500 font-semibold">Đã xảy ra lỗi khi tải dữ liệu từ máy chủ.</div>
-        <Button onClick={handleRetry}><RefreshCw className="w-4 h-4 mr-2" /> Thử lại</Button>
+        <Button onClick={handleRetry}>
+          <RefreshCw className="w-4 h-4 mr-2" /> Thử lại
+        </Button>
       </div>
     );
   }
@@ -107,12 +149,19 @@ export function AuditLogs() {
   if (!appRes || appRes.state === "not_started" || !appRes.application) {
     return (
       <>
-        <TopBar title="Lịch sử hoạt động hồ sơ" subtitle="Theo dõi mọi cập nhật và quyết định xét duyệt" />
+        <TopBar
+          title="Lịch sử hoạt động hồ sơ"
+          subtitle="Theo dõi mọi cập nhật và quyết định xét duyệt"
+        />
         <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
           <History className="w-12 h-12 text-slate-300" />
-          <div className="text-muted-foreground font-semibold">Vui lòng tạo hồ sơ xét duyệt trước khi xem lịch sử.</div>
+          <div className="text-muted-foreground font-semibold">
+            Vui lòng tạo hồ sơ xét duyệt trước khi xem lịch sử.
+          </div>
           <Link to="/app/wizard">
-            <Button>Tạo hồ sơ ngay <Send className="w-4 h-4 ml-2" /></Button>
+            <Button>
+              Tạo hồ sơ ngay <Send className="w-4 h-4 ml-2" />
+            </Button>
           </Link>
         </div>
       </>
@@ -123,28 +172,48 @@ export function AuditLogs() {
 
   return (
     <>
-      <TopBar title="Lịch sử hoạt động hồ sơ" subtitle="Bản ghi minh bạch lịch sử và quyết định xét duyệt" />
+      <TopBar
+        title="Lịch sử hoạt động hồ sơ"
+        subtitle="Bản ghi minh bạch lịch sử và quyết định xét duyệt"
+      />
 
       {/* Summary Card */}
       <Card className="mb-6 !p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Mã hồ sơ: {profile.id.slice(0, 8)}</span>
-            <h3 className="font-extrabold text-brand-deep text-lg mt-0.5">Sinh viên 5 Tốt năm học {profile.schoolYear}</h3>
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
+              Mã hồ sơ: {profile.id.slice(0, 8)}
+            </span>
+            <h3 className="font-extrabold text-brand-deep text-lg mt-0.5">
+              Sinh viên 5 Tốt năm học {profile.schoolYear}
+            </h3>
           </div>
           <div className="flex gap-4">
             <div>
-              <div className="text-[10px] text-muted-foreground font-semibold text-right">CẤP AIM</div>
-              <div className="font-bold text-[#0057C2] text-sm mt-0.5">{levelLabel[profile.targetLevel]}</div>
+              <div className="text-[10px] text-muted-foreground font-semibold text-right">
+                CẤP AIM
+              </div>
+              <div className="font-bold text-[#0057C2] text-sm mt-0.5">
+                {levelLabel[profile.targetLevel]}
+              </div>
             </div>
             <div className="border-l border-slate-100 pl-4">
-              <div className="text-[10px] text-muted-foreground font-semibold text-right">TRẠNG THÁI</div>
+              <div className="text-[10px] text-muted-foreground font-semibold text-right">
+                TRẠNG THÁI
+              </div>
               <div className="mt-0.5">
-                <Chip tone={
-                  profile.status === "accepted" || profile.status === "completed" ? "success" :
-                  profile.status === "rejected" ? "error" :
-                  profile.status === "needs_supplement" || profile.status === "supplement_required" ? "warning" : "brand"
-                }>
+                <Chip
+                  tone={
+                    profile.status === "accepted" || profile.status === "completed"
+                      ? "success"
+                      : profile.status === "rejected"
+                        ? "error"
+                        : profile.status === "needs_supplement" ||
+                            profile.status === "supplement_required"
+                          ? "warning"
+                          : "brand"
+                  }
+                >
                   {applicationStatusLabel[profile.status]}
                 </Chip>
               </div>
@@ -159,17 +228,21 @@ export function AuditLogs() {
         </h3>
 
         {timelineLoading ? (
-          <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0057C2]" /></div>
+          <div className="py-12 flex justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-[#0057C2]" />
+          </div>
         ) : logs.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
             Chưa có sự kiện nào được ghi lại trong hồ sơ này.
           </div>
         ) : (
           <div className="relative ml-3 space-y-5 border-l border-[#E2E8F0] pl-8">
-            {logs.map((log: any, idx: number) => {
+            {logs.map((log, idx) => {
               const actor = log.actorName || log.actor || "Hệ thống";
               const role = log.actorRole || log.role;
-              const formattedTime = log.createdAt ? new Date(log.createdAt).toLocaleString("vi-VN") : log.time || "";
+              const formattedTime = log.createdAt
+                ? new Date(log.createdAt).toLocaleString("vi-VN")
+                : log.time || "";
 
               return (
                 <div key={log.id || idx} className="relative">
@@ -189,19 +262,31 @@ export function AuditLogs() {
                     </div>
 
                     {log.message && (
-                      <p className="text-xs text-muted-foreground leading-relaxed mb-2">{log.message}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+                        {log.message}
+                      </p>
                     )}
 
                     {log.metadata && (
                       <div className="bg-slate-50 p-2.5 rounded-lg text-[11px] text-muted-foreground space-y-1 mt-2">
                         {log.metadata.before && (
-                          <div>• Trước: <span className="line-through">{String(log.metadata.before)}</span></div>
+                          <div>
+                            • Trước:{" "}
+                            <span className="line-through">{String(log.metadata.before)}</span>
+                          </div>
                         )}
                         {log.metadata.after && (
-                          <div>• Sau: <span className="font-semibold text-brand-deep">{String(log.metadata.after)}</span></div>
+                          <div>
+                            • Sau:{" "}
+                            <span className="font-semibold text-brand-deep">
+                              {String(log.metadata.after)}
+                            </span>
+                          </div>
                         )}
                         {log.metadata.notes && (
-                          <div>• Lý do: <i>{String(log.metadata.notes)}</i></div>
+                          <div>
+                            • Lý do: <i>{String(log.metadata.notes)}</i>
+                          </div>
                         )}
                       </div>
                     )}

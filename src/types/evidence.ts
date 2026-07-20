@@ -63,6 +63,7 @@ export type EvidenceCreateInput = {
   evidenceName: string;
   criterion: Criterion;
   sourceType: EvidenceSourceType;
+  eventId?: string;
   description?: string;
   note?: string;
   metadata?: Record<string, unknown>;
@@ -156,4 +157,24 @@ export type ImportEvidenceResponse = {
   evidence: EvidenceResponse;
   card?: EvidenceCard | null;
   uxStatus?: UxStatus | null;
+};
+
+export type OfficialEventLibraryState = "available" | "already_imported";
+
+export type OfficialEventLibraryItem = {
+  eventId: string;
+  title: string;
+  organizer?: string | null;
+  organizerLevel?: string | null;
+  criterion?: Criterion;
+  state?: OfficialEventLibraryState;
+  evidenceId?: string | null;
+};
+
+export type OfficialEventLibraryResponse = {
+  items: OfficialEventLibraryItem[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 };

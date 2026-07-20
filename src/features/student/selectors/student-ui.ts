@@ -2,8 +2,10 @@ import type { Notification } from "@/features/notifications/api/notifications";
 import type {
   ApplicationStatus,
   Criterion,
+  CriterionCompletionItem,
   EvidenceResponse,
   Level,
+  PrecheckNextAction,
   PrecheckCriterionResult,
   PrecheckMissingItem,
   PrecheckResult,
@@ -11,6 +13,11 @@ import type {
 
 export type StudentTone = "good" | "warning" | "danger" | "neutral" | "info";
 export type CriterionUiStatus = "ok" | "missing" | "needs_review" | "empty" | "processing";
+
+export type CriteriaStateWithCompletion = ReturnType<typeof getCriteriaUiState> & {
+  completionSource?: "criteria_completion";
+  completionText?: string;
+};
 
 export type StudentAction = {
   label: string;
@@ -91,14 +98,18 @@ export function getStudentApplicationSummary(
   precheckInput?: unknown,
   cascadeInput?: unknown,
   feedbackInput?: unknown,
+  criteriaStatesInput?: CriteriaStateWithCompletion[],
 ) {
   const application = asRecord(unwrapApiData(applicationInput));
   const precheck = asRecord(unwrapApiData(precheckInput));
   const feedback = toFeedbackItems(feedbackInput);
   const status = getStudentApplicationStatus(stringValue(application?.status));
-  const criteriaStates = coreStudentCriteria.map((criterion) =>
-    getCriteriaUiState(criterion, getArray(application?.evidences), precheck, feedback),
-  );
+  const criteriaStates =
+    criteriaStatesInput && criteriaStatesInput.length > 0
+      ? criteriaStatesInput
+      : coreStudentCriteria.map((criterion) =>
+          getCriteriaUiState(criterion, getArray(application?.evidences), precheck, feedback),
+        );
   const completedCriteriaCount = criteriaStates.filter((item) => item.status === "ok").length;
   const pendingActionCount =
     criteriaStates.filter((item) => item.status !== "ok").length +
@@ -108,6 +119,7 @@ export function getStudentApplicationSummary(
   ).length;
   const applicationStatus = status.normalizedStatus;
   const cascade = asRecord(unwrapApiData(cascadeInput));
+  const completionCounts = buildCompletionStatusCounts(criteriaStates);
 
   return {
     headline: getApplicationHeadline(applicationStatus, missingCount, pendingActionCount),
@@ -119,6 +131,39 @@ export function getStudentApplicationSummary(
     completedCriteriaCount,
     totalCriteriaCount: 5,
     pendingActionCount,
+    completionCounts,
+  };
+}
+
+export function applyCompletionToCriteriaState(
+  state: ReturnType<typeof getCriteriaUiState>,
+  completion?: CriterionCompletionItem,
+): CriteriaStateWithCompletion {
+  if (!completion) return state;
+  const status = mapCompletionStatus(completion.status);
+  const required = completion.completion.required;
+  const completionText =
+    required > 0
+      ? `${completion.completion.satisfied}/${required} điều kiện có dữ liệu`
+      : "Chưa có điều kiện bắt buộc";
+  return {
+    ...state,
+    status: status.status,
+    statusLabel: status.label,
+    tone: status.tone,
+    evidenceCount: completion.evidenceCount,
+    warningCount: completion.completion.needsVerification || state.warningCount,
+    description:
+      required > 0
+        ? `${completionText}${
+            completion.completion.needsVerification
+              ? ` · ${completion.completion.needsVerification} mục cần xác minh`
+              : ""
+          }.`
+        : state.description,
+    primaryMissingReason: completion.nextAction?.label ?? state.primaryMissingReason,
+    completionText,
+    completionSource: "criteria_completion",
   };
 }
 
@@ -180,8 +225,18 @@ export function getNextActions(
 ) {
   const application = asRecord(unwrapApiData(applicationInput));
   const applicationStatus = normalizeApplicationStatus(stringValue(application?.status));
-  const criteriaStates = toArray<ReturnType<typeof getCriteriaUiState>>(
-    criteriaStatesInput as ReturnType<typeof getCriteriaUiState>[],
+  const criteriaStates = toArray<
+    ReturnType<typeof getCriteriaUiState> & {
+      completionSource?: "criteria_completion";
+      completionText?: string;
+    }
+  >(
+    criteriaStatesInput as Array<
+      ReturnType<typeof getCriteriaUiState> & {
+        completionSource?: "criteria_completion";
+        completionText?: string;
+      }
+    >,
   );
   const feedback = toFeedbackItems(feedbackInput);
   const precheck = asRecord(unwrapApiData(precheckInput));
@@ -192,6 +247,8 @@ export function getNextActions(
     actionLabel: string;
     route: string;
     criterionKey?: Criterion;
+    requirementKey?: string;
+    actionType?: string;
   }> = [];
 
   feedback
@@ -206,6 +263,20 @@ export function getNextActions(
         criterionKey: item.criterionKey,
       }),
     );
+
+  const backendNextAction = normalizePrecheckAction(precheck?.nextAction);
+  if (backendNextAction) {
+    actions.push({
+      priority: backendNextAction.priority,
+      title: backendNextAction.label,
+      description: backendNextAction.shortReason,
+      actionLabel: backendNextAction.label,
+      route: backendNextAction.route || "/app/application",
+      criterionKey: backendNextAction.criterion,
+      requirementKey: backendNextAction.requirementKey,
+      actionType: backendNextAction.type,
+    });
+  }
 
   criteriaStates
     .filter((item) => item.status === "needs_review")
@@ -222,16 +293,38 @@ export function getNextActions(
 
   criteriaStates
     .filter((item) => item.status === "empty" || item.status === "missing")
-    .forEach((item) =>
+    .forEach((item) => {
+      const hasCompletionAction =
+        item.completionSource === "criteria_completion" && Boolean(item.primaryMissingReason);
+      const isEthics = item.key === "ethics";
+      const isAcademic = item.key === "academic";
+      const isPhysical = item.key === "physical";
+      const isVolunteer = item.key === "volunteer";
+      const isIntegration = item.key === "integration";
+      const usesRequirementFlow =
+        hasCompletionAction || isEthics || isAcademic || isPhysical || isVolunteer || isIntegration;
       actions.push({
         priority: item.status === "missing" ? 3 : 3,
-        title: `${item.label} chưa đủ minh chứng`,
-        description: item.primaryMissingReason || "Bổ sung minh chứng phù hợp cho tiêu chí này.",
-        actionLabel: "Bổ sung",
+        title: usesRequirementFlow
+          ? item.primaryMissingReason ||
+            (isAcademic
+              ? "Nhập GPA và chọn thang điểm"
+              : isPhysical
+                ? "Chọn cách chứng minh Thể lực tốt"
+                : isVolunteer
+                  ? "Thêm hoạt động tình nguyện"
+                  : isIntegration
+                    ? "Chọn hình thức đáp ứng Hội nhập tốt"
+                    : "Nhập hoặc liên kết điểm rèn luyện")
+          : `${item.label} chưa đủ minh chứng`,
+        description: usesRequirementFlow
+          ? (item.completionText ?? item.primaryMissingReason)
+          : item.primaryMissingReason || "Bổ sung minh chứng phù hợp cho tiêu chí này.",
+        actionLabel: usesRequirementFlow ? "Xử lý yêu cầu" : "Bổ sung",
         route: "/app/application",
         criterionKey: item.key,
-      }),
-    );
+      });
+    });
 
   if (!precheck && application) {
     actions.push({
@@ -254,6 +347,61 @@ export function getNextActions(
   }
 
   return actions.sort((left, right) => left.priority - right.priority).slice(0, 3);
+}
+
+function buildCompletionStatusCounts(criteriaStates: CriteriaStateWithCompletion[]) {
+  return {
+    notStarted: criteriaStates.filter((item) => item.status === "empty").length,
+    inProgress: criteriaStates.filter((item) => item.status === "missing").length,
+    needsVerification: criteriaStates.filter((item) => item.status === "needs_review").length,
+    readyForPrecheck: criteriaStates.filter((item) => item.status === "ok").length,
+    supplementRequired: criteriaStates.filter(
+      (item) => item.statusLabel === "Có yêu cầu bổ sung" || item.statusLabel === "Cần bổ sung",
+    ).length,
+  };
+}
+
+function mapCompletionStatus(status: CriterionCompletionItem["status"]): {
+  status: CriterionUiStatus;
+  label: string;
+  tone: StudentTone;
+} {
+  if (status === "ready_for_precheck" || status === "accepted") {
+    return { status: "ok", label: "Sẵn sàng kiểm tra", tone: "good" };
+  }
+  if (status === "needs_verification" || status === "under_review") {
+    return { status: "needs_review", label: "Cần xác minh", tone: "warning" };
+  }
+  if (status === "not_started") {
+    return { status: "empty", label: "Chưa bắt đầu", tone: "neutral" };
+  }
+  if (status === "supplement_required") {
+    return { status: "missing", label: "Có yêu cầu bổ sung", tone: "warning" };
+  }
+  if (status === "precheck_warning" || status === "rejected") {
+    return { status: "missing", label: "Cần bổ sung", tone: "danger" };
+  }
+  return { status: "missing", label: "Đang hoàn thiện", tone: "warning" };
+}
+
+function normalizePrecheckAction(value: unknown): PrecheckNextAction | null {
+  const action = asRecord(value);
+  if (!action) return null;
+  const label = stringValue(action.label);
+  const type = stringValue(action.type);
+  if (!label || !type) return null;
+  const criterion = stringValue(action.criterion) as Criterion | undefined;
+  const priority =
+    typeof action.priority === "number" && Number.isFinite(action.priority) ? action.priority : 6;
+  return {
+    type,
+    label,
+    shortReason: stringValue(action.shortReason) ?? label,
+    criterion: coreStudentCriteria.includes(criterion as Criterion) ? criterion : undefined,
+    requirementKey: stringValue(action.requirementKey),
+    route: stringValue(action.route) ?? "/app/application",
+    priority,
+  };
 }
 
 export function getEvidenceStudentStatus(evidenceInput?: unknown): {
@@ -349,6 +497,7 @@ export function getFeedbackUiItems(notificationsInput?: unknown) {
     const route = criterionKey ? `/app/application?criterion=${criterionKey}` : "/app/feedback";
     return {
       id: item.id,
+      createdAt: item.createdAt,
       title: cleanStudentText(item.title) || "Phản hồi hồ sơ",
       message: cleanStudentText(item.message) || "Mở chi tiết để xem phản hồi.",
       criterionKey,

@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { getCriterionDisplayLabel } from "@/features/application/presentation";
 import type { Criterion, EvidenceResponse } from "@/lib/api/types";
 import {
   useCreateEvidence,
@@ -27,6 +28,13 @@ type AddEvidenceDrawerProps = {
   onOpenChange: (open: boolean) => void;
   initialCriterion?: Criterion;
   initialEvidenceName?: string;
+  initialRequirementKey?: string;
+  initialRequirementLabel?: string;
+  referenceEvent?: {
+    eventId: string;
+    title: string;
+  } | null;
+  submitLabel?: string;
   onCreated: (evidence: EvidenceResponse) => void;
 };
 
@@ -39,6 +47,10 @@ export function AddEvidenceDrawer({
   onOpenChange,
   initialCriterion = "academic",
   initialEvidenceName = "",
+  initialRequirementKey,
+  initialRequirementLabel,
+  referenceEvent,
+  submitLabel = "Upload minh chứng",
   onCreated,
 }: AddEvidenceDrawerProps) {
   const [evidenceName, setEvidenceName] = useState("");
@@ -54,6 +66,11 @@ export function AddEvidenceDrawer({
   const uploadFile = useUploadEvidenceFile(applicationId);
   const startIndexing = useStartEvidenceIndexing(applicationId);
   const isSubmitting = createEvidence.isPending || uploadFile.isPending || startIndexing.isPending;
+  const hasRequirementContext = Boolean(initialRequirementKey && initialRequirementLabel);
+  const hasReferenceEvent = Boolean(referenceEvent);
+  const requirementContextLabel = hasRequirementContext
+    ? `${getCriterionDisplayLabel(criterion)} - ${initialRequirementLabel}`
+    : "";
 
   const fileLabel = useMemo(() => {
     if (!file) return "Chọn file PDF/JPG/PNG";
@@ -63,11 +80,14 @@ export function AddEvidenceDrawer({
   useEffect(() => {
     if (!open) return;
     setCriterion(initialCriterion);
-    setEvidenceName(initialEvidenceName);
+    setEvidenceName(referenceEvent?.title ?? initialEvidenceName);
+    setNote("");
+    setNameError("");
+    setFileError("");
     window.requestAnimationFrame(() => {
       contentRef.current?.scrollTo({ top: 0 });
     });
-  }, [initialCriterion, initialEvidenceName, open]);
+  }, [initialCriterion, initialEvidenceName, open, referenceEvent?.title]);
 
   const resetForm = () => {
     setEvidenceName("");
@@ -121,7 +141,16 @@ export function AddEvidenceDrawer({
           evidenceName: trimmedName,
           criterion,
           sourceType: "manual_upload",
+          eventId: referenceEvent?.eventId,
           note: note.trim() || undefined,
+          metadata: referenceEvent
+            ? {
+                eventId: referenceEvent.eventId,
+                referenceEventId: referenceEvent.eventId,
+                referenceEventTitle: referenceEvent.title,
+                referenceSource: "student_reference_library",
+              }
+            : undefined,
         },
       });
 
@@ -155,7 +184,11 @@ export function AddEvidenceDrawer({
         <DrawerHeader className="shrink-0">
           <DrawerTitle>Thêm minh chứng</DrawerTitle>
           <DrawerDescription>
-            Upload khi chưa tìm thấy trong danh sách chính thức.
+            {hasReferenceEvent
+              ? "Tên sự kiện đã được điền sẵn. Bạn vẫn cần tải file minh chứng của mình để cán bộ kiểm tra."
+              : hasRequirementContext
+                ? requirementContextLabel
+                : "Upload khi chưa tìm thấy trong danh sách chính thức."}
           </DrawerDescription>
         </DrawerHeader>
 
@@ -203,7 +236,7 @@ export function AddEvidenceDrawer({
             <button
               type="button"
               disabled={isSubmitting}
-              className="flex w-full items-center justify-center gap-3 rounded-md border border-dashed bg-muted/30 px-4 py-6 text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex min-h-11 w-full items-center justify-center gap-3 rounded-md border border-dashed bg-muted/30 px-4 py-6 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={() => fileInputRef.current?.click()}
             >
               <FileUp className="h-5 w-5 text-primary" />
@@ -221,7 +254,7 @@ export function AddEvidenceDrawer({
         <DrawerFooter className="shrink-0 border-t">
           <Button type="button" onClick={() => void submit()} disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isSubmitting ? "Đang ghi nhận..." : "Upload minh chứng"}
+            {isSubmitting ? "Đang ghi nhận..." : submitLabel}
           </Button>
           <Button
             type="button"

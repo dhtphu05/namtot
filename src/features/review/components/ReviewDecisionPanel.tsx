@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, Send } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,22 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui-kit";
+import { EvidencePrecedentSheet } from "@/features/evidence-knowledge/components/EvidencePrecedentSheet";
+import {
+  getApprovalSourcesLabel,
+  getLevelLabel as getKnowledgeLevelLabel,
+  getMatchReasonLabel,
+} from "@/features/evidence-knowledge/components/evidence-knowledge-labels";
+import { useOfficerEvidenceKnowledgeEvent } from "@/features/evidence-knowledge/hooks/useEvidenceKnowledge";
+import type { OfficerEvidenceKnowledgeSearchItem } from "@/features/evidence-knowledge/types";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 import { ACTIVE_LEVELS } from "@/lib/levels";
-import { useSubmitReviewDecision } from "../hooks/useReview";
+import {
+  useEscalateResolution,
+  useReviewTaskPrecedents,
+  useSubmitReviewDecision,
+} from "../hooks/useReview";
 import type {
   Level,
   ReviewDecision,
@@ -26,6 +38,8 @@ type ReviewDecisionPanelProps = {
 };
 
 type TaskDecision = ReviewDecision;
+type PrecedentGuardReason =
+  "different_level" | "different_organizer" | "conflicting_information" | "other";
 
 const finalStatuses = ["accepted", "rejected", "resolution_needed"] as const;
 
@@ -101,9 +115,12 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const [note, setNote] = useState("");
   const [deadline, setDeadline] = useState("");
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
+  const [selectedPrecedentEventId, setSelectedPrecedentEventId] = useState<string | null>(null);
+  const [resolutionGuardReason, setResolutionGuardReason] = useState<PrecedentGuardReason | "">("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submittedMessage, setSubmittedMessage] = useState<string | null>(null);
   const submitDecision = useSubmitReviewDecision(task.id);
+  const escalateResolution = useEscalateResolution(task.id);
   const { trackAction } = useSmartUXTracking();
 
   const isFinal = finalStatuses.includes(task.status as (typeof finalStatuses)[number]);
@@ -131,6 +148,14 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const selectedCanSubmit = decision
     ? canSubmitDecision(decision, canDecide, canRequestSupplement, canEscalateResolution)
     : false;
+  const precedentQuery = useReviewTaskPrecedents(task.id, canUsePrecedentSearch(task), 3);
+  const precedentItems = precedentQuery.data?.items ?? [];
+  const primaryPrecedent = precedentItems[0] ?? null;
+  const needsResolutionGuard = decision === "resolution_needed" && Boolean(primaryPrecedent);
+  const guardValidationMessage =
+    needsResolutionGuard && !resolutionGuardReason
+      ? "Vui lòng chọn lý do vẫn chuyển Resolution."
+      : null;
   const validationMessage = decision
     ? validateDecision({
         decision,
@@ -143,11 +168,21 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const apiError =
     submitDecision.error instanceof Error
       ? submitDecision.error.message
-      : submitDecision.error
-        ? "Không thể gửi kết luận xét duyệt."
-        : null;
+      : escalateResolution.error instanceof Error
+        ? escalateResolution.error.message
+        : submitDecision.error
+          ? "Không thể gửi kết luận xét duyệt."
+          : escalateResolution.error
+            ? "Không thể chuyển Resolution."
+            : null;
   const warningText = getDecisionWarning(task);
   const ctaLabel = getCtaLabel(decision);
+  const isSubmitting = submitDecision.isPending || escalateResolution.isPending;
+  const precedentDetail = useOfficerEvidenceKnowledgeEvent(
+    selectedPrecedentEventId ?? undefined,
+    Boolean(selectedPrecedentEventId),
+  );
+  const selectedPrecedentEvidence = precedentDetail.data?.acceptedEvidence[0] ?? null;
 
   const toggleEvidence = (evidenceId: string, checked: boolean) => {
     setSelectedEvidenceIds((current) =>
@@ -160,7 +195,55 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
     setFormError(null);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAcceptWithPrecedent = (precedent: OfficerEvidenceKnowledgeSearchItem) => {
+    setSubmittedMessage(null);
+    const precedentRef = getPrecedentReference(precedent, precedentDetail.data);
+    if (!canDecide) {
+      setFormError("Bạn không có quyền chấp nhận minh chứng theo tiền lệ.");
+      return;
+    }
+    if (!suggestedLevel) {
+      setDecision("accepted");
+      setFormError("Vui lòng chọn cấp đạt của tiêu chí này.");
+      return;
+    }
+
+    setFormError(null);
+    trackAction("officer_accept_criterion", {
+      role: "officer",
+      criterion: task.criterion,
+      target_level: suggestedLevel || task.application.targetLevel,
+      status: task.status,
+      count: selectedEvidenceIds.length,
+    });
+
+    submitDecision.mutate(
+      {
+        payload: {
+          decision: "accepted",
+          officerSuggestedLevel: suggestedLevel as Level,
+          levelAssessmentJson: task.criterionLevelAssessment
+            ? { assessment: task.criterionLevelAssessment }
+            : undefined,
+          note: note.trim() || "Chấp nhận theo tiền lệ đã kiểm tra.",
+          precedentId: precedentRef.precedentId,
+          precedentEventId: precedent.eventId,
+          precedentEvidenceId: precedentRef.precedentEvidenceId,
+        },
+      },
+      {
+        onSuccess: () => {
+          const message = "Đã chấp nhận minh chứng theo tiền lệ.";
+          setDecision("accepted");
+          setSubmittedMessage(message);
+          toast.success(message);
+          onSuccess?.();
+        },
+      },
+    );
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmittedMessage(null);
 
@@ -179,6 +262,15 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
       return;
     }
 
+    if (decision === "resolution_needed") {
+      const refreshed = await precedentQuery.refetch();
+      const guardPrecedent = refreshed.data?.items?.[0] ?? primaryPrecedent;
+      if (guardPrecedent && !resolutionGuardReason) {
+        setFormError("Vui lòng chọn lý do vẫn chuyển Resolution.");
+        return;
+      }
+    }
+
     setFormError(null);
     trackAction(getOfficerDecisionEvent(decision), {
       role: "officer",
@@ -187,6 +279,35 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
       status: task.status,
       count: selectedEvidenceIds.length,
     });
+
+    if (decision === "resolution_needed") {
+      const guardPrecedent = precedentQuery.data?.items?.[0] ?? primaryPrecedent;
+      const guardPrecedentRef = guardPrecedent
+        ? getPrecedentReference(guardPrecedent, precedentDetail.data)
+        : null;
+      escalateResolution.mutate(
+        {
+          payload: {
+            reason: note.trim(),
+            evidenceIds: selectedEvidenceIds,
+            precedentId: guardPrecedentRef?.precedentId,
+            precedentGuardViewed: Boolean(guardPrecedent),
+            precedentGuardReason: guardPrecedent
+              ? (resolutionGuardReason as PrecedentGuardReason)
+              : undefined,
+          },
+        },
+        {
+          onSuccess: () => {
+            const message = "Đã chuyển Resolution Hub.";
+            setSubmittedMessage(message);
+            toast.success(message);
+            onSuccess?.();
+          },
+        },
+      );
+      return;
+    }
 
     const payload: SubmitReviewDecisionRequest = {
       decision,
@@ -249,6 +370,17 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
               </div>
             ) : null}
 
+            <ReviewPrecedentPanel
+              item={primaryPrecedent}
+              isLoading={precedentQuery.isLoading}
+              isError={precedentQuery.isError}
+              canAccept={canDecide && !isFinal}
+              isAccepting={isSubmitting}
+              onRetry={() => void precedentQuery.refetch()}
+              onView={(eventId) => setSelectedPrecedentEventId(eventId)}
+              onAccept={handleAcceptWithPrecedent}
+            />
+
             {!visibleDecisionOptions.length ? (
               <div className="mt-3 rounded-xl border bg-muted/40 p-3 text-sm text-muted-foreground">
                 {task.permissions?.reasonLabel ??
@@ -261,11 +393,12 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
 
           <RadioGroup
             className="grid gap-2"
-            disabled={!visibleDecisionOptions.length || submitDecision.isPending}
+            disabled={!visibleDecisionOptions.length || isSubmitting}
             value={decision}
             onValueChange={(value) => {
               setDecision(value as TaskDecision);
               setFormError(null);
+              if (value !== "resolution_needed") setResolutionGuardReason("");
             }}
           >
             {visibleDecisionOptions.map((option) => (
@@ -296,7 +429,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                 Cấp đạt ghi nhận
                 <select
                   className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  disabled={!selectedCanSubmit || submitDecision.isPending}
+                  disabled={!selectedCanSubmit || isSubmitting}
                   id="criterion-level"
                   value={suggestedLevel}
                   onChange={(event) => {
@@ -313,7 +446,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                 </select>
               </label>
               <DecisionTextarea
-                disabled={!selectedCanSubmit || submitDecision.isPending}
+                disabled={!selectedCanSubmit || isSubmitting}
                 label="Ghi chú nội bộ"
                 optional
                 placeholder="Có thể bỏ trống nếu minh chứng đã rõ."
@@ -327,7 +460,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
           {decision === "rejected" ? (
             <div className="space-y-3">
               <ReasonTemplateSelect
-                disabled={!selectedCanSubmit || submitDecision.isPending}
+                disabled={!selectedCanSubmit || isSubmitting}
                 templates={rejectReasonTemplates}
                 value={reasonTemplate}
                 onChange={(value) => {
@@ -337,7 +470,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                 }}
               />
               <DecisionTextarea
-                disabled={!selectedCanSubmit || submitDecision.isPending}
+                disabled={!selectedCanSubmit || isSubmitting}
                 label="Ghi chú bắt buộc"
                 placeholder="Nhập căn cứ không đạt, tối thiểu 10 ký tự."
                 value={note}
@@ -360,7 +493,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                       >
                         <Checkbox
                           checked={selectedEvidenceIds.includes(evidence.id)}
-                          disabled={!selectedCanSubmit || submitDecision.isPending}
+                          disabled={!selectedCanSubmit || isSubmitting}
                           onCheckedChange={(checked) =>
                             toggleEvidence(evidence.id, checked === true)
                           }
@@ -390,7 +523,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                   {(supplementTemplates[task.criterion] ?? []).map((template) => (
                     <Button
                       key={template}
-                      disabled={!selectedCanSubmit || submitDecision.isPending}
+                      disabled={!selectedCanSubmit || isSubmitting}
                       size="sm"
                       type="button"
                       variant="outline"
@@ -403,7 +536,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
               </div>
 
               <DecisionTextarea
-                disabled={!selectedCanSubmit || submitDecision.isPending}
+                disabled={!selectedCanSubmit || isSubmitting}
                 label="Nội dung bổ sung"
                 placeholder="Nêu rõ sinh viên cần bổ sung hoặc chỉnh sửa phần nào."
                 value={note}
@@ -418,7 +551,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                 Hạn bổ sung
                 <Input
                   className="mt-2"
-                  disabled={!selectedCanSubmit || submitDecision.isPending}
+                  disabled={!selectedCanSubmit || isSubmitting}
                   id="supplement-deadline"
                   type="date"
                   value={deadline}
@@ -435,14 +568,26 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
           ) : null}
 
           {decision === "resolution_needed" ? (
-            <DecisionTextarea
-              disabled={!selectedCanSubmit || submitDecision.isPending}
-              label="Lý do chuyển hội ý"
-              placeholder="Nêu điểm mập mờ hoặc căn cứ cần hội đồng xem xét."
-              value={note}
-              onChange={setNote}
-              onClearError={() => setFormError(null)}
-            />
+            <div className="space-y-3">
+              <DecisionTextarea
+                disabled={!selectedCanSubmit || isSubmitting}
+                label="Lý do chuyển hội ý"
+                placeholder="Nêu điểm mập mờ hoặc căn cứ cần hội đồng xem xét."
+                value={note}
+                onChange={setNote}
+                onClearError={() => setFormError(null)}
+              />
+              {primaryPrecedent ? (
+                <ResolutionGuard
+                  value={resolutionGuardReason}
+                  onChange={(value) => {
+                    setResolutionGuardReason(value);
+                    setFormError(null);
+                  }}
+                  onView={() => setSelectedPrecedentEventId(primaryPrecedent.eventId)}
+                />
+              ) : null}
+            </div>
           ) : null}
 
           {formError ? <div className="text-xs text-destructive">{formError}</div> : null}
@@ -465,16 +610,163 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
         <div className="sticky bottom-0 z-10 border-t bg-white p-4 shadow-[0_-10px_18px_rgba(255,255,255,0.96)]">
           <Button
             className="w-full rounded-xl shadow-sm"
-            disabled={!selectedCanSubmit || Boolean(validationMessage) || submitDecision.isPending}
+            disabled={
+              !selectedCanSubmit ||
+              Boolean(validationMessage) ||
+              Boolean(guardValidationMessage) ||
+              isSubmitting
+            }
             type="submit"
             data-smartux-tag={decision ? getOfficerDecisionEvent(decision) : "officer_open_task"}
           >
             <Send className="h-4 w-4" />
-            {submitDecision.isPending ? "Đang gửi..." : ctaLabel}
+            {isSubmitting
+              ? "Đang gửi..."
+              : decision === "resolution_needed" && primaryPrecedent
+                ? "Vẫn chuyển Resolution"
+                : ctaLabel}
           </Button>
         </div>
       </form>
+      <EvidencePrecedentSheet
+        open={Boolean(selectedPrecedentEventId)}
+        event={precedentDetail.data}
+        item={selectedPrecedentEvidence}
+        index={0}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPrecedentEventId(null);
+        }}
+      />
     </Card>
+  );
+}
+
+function ReviewPrecedentPanel({
+  item,
+  isLoading,
+  isError,
+  canAccept,
+  isAccepting,
+  onRetry,
+  onView,
+  onAccept,
+}: {
+  item?: OfficerEvidenceKnowledgeSearchItem | null;
+  isLoading: boolean;
+  isError: boolean;
+  canAccept: boolean;
+  isAccepting: boolean;
+  onRetry: () => void;
+  onView: (eventId: string) => void;
+  onAccept: (item: OfficerEvidenceKnowledgeSearchItem) => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="mt-3 rounded-md border border-[#E5E7EB] bg-white p-3">
+        <div className="h-4 w-44 animate-pulse rounded bg-slate-200" />
+        <div className="mt-2 h-3 w-64 max-w-full animate-pulse rounded bg-slate-100" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="mt-3 rounded-md border border-rose-100 bg-rose-50 p-3 text-sm text-rose-800">
+        <div className="font-semibold">Không tải được tiền lệ phù hợp.</div>
+        <Button className="mt-2 min-h-11" type="button" variant="outline" onClick={onRetry}>
+          Thử lại
+        </Button>
+      </div>
+    );
+  }
+
+  if (!item) return null;
+
+  return (
+    <section className="mt-3 rounded-md border border-[#B9D7FF] bg-[#F8FBFF] p-3">
+      <div className="text-sm font-bold text-brand-deep">Đã tìm thấy tiền lệ phù hợp</div>
+      <div className="mt-2 text-sm font-semibold text-slate-900">{item.canonicalTitle}</div>
+      <div className="mt-1 text-xs leading-5 text-muted-foreground">
+        {getApprovalSourcesLabel(item.approvalSources)} - {getCriterionLabel(item.criterion)} -{" "}
+        {getKnowledgeLevelLabel(item.applicableLevel)}
+        {item.organizer ? ` - ${item.organizer}` : ""}
+        {item.year ? ` - ${item.year}` : ""}
+      </div>
+      {item.matchReasons.length ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {item.matchReasons.map((reason) => (
+            <span key={reason} className="rounded-md bg-white px-2 py-1 text-xs text-slate-700">
+              {getMatchReasonLabel(reason)}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          className="min-h-11"
+          type="button"
+          variant="outline"
+          onClick={() => onView(item.eventId)}
+        >
+          <Eye className="h-4 w-4" />
+          Xem tiền lệ
+        </Button>
+        <Button
+          className="min-h-11"
+          type="button"
+          disabled={!canAccept || isAccepting}
+          onClick={() => onAccept(item)}
+        >
+          Chấp nhận theo tiền lệ
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function ResolutionGuard({
+  value,
+  onChange,
+  onView,
+}: {
+  value: PrecedentGuardReason | "";
+  onChange: (value: PrecedentGuardReason) => void;
+  onView: () => void;
+}) {
+  const reasons: Array<{ value: PrecedentGuardReason; label: string }> = [
+    { value: "different_level", label: "Khác cấp xét" },
+    { value: "different_organizer", label: "Khác đơn vị tổ chức" },
+    { value: "conflicting_information", label: "Thông tin minh chứng mâu thuẫn" },
+    { value: "other", label: "Lý do khác" },
+  ];
+
+  return (
+    <section className="rounded-md border border-amber-200 bg-amber-50 p-3">
+      <div className="text-sm font-semibold text-amber-950">
+        Có tiền lệ phù hợp trước khi chuyển Resolution
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button className="min-h-11" type="button" variant="outline" onClick={onView}>
+          <Eye className="h-4 w-4" />
+          Xem tiền lệ
+        </Button>
+      </div>
+      <RadioGroup
+        className="mt-3 grid gap-2"
+        value={value}
+        onValueChange={(next) => onChange(next as PrecedentGuardReason)}
+      >
+        {reasons.map((reason) => (
+          <label
+            key={reason.value}
+            className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-white px-3 py-2 text-sm text-amber-950"
+          >
+            <RadioGroupItem value={reason.value} />
+            {reason.label}
+          </label>
+        ))}
+      </RadioGroup>
+    </section>
   );
 }
 
@@ -557,6 +849,28 @@ function canSubmitDecision(
   if (decision === "supplement_required") return canRequestSupplement;
   if (decision === "resolution_needed") return canEscalateResolution;
   return canDecide;
+}
+
+function getPrecedentReference(
+  item: OfficerEvidenceKnowledgeSearchItem,
+  detail?: {
+    eventId: string;
+    acceptedEvidence: Array<{ precedentId: string; evidenceId: string }>;
+  } | null,
+) {
+  const detailEvidence = detail?.eventId === item.eventId ? detail.acceptedEvidence[0] : undefined;
+
+  return {
+    precedentId: item.precedentId ?? detailEvidence?.precedentId,
+    precedentEvidenceId: item.precedentEvidenceId ?? detailEvidence?.evidenceId,
+  };
+}
+
+function canUsePrecedentSearch(task: ReviewTaskDetail) {
+  return (
+    !finalStatuses.includes(task.status as (typeof finalStatuses)[number]) &&
+    Boolean(task.evidences?.length)
+  );
 }
 
 function getOfficerDecisionEvent(decision: TaskDecision) {
