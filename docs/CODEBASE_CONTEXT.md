@@ -1381,3 +1381,13 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - `npm run build` passed.
   - Browser student regression: after logging in as `student@dut.udn.vn`, direct navigation to `/app/evidence-knowledge` redirected to `/app`, rendered the student shell/dashboard, did not paint `Kho minh chứng chuyên trách`, did not crash, and had no document-level horizontal overflow.
   - Browser officer regression: after logging in as `officer.academic@dut.udn.vn`, `/app/evidence-knowledge` rendered the officer shell and `Kho minh chứng chuyên trách` page without crash or horizontal overflow. The page showed the expected inline API error because the configured backend database still lacks the pending evidence-knowledge migration/data readiness.
+
+## Login Redirect Reliability Patch On 2026-07-21
+
+- `src/routes/login.tsx` now awaits the TanStack Router navigation after successful login and uses `replace: true`, so the success toast is followed by a completed route transition to the role default dashboard path instead of leaving `/login` in the history stack.
+- The login submit button stays disabled until the client is hydrated, preventing an early native browser form submit to `/login?` before React attaches `onSubmit`.
+- Local `.env` should point `VITE_API_BASE_URL` at `http://localhost:8080` for frontend dev against the local backend; the Cloud Run backend does not allow arbitrary local dev origins through CORS.
+- Verification:
+  - `npm run build` passed.
+  - Browser smoke with Chrome system binary against `http://localhost:5173/login` and backend `http://localhost:8080` logged in as `student@dut.udn.vn`, landed on `http://localhost:5173/app`, persisted `5tot-auth`, and rendered the student dashboard for both immediate and post-hydration submit attempts.
+  - After backend migrations `20260720120000_openai_evidence_analysis` and `20260721120000_evidence_card_confirmation` were applied, a repeat browser smoke landed on `/app`, persisted auth, rendered the dashboard, and showed no API 500/runtime errors after login.

@@ -35,6 +35,7 @@ import {
   useImportOfficialEvent,
 } from "@/features/event/hooks/useApprovedEvidenceSearch";
 import { useCheckEventParticipant } from "@/features/event/hooks/useEvents";
+import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
 import type { EvidenceEventSuggestion } from "@/features/event/api/events";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { EventParticipantCheck } from "@/lib/api/types";
@@ -349,6 +350,7 @@ export function AddEvidenceDrawer({
               onViewImported={closeAndViewImportedEvidence}
               onPrecheck={goToPrecheck}
               onContinue={() => onOpenChange(false)}
+              applicationId={applicationId}
             />
           ) : null}
 
@@ -436,6 +438,7 @@ type InlineEventSuggestionsProps = {
   onViewImported: () => void;
   onPrecheck: () => void;
   onContinue: () => void;
+  applicationId: string;
 };
 
 function InlineEventSuggestions({
@@ -457,6 +460,7 @@ function InlineEventSuggestions({
   onViewImported,
   onPrecheck,
   onContinue,
+  applicationId,
 }: InlineEventSuggestionsProps) {
   if (error) {
     return (
@@ -511,6 +515,7 @@ function InlineEventSuggestions({
                 onViewImported={onViewImported}
                 onPrecheck={onPrecheck}
                 onContinue={onContinue}
+                applicationId={applicationId}
               />
             </motion.div>
           ))}
@@ -550,6 +555,7 @@ function EventSuggestionCard({
   onViewImported,
   onPrecheck,
   onContinue,
+  applicationId,
 }: {
   suggestion: EvidenceEventSuggestion;
   checked: boolean;
@@ -563,6 +569,7 @@ function EventSuggestionCard({
   onViewImported: () => void;
   onPrecheck: () => void;
   onContinue: () => void;
+  applicationId: string;
 }) {
   const canImport = checked && Boolean(checkResult?.found && checkResult.canImport);
   const importedThisEvent = Boolean(importedEvidence && importedEventId === suggestion.eventId);
@@ -593,6 +600,19 @@ function EventSuggestionCard({
           Ẩn
         </Button>
       </div>
+
+      <StudentAssistantExplanation
+        params={{
+          contextType: "event_registry",
+          contextId: suggestion.eventId,
+          applicationId,
+          eventId: suggestion.eventId,
+          criterion: suggestion.criterion,
+        }}
+        title="Giải thích gợi ý"
+        compact
+        className="mt-3 bg-background"
+      />
 
       {checked ? (
         <div

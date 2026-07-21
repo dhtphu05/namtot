@@ -239,6 +239,11 @@ export function StudentOverview() {
           streamStatus={narrative.status}
           onPrimaryAction={handleAssistantAction}
           onRetryNarrative={narrative.retry}
+          communicationParams={{
+            contextType: "dashboard",
+            applicationId,
+            schoolYear: SCHOOL_YEAR,
+          }}
         />
 
         {application ? <CriteriaProgressCards criteriaStates={criteriaStates} /> : null}

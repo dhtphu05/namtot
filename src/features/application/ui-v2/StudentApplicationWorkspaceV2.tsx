@@ -71,6 +71,8 @@ import {
 import { useDeleteEvidence, useEvidences } from "@/features/evidence/hooks/useEvidence";
 import { OfficialEventLibraryDialog } from "@/features/event/components/OfficialEventLibraryStudent";
 import { officialEventLibraryTitleForCriterion } from "@/features/event/components/official-event-library-copy";
+import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
+import { SupplementCoachWorkspace } from "@/features/student-assistant/components/SupplementCoachWorkspace";
 import {
   applyCompletionToCriteriaState,
   coreStudentCriteria,
@@ -302,6 +304,9 @@ export function StudentApplicationWorkspaceV2() {
   const selectedEvidences = useMemo(
     () => evidences.filter((item) => item.criterion === selectedCriterion),
     [evidences, selectedCriterion],
+  );
+  const selectedSupplementRequest = supplementRequests.find(
+    (request) => request.criterion === selectedCriterion,
   );
   const isSelectedLocked =
     isSupplementMode && supplementCriteria.size > 0 && !supplementCriteria.has(selectedCriterion);
@@ -588,6 +593,32 @@ export function StudentApplicationWorkspaceV2() {
                   tone="warning"
                   title="Tiêu chí này không nằm trong yêu cầu bổ sung hiện tại."
                   description="Bạn có thể xem dữ liệu, nhưng chỉ bổ sung các tiêu chí được cán bộ yêu cầu."
+                />
+              ) : null}
+
+              {selectedSupplementRequest ? (
+                <SupplementCoachWorkspace
+                  applicationId={application.id}
+                  reviewTaskId={selectedSupplementRequest.id}
+                  criterion={selectedSupplementRequest.criterion}
+                  officialMessage={selectedSupplementRequest.reason}
+                  deadline={selectedSupplementRequest.deadline}
+                  requestedFields={selectedSupplementRequest.requestedFields}
+                  className="bg-amber-50/50"
+                />
+              ) : null}
+
+              {precheck ? (
+                <StudentAssistantExplanation
+                  params={{
+                    contextType: "precheck",
+                    contextId: application.id,
+                    applicationId: application.id,
+                    criterion: selectedCriterion,
+                    schoolYear: application.schoolYear,
+                  }}
+                  title="Giải thích tiền kiểm"
+                  compact
                 />
               ) : null}
 

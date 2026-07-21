@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ErrorState } from "@/components/feedback/ErrorState";
+import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
 import type { EvidenceResponse } from "@/lib/api/types";
 import type { EvidenceCard } from "@/types/evidence";
 import type { JobResponse } from "@/types/jobs";
@@ -112,6 +113,19 @@ export function EvidenceCardPanel({
 
       {evidence.sourceType !== "event_import" && isReading(evidence.indexingStatus) ? (
         <CompactReadingProgress status={evidence.indexingStatus} />
+      ) : null}
+
+      {evidence.applicationId ? (
+        <StudentAssistantExplanation
+          params={{
+            contextType: "evidence_card",
+            contextId: evidence.id,
+            applicationId: evidence.applicationId,
+            evidenceId: evidence.id,
+          }}
+          title="Giải thích minh chứng"
+          compact
+        />
       ) : null}
 
       {showConfirmationWorkspace ? (

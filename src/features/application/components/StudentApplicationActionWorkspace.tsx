@@ -54,6 +54,8 @@ import { StudentEvidenceCard } from "@/features/evidence/components/StudentEvide
 import { useDeleteEvidence, useEvidences } from "@/features/evidence/hooks/useEvidence";
 import { OfficialEventLibraryDialog } from "@/features/event/components/OfficialEventLibraryStudent";
 import { officialEventLibraryTitleForCriterion } from "@/features/event/components/official-event-library-copy";
+import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
+import { SupplementCoachWorkspace } from "@/features/student-assistant/components/SupplementCoachWorkspace";
 import {
   AppButton,
   EmptyState,
@@ -619,6 +621,7 @@ export function StudentApplicationActionWorkspace() {
               isLockedForSupplement: isSelectedLocked,
             })}
             supplementRequest={selectedSupplementRequest}
+            precheck={precheck}
             selectedMetric={selectedMetric}
             metricValue={metricDrafts[selectedMetric?.metricType ?? "gpa"] ?? ""}
             existingMetricValue={getMetricValue(metrics, selectedMetric?.metricType)}
@@ -1035,6 +1038,7 @@ function CriterionWorkspace({
   canEdit,
   readonlyReason,
   supplementRequest,
+  precheck,
   selectedMetric,
   metricValue,
   existingMetricValue,
@@ -1066,6 +1070,7 @@ function CriterionWorkspace({
   canEdit: boolean;
   readonlyReason?: string;
   supplementRequest?: SupplementRequest;
+  precheck: PrecheckResult | null;
   selectedMetric: ReturnType<typeof getPrimaryMetricInput>;
   metricValue: string;
   existingMetricValue?: string;
@@ -1158,18 +1163,31 @@ function CriterionWorkspace({
         ) : null}
 
         {supplementRequest ? (
+          <div className="mt-4 space-y-3">
+            <InlineAlert type="warning" title="Cán bộ yêu cầu bổ sung tiêu chí này" />
+            <SupplementCoachWorkspace
+              applicationId={applicationId}
+              reviewTaskId={supplementRequest.id}
+              criterion={supplementRequest.criterion}
+              officialMessage={supplementRequest.reason}
+              deadline={supplementRequest.deadline}
+              requestedFields={supplementRequest.requestedFields}
+            />
+          </div>
+        ) : null}
+
+        {precheck ? (
           <div className="mt-4">
-            <InlineAlert
-              type="warning"
-              title="Cán bộ yêu cầu bổ sung tiêu chí này"
-              description={[
-                supplementRequest.reason,
-                supplementRequest.deadline
-                  ? `Hạn xử lý: ${formatDate(supplementRequest.deadline)}`
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" · ")}
+            <StudentAssistantExplanation
+              params={{
+                contextType: "precheck",
+                contextId: applicationId,
+                applicationId,
+                criterion,
+                schoolYear,
+              }}
+              title="Giải thích tiền kiểm"
+              compact
             />
           </div>
         ) : null}

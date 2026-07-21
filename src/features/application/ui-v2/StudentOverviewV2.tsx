@@ -206,6 +206,11 @@ export function StudentOverviewV2() {
         streamStatus={narrative.status}
         onPrimaryAction={handleAssistantAction}
         onRetryNarrative={narrative.retry}
+        communicationParams={{
+          contextType: "dashboard",
+          applicationId,
+          schoolYear: SCHOOL_YEAR,
+        }}
         className="border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]"
       />
 

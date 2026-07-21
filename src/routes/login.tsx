@@ -1,6 +1,6 @@
 import { Link, createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -102,7 +102,12 @@ function Login() {
   const resetSessionState = useApp((s) => s.resetSessionState);
   const [email, setEmail] = useState("student@dut.udn.vn");
   const [password, setPassword] = useState("Password@123");
+  const [isClientReady, setIsClientReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setIsClientReady(true);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +122,7 @@ function Login() {
       queryClient.setQueryData(authKeys.me, res.data.user);
       setRole(toUiRole(res.data.user.role));
       toast.success("Đăng nhập thành công.");
-      nav({ to: getDefaultAppPathForRole(res.data.user.role) });
+      await nav({ to: getDefaultAppPathForRole(res.data.user.role), replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(`Đăng nhập thất bại: ${err.message}`);
@@ -239,10 +244,10 @@ function Login() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={!isClientReady || isLoading}
               className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#0057C2] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#004ba8] disabled:pointer-events-none disabled:opacity-50"
             >
-              {isLoading ? (
+              {!isClientReady || isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <>

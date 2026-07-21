@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { ArrowRight, RefreshCw } from "lucide-react";
 import type { StudentAssistantContext } from "@/features/application/api/student-assistant";
+import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
+import type { StudentAssistantContextParams } from "@/features/student-assistant/api/student-assistant";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +15,7 @@ type Props = {
   isStarting?: boolean;
   onPrimaryAction: () => void;
   onRetryNarrative?: () => void;
+  communicationParams?: StudentAssistantContextParams;
   className?: string;
 };
 
@@ -25,6 +28,7 @@ export function StudentAssistantSurface({
   narrativeText,
   onPrimaryAction,
   onRetryNarrative,
+  communicationParams,
   streamStatus,
 }: Props) {
   const reducedMotion = usePrefersReducedMotion();
@@ -143,6 +147,15 @@ export function StudentAssistantSurface({
             <p key={insight.id}>{insight.title}</p>
           ))}
         </div>
+      ) : null}
+
+      {communicationParams ? (
+        <StudentAssistantExplanation
+          params={communicationParams}
+          title="Hỏi thêm về bước này"
+          compact
+          className="mt-5 border-slate-200 bg-slate-50/70"
+        />
       ) : null}
     </motion.section>
   );
