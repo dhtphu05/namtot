@@ -75,6 +75,8 @@ import {
 } from "@/features/evidence/hooks/useEvidence";
 import { OfficialEventLibraryDialog } from "@/features/event/components/OfficialEventLibraryStudent";
 import { officialEventLibraryTitleForCriterion } from "@/features/event/components/official-event-library-copy";
+import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
+import { SupplementCoachWorkspace } from "@/features/student-assistant/components/SupplementCoachWorkspace";
 import {
   applyCompletionToCriteriaState,
   coreStudentCriteria,
@@ -141,6 +143,7 @@ type EvidenceDrawerContext = {
   criterion: Criterion;
   requirementKey?: string;
   requirementLabel?: string;
+  suggestedEventId?: string;
 };
 
 type AssistantSearch = {
@@ -244,6 +247,8 @@ export function StudentApplicationWorkspaceV2() {
   const [gpaScale, setGpaScale] = useState<4 | 10>(4);
   const initializedCriterionRef = useRef(false);
   const handledUploadEvidenceRequestRef = useRef(false);
+  const handledEvidenceConfirmRequestRef = useRef(false);
+  const handledSuggestedImportRequestRef = useRef(false);
 
   const serverEvidences = useMemo(
     () => normalizeEvidences(evidencesQuery.data),
@@ -301,6 +306,9 @@ export function StudentApplicationWorkspaceV2() {
   const selectedState =
     criteriaStates.find((item) => item.key === selectedCriterion) ?? criteriaStates[0];
   const selectedCompletion = completionItems.find((item) => item.criterion === selectedCriterion);
+  const selectedSupplementRequest = supplementRequests.find(
+    (item) => item.criterion === selectedCriterion,
+  );
   const selectedEvidences = useMemo(
     () => evidences.filter((item) => item.criterion === selectedCriterion),
     [evidences, selectedCriterion],
@@ -360,7 +368,7 @@ export function StudentApplicationWorkspaceV2() {
   }, [application, nextActions]);
 
   const openEvidenceDrawer = useCallback(
-    (criterion: Criterion, context?: { requirementKey?: string; requirementLabel?: string }) => {
+    (criterion: Criterion, context?: Omit<EvidenceDrawerContext, "criterion">) => {
       if (!canEditApplication) {
         toast.error("Hồ sơ đã nộp. Bạn chỉ có thể bổ sung khi cán bộ yêu cầu.");
         return;
@@ -382,6 +390,26 @@ export function StudentApplicationWorkspaceV2() {
     selectCriterion(requestedCriterion, setSelectedCriterion);
     clearUploadEvidenceRequestFromLocation();
     openEvidenceDrawer(requestedCriterion);
+  }, [application, openEvidenceDrawer]);
+
+  useEffect(() => {
+    if (!application || handledEvidenceConfirmRequestRef.current) return;
+    const evidenceId = getEvidenceConfirmRequestFromLocation();
+    if (!evidenceId) return;
+    const evidence = evidences.find((item) => item.id === evidenceId);
+    if (!evidence) return;
+    handledEvidenceConfirmRequestRef.current = true;
+    selectCriterion(evidence.criterion, setSelectedCriterion);
+    setSelectedEvidence(evidence);
+  }, [application, evidences]);
+
+  useEffect(() => {
+    if (!application || handledSuggestedImportRequestRef.current) return;
+    const request = getSuggestedEventImportRequestFromLocation();
+    if (!request) return;
+    handledSuggestedImportRequestRef.current = true;
+    selectCriterion(request.criterion, setSelectedCriterion);
+    openEvidenceDrawer(request.criterion, { suggestedEventId: request.eventId });
   }, [application, openEvidenceDrawer]);
 
   const openOfficialEventLibrary = () => {
@@ -579,6 +607,17 @@ export function StudentApplicationWorkspaceV2() {
                 />
               ) : null}
 
+              {selectedSupplementRequest ? (
+                <SupplementCoachWorkspace
+                  applicationId={application.id}
+                  reviewTaskId={selectedSupplementRequest.id}
+                  criterion={selectedCriterion}
+                  officialMessage={selectedSupplementRequest.reason}
+                  deadline={selectedSupplementRequest.deadline}
+                  requestedFields={selectedSupplementRequest.requestedFields}
+                />
+              ) : null}
+
               {showCompletionGuidance ? (
                 <CriterionActionRow
                   assistantSearch={assistantSearch}
@@ -595,6 +634,20 @@ export function StudentApplicationWorkspaceV2() {
                       requirementLabel: selectedState.label,
                     })
                   }
+                />
+              ) : null}
+
+              {precheck ? (
+                <StudentAssistantExplanation
+                  params={{
+                    contextType: "precheck",
+                    contextId: application.id,
+                    applicationId: application.id,
+                    criterion: selectedCriterion,
+                    schoolYear: application.schoolYear,
+                  }}
+                  title="Giải thích tiền kiểm"
+                  compact
                 />
               ) : null}
 
@@ -765,8 +818,12 @@ export function StudentApplicationWorkspaceV2() {
           initialEvidenceName={getDefaultEvidenceName(evidenceDrawerContext.criterion)}
           initialRequirementKey={evidenceDrawerContext.requirementKey}
           initialRequirementLabel={evidenceDrawerContext.requirementLabel}
+          preselectedEventId={evidenceDrawerContext.suggestedEventId}
           onOpenChange={(open) => {
-            if (!open) setEvidenceDrawerContext(null);
+            if (!open) {
+              setEvidenceDrawerContext(null);
+              clearSuggestedEventImportRequestFromLocation();
+            }
           }}
           onCreated={(created) => {
             const nextEvidence = normalizeOptimisticEvidence(created, application.id);
@@ -777,7 +834,21 @@ export function StudentApplicationWorkspaceV2() {
         />
       ) : null}
 
-      <EvidenceDetailModal evidence={selectedEvidence} onClose={() => setSelectedEvidence(null)} />
+      <EvidenceDetailModal
+        evidence={selectedEvidence}
+        applicationId={application.id}
+        canEdit={canEditApplication}
+        initialMode={getEvidenceConfirmRequestFromLocation() ? "confirm" : "view"}
+        onChanged={() => {
+          void evidencesQuery.refetch();
+          void latestPrecheck.refetch();
+          void criteriaCompletion.refetch();
+        }}
+        onClose={() => {
+          setSelectedEvidence(null);
+          clearEvidenceConfirmRequestFromLocation();
+        }}
+      />
 
       {confirmSubmitOpen ? (
         <SubmitConfirmationModal
@@ -3528,6 +3599,46 @@ function clearUploadEvidenceRequestFromLocation() {
   const url = new URL(window.location.href);
   url.searchParams.delete("uploadEvidence");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function getEvidenceConfirmRequestFromLocation(): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("mode") !== "confirm") return null;
+  return params.get("evidenceId");
+}
+
+function clearEvidenceConfirmRequestFromLocation() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("mode") === "confirm") {
+    url.searchParams.delete("mode");
+    url.searchParams.delete("evidenceId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+}
+
+function getSuggestedEventImportRequestFromLocation(): {
+  eventId: string;
+  criterion: Criterion;
+} | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("mode") !== "suggested-import") return null;
+  const eventId = params.get("eventId");
+  const criterion = params.get("criterion") as Criterion | null;
+  if (!eventId || !criterion || !coreStudentCriteria.includes(criterion)) return null;
+  return { eventId, criterion };
+}
+
+function clearSuggestedEventImportRequestFromLocation() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("mode") === "suggested-import") {
+    url.searchParams.delete("mode");
+    url.searchParams.delete("eventId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
 }
 
 function getDefaultEvidenceName(criterion: Criterion) {

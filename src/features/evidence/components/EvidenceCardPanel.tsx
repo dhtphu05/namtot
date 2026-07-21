@@ -1,8 +1,18 @@
-import { AlertTriangle, ChevronDown, FilePlus2, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  FilePlus2,
+  Pencil,
+  RefreshCw,
+  Save,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ErrorState } from "@/components/feedback/ErrorState";
+import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
 import type { EvidenceResponse } from "@/lib/api/types";
 import type { EvidenceCard } from "@/types/evidence";
 import type { JobResponse } from "@/types/jobs";
@@ -24,6 +34,16 @@ type EvidenceCardPanelProps = {
   retrying?: boolean;
   onUploadMore?: () => void;
   uploading?: boolean;
+  confirmationMode?: boolean;
+  onSaveCorrections?: (
+    fields: Record<string, unknown>,
+    expectedUpdatedAt?: string,
+  ) => Promise<void>;
+  savingCorrections?: boolean;
+  onConfirm?: (expectedUpdatedAt?: string) => Promise<void>;
+  confirming?: boolean;
+  onRunPrecheck?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export function EvidenceCardPanel({
@@ -35,11 +55,19 @@ export function EvidenceCardPanel({
   retrying,
   onUploadMore,
   uploading,
+  confirmationMode,
+  onSaveCorrections,
+  savingCorrections,
+  onConfirm,
+  confirming,
+  onRunPrecheck,
+  onDirtyChange,
 }: EvidenceCardPanelProps) {
   const status = getStudentEvidenceStatus(evidence, card);
   const userFields = getUserProvidedFields(evidence, card);
   const extractedFields = getExtractedReadableFields(card);
   const academic = getAcademicInfo(card);
+  const suggestionSource = getSuggestionSource(card);
   const missingFields = getMissingFields(card);
   const ocrText = card?.ocrTextPreview ?? getSafeOcrText(card);
   const matchingStatus = getMatchingStatus(card, evidence.sourceType);
@@ -55,6 +83,13 @@ export function EvidenceCardPanel({
     normalizeCompare(extractedEventName) !== normalizeCompare(evidence.evidenceName);
   const fileCount = getEvidenceFiles(evidence).length;
   const failed = evidence.indexingStatus === "failed";
+  const showConfirmationWorkspace =
+    Boolean(card?.fieldDetails?.length) &&
+    evidence.sourceType !== "event_import" &&
+    (confirmationMode ||
+      card?.confirmationStatus === "pending" ||
+      card?.confirmationStatus === "correction_required" ||
+      card?.confirmationStatus === "confirmed");
 
   if (failed && !onRetry && !onUploadMore) {
     return (
@@ -78,6 +113,31 @@ export function EvidenceCardPanel({
 
       {evidence.sourceType !== "event_import" && isReading(evidence.indexingStatus) ? (
         <CompactReadingProgress status={evidence.indexingStatus} />
+      ) : null}
+
+      {evidence.applicationId ? (
+        <StudentAssistantExplanation
+          params={{
+            contextType: "evidence_card",
+            contextId: evidence.id,
+            applicationId: evidence.applicationId,
+            evidenceId: evidence.id,
+          }}
+          title="Giải thích minh chứng"
+          compact
+        />
+      ) : null}
+
+      {showConfirmationWorkspace ? (
+        <ConfirmationWorkspace
+          card={card}
+          onSaveCorrections={onSaveCorrections}
+          savingCorrections={savingCorrections}
+          onConfirm={onConfirm}
+          confirming={confirming}
+          onRunPrecheck={onRunPrecheck}
+          onDirtyChange={onDirtyChange}
+        />
       ) : null}
 
       <section className="rounded-md border p-4">
@@ -115,7 +175,7 @@ export function EvidenceCardPanel({
       </section>
 
       <section className="rounded-md border p-4">
-        <h3 className="font-semibold text-foreground">SmartReader gợi ý</h3>
+        <h3 className="font-semibold text-foreground">{suggestionSource}</h3>
         {extractedFields.length ? (
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {extractedFields.map((field) => (
@@ -143,9 +203,9 @@ export function EvidenceCardPanel({
               source="Sinh viên nhập"
             />
             <FieldInfo
-              label="GPA SmartReader gợi ý"
+              label={`GPA ${suggestionSource.toLowerCase()}`}
               value={academic.suggestionDisplay}
-              source="SmartReader gợi ý"
+              source={suggestionSource}
               missing={!academic.suggestionDisplay}
             />
             <FieldInfo
@@ -286,6 +346,278 @@ function StatusSection({
   );
 }
 
+function ConfirmationWorkspace({
+  card,
+  onSaveCorrections,
+  savingCorrections,
+  onConfirm,
+  confirming,
+  onRunPrecheck,
+  onDirtyChange,
+}: {
+  card?: EvidenceCard | null;
+  onSaveCorrections?: (
+    fields: Record<string, unknown>,
+    expectedUpdatedAt?: string,
+  ) => Promise<void>;
+  savingCorrections?: boolean;
+  onConfirm?: (expectedUpdatedAt?: string) => Promise<void>;
+  confirming?: boolean;
+  onRunPrecheck?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
+  const details = useMemo(() => card?.fieldDetails ?? [], [card?.fieldDetails]);
+  const initialDraft = useMemo(
+    () =>
+      Object.fromEntries(
+        details.map((field) => [field.key, field.correctedValue ?? field.effectiveValue ?? ""]),
+      ),
+    [details],
+  );
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Record<string, unknown>>(initialDraft);
+
+  useEffect(() => {
+    setDraft(initialDraft);
+    setEditing(false);
+  }, [card?.id, card?.updatedAt, card?.confirmationStatus, initialDraft]);
+
+  const changedFields = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(draft).filter(
+          ([key, value]) => String(value ?? "") !== String(initialDraft[key] ?? ""),
+        ),
+      ),
+    [draft, initialDraft],
+  );
+  const dirty = Object.keys(changedFields).length > 0;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
+  const isConfirmed = card?.confirmationStatus === "confirmed";
+  const canSave = Boolean(onSaveCorrections && editing && dirty && card?.canEdit);
+  const canConfirm = Boolean(onConfirm && !editing && card?.canConfirm);
+
+  const save = async () => {
+    if (!canSave || !onSaveCorrections) return;
+    await onSaveCorrections(changedFields, card?.updatedAt);
+    setEditing(false);
+  };
+
+  const confirm = async () => {
+    if (!canConfirm || !onConfirm) return;
+    await onConfirm(card?.updatedAt);
+  };
+
+  return (
+    <section className="rounded-md border border-sky-200 bg-sky-50/40">
+      <div className="border-b border-sky-100 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-foreground">
+              {isConfirmed ? "Đã xác nhận" : "Kiểm tra thông tin minh chứng"}
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isConfirmed
+                ? "Thông tin này sẽ được dùng cho lần tiền kiểm tiếp theo."
+                : "Hệ thống đã đọc nội dung từ tài liệu. Hãy kiểm tra lại trước khi dùng dữ liệu này để tiền kiểm hồ sơ."}
+            </p>
+            {card?.confirmedAt ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Xác nhận lúc {formatDateTimeLabel(card.confirmedAt)}
+              </p>
+            ) : null}
+          </div>
+          <Badge variant="outline" className="bg-background">
+            {confirmationStatusLabel(card?.confirmationStatus)}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="space-y-4 p-4">
+        {groupFieldDetails(details).map((group) => (
+          <div key={group.title}>
+            <h4 className="text-sm font-semibold text-foreground">{group.title}</h4>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {group.fields.map((field) => (
+                <EditableField
+                  key={field.key}
+                  field={field}
+                  editing={editing}
+                  value={draft[field.key]}
+                  onChange={(value) => setDraft((current) => ({ ...current, [field.key]: value }))}
+                  changed={String(draft[field.key] ?? "") !== String(initialDraft[field.key] ?? "")}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t bg-background/95 p-4">
+        <p className="max-w-xl text-xs text-muted-foreground">
+          Xác nhận nghĩa là thông tin phản ánh đúng tài liệu bạn tải lên, không phải minh chứng đã
+          được duyệt.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {isConfirmed && onRunPrecheck ? (
+            <Button type="button" variant="outline" size="sm" onClick={onRunPrecheck}>
+              Chạy lại tiền kiểm
+            </Button>
+          ) : null}
+          {!editing && !isConfirmed ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4" />
+              Chỉnh sửa
+            </Button>
+          ) : null}
+          {editing ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDraft(initialDraft);
+                  setEditing(false);
+                }}
+                disabled={savingCorrections}
+              >
+                Hủy chỉnh sửa
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void save()}
+                disabled={!canSave || savingCorrections}
+              >
+                <Save className="h-4 w-4" />
+                Lưu thay đổi
+              </Button>
+            </>
+          ) : !isConfirmed ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void confirm()}
+              disabled={!canConfirm || confirming}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Xác nhận thông tin
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function EditableField({
+  field,
+  editing,
+  value,
+  onChange,
+  changed,
+}: {
+  field: NonNullable<EvidenceCard["fieldDetails"]>[number];
+  editing: boolean;
+  value: unknown;
+  onChange: (value: string) => void;
+  changed: boolean;
+}) {
+  const inputId = `evidence-card-field-${field.key}`;
+  return (
+    <div className="rounded-md bg-background px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor={inputId} className="text-xs font-medium uppercase text-muted-foreground">
+          {field.label}
+        </label>
+        {changed ? <Badge variant="outline">Đã chỉnh</Badge> : null}
+        <ConfidenceBadge confidence={field.confidence} />
+      </div>
+      {editing && field.editable ? (
+        <FieldControl id={inputId} fieldKey={field.key} value={value} onChange={onChange} />
+      ) : (
+        <div className="mt-1 break-words font-semibold text-foreground">
+          {formatFieldDisplay(field.effectiveValue)}
+        </div>
+      )}
+      {changed && field.extractedValue !== null && field.extractedValue !== undefined ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Giá trị hệ thống đọc: {formatFieldDisplay(field.extractedValue)}
+        </p>
+      ) : null}
+      {field.warningCodes?.length ? (
+        <p className="mt-1 text-xs text-amber-700">
+          {field.warningCodes.map((code) => warningCopy[code] ?? code).join(", ")}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function FieldControl({
+  id,
+  fieldKey,
+  value,
+  onChange,
+}: {
+  id: string;
+  fieldKey: string;
+  value: unknown;
+  onChange: (value: string) => void;
+}) {
+  const stringValue = value === null || value === undefined ? "" : String(value);
+  if (fieldKey === "organizer_level") {
+    return (
+      <select
+        id={id}
+        className="mt-1 min-h-10 w-full rounded-md border bg-background px-3 py-2"
+        value={stringValue}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {[
+          "",
+          "class",
+          "faculty",
+          "school",
+          "university",
+          "city",
+          "central",
+          "club",
+          "external",
+          "unknown",
+        ].map((option) => (
+          <option key={option} value={option}>
+            {option ? (mapOrganizerLevel(option) ?? option) : "Chưa nhập"}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  const type =
+    fieldKey === "issue_date" || fieldKey === "activity_date"
+      ? "date"
+      : ["volunteer_days", "language_score", "gpa", "conduct_score"].includes(fieldKey)
+        ? "number"
+        : "text";
+  return (
+    <input
+      id={id}
+      type={type}
+      className="mt-1 min-h-10 w-full rounded-md border bg-background px-3 py-2"
+      value={stringValue}
+      step={type === "number" ? "0.1" : undefined}
+      min={type === "number" ? 0 : undefined}
+      max={fieldKey === "gpa" ? 4 : fieldKey === "conduct_score" ? 100 : undefined}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
 function CompactReadingProgress({ status }: { status: string }) {
   const activeIndex =
     status === "indexed" || status === "needs_manual_review"
@@ -367,7 +699,13 @@ function FieldInfo({
 }: {
   label: string;
   value?: string | null;
-  source: "Hồ sơ" | "Sinh viên nhập" | "SmartReader gợi ý" | "Kho chính thức" | "Cán bộ xác nhận";
+  source:
+    | "Hồ sơ"
+    | "Sinh viên nhập"
+    | "SmartReader gợi ý"
+    | "Hệ thống gợi ý"
+    | "Kho chính thức"
+    | "Cán bộ xác nhận";
   missing?: boolean;
 }) {
   return (
@@ -404,6 +742,7 @@ function getUserProvidedFields(evidence: EvidenceResponse, card?: EvidenceCard |
 }
 
 function getExtractedReadableFields(card?: EvidenceCard | null) {
+  const suggestionSource = getSuggestionSource(card);
   const primary = card?.primaryFields ?? {};
   const profile = card?.studentProfileFields ?? {};
   const fields = card?.normalizedFields ?? card?.extractedFields ?? {};
@@ -414,31 +753,31 @@ function getExtractedReadableFields(card?: EvidenceCard | null) {
       "eventName",
       "Tên hoạt động",
       [fields.event_name, fields.eventName, summary?.eventName],
-      "SmartReader gợi ý",
+      suggestionSource,
     ),
     fieldFromLayer(
       "organizer",
       "Đơn vị xác nhận",
       [fields.organizer, summary?.organizer, summary?.organizerName],
-      "SmartReader gợi ý",
+      suggestionSource,
     ),
     fieldFromLayer(
       "organizerLevel",
       "Cấp tổ chức",
       [fields.organizer_level, fields.organizerLevel],
-      "SmartReader gợi ý",
+      suggestionSource,
     ),
     fieldFromLayer(
       "activityDate",
       "Ngày hoạt động",
       [fields.activity_date, fields.activityDate, summary?.activityTime, summary?.time],
-      "SmartReader gợi ý",
+      suggestionSource,
     ),
     fieldFromLayer(
       "issueDate",
       "Ngày cấp",
       [fields.issue_date, fields.issueDate, summary?.issueDate],
-      "SmartReader gợi ý",
+      suggestionSource,
     ),
     fieldFromLayer("studentName", "Họ tên", [profile.studentName, primary.studentName], "Hồ sơ"),
     fieldFromLayer("studentCode", "MSSV", [profile.studentCode, primary.studentCode], "Hồ sơ"),
@@ -453,18 +792,18 @@ function getExtractedReadableFields(card?: EvidenceCard | null) {
         fields.convertedValue,
         fields.volunteer_days,
       ],
-      "SmartReader gợi ý",
+      suggestionSource,
     ),
   ];
 
   return items
     .map((item) => ({
       ...item,
-      confidence: item.source === "SmartReader gợi ý" ? confidence[item.key] : undefined,
+      confidence: item.source === suggestionSource ? confidence[item.key] : undefined,
       missing: !item.value,
     }))
     .map((item) =>
-      item.source === "SmartReader gợi ý" &&
+      item.source === suggestionSource &&
       typeof item.confidence === "number" &&
       item.confidence < 0.5
         ? { ...item, value: null, missing: true }
@@ -481,7 +820,7 @@ function fieldFromLayer(
   key: string,
   label: string,
   values: unknown[],
-  source: "Hồ sơ" | "SmartReader gợi ý",
+  source: "Hồ sơ" | "SmartReader gợi ý" | "Hệ thống gợi ý",
 ) {
   return {
     key,
@@ -510,8 +849,70 @@ function getAcademicInfo(card?: EvidenceCard | null) {
     thresholdDisplay: thresholdValue ? `${thresholdValue}/${thresholdScale}` : "Chưa có ngưỡng",
     message:
       getDisplayValue(academic.message) ??
-      "SmartReader chỉ tạo gợi ý. Vui lòng xác nhận trước khi dùng để tiền kiểm.",
+      "Hệ thống chỉ tạo gợi ý. Vui lòng xác nhận trước khi dùng để tiền kiểm.",
   };
+}
+
+function getSuggestionSource(card?: EvidenceCard | null): "SmartReader gợi ý" | "Hệ thống gợi ý" {
+  return card?.provider === "openai" || card?.provider === "mock"
+    ? "Hệ thống gợi ý"
+    : "SmartReader gợi ý";
+}
+
+function groupFieldDetails(fields: NonNullable<EvidenceCard["fieldDetails"]>) {
+  const groups = [
+    { title: "Người tham gia", keys: ["student_name", "student_code", "class_name", "faculty"] },
+    {
+      title: "Hoạt động/minh chứng",
+      keys: ["event_name", "certificate_type", "organizer", "organizer_level"],
+    },
+    { title: "Thời gian", keys: ["issue_date", "activity_date"] },
+    {
+      title: "Kết quả",
+      keys: ["volunteer_days", "award_level", "language_score", "gpa", "conduct_score"],
+    },
+  ];
+  return groups
+    .map((group) => ({
+      title: group.title,
+      fields: fields.filter((field) => group.keys.includes(field.key)),
+    }))
+    .filter((group) => group.fields.length > 0);
+}
+
+function confirmationStatusLabel(status?: string | null) {
+  if (status === "confirmed") return "Đã xác nhận";
+  if (status === "correction_required") return "Đã chỉnh, chờ xác nhận";
+  if (status === "not_required") return "Không cần xác nhận";
+  return "Cần xác nhận";
+}
+
+function ConfidenceBadge({ confidence }: { confidence?: number | null }) {
+  if (typeof confidence !== "number") return null;
+  const label =
+    confidence >= 0.85
+      ? "Độ tin cậy cao"
+      : confidence >= 0.6
+        ? "Cần kiểm tra"
+        : "Cần xử lý thủ công";
+  return (
+    <Badge variant="outline" className="border-slate-200 bg-background px-1.5 py-0 text-[10px]">
+      {label}
+    </Badge>
+  );
+}
+
+function formatFieldDisplay(value: unknown) {
+  return getDisplayValue(value) ?? "Chưa nhập";
+}
+
+function formatDateTimeLabel(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${date.toLocaleDateString("vi-VN")} ${date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

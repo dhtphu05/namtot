@@ -23,7 +23,10 @@ import {
   useCurrentApplication,
   useLatestPrecheck,
   useStartApplication,
+  useStudentAssistantContext,
 } from "@/features/application/hooks/useApplication";
+import type { StudentNextBestAction } from "@/features/application/api/student-assistant";
+import { buildDashboardAssistantFallback } from "@/features/application/components/student-assistant-fallback";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useEvidences } from "@/features/evidence/hooks/useEvidence";
 import { useNotifications } from "@/features/notifications/hooks/useNotifications";
@@ -76,7 +79,10 @@ type ApplicationWithDashboardData = ApplicationState & {
 
 type CriteriaState = ReturnType<typeof getCriteriaUiState>;
 type FeedbackItem = ReturnType<typeof getFeedbackUiItems>[number];
-type NextAction = ReturnType<typeof getNextActions>[number] & { isInteractive?: boolean };
+type NextAction = ReturnType<typeof getNextActions>[number] & {
+  isInteractive?: boolean;
+  routeSearch?: Record<string, string>;
+};
 
 const criterionIcons: Partial<Record<Criterion, LucideIcon>> = {
   ethics: ShieldCheck,
@@ -94,6 +100,7 @@ export function StudentOverview() {
   const latestPrecheck = useLatestPrecheck(applicationId);
   const criteriaCompletion = useCriteriaCompletion(applicationId);
   const evidencesQuery = useEvidences(applicationId, { limit: 100 });
+  const assistantContext = useStudentAssistantContext(SCHOOL_YEAR);
   const notifications = useNotifications({ page: 1, limit: 20 });
   const startApplication = useStartApplication();
   const { trackClick } = useSmartUXTracking();
@@ -133,13 +140,27 @@ export function StudentOverview() {
     feedbackItems,
     criteriaStates,
   );
-  const nextActions = useMemo(
+  const localNextActions = useMemo(
     () =>
       getNextActions(applicationForSummary, criteriaStates, feedbackItems, precheck).map(
         (action) =>
           PRESENTATION_SEMANTICS_V2 ? applyActionPresentationToUiAction(action) : action,
       ),
     [applicationForSummary, criteriaStates, feedbackItems, precheck],
+  );
+  const assistantDisplayContext =
+    assistantContext.data ??
+    (assistantContext.isError
+      ? buildDashboardAssistantFallback({
+          application,
+          firstName,
+          schoolYear: SCHOOL_YEAR,
+        })
+      : null);
+  const assistantPrimaryAction = assistantDisplayContext?.nextBestAction ?? null;
+  const nextActions = useMemo(
+    () => mergeAssistantActionIntoNextActions(assistantPrimaryAction, localNextActions),
+    [assistantPrimaryAction, localNextActions],
   );
   const actionableFeedback = useMemo(
     () => feedbackItems.filter((item) => item.isActionable).slice(0, 2),
@@ -195,6 +216,7 @@ export function StudentOverview() {
           applicationStatus={application?.status}
           hasApplication={Boolean(application)}
           isStarting={startApplication.isPending}
+          assistantAction={assistantPrimaryAction}
           nextActions={nextActions.map((action) => action.title)}
           onStart={() => {
             trackClick("student_start_application", {
@@ -231,6 +253,7 @@ export function StudentOverview() {
 function ApplicationHeroCard({
   applicationId,
   applicationStatus,
+  assistantAction,
   hasApplication,
   isStarting,
   nextActions,
@@ -239,6 +262,7 @@ function ApplicationHeroCard({
 }: {
   applicationId?: string;
   applicationStatus?: string;
+  assistantAction?: StudentNextBestAction | null;
   hasApplication: boolean;
   isStarting: boolean;
   nextActions: string[];
@@ -251,6 +275,9 @@ function ApplicationHeroCard({
     source: "overview",
     status: applicationStatus ?? summary.statusBadge.label,
   });
+  const primaryActionLabel = assistantAction?.ctaLabel ?? summary.primaryAction.label;
+  const primaryActionRoute = assistantAction?.destination.route ?? summary.primaryAction.route;
+  const primaryActionSearch = assistantAction?.destination.query;
 
   return (
     <SectionCard className="overflow-hidden border-[#BBD7F3] bg-[#F8FBFE] p-0">
@@ -271,10 +298,11 @@ function ApplicationHeroCard({
             {hasApplication ? (
               <AppButton asChild className="sm:w-auto">
                 <Link
-                  to={toStudentRoute(summary.primaryAction.route)}
+                  to={toStudentRoute(primaryActionRoute)}
+                  search={primaryActionSearch as never}
                   data-smartux-tag="student_continue_application"
                 >
-                  {summary.primaryAction.label}
+                  {primaryActionLabel}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </AppButton>
@@ -290,7 +318,7 @@ function ApplicationHeroCard({
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                {summary.primaryAction.label}
+                {primaryActionLabel}
               </AppButton>
             )}
             <AppButton asChild variant="secondary" className="sm:w-auto">
@@ -444,7 +472,13 @@ function ActionRow({ action, index }: { action: NextAction; index: number }) {
         <AppButton asChild size="sm" variant={index === 0 ? "primary" : "secondary"}>
           <Link
             to={action.criterionKey ? "/app/application" : toStudentRoute(action.route)}
-            search={action.criterionKey ? { criterion: action.criterionKey } : undefined}
+            search={
+              action.routeSearch
+                ? (action.routeSearch as never)
+                : action.criterionKey
+                  ? ({ criterion: action.criterionKey } as never)
+                  : undefined
+            }
             data-smartux-tag={getStudentActionTag(action)}
           >
             {action.actionLabel}
@@ -686,6 +720,28 @@ function toStudentRoute(route: string): StudentOverviewRoute {
   if (route === "/app/feedback") return "/app/feedback";
   if (route === "/app/result") return "/app/result";
   return "/app/application";
+}
+
+function mergeAssistantActionIntoNextActions(
+  assistantAction: StudentNextBestAction | null,
+  localActions: NextAction[],
+): NextAction[] {
+  if (!assistantAction || assistantAction.type === "none") return localActions;
+  const mapped = mapAssistantActionToNextAction(assistantAction);
+  return [mapped, ...localActions.filter((action) => action.title !== mapped.title)];
+}
+
+function mapAssistantActionToNextAction(action: StudentNextBestAction): NextAction {
+  return {
+    title: action.title,
+    description: action.deterministicDescription,
+    actionLabel: action.ctaLabel,
+    route: action.destination.route,
+    criterionKey: action.criterion,
+    isInteractive: action.type !== "none",
+    routeSearch:
+      action.destination.query ?? (action.criterion ? { criterion: action.criterion } : undefined),
+  } as NextAction;
 }
 
 function getStudentActionTag(action: NextAction) {

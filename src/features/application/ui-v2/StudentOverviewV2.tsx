@@ -6,7 +6,10 @@ import {
   useCurrentApplication,
   useLatestPrecheck,
   useStartApplication,
+  useStudentAssistantContext,
 } from "@/features/application/hooks/useApplication";
+import type { StudentNextBestAction } from "@/features/application/api/student-assistant";
+import { buildDashboardAssistantFallback } from "@/features/application/components/student-assistant-fallback";
 import {
   applyActionPresentationToUiAction,
   getStudentCriterionDisplayState,
@@ -71,7 +74,10 @@ type ApplicationWithOverviewData = ApplicationState & {
   }>;
 };
 
-type NextAction = ReturnType<typeof getNextActions>[number] & { isInteractive?: boolean };
+type NextAction = ReturnType<typeof getNextActions>[number] & {
+  isInteractive?: boolean;
+  routeSearch?: Record<string, string>;
+};
 
 const overviewActionLinkClassName = "inline-flex min-h-11 items-center justify-center gap-2";
 
@@ -98,6 +104,7 @@ export function StudentOverviewV2() {
   const latestPrecheck = useLatestPrecheck(applicationId);
   const criteriaCompletion = useCriteriaCompletion(applicationId);
   const evidencesQuery = useEvidences(applicationId, { limit: 100 });
+  const assistantContext = useStudentAssistantContext(SCHOOL_YEAR);
   const notifications = useNotifications({ page: 1, limit: 20 });
   const startApplication = useStartApplication();
   const { trackClick } = useSmartUXTracking();
@@ -149,12 +156,26 @@ export function StudentOverviewV2() {
     criteriaUiStates,
   );
 
-  const nextActions = useMemo(
+  const localNextActions = useMemo(
     () =>
       getNextActions(applicationForSummary, criteriaUiStates, feedbackItems, precheck).map(
         (action) => applyActionPresentationToUiAction(action),
       ),
     [applicationForSummary, criteriaUiStates, feedbackItems, precheck],
+  );
+  const assistantDisplayContext =
+    assistantContext.data ??
+    (assistantContext.isError
+      ? buildDashboardAssistantFallback({
+          application,
+          firstName,
+          schoolYear: SCHOOL_YEAR,
+        })
+      : null);
+  const assistantPrimaryAction = assistantDisplayContext?.nextBestAction ?? null;
+  const nextActions = useMemo(
+    () => mergeAssistantActionIntoNextActions(assistantPrimaryAction, localNextActions),
+    [assistantPrimaryAction, localNextActions],
   );
 
   const updates = useMemo(
@@ -217,6 +238,7 @@ export function StudentOverviewV2() {
         isStarting={startApplication.isPending}
         onStart={handleStart}
         assistantSearch={assistantSearch}
+        assistantAction={assistantPrimaryAction}
         summary={summary}
       />
 
@@ -253,12 +275,14 @@ function OverviewHeading({ firstName }: { firstName: string }) {
 
 function PrimaryStatusStrip({
   application,
+  assistantAction,
   assistantSearch,
   isStarting,
   onStart,
   summary,
 }: {
   application: ApplicationWithOverviewData | null;
+  assistantAction?: StudentNextBestAction | null;
   assistantSearch: AssistantSearch;
   isStarting: boolean;
   onStart: () => void;
@@ -269,6 +293,9 @@ function PrimaryStatusStrip({
     label: "Kiểm tra hồ sơ",
     route: "/app/application",
   };
+  const primaryActionLabel = assistantAction?.ctaLabel ?? summary.primaryAction.label;
+  const primaryActionRoute = assistantAction?.destination.route ?? summary.primaryAction.route;
+  const primaryActionSearch = assistantAction?.destination.query;
 
   return (
     <section
@@ -296,10 +323,11 @@ function PrimaryStatusStrip({
           {application ? (
             <ButtonV2 asChild>
               <Link
-                to={toStudentRoute(summary.primaryAction.route)}
+                to={toStudentRoute(primaryActionRoute)}
+                search={primaryActionSearch as never}
                 className={overviewActionLinkClassName}
               >
-                {summary.primaryAction.label}
+                {primaryActionLabel}
                 <ArrowRight aria-hidden="true" />
               </Link>
             </ButtonV2>
@@ -310,7 +338,7 @@ function PrimaryStatusStrip({
               ) : (
                 <Plus aria-hidden="true" />
               )}
-              {summary.primaryAction.label}
+              {primaryActionLabel}
             </ButtonV2>
           )}
           {application ? (
@@ -419,7 +447,13 @@ function TaskRow({
         <ButtonV2 asChild variant={index === 0 ? "secondary" : "tertiary"} size="compact">
           <Link
             to={action.criterionKey ? "/app/application" : toStudentRoute(action.route)}
-            search={action.criterionKey ? { criterion: action.criterionKey } : undefined}
+            search={
+              action.routeSearch
+                ? (action.routeSearch as never)
+                : action.criterionKey
+                  ? ({ criterion: action.criterionKey } as never)
+                  : undefined
+            }
             className={overviewActionLinkClassName}
           >
             {action.actionLabel}
@@ -614,6 +648,28 @@ function toStudentRoute(route: string): StudentOverviewRoute {
   if (route === "/app/feedback") return "/app/feedback";
   if (route === "/app/result") return "/app/result";
   return "/app/application";
+}
+
+function mergeAssistantActionIntoNextActions(
+  assistantAction: StudentNextBestAction | null,
+  localActions: NextAction[],
+): NextAction[] {
+  if (!assistantAction || assistantAction.type === "none") return localActions;
+  const mapped = mapAssistantActionToNextAction(assistantAction);
+  return [mapped, ...localActions.filter((action) => action.title !== mapped.title)];
+}
+
+function mapAssistantActionToNextAction(action: StudentNextBestAction): NextAction {
+  return {
+    title: action.title,
+    description: action.deterministicDescription,
+    actionLabel: action.ctaLabel,
+    route: action.destination.route,
+    criterionKey: action.criterion,
+    isInteractive: action.type !== "none",
+    routeSearch:
+      action.destination.query ?? (action.criterion ? { criterion: action.criterion } : undefined),
+  } as NextAction;
 }
 
 function normalizeEvidences(value: unknown): EvidenceResponse[] {

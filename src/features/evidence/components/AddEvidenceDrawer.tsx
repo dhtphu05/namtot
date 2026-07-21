@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, FileUp, Loader2, Search, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useNavigate } from "@tanstack/react-router";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  FileUp,
+  Loader2,
+  Search,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +24,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useOfficialEventLibrary } from "@/features/event/hooks/useApprovedEvidenceSearch";
+import type { EvidenceEventSuggestion } from "@/features/event/api/events";
+import {
+  useEvidenceEventSuggestions,
+  useImportOfficialEvent,
+  useOfficialEventLibrary,
+} from "@/features/event/hooks/useApprovedEvidenceSearch";
+import { useCheckEventParticipant } from "@/features/event/hooks/useEvents";
 import { getCriterionDisplayLabel } from "@/features/application/presentation";
-import type { Criterion, EvidenceResponse } from "@/lib/api/types";
+import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import type { Criterion, EventParticipantCheck, EvidenceResponse } from "@/lib/api/types";
 import {
   useCreateEvidence,
   useStartEvidenceIndexing,
@@ -31,6 +50,7 @@ type AddEvidenceDrawerProps = {
   initialEvidenceName?: string;
   initialRequirementKey?: string;
   initialRequirementLabel?: string;
+  preselectedEventId?: string;
   referenceEvent?: {
     eventId: string;
     title: string;
@@ -42,7 +62,7 @@ type AddEvidenceDrawerProps = {
 };
 
 const maxFileSize = 10 * 1024 * 1024;
-const acceptedTypes = [".pdf", ".jpg", ".jpeg", ".png"];
+const acceptedTypes = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
 
 export function AddEvidenceDrawer({
   applicationId,
@@ -52,10 +72,13 @@ export function AddEvidenceDrawer({
   initialEvidenceName = "",
   initialRequirementKey,
   initialRequirementLabel,
+  preselectedEventId,
   referenceEvent,
   submitLabel = "Thêm vào hồ sơ",
   onCreated,
 }: AddEvidenceDrawerProps) {
+  const navigate = useNavigate();
+  const reducedMotion = usePrefersReducedMotion();
   const [evidenceName, setEvidenceName] = useState("");
   const [criterion, setCriterion] = useState<Criterion>(initialCriterion);
   const [note, setNote] = useState("");
@@ -67,12 +90,20 @@ export function AddEvidenceDrawer({
   > | null>(referenceEvent ?? null);
   const [nameError, setNameError] = useState("");
   const [fileError, setFileError] = useState("");
+  const [eventSuggestionsExpanded, setEventSuggestionsExpanded] = useState(false);
+  const [dismissedEventSuggestionKey, setDismissedEventSuggestionKey] = useState("");
+  const [participantChecks, setParticipantChecks] = useState<Record<string, EventParticipantCheck>>(
+    {},
+  );
+  const [importedEvidence, setImportedEvidence] = useState<EvidenceResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const createEvidence = useCreateEvidence(applicationId);
   const uploadFile = useUploadEvidenceFile(applicationId);
   const startIndexing = useStartEvidenceIndexing(applicationId);
+  const checkParticipant = useCheckEventParticipant();
+  const importOfficialEvent = useImportOfficialEvent(applicationId);
   const isSubmitting = createEvidence.isPending || uploadFile.isPending || startIndexing.isPending;
   const hasRequirementContext = Boolean(initialRequirementKey && initialRequirementLabel);
   const hasReferenceEvent = Boolean(referenceEvent);
@@ -80,7 +111,8 @@ export function AddEvidenceDrawer({
   const referenceEventTitle = referenceEvent?.title;
   const referenceEventCriterion = referenceEvent?.criterion;
   const referenceEventApprovedUsageCount = referenceEvent?.approvedUsageCount;
-  const debouncedEvidenceName = useDebouncedValue(evidenceName, 280);
+  const debouncedEvidenceName = useDebouncedValue(evidenceName, 300);
+  const normalizedEventSuggestionQuery = normalizeSuggestionQuery(debouncedEvidenceName);
   const shouldSearchReferenceEvents =
     open && !hasReferenceEvent && debouncedEvidenceName.trim().length >= 2;
   const referenceSearch = useOfficialEventLibrary(
@@ -95,6 +127,24 @@ export function AddEvidenceDrawer({
     shouldSearchReferenceEvents,
   );
   const suggestions = referenceSearch.data?.items ?? [];
+  const shouldSearchEventSuggestions =
+    open &&
+    !hasReferenceEvent &&
+    (Boolean(preselectedEventId) || normalizedEventSuggestionQuery.length >= 3) &&
+    dismissedEventSuggestionKey !==
+      getEventSuggestionDismissKey(preselectedEventId, normalizedEventSuggestionQuery);
+  const eventSuggestionQuery = useEvidenceEventSuggestions(
+    {
+      applicationId,
+      query: preselectedEventId ? undefined : debouncedEvidenceName,
+      criterion,
+      eventId: preselectedEventId,
+      limit: eventSuggestionsExpanded ? 5 : 3,
+      excludeImported: true,
+    },
+    shouldSearchEventSuggestions,
+  );
+  const eventSuggestions = eventSuggestionQuery.data?.suggestions ?? [];
   const requirementContextLabel = hasRequirementContext
     ? `${getCriterionDisplayLabel(criterion)} - ${initialRequirementLabel}`
     : "";
@@ -133,6 +183,10 @@ export function AddEvidenceDrawer({
     setNote("");
     setNameError("");
     setFileError("");
+    setEventSuggestionsExpanded(false);
+    setDismissedEventSuggestionKey("");
+    setParticipantChecks({});
+    setImportedEvidence(null);
     window.requestAnimationFrame(() => {
       contentRef.current?.scrollTo({ top: 0 });
     });
@@ -144,6 +198,7 @@ export function AddEvidenceDrawer({
     referenceEventCriterion,
     referenceEventId,
     referenceEventTitle,
+    preselectedEventId,
   ]);
 
   const resetForm = () => {
@@ -163,7 +218,7 @@ export function AddEvidenceDrawer({
 
     const extension = `.${selectedFile.name.split(".").pop()?.toLowerCase() ?? ""}`;
     if (!acceptedTypes.includes(extension)) {
-      toast.error("Định dạng file không được hỗ trợ. Chỉ chấp nhận PDF, JPG, JPEG, PNG.");
+      toast.error("Định dạng file không được hỗ trợ. Chỉ chấp nhận PDF, JPG, JPEG, PNG, WEBP.");
       return;
     }
 
@@ -174,6 +229,45 @@ export function AddEvidenceDrawer({
 
     setFile(selectedFile);
     setFileError("");
+  };
+
+  const handleParticipantCheck = async (suggestion: EvidenceEventSuggestion) => {
+    const result = await checkParticipant.mutateAsync({
+      eventId: suggestion.eventId,
+      applicationId,
+    });
+    setParticipantChecks((current) => ({ ...current, [suggestion.eventId]: result }));
+    return result;
+  };
+
+  const handleImportSuggestion = async (suggestion: EvidenceEventSuggestion) => {
+    try {
+      const participantCheck =
+        participantChecks[suggestion.eventId] ?? (await handleParticipantCheck(suggestion));
+      if (!participantCheck.canImport) {
+        toast.error(participantCheck.reason || "Bạn chưa đủ điều kiện import sự kiện này.");
+        return;
+      }
+      const result = await importOfficialEvent.mutateAsync({ eventId: suggestion.eventId });
+      const evidence = result?.evidence ?? null;
+      setImportedEvidence(evidence);
+      toast.success("Đã thêm minh chứng từ sự kiện chính thức.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Chưa import được sự kiện.");
+    }
+  };
+
+  const viewImportedEvidence = () => {
+    if (importedEvidence) onCreated(importedEvidence);
+    onOpenChange(false);
+  };
+
+  const goToPrecheck = () => {
+    onOpenChange(false);
+    void navigate({
+      to: "/app/application",
+      search: { tab: "precheck" } as never,
+    });
   };
 
   const handleEvidenceNameChange = (value: string) => {
@@ -261,7 +355,14 @@ export function AddEvidenceDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="grid max-h-[85dvh] w-[min(760px,calc(100vw-32px))] max-w-[760px] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0">
+      <DialogContent
+        className="grid max-h-[85dvh] w-[min(760px,calc(100vw-32px))] max-w-[760px] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0"
+        onEscapeKeyDown={(event) => {
+          if (!eventSuggestionsExpanded) return;
+          event.preventDefault();
+          setEventSuggestionsExpanded(false);
+        }}
+      >
         <DialogHeader className="shrink-0 border-b px-5 py-4 pr-16">
           <DialogTitle>Thêm minh chứng</DialogTitle>
           <DialogDescription>
@@ -303,6 +404,33 @@ export function AddEvidenceDrawer({
                 onSelect={handleSuggestionSelect}
               />
             ) : null}
+            <InlineEventSuggestions
+              applicationId={applicationId}
+              criterion={criterion}
+              dismissedKey={getEventSuggestionDismissKey(
+                preselectedEventId,
+                normalizedEventSuggestionQuery,
+              )}
+              expanded={eventSuggestionsExpanded}
+              importedEvidence={importedEvidence}
+              isChecking={checkParticipant.isPending}
+              isError={eventSuggestionQuery.isError}
+              isImporting={importOfficialEvent.isPending}
+              isLoading={eventSuggestionQuery.isLoading || eventSuggestionQuery.isFetching}
+              participantChecks={participantChecks}
+              reducedMotion={reducedMotion}
+              suggestions={eventSuggestions}
+              onCheckParticipant={(suggestion) => {
+                void handleParticipantCheck(suggestion).catch(() => undefined);
+              }}
+              onDismiss={setDismissedEventSuggestionKey}
+              onGoToPrecheck={goToPrecheck}
+              onImport={(suggestion) => {
+                void handleImportSuggestion(suggestion);
+              }}
+              onToggleExpanded={() => setEventSuggestionsExpanded((current) => !current)}
+              onViewEvidence={viewImportedEvidence}
+            />
           </div>
 
           <div className="space-y-2">
@@ -404,7 +532,7 @@ export function AddEvidenceDrawer({
               </button>
             )}
             <p className="text-xs text-muted-foreground">
-              Hỗ trợ PDF, JPG, JPEG, PNG. Tối đa 10MB.
+              Hỗ trợ PDF, JPG, JPEG, PNG, WEBP. Tối đa 10MB.
             </p>
             {fileError ? <p className="text-sm text-destructive">{fileError}</p> : null}
           </div>
@@ -512,6 +640,231 @@ function ReferenceSuggestions({
   );
 }
 
+function InlineEventSuggestions({
+  applicationId,
+  criterion,
+  dismissedKey,
+  expanded,
+  importedEvidence,
+  isChecking,
+  isError,
+  isImporting,
+  isLoading,
+  participantChecks,
+  reducedMotion,
+  suggestions,
+  onCheckParticipant,
+  onDismiss,
+  onGoToPrecheck,
+  onImport,
+  onToggleExpanded,
+  onViewEvidence,
+}: {
+  applicationId: string;
+  criterion: Criterion;
+  dismissedKey: string;
+  expanded: boolean;
+  importedEvidence: EvidenceResponse | null;
+  isChecking: boolean;
+  isError: boolean;
+  isImporting: boolean;
+  isLoading: boolean;
+  participantChecks: Record<string, EventParticipantCheck>;
+  reducedMotion: boolean;
+  suggestions: EvidenceEventSuggestion[];
+  onCheckParticipant: (suggestion: EvidenceEventSuggestion) => void;
+  onDismiss: (key: string) => void;
+  onGoToPrecheck: () => void;
+  onImport: (suggestion: EvidenceEventSuggestion) => void;
+  onToggleExpanded: () => void;
+  onViewEvidence: () => void;
+}) {
+  if (importedEvidence) {
+    return (
+      <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm">
+        <div className="font-semibold text-emerald-900">
+          Đã thêm minh chứng từ sự kiện chính thức.
+        </div>
+        <p className="mt-1 text-emerald-800">
+          Minh chứng đã được ghi nhận từ danh sách tham gia đã xác nhận.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" size="sm" onClick={onViewEvidence}>
+            Xem minh chứng
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={onGoToPrecheck}>
+            Chạy lại tiền kiểm
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => onDismiss(dismissedKey)}>
+            Tiếp tục hoàn thiện
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading && !suggestions.length) {
+    return (
+      <div className="rounded-md border bg-white px-3 py-2 text-sm text-muted-foreground">
+        Đang kiểm tra sự kiện chính thức phù hợp...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-md border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        Chưa tải được gợi ý từ sự kiện chính thức. Bạn vẫn có thể tải file thủ công.
+      </div>
+    );
+  }
+
+  if (!suggestions.length) return null;
+
+  const visibleSuggestions = expanded ? suggestions : suggestions.slice(0, 1);
+
+  return (
+    <AnimatePresence initial={false}>
+      <motion.div
+        initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
+        transition={{ duration: reducedMotion ? 0 : 0.2 }}
+        className="overflow-hidden rounded-md border border-sky-100 bg-sky-50/50"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-sky-100 px-3 py-2">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-sky-950">Gợi ý từ sự kiện chính thức</div>
+            <div className="text-xs text-sky-800">
+              Hệ thống sẽ kiểm tra bạn có trong danh sách tham gia trước khi import.
+            </div>
+          </div>
+          <Button type="button" variant="ghost" size="sm" onClick={() => onDismiss(dismissedKey)}>
+            Ẩn
+          </Button>
+        </div>
+        <div className="divide-y divide-sky-100">
+          {visibleSuggestions.map((suggestion) => (
+            <InlineEventSuggestionRow
+              key={suggestion.eventId}
+              isChecking={isChecking}
+              isImporting={isImporting}
+              participantCheck={participantChecks[suggestion.eventId]}
+              suggestion={suggestion}
+              onCheckParticipant={onCheckParticipant}
+              onImport={onImport}
+            />
+          ))}
+        </div>
+        {suggestions.length > 1 ? (
+          <button
+            type="button"
+            className="flex min-h-10 w-full items-center justify-center gap-2 px-3 text-sm font-semibold text-sky-800 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+            onClick={onToggleExpanded}
+          >
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {expanded ? "Thu gọn" : "Xem thêm"}
+          </button>
+        ) : null}
+        <StudentAssistantExplanation
+          params={{
+            contextType: "event_registry",
+            contextId: visibleSuggestions[0]?.eventId ?? applicationId,
+            applicationId,
+            criterion,
+            eventId: visibleSuggestions[0]?.eventId,
+          }}
+          title="Vì sao có gợi ý này?"
+          compact
+          className="m-3 border-sky-100 bg-white"
+        />
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+function InlineEventSuggestionRow({
+  isChecking,
+  isImporting,
+  participantCheck,
+  suggestion,
+  onCheckParticipant,
+  onImport,
+}: {
+  isChecking: boolean;
+  isImporting: boolean;
+  participantCheck?: EventParticipantCheck;
+  suggestion: EvidenceEventSuggestion;
+  onCheckParticipant: (suggestion: EvidenceEventSuggestion) => void;
+  onImport: (suggestion: EvidenceEventSuggestion) => void;
+}) {
+  const canImport = participantCheck?.canImport ?? false;
+  const participantFound = participantCheck?.found ?? false;
+
+  return (
+    <div className="px-3 py-3">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="line-clamp-2 text-sm font-semibold text-foreground">
+            {suggestion.eventName}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>
+              {studentEvidenceCriteria.find((item) => item.key === suggestion.criterion)?.label}
+            </span>
+            {suggestion.organizer ? <span>{suggestion.organizer}</span> : null}
+            {suggestion.startDate ? (
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="h-3.5 w-3.5" />
+                {formatDate(suggestion.startDate)}
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-2 text-xs text-sky-800">
+            Mức khớp: {getSuggestionMatchLabel(suggestion.match.level)}
+            {participantCheck
+              ? ` · ${participantFound ? "Đã xác nhận tham gia" : "Chưa thấy trong danh sách"}`
+              : ""}
+          </div>
+          {participantCheck?.reason ? (
+            <div className="mt-1 text-xs text-amber-800">{participantCheck.reason}</div>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+          {!participantCheck ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isChecking}
+              onClick={() => onCheckParticipant(suggestion)}
+            >
+              {isChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Kiểm tra tham gia
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              disabled={!canImport || isImporting}
+              onClick={() => onImport(suggestion)}
+            >
+              {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {suggestion.alreadyImported ? "Đã có" : "Import minh chứng"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getSuggestionMatchLabel(level: EvidenceEventSuggestion["match"]["level"]) {
+  if (level === "exact") return "trùng tên";
+  if (level === "strong") return "phù hợp cao";
+  return "có thể phù hợp";
+}
+
 function UploadProgress() {
   const steps = ["Đã nhận file", "Đang đọc file", "Đã tạo tóm tắt", "Chờ cán bộ xét duyệt"];
 
@@ -546,9 +899,27 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 }
 
 function isImageUpload(file: File) {
-  return file.type.startsWith("image/") || /\.(png|jpe?g)$/i.test(file.name);
+  return file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(file.name);
 }
 
 function isPdfUpload(file: File) {
   return file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+}
+
+function normalizeSuggestionQuery(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getEventSuggestionDismissKey(eventId: string | undefined, query: string) {
+  return eventId ? `event:${eventId}` : `query:${query}`;
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
 }

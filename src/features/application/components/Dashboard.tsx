@@ -63,7 +63,7 @@ import {
 } from "@/features/application/hooks/useApplication";
 import { useManagerDashboardSummary } from "@/features/manager/hooks/useManager";
 import { levelLabel, applicationStatusLabel, type ApplicationStatus } from "@/lib/api/types";
-import { StudentOverview } from "./StudentOverview";
+import { StudentOverviewV2 } from "@/features/application/ui-v2";
 import { useOfficerDashboard } from "@/features/review/hooks/useReview";
 import {
   formatDateTime,
@@ -84,7 +84,7 @@ export function Dashboard() {
       : user
         ? toUiRole(user.role)
         : "student";
-  if (role === "student") return <StudentOverview />;
+  if (role === "student") return <StudentOverviewV2 />;
   if (role === "officer") return <OfficerDashReal />;
   if (role === "manager") return <ManagerDashReal />;
   return <CollectiveDash />;

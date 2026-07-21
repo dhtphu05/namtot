@@ -55,6 +55,8 @@ import { StudentEvidenceCard } from "@/features/evidence/components/StudentEvide
 import { useDeleteEvidence, useEvidences } from "@/features/evidence/hooks/useEvidence";
 import { OfficialEventLibraryDialog } from "@/features/event/components/OfficialEventLibraryStudent";
 import { officialEventLibraryTitleForCriterion } from "@/features/event/components/official-event-library-copy";
+import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
+import { SupplementCoachWorkspace } from "@/features/student-assistant/components/SupplementCoachWorkspace";
 import {
   AppButton,
   EmptyState,
@@ -123,6 +125,7 @@ type EvidenceDrawerContext = {
   criterion: Criterion;
   requirementKey?: string;
   requirementLabel?: string;
+  suggestedEventId?: string;
 };
 
 type IntegrationRequirementKey =
@@ -241,6 +244,8 @@ export function StudentApplicationActionWorkspace() {
   const [gpaScale, setGpaScale] = useState<4 | 10>(4);
   const initializedCriterionRef = useRef(false);
   const handledUploadEvidenceRequestRef = useRef(false);
+  const handledEvidenceConfirmRequestRef = useRef(false);
+  const handledSuggestedImportRequestRef = useRef(false);
 
   const serverEvidences = useMemo(
     () => normalizeEvidences(evidencesQuery.data),
@@ -351,7 +356,7 @@ export function StudentApplicationActionWorkspace() {
   }, [application, nextActions]);
 
   const openEvidenceDrawer = useCallback(
-    (criterion: Criterion, context?: { requirementKey?: string; requirementLabel?: string }) => {
+    (criterion: Criterion, context?: Omit<EvidenceDrawerContext, "criterion">) => {
       if (!canEditApplication) {
         toast.error("Hồ sơ đã nộp. Bạn chỉ có thể bổ sung khi cán bộ yêu cầu.");
         return;
@@ -374,6 +379,26 @@ export function StudentApplicationActionWorkspace() {
     clearUploadEvidenceRequestFromLocation();
     openEvidenceDrawer(requestedCriterion);
   }, [application, canEditApplication, isSupplementMode, openEvidenceDrawer, supplementCriteria]);
+
+  useEffect(() => {
+    if (!application || handledEvidenceConfirmRequestRef.current) return;
+    const evidenceId = getEvidenceConfirmRequestFromLocation();
+    if (!evidenceId) return;
+    const evidence = evidences.find((item) => item.id === evidenceId);
+    if (!evidence) return;
+    handledEvidenceConfirmRequestRef.current = true;
+    selectCriterion(evidence.criterion, setSelectedCriterion);
+    setSelectedEvidence(evidence);
+  }, [application, evidences]);
+
+  useEffect(() => {
+    if (!application || handledSuggestedImportRequestRef.current) return;
+    const request = getSuggestedEventImportRequestFromLocation();
+    if (!request) return;
+    handledSuggestedImportRequestRef.current = true;
+    selectCriterion(request.criterion, setSelectedCriterion);
+    openEvidenceDrawer(request.criterion, { suggestedEventId: request.eventId });
+  }, [application, openEvidenceDrawer]);
 
   const openOfficialEventLibrary = () => {
     if (!selectedSupportsOfficialEventImport) {
@@ -591,6 +616,7 @@ export function StudentApplicationActionWorkspace() {
             criterion={selectedCriterion}
             state={selectedState}
             completion={selectedCompletion}
+            precheck={precheck}
             evidences={selectedEvidences}
             evidenceLoading={evidencesQuery.isLoading}
             evidenceError={evidencesQuery.isError}
@@ -712,7 +738,10 @@ export function StudentApplicationActionWorkspace() {
           applicationId={application.id}
           open={Boolean(evidenceDrawerContext)}
           onOpenChange={(open) => {
-            if (!open) setEvidenceDrawerContext(null);
+            if (!open) {
+              setEvidenceDrawerContext(null);
+              clearSuggestedEventImportRequestFromLocation();
+            }
           }}
           initialCriterion={evidenceDrawerContext.criterion}
           initialRequirementKey={
@@ -721,6 +750,7 @@ export function StudentApplicationActionWorkspace() {
           initialRequirementLabel={
             PRESENTATION_SEMANTICS_V2 ? evidenceDrawerContext.requirementLabel : undefined
           }
+          preselectedEventId={evidenceDrawerContext.suggestedEventId}
           onCreated={(created) => {
             const nextEvidence = normalizeOptimisticEvidence(created, application.id);
             setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
@@ -740,7 +770,21 @@ export function StudentApplicationActionWorkspace() {
         />
       ) : null}
 
-      <EvidenceDetailModal evidence={selectedEvidence} onClose={() => setSelectedEvidence(null)} />
+      <EvidenceDetailModal
+        evidence={selectedEvidence}
+        applicationId={application.id}
+        canEdit={canEditApplication}
+        initialMode={getEvidenceConfirmRequestFromLocation() ? "confirm" : "view"}
+        onChanged={() => {
+          void evidencesQuery.refetch();
+          void latestPrecheck.refetch();
+          void criteriaCompletion.refetch();
+        }}
+        onClose={() => {
+          setSelectedEvidence(null);
+          clearEvidenceConfirmRequestFromLocation();
+        }}
+      />
 
       {confirmSubmitOpen ? (
         <SubmitConfirmationModal
@@ -1002,6 +1046,7 @@ function CriterionWorkspace({
   criterion,
   state,
   completion,
+  precheck,
   evidences,
   evidenceLoading,
   evidenceError,
@@ -1033,6 +1078,7 @@ function CriterionWorkspace({
   criterion: Criterion;
   state: CriteriaState;
   completion?: CriterionCompletionItem;
+  precheck: PrecheckResult | null;
   evidences: EvidenceResponse[];
   evidenceLoading: boolean;
   evidenceError: boolean;
@@ -1131,7 +1177,7 @@ function CriterionWorkspace({
         ) : null}
 
         {supplementRequest ? (
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             <InlineAlert
               type="warning"
               title="Cán bộ yêu cầu bổ sung tiêu chí này"
@@ -1143,6 +1189,30 @@ function CriterionWorkspace({
               ]
                 .filter(Boolean)
                 .join(" · ")}
+            />
+            <SupplementCoachWorkspace
+              applicationId={applicationId}
+              reviewTaskId={supplementRequest.id}
+              criterion={criterion}
+              officialMessage={supplementRequest.reason}
+              deadline={supplementRequest.deadline}
+              requestedFields={supplementRequest.requestedFields}
+            />
+          </div>
+        ) : null}
+
+        {precheck ? (
+          <div className="mt-4">
+            <StudentAssistantExplanation
+              params={{
+                contextType: "precheck",
+                contextId: applicationId,
+                applicationId,
+                criterion,
+                schoolYear,
+              }}
+              title="Giải thích tiền kiểm"
+              compact
             />
           </div>
         ) : null}
@@ -2907,6 +2977,46 @@ function clearUploadEvidenceRequestFromLocation() {
   const url = new URL(window.location.href);
   url.searchParams.delete("uploadEvidence");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function getEvidenceConfirmRequestFromLocation(): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("mode") !== "confirm") return null;
+  return params.get("evidenceId");
+}
+
+function clearEvidenceConfirmRequestFromLocation() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("mode") === "confirm") {
+    url.searchParams.delete("mode");
+    url.searchParams.delete("evidenceId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+}
+
+function getSuggestedEventImportRequestFromLocation(): {
+  eventId: string;
+  criterion: Criterion;
+} | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("mode") !== "suggested-import") return null;
+  const eventId = params.get("eventId");
+  const criterion = params.get("criterion") as Criterion | null;
+  if (!eventId || !criterion || !coreStudentCriteria.includes(criterion)) return null;
+  return { eventId, criterion };
+}
+
+function clearSuggestedEventImportRequestFromLocation() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("mode") === "suggested-import") {
+    url.searchParams.delete("mode");
+    url.searchParams.delete("eventId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
 }
 
 function supportsOfficialEventImport(completion?: CriterionCompletionItem) {

@@ -82,6 +82,19 @@ export type EvidenceListFilters = {
 export type EvidenceCard = {
   id?: string;
   evidenceId?: string;
+  provider?: "openai" | "smartreader" | "mock" | string | null;
+  providerModel?: string | null;
+  promptVersion?: string | null;
+  confirmationStatus?:
+    "pending" | "correction_required" | "confirmed" | "not_required" | string | null;
+  requiresHumanConfirmation?: boolean | null;
+  confirmedFields?: Record<string, unknown> | null;
+  effectiveFields?: Record<string, unknown> | null;
+  fieldDetails?: EvidenceCardFieldDetail[];
+  confirmedAt?: string | null;
+  confirmedByUserId?: string | null;
+  canEdit?: boolean;
+  canConfirm?: boolean;
   confidence?: number | null;
   readableSummary?: EvidenceReadableSummary | null;
   userProvidedFields?: Record<string, unknown> | null;
@@ -106,6 +119,19 @@ export type EvidenceCard = {
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
+};
+
+export type EvidenceCardFieldDetail = {
+  key: string;
+  label: string;
+  extractedValue?: string | number | null;
+  correctedValue?: string | number | null;
+  effectiveValue?: string | number | null;
+  confidence?: number | null;
+  source?: string | null;
+  editable?: boolean;
+  requiredForConfirmation?: boolean;
+  warningCodes?: string[];
 };
 
 export type EvidenceDetail = BaseEvidenceResponse & {
