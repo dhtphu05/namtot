@@ -345,6 +345,13 @@ function normalizeOfficialEventLibraryItem(raw: unknown): OfficialEventLibraryIt
       event.level,
   );
   const criterion = nullableString(row.criterion ?? event.criterion);
+  const approvedUsageCount = nullableNumber(
+    row.approvedUsageCount ??
+      row.approved_usage_count ??
+      row.usageCount ??
+      row.usage_count ??
+      event.approvedUsageCount,
+  );
   const evidenceId = nullableString(row.evidenceId ?? row.evidence_id);
   const stateSource =
     row.state ?? row.status ?? row.importState ?? row.import_state ?? row.alreadyImported;
@@ -352,6 +359,7 @@ function normalizeOfficialEventLibraryItem(raw: unknown): OfficialEventLibraryIt
   if (organizer !== null) item.organizer = organizer;
   if (organizerLevel !== null) item.organizerLevel = organizerLevel;
   if (criterion !== null) item.criterion = normalizeCriterion(criterion);
+  if (approvedUsageCount !== null) item.approvedUsageCount = approvedUsageCount;
   if (stateSource !== undefined) item.state = normalizeOfficialEventLibraryState(stateSource);
   if (evidenceId !== null) item.evidenceId = evidenceId;
 

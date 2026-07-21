@@ -70,6 +70,9 @@ export type StudentEvidenceFile = {
   fileName?: string;
   originalName?: string;
   mimeType?: string | null;
+  url?: string | null;
+  signedUrl?: string | null;
+  publicUrl?: string | null;
   fileSize?: number | null;
   size?: number | null;
   uploadedAt?: string | null;

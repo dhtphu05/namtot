@@ -1382,12 +1382,83 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - Browser student regression: after logging in as `student@dut.udn.vn`, direct navigation to `/app/evidence-knowledge` redirected to `/app`, rendered the student shell/dashboard, did not paint `Kho minh chứng chuyên trách`, did not crash, and had no document-level horizontal overflow.
   - Browser officer regression: after logging in as `officer.academic@dut.udn.vn`, `/app/evidence-knowledge` rendered the officer shell and `Kho minh chứng chuyên trách` page without crash or horizontal overflow. The page showed the expected inline API error because the configured backend database still lacks the pending evidence-knowledge migration/data readiness.
 
-## Login Redirect Reliability Patch On 2026-07-21
+## Ethics Reviewer-Owned Verification Frontend On 2026-07-20
 
-- `src/routes/login.tsx` now awaits the TanStack Router navigation after successful login and uses `replace: true`, so the success toast is followed by a completed route transition to the role default dashboard path instead of leaving `/login` in the history stack.
-- The login submit button stays disabled until the client is hydrated, preventing an early native browser form submit to `/login?` before React attaches `onSubmit`.
-- Local `.env` should point `VITE_API_BASE_URL` at `http://localhost:8080` for frontend dev against the local backend; the Cloud Run backend does not allow arbitrary local dev origins through CORS.
+- Frontend now consumes the additive backend requirement metadata on `RequirementItem`:
+  - `responsibility?: "student" | "system" | "reviewer" | "committee"`;
+  - `blocksSubmission?: boolean`;
+  - `verificationStage?: "draft" | "precheck" | "review" | "resolution"`.
+- Student application legacy workspace and Student Application UI V2 now render `ethics.no_violation` as reviewer-owned:
+  - unresolved value/source copy uses `Cán bộ xét duyệt` / `Cán bộ xét duyệt xác minh`;
+  - unresolved status is shown as passive reviewer waiting (`Chờ cán bộ`) instead of missing student work;
+  - student-facing passive copy says cán bộ xét duyệt verifies after submission and the student does not self-confirm;
+  - old dead-end wording such as `Chờ nhà trường xác minh/xác nhận tình trạng vi phạm` was removed from application/student surfaces.
+- Presentation action semantics now map backend `reviewer_verification` and legacy `wait_system_confirmation` to the non-interactive `wait_for_confirmation` action, labelled `Đang chờ cán bộ xác minh`.
+- Added focused presentation regression for the target state: draft Ethics with all student-owned requirements complete and reviewer-owned violation verification unresolved displays `Sẵn sàng kiểm tra`, has no primary student action, and remains completion-sourced.
+- Live API acceptance against backend `http://127.0.0.1:8080` with seed `student@dut.udn.vn` confirmed the existing application exposes `no_violation` as `responsibility=reviewer`, `blocksSubmission=false`, `verificationStage=review`, and does not include `no_violation` in Ethics precheck missing/needs-verification keys. The seeded app is already `under_review` at `city`, so it is not a clean draft-before-submit fixture.
+- Browser plugin acceptance was attempted twice but the in-app Browser webview failed to attach. Local Playwright fallback was used against frontend `http://127.0.0.1:8082` and backend `http://127.0.0.1:8080`:
+  - student `/app/application?criterion=ethics` desktop `1280x720`: loaded without page/console errors, showed `Đạo đức tốt`, `Tình trạng vi phạm`, reviewer copy, and no old `Chờ nhà trường...` wording;
+  - student mobile `390x844`: loaded without document-level horizontal overflow;
+  - officer `officer.ethics@dut.udn.vn` `/app/queue`: loaded without page/console errors or horizontal overflow and rendered review-oriented content.
 - Verification:
-  - `npm run build` passed.
-  - Browser smoke with Chrome system binary against `http://localhost:5173/login` and backend `http://localhost:8080` logged in as `student@dut.udn.vn`, landed on `http://localhost:5173/app`, persisted `5tot-auth`, and rendered the student dashboard for both immediate and post-hydration submit attempts.
-  - After backend migrations `20260720120000_openai_evidence_analysis` and `20260721120000_evidence_card_confirmation` were applied, a repeat browser smoke landed on `/app`, persisted auth, rendered the dashboard, and showed no API 500/runtime errors after login.
+  - `npm run build`: passed.
+  - Full `npm run lint` was attempted and stopped after multiple no-output intervals, matching the repo's known full-lint behavior.
+  - Scoped ESLint passed for the touched contract/presentation/application files.
+  - `npx tsx --test src/features/application/presentation/__tests__/presentation-semantics.test.ts`: passed, 22 tests.
+
+## Evidence Knowledge UI Refactor Lock Audit On 2026-07-20
+
+- Documentation-only UI refactor lock was added at `D:\02_PROJECTS\5TOT\docs\evidence-knowledge\EVIDENCE_KNOWLEDGE_UI_REFACTOR_LOCK.md`; no runtime route, component, API, or schema code was changed in this audit.
+- The root design contract file `D:\02_PROJECTS\5TOT\docs\ui-v2\MANDATORY_DESIGN_SYSTEM_AND_LAYOUT_CONTRACT.md` still contains only the earlier blocking placeholder rather than the complete upstream mandatory design contract.
+- Current student library facts verified from source:
+  - `/app/event-library` is registered by `src/routes/app.event-library.tsx` and renders `src/features/event/components/ApprovedEvidencePage.tsx`.
+  - `ApprovedEvidencePage` preserves `q` and `criterion` search params, renders `StudentReferenceEventLibrary`, and opens `src/features/evidence/components/AddEvidenceDrawer.tsx` with `referenceEvent.eventId/title`.
+  - `StudentReferenceEventLibrary` in `src/features/event/components/OfficialEventLibraryStudent.tsx` uses `useOfficialEventLibrary` with `projection: "reference"`, debounces at 280ms, maps items down to `{ eventId, title }`, and renders a two-column title-only `ReferenceEventTile` grid.
+  - The student reference criterion filter shows 01-05 only; it can reset by clicking the active criterion but does not render an explicit `Tất cả` option.
+- Current Add Evidence facts verified from source:
+  - `AddEvidenceDrawer` is still a `Drawer` using `max-w-2xl` and `max-h-[92dvh]`.
+  - It has a plain event-name `Input`, no evidence-reference autocomplete, no explicit close button, staff note visible by default, and selected file text but no replace/remove file summary pattern.
+- Current officer library facts verified from source:
+  - `/app/evidence-knowledge` is registered by `src/routes/app.evidence-knowledge.tsx`, uses a before-load auth guard, and renders `src/features/evidence-knowledge/components/OfficerEvidenceKnowledgePage.tsx`.
+  - Officer runtime access is restricted to `officer`, `manager`, `committee`, and `admin`.
+  - The current sidebar label is `Kho minh chứng chuyên trách`; the refactor lock requires changing only the sidebar label to `Kho tiền lệ` while keeping the page title unchanged.
+  - Current layout uses a bordered search container, a rounded/bordered left aside, and separate workspace cards; the refactor lock requires one flatter grouped split surface with one vertical divider.
+  - Current detail is `src/features/evidence-knowledge/components/EvidencePrecedentSheet.tsx`, a narrow right sheet around 420px; the lock requires replacing it with a wide dialog with tabs and separated preview/details regions.
+- Current review precedent facts verified from source:
+  - `src/features/review/components/ReviewDecisionPanel.tsx` already performs non-blocking precedent checks, shows one compact inline panel, supports `Xem tiền lệ`, explicit `Chấp nhận theo tiền lệ`, and a non-blocking pre-resolution guard.
+  - `Xem tiền lệ` currently opens the narrow `EvidencePrecedentSheet`; the refactor lock requires opening the same wide evidence dialog used by the officer library.
+- UI refactor is locked as not ready because current backend/frontend contracts do not yet provide student-safe `criterion` plus distinct `approvedUsageCount`, Add Evidence autocomplete suggestions, or explicit canonical-vs-extracted conflict DTOs.
+
+## Evidence Knowledge UX Refactor Implementation On 2026-07-20
+
+- Student `/app/event-library` was refactored in place, without changing `StudentAppShell`:
+  - `src/features/event/components/OfficialEventLibraryStudent.tsx` now renders one compact grouped reference list instead of repeated cards.
+  - The filter includes explicit `Tất cả` plus criteria 01-05.
+  - Rows show canonical title, official criterion label, distinct approved usage count, and chevron.
+  - Search remains debounced at 280ms and preserves query/filter search params.
+- Student reference DTO mapping now accepts safe additive fields:
+  - `src/types/evidence.ts` and `src/features/event/api/events.ts` parse `criterion` and `approvedUsageCount`.
+  - Student UI inspection confirmed no OCR, reviewer, file, Resolution, approval-source, confidence, or internal-count fields are rendered from the student reference result.
+- `src/features/evidence/components/AddEvidenceDrawer.tsx` keeps the existing component contract but now renders a 700-760px dialog-style Add Evidence modal:
+  - sticky header/footer, body-only scroll, explicit close, Vietnamese actions `Thêm vào hồ sơ` and `Hủy`;
+  - event-name autocomplete uses the existing reference library through `useOfficialEventLibrary`;
+  - selecting a suggestion stores `canonicalEventId`, prefills criterion, and editing the title clears/revalidates the selected event;
+  - library-open flow skips re-search and shows the selected-event summary;
+  - staff note is collapsed by default, and selected file displays summary plus replace/remove actions.
+- Officer shell was not redesigned. `src/components/layout/Sidebar.tsx` changes only the officer navigation label for `/app/evidence-knowledge` to `Kho tiền lệ`.
+- Officer workspace refactor:
+  - `src/features/evidence-knowledge/components/OfficerEvidenceKnowledgePage.tsx` now uses a full-width search and one bordered split workspace.
+  - `OfficerEventList.tsx` renders 64-72px divider rows with selected surface and 3px blue marker.
+  - `OfficerEventWorkspace.tsx` removes stat/card repetition and uses flat canonical metadata plus `Hội đồng xác nhận` wording.
+  - `AcceptedEvidenceGallery.tsx` uses protected signed preview URLs, 280-340px cards, 16:9 stable previews, and `object-contain` for documents/images.
+  - `EvidencePrecedentSheet.tsx` was replaced under the same exported component name with a wide dialog: `min(1120px, 92vw)`, max-height 88vh, preview/detail split, tabs `Tổng quan`, `Dữ liệu đọc từ minh chứng`, `Lịch sử xử lý`, and conflict callouts for canonical-vs-extracted differences.
+- Review wording in `src/features/review/components/ReviewDecisionPanel.tsx` now uses business wording `Hội đồng xem xét` and keeps precedent accept/guard actions explicit and non-blocking.
+- Verification:
+  - `npm run build`: passed.
+  - Scoped frontend ESLint for touched Evidence Knowledge/Event/Add Evidence/Review files: passed.
+  - `npx tsx --test src/features/event/components/__tests__/student-reference-library.test.tsx src/features/evidence-knowledge/components/__tests__/officer-evidence-knowledge.test.tsx`: passed, 16 tests.
+  - Playwright browser fallback against real backend/frontend verified `1280x720`, `1024x768`, and `390x844`: student/officer pages loaded without crash text and without document-level horizontal overflow.
+  - Student UI search for typo `mua he xnah` rendered `Chương trình Tình nguyện Hè 2025`; selecting the row opened Add Evidence with `Thêm vào hồ sơ`, `Hủy`, selected summary, and no `Import minh chứng`.
+  - Officer physical seed rendered one precedent, accepted-evidence gallery, and the wide detail dialog with tabs and conflict callout; no raw `Resolution Hub`, `Committee`, `raw audit`, `confidence`, or AI wording appeared.
+- Remaining verification limit:
+  - Full review accept-with-precedent and pre-resolution mutation E2E was not executed because it would mutate the configured real data and no disposable matching review fixture was available in this pass.

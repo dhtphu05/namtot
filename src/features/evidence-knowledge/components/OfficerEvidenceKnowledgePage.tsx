@@ -113,28 +113,30 @@ export function OfficerEvidenceKnowledgePage() {
       />
 
       <div className="min-w-0 space-y-4 pb-8">
-        <div className="rounded-md border border-[#E5E7EB] bg-white p-3">
+        <div className="flex min-h-11 items-center gap-2 rounded-md border border-[#CBD5E1] bg-white px-3">
           <label className="sr-only" htmlFor="officer-evidence-knowledge-search">
             Tìm tiền lệ minh chứng
           </label>
-          <div className="flex min-h-11 items-center gap-2 rounded-md bg-[#F6F9FC] px-3 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <Input
-              id="officer-evidence-knowledge-search"
-              className="h-11 min-w-0 flex-1 bg-transparent px-0 shadow-none focus-visible:ring-0"
-              placeholder="Tìm theo tên sự kiện, viết tắt, đơn vị tổ chức hoặc năm..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Input
+            id="officer-evidence-knowledge-search"
+            className="h-11 min-w-0 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+            placeholder="Tìm theo tên sự kiện, viết tắt, đơn vị tổ chức hoặc năm..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </div>
 
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-          <aside className="min-w-0 overflow-hidden rounded-md border border-[#E5E7EB] bg-white">
+        <div className="grid min-w-0 overflow-hidden rounded-md border border-[#CBD5E1] bg-white xl:grid-cols-[340px_minmax(0,1fr)]">
+          <aside className="min-w-0 overflow-hidden border-b border-[#CBD5E1] xl:border-b-0 xl:border-r">
             <div className="border-b border-[#E5E7EB] px-3 py-3">
-              <div className="text-sm font-bold text-brand-deep">Sự kiện đã có tiền lệ</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                Kết quả được gom theo sự kiện chuẩn.
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <div className="text-sm font-bold text-[var(--text-primary)]">
+                  Sự kiện đã có tiền lệ
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground">
+                  {searchQuery.isLoading ? "..." : `${items.length} kết quả`}
+                </div>
               </div>
             </div>
             <OfficerEventList
@@ -153,14 +155,16 @@ export function OfficerEvidenceKnowledgePage() {
             />
           </aside>
 
-          <OfficerEventWorkspace
-            selected={selected}
-            detail={detail}
-            isLoading={detailQuery.isLoading}
-            isError={detailQuery.isError}
-            onRetry={() => void detailQuery.refetch()}
-            onSelectEvidence={(item, index) => setSelectedEvidence({ item, index })}
-          />
+          <div className="min-w-0 p-4">
+            <OfficerEventWorkspace
+              selected={selected}
+              detail={detail}
+              isLoading={detailQuery.isLoading}
+              isError={detailQuery.isError}
+              onRetry={() => void detailQuery.refetch()}
+              onSelectEvidence={(item, index) => setSelectedEvidence({ item, index })}
+            />
+          </div>
         </div>
       </div>
 

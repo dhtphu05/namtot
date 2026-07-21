@@ -1,16 +1,19 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowRight, BookOpenCheck, Clock3, Loader2, Plus } from "lucide-react";
 import { useMemo } from "react";
 import {
-  useAssistantNarrativeStream,
   useCriteriaCompletion,
   useCurrentApplication,
   useLatestPrecheck,
   useStartApplication,
   useStudentAssistantContext,
 } from "@/features/application/hooks/useApplication";
-import { getStudentCriterionDisplayState } from "@/features/application/presentation";
-import { StudentAssistantSurface } from "@/features/application/components/StudentAssistantSurface";
+import type { StudentNextBestAction } from "@/features/application/api/student-assistant";
 import { buildDashboardAssistantFallback } from "@/features/application/components/student-assistant-fallback";
+import {
+  applyActionPresentationToUiAction,
+  getStudentCriterionDisplayState,
+} from "@/features/application/presentation";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useEvidences } from "@/features/evidence/hooks/useEvidence";
 import type { Notification } from "@/features/notifications/api/notifications";
@@ -26,8 +29,12 @@ import type {
 import { cn } from "@/lib/utils";
 import {
   coreStudentCriteria,
+  applyCompletionToCriteriaState,
   criterionLabels,
+  getCriteriaUiState,
   getFeedbackUiItems,
+  getNextActions,
+  getStudentApplicationSummary,
 } from "@/features/student/selectors/student-ui";
 import {
   ButtonV2,
@@ -35,8 +42,11 @@ import {
   FiveCriteriaSpineV2,
   HairlineList,
   InlineStateMessage,
+  SectionHeading,
+  StatusPillV2,
   mapStudentDisplayStatusToV2ProgressStatus,
   type FiveCriteriaSpineV2Item,
+  type StudentApplicationV2ProgressStatus,
 } from "./components";
 
 const SCHOOL_YEAR = "2025-2026";
@@ -64,6 +74,20 @@ type ApplicationWithOverviewData = ApplicationState & {
   }>;
 };
 
+type NextAction = ReturnType<typeof getNextActions>[number] & {
+  isInteractive?: boolean;
+  routeSearch?: Record<string, string>;
+};
+
+const overviewActionLinkClassName = "inline-flex min-h-11 items-center justify-center gap-2";
+
+type AssistantSearch = {
+  source: "overview";
+  applicationId?: string;
+  status?: string;
+  nextActions?: string;
+};
+
 type OverviewUpdate = {
   id: string;
   title: string;
@@ -80,32 +104,12 @@ export function StudentOverviewV2() {
   const latestPrecheck = useLatestPrecheck(applicationId);
   const criteriaCompletion = useCriteriaCompletion(applicationId);
   const evidencesQuery = useEvidences(applicationId, { limit: 100 });
-  const notifications = useNotifications({ page: 1, limit: 20 });
   const assistantContext = useStudentAssistantContext(SCHOOL_YEAR);
+  const notifications = useNotifications({ page: 1, limit: 20 });
   const startApplication = useStartApplication();
   const { trackClick } = useSmartUXTracking();
-  const narrative = useAssistantNarrativeStream({
-    schoolYear: SCHOOL_YEAR,
-    contextVersion: assistantContext.data?.contextVersion,
-    fallbackText: assistantContext.data?.narrative.fallbackText,
-    enabled: Boolean(
-      assistantContext.data?.contextVersion && assistantContext.data.narrative.streamingAvailable,
-    ),
-  });
 
   const firstName = getFirstName(user?.fullName);
-  const assistantDisplayContext = useMemo(
-    () =>
-      assistantContext.data ??
-      (assistantContext.isError
-        ? buildDashboardAssistantFallback({
-            application,
-            firstName,
-            schoolYear: SCHOOL_YEAR,
-          })
-        : null),
-    [application, assistantContext.data, assistantContext.isError, firstName],
-  );
   const evidences = useMemo(() => normalizeEvidences(evidencesQuery.data), [evidencesQuery.data]);
   const feedbackItems = useMemo(() => getFeedbackUiItems(notifications.data), [notifications.data]);
   const precheck = (latestPrecheck.data ??
@@ -114,6 +118,10 @@ export function StudentOverviewV2() {
   const completionItems = useMemo(
     () => criteriaCompletion.data?.items ?? [],
     [criteriaCompletion.data?.items],
+  );
+  const applicationForSummary = useMemo(
+    () => (application ? { ...application, evidences } : null),
+    [application, evidences],
   );
 
   const criteriaStates = useMemo(
@@ -129,10 +137,57 @@ export function StudentOverviewV2() {
       ),
     [application, completionItems, precheck],
   );
+  const criteriaUiStates = useMemo(
+    () =>
+      coreStudentCriteria.map((criterion) =>
+        applyCompletionToCriteriaState(
+          getCriteriaUiState(criterion, evidences, precheck, feedbackItems),
+          completionItems.find((item) => item.criterion === criterion),
+        ),
+      ),
+    [completionItems, evidences, feedbackItems, precheck],
+  );
+
+  const summary = getStudentApplicationSummary(
+    applicationForSummary,
+    precheck,
+    null,
+    feedbackItems,
+    criteriaUiStates,
+  );
+
+  const localNextActions = useMemo(
+    () =>
+      getNextActions(applicationForSummary, criteriaUiStates, feedbackItems, precheck).map(
+        (action) => applyActionPresentationToUiAction(action),
+      ),
+    [applicationForSummary, criteriaUiStates, feedbackItems, precheck],
+  );
+  const assistantDisplayContext =
+    assistantContext.data ??
+    (assistantContext.isError
+      ? buildDashboardAssistantFallback({
+          application,
+          firstName,
+          schoolYear: SCHOOL_YEAR,
+        })
+      : null);
+  const assistantPrimaryAction = assistantDisplayContext?.nextBestAction ?? null;
+  const nextActions = useMemo(
+    () => mergeAssistantActionIntoNextActions(assistantPrimaryAction, localNextActions),
+    [assistantPrimaryAction, localNextActions],
+  );
+
   const updates = useMemo(
     () => buildOverviewUpdates(notifications.data, feedbackItems, precheck),
     [notifications.data, feedbackItems, precheck],
   );
+
+  const assistantSearch = buildAssistantSearch({
+    applicationId,
+    nextActions: nextActions.map((action) => action.title),
+    status: application?.status ?? summary.statusBadge.label,
+  });
 
   const handleStart = () => {
     trackClick("student_start_application", {
@@ -144,25 +199,6 @@ export function StudentOverviewV2() {
       schoolYear: SCHOOL_YEAR,
       targetLevel: "school",
       applicationType: "individual",
-    });
-  };
-
-  const handleAssistantAction = () => {
-    const action = assistantDisplayContext?.nextBestAction;
-    if (!action) return;
-    trackClick("assistant_primary_action_clicked", {
-      role: "student",
-      page: "overview_v2",
-      action: action.type,
-      status: action.reasonCode,
-    });
-    if (action.type === "start_application") {
-      handleStart();
-      return;
-    }
-    navigate({
-      to: action.destination.route as never,
-      search: (action.destination.query ?? {}) as never,
     });
   };
 
@@ -197,21 +233,13 @@ export function StudentOverviewV2() {
     <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-0 py-5">
       <OverviewHeading firstName={firstName} />
 
-      <StudentAssistantSurface
-        context={assistantDisplayContext}
-        isError={assistantContext.isError}
-        isLoading={assistantContext.isLoading}
+      <PrimaryStatusStrip
+        application={application ?? null}
         isStarting={startApplication.isPending}
-        narrativeText={narrative.text}
-        streamStatus={narrative.status}
-        onPrimaryAction={handleAssistantAction}
-        onRetryNarrative={narrative.retry}
-        communicationParams={{
-          contextType: "dashboard",
-          applicationId,
-          schoolYear: SCHOOL_YEAR,
-        }}
-        className="border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]"
+        onStart={handleStart}
+        assistantSearch={assistantSearch}
+        assistantAction={assistantPrimaryAction}
+        summary={summary}
       />
 
       <FiveCriteriaSpineV2
@@ -224,7 +252,8 @@ export function StudentOverviewV2() {
         }
       />
 
-      <section className="grid min-w-0 gap-6">
+      <section className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)]">
+        <ActionList actions={nextActions} />
         <UpdateLedger updates={updates} />
       </section>
     </div>
@@ -241,6 +270,197 @@ function OverviewHeading({ firstName }: { firstName: string }) {
         Hoàn thiện hồ sơ Sinh viên 5 tốt theo đúng yêu cầu đang áp dụng tại đơn vị của bạn.
       </p>
     </header>
+  );
+}
+
+function PrimaryStatusStrip({
+  application,
+  assistantAction,
+  assistantSearch,
+  isStarting,
+  onStart,
+  summary,
+}: {
+  application: ApplicationWithOverviewData | null;
+  assistantAction?: StudentNextBestAction | null;
+  assistantSearch: AssistantSearch;
+  isStarting: boolean;
+  onStart: () => void;
+  summary: ReturnType<typeof getStudentApplicationSummary>;
+}) {
+  const progressStatus = mapApplicationStatusToProgress(application?.status);
+  const secondaryAction = summary.secondaryAction ?? {
+    label: "Kiểm tra hồ sơ",
+    route: "/app/application",
+  };
+  const primaryActionLabel = assistantAction?.ctaLabel ?? summary.primaryAction.label;
+  const primaryActionRoute = assistantAction?.destination.route ?? summary.primaryAction.route;
+  const primaryActionSearch = assistantAction?.destination.query;
+
+  return (
+    <section
+      className="relative flex min-h-[144px] w-full min-w-0 overflow-hidden rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-5 sm:p-6"
+      aria-labelledby="student-overview-status-heading"
+    >
+      <div className="absolute inset-y-0 left-0 w-1 bg-[var(--student-v2-institutional-cyan)]" />
+      <div className="flex min-w-0 flex-1 flex-col justify-center pl-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="text-[12px] font-semibold uppercase leading-[17px] text-[var(--student-v2-text-muted)]">
+            Trạng thái hồ sơ
+          </span>
+          <StatusPillV2 status={progressStatus} label={summary.statusBadge.label} />
+        </div>
+        <h2
+          id="student-overview-status-heading"
+          className="mt-2 line-clamp-2 max-w-4xl text-[22px] font-bold leading-7 text-[var(--student-v2-text-primary)] sm:text-[24px] sm:leading-8"
+        >
+          {summary.headline}
+        </h2>
+        <p className="mt-1 line-clamp-2 max-w-3xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+          {summary.description}
+        </p>
+        <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          {application ? (
+            <ButtonV2 asChild>
+              <Link
+                to={toStudentRoute(primaryActionRoute)}
+                search={primaryActionSearch as never}
+                className={overviewActionLinkClassName}
+              >
+                {primaryActionLabel}
+                <ArrowRight aria-hidden="true" />
+              </Link>
+            </ButtonV2>
+          ) : (
+            <ButtonV2 type="button" onClick={onStart} disabled={isStarting}>
+              {isStarting ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Plus aria-hidden="true" />
+              )}
+              {primaryActionLabel}
+            </ButtonV2>
+          )}
+          {application ? (
+            <ButtonV2 asChild variant="secondary">
+              <Link
+                to={toStudentRoute(secondaryAction.route)}
+                className={overviewActionLinkClassName}
+              >
+                <BookOpenCheck aria-hidden="true" />
+                {secondaryAction.label}
+              </Link>
+            </ButtonV2>
+          ) : (
+            <ButtonV2 type="button" variant="secondary" disabled>
+              <BookOpenCheck aria-hidden="true" />
+              Kiểm tra hồ sơ
+            </ButtonV2>
+          )}
+          <ButtonV2 asChild variant="tertiary">
+            <Link
+              to="/app/assistant"
+              search={assistantSearch}
+              className={overviewActionLinkClassName}
+            >
+              Hỏi trợ lý
+            </Link>
+          </ButtonV2>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ActionList({ actions }: { actions: NextAction[] }) {
+  const visibleActions = actions.slice(0, 3);
+
+  return (
+    <section className="min-w-0">
+      <SectionHeading title="Việc bạn có thể làm" />
+      <div className="mt-3 overflow-hidden rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]">
+        {visibleActions.length ? (
+          <>
+            <HairlineList className="border-y-0">
+              {visibleActions.map((action, index) => (
+                <TaskRow
+                  key={`${action.title}-${index}`}
+                  action={action}
+                  index={index}
+                  className={index >= 2 ? "hidden sm:flex" : undefined}
+                />
+              ))}
+            </HairlineList>
+            {actions.length > 2 ? (
+              <div className="border-t border-[var(--student-v2-divider)] px-4 py-3">
+                <ButtonV2 asChild variant="tertiary" size="compact">
+                  <Link to="/app/application" className={overviewActionLinkClassName}>
+                    Xem tất cả
+                  </Link>
+                </ButtonV2>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <CompactEmptyState
+            title="Bạn chưa có việc cần xử lý"
+            description="Khi hồ sơ cần bổ sung hoặc có phản hồi mới, hệ thống sẽ hiển thị tại đây."
+            className="border-0"
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function TaskRow({
+  action,
+  className,
+  index,
+}: {
+  action: NextAction;
+  className?: string;
+  index: number;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-16 min-w-0 items-center gap-3 px-4 py-3 sm:min-h-[72px]",
+        className,
+      )}
+    >
+      <Clock3
+        className="hidden h-4 w-4 shrink-0 text-[var(--student-v2-text-muted)] sm:block"
+        aria-hidden="true"
+      />
+      <div className="min-w-0 flex-1">
+        <h3 className="line-clamp-1 text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)]">
+          {action.title}
+        </h3>
+        <p className="line-clamp-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
+          {action.description}
+        </p>
+      </div>
+      {action.isInteractive === false ? (
+        <StatusPillV2 status="waiting" />
+      ) : (
+        <ButtonV2 asChild variant={index === 0 ? "secondary" : "tertiary"} size="compact">
+          <Link
+            to={action.criterionKey ? "/app/application" : toStudentRoute(action.route)}
+            search={
+              action.routeSearch
+                ? (action.routeSearch as never)
+                : action.criterionKey
+                  ? ({ criterion: action.criterionKey } as never)
+                  : undefined
+            }
+            className={overviewActionLinkClassName}
+          >
+            {action.actionLabel}
+          </Link>
+        </ButtonV2>
+      )}
+    </div>
   );
 }
 
@@ -391,6 +611,65 @@ function buildOverviewUpdates(
     : [];
 
   return [...precheckUpdate, ...notificationUpdates].slice(0, 4);
+}
+
+function mapApplicationStatusToProgress(
+  status?: string | null,
+): StudentApplicationV2ProgressStatus {
+  if (status === "ready_to_submit" || status === "completed") return "complete";
+  if (status === "supplement_required") return "supplement";
+  if (status === "submitted" || status === "under_review" || status === "resolution_needed") {
+    return "waiting";
+  }
+  if (status === "draft" || status === "prechecked") return "waiting";
+  return "not-started";
+}
+
+function buildAssistantSearch({
+  applicationId,
+  nextActions,
+  status,
+}: {
+  applicationId?: string;
+  nextActions?: string[];
+  status?: string;
+}): AssistantSearch {
+  return {
+    source: "overview",
+    applicationId,
+    status,
+    nextActions: nextActions?.length ? nextActions.slice(0, 3).join("|") : undefined,
+  };
+}
+
+type StudentOverviewRoute = "/app/application" | "/app/feedback" | "/app/result";
+
+function toStudentRoute(route: string): StudentOverviewRoute {
+  if (route === "/app/feedback") return "/app/feedback";
+  if (route === "/app/result") return "/app/result";
+  return "/app/application";
+}
+
+function mergeAssistantActionIntoNextActions(
+  assistantAction: StudentNextBestAction | null,
+  localActions: NextAction[],
+): NextAction[] {
+  if (!assistantAction || assistantAction.type === "none") return localActions;
+  const mapped = mapAssistantActionToNextAction(assistantAction);
+  return [mapped, ...localActions.filter((action) => action.title !== mapped.title)];
+}
+
+function mapAssistantActionToNextAction(action: StudentNextBestAction): NextAction {
+  return {
+    title: action.title,
+    description: action.deterministicDescription,
+    actionLabel: action.ctaLabel,
+    route: action.destination.route,
+    criterionKey: action.criterion,
+    isInteractive: action.type !== "none",
+    routeSearch:
+      action.destination.query ?? (action.criterion ? { criterion: action.criterion } : undefined),
+  } as NextAction;
 }
 
 function normalizeEvidences(value: unknown): EvidenceResponse[] {

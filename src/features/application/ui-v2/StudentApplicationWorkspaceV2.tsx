@@ -68,7 +68,11 @@ import {
   getPrimaryFile,
   studentCriterionLabel,
 } from "@/features/evidence/components/student-evidence-utils";
-import { useDeleteEvidence, useEvidences } from "@/features/evidence/hooks/useEvidence";
+import {
+  useDeleteEvidence,
+  useEvidences,
+  useSignedFileUrl,
+} from "@/features/evidence/hooks/useEvidence";
 import { OfficialEventLibraryDialog } from "@/features/event/components/OfficialEventLibraryStudent";
 import { officialEventLibraryTitleForCriterion } from "@/features/event/components/official-event-library-copy";
 import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
@@ -243,8 +247,8 @@ export function StudentApplicationWorkspaceV2() {
   const [gpaScale, setGpaScale] = useState<4 | 10>(4);
   const initializedCriterionRef = useRef(false);
   const handledUploadEvidenceRequestRef = useRef(false);
-  const handledEvidenceConfirmRequestRef = useRef<string | null>(null);
-  const handledSuggestedImportRequestRef = useRef<string | null>(null);
+  const handledEvidenceConfirmRequestRef = useRef(false);
+  const handledSuggestedImportRequestRef = useRef(false);
 
   const serverEvidences = useMemo(
     () => normalizeEvidences(evidencesQuery.data),
@@ -283,6 +287,7 @@ export function StudentApplicationWorkspaceV2() {
       application.status,
     ),
   );
+  const showCompletionGuidance = canEditApplication;
 
   const criteriaStates = useMemo(
     () =>
@@ -301,12 +306,12 @@ export function StudentApplicationWorkspaceV2() {
   const selectedState =
     criteriaStates.find((item) => item.key === selectedCriterion) ?? criteriaStates[0];
   const selectedCompletion = completionItems.find((item) => item.criterion === selectedCriterion);
+  const selectedSupplementRequest = supplementRequests.find(
+    (item) => item.criterion === selectedCriterion,
+  );
   const selectedEvidences = useMemo(
     () => evidences.filter((item) => item.criterion === selectedCriterion),
     [evidences, selectedCriterion],
-  );
-  const selectedSupplementRequest = supplementRequests.find(
-    (request) => request.criterion === selectedCriterion,
   );
   const isSelectedLocked =
     isSupplementMode && supplementCriteria.size > 0 && !supplementCriteria.has(selectedCriterion);
@@ -388,23 +393,24 @@ export function StudentApplicationWorkspaceV2() {
   }, [application, openEvidenceDrawer]);
 
   useEffect(() => {
-    if (!application) return;
+    if (!application || handledEvidenceConfirmRequestRef.current) return;
+    const evidenceId = getEvidenceConfirmRequestFromLocation();
+    if (!evidenceId) return;
+    const evidence = evidences.find((item) => item.id === evidenceId);
+    if (!evidence) return;
+    handledEvidenceConfirmRequestRef.current = true;
+    selectCriterion(evidence.criterion, setSelectedCriterion);
+    setSelectedEvidence(evidence);
+  }, [application, evidences]);
+
+  useEffect(() => {
+    if (!application || handledSuggestedImportRequestRef.current) return;
     const request = getSuggestedEventImportRequestFromLocation();
-    if (!request || handledSuggestedImportRequestRef.current === request.eventId) return;
-    handledSuggestedImportRequestRef.current = request.eventId;
+    if (!request) return;
+    handledSuggestedImportRequestRef.current = true;
     selectCriterion(request.criterion, setSelectedCriterion);
     openEvidenceDrawer(request.criterion, { suggestedEventId: request.eventId });
   }, [application, openEvidenceDrawer]);
-
-  useEffect(() => {
-    const request = getEvidenceConfirmRequestFromLocation();
-    if (!request || handledEvidenceConfirmRequestRef.current === request.evidenceId) return;
-    const target = evidences.find((item) => item.id === request.evidenceId);
-    if (!target) return;
-    handledEvidenceConfirmRequestRef.current = request.evidenceId;
-    selectCriterion(target.criterion, setSelectedCriterion);
-    setSelectedEvidence(target);
-  }, [evidences]);
 
   const openOfficialEventLibrary = () => {
     if (!selectedSupportsOfficialEventImport) {
@@ -562,6 +568,7 @@ export function StudentApplicationWorkspaceV2() {
           statusLabel={getStudentApplicationStatus(application.status).label}
           onPrecheck={precheckNow}
           isPrechecking={runPrecheck.isPending}
+          showPrecheck={showCompletionGuidance}
         />
 
         {criteriaCompletion.isLoading ? (
@@ -585,8 +592,12 @@ export function StudentApplicationWorkspaceV2() {
           />
 
           <main className="min-w-0">
-            <div className="flex min-w-0 flex-col gap-6 pb-28">
-              <CriterionHeaderV2 state={selectedState} onOpenGuide={() => setGuideOpen(true)} />
+            <div className="flex min-w-0 flex-col gap-6 pb-6">
+              <CriterionHeaderV2
+                state={selectedState}
+                onOpenGuide={() => setGuideOpen(true)}
+                showGuide={showCompletionGuidance}
+              />
 
               {isSelectedLocked ? (
                 <InlineStateMessage
@@ -600,11 +611,29 @@ export function StudentApplicationWorkspaceV2() {
                 <SupplementCoachWorkspace
                   applicationId={application.id}
                   reviewTaskId={selectedSupplementRequest.id}
-                  criterion={selectedSupplementRequest.criterion}
+                  criterion={selectedCriterion}
                   officialMessage={selectedSupplementRequest.reason}
                   deadline={selectedSupplementRequest.deadline}
                   requestedFields={selectedSupplementRequest.requestedFields}
-                  className="bg-amber-50/50"
+                />
+              ) : null}
+
+              {showCompletionGuidance ? (
+                <CriterionActionRow
+                  assistantSearch={assistantSearch}
+                  canEdit={canEditSelectedCriterion}
+                  canFindOfficialEvent={
+                    canEditSelectedCriterion &&
+                    selectedSupportsOfficialEventImport &&
+                    selectedCriterion !== "physical" &&
+                    selectedCriterion !== "integration"
+                  }
+                  onFindOfficialEvent={openOfficialEventLibrary}
+                  onManualUpload={() =>
+                    openEvidenceDrawer(selectedCriterion, {
+                      requirementLabel: selectedState.label,
+                    })
+                  }
                 />
               ) : null}
 
@@ -621,23 +650,6 @@ export function StudentApplicationWorkspaceV2() {
                   compact
                 />
               ) : null}
-
-              <CriterionActionRow
-                assistantSearch={assistantSearch}
-                canEdit={canEditSelectedCriterion}
-                canFindOfficialEvent={
-                  canEditSelectedCriterion &&
-                  selectedSupportsOfficialEventImport &&
-                  selectedCriterion !== "physical" &&
-                  selectedCriterion !== "integration"
-                }
-                onFindOfficialEvent={openOfficialEventLibrary}
-                onManualUpload={() =>
-                  openEvidenceDrawer(selectedCriterion, {
-                    requirementLabel: selectedState.label,
-                  })
-                }
-              />
 
               <CriterionDataSection
                 completion={selectedCompletion}
@@ -714,56 +726,58 @@ export function StudentApplicationWorkspaceV2() {
               />
             </div>
 
-            <StickyNextActionBarV2
-              className="min-h-[72px] px-4 sm:px-6"
-              title={hasSubmitCta ? "Sẵn sàng gửi hồ sơ" : getBottomActionTitle(nextActions)}
-              description={
-                hasSubmitCta
-                  ? "Kiểm tra lần cuối trước khi gửi hồ sơ cho cán bộ xét duyệt."
-                  : getBottomActionDescription(nextActions)
-              }
-              secondaryAction={
-                <ButtonV2
-                  type="button"
-                  variant="secondary"
-                  onClick={precheckNow}
-                  disabled={runPrecheck.isPending}
-                >
-                  {runPrecheck.isPending ? (
-                    <Loader2 className="animate-spin" aria-hidden="true" />
-                  ) : (
-                    <BookOpenCheck aria-hidden="true" />
-                  )}
-                  Kiểm tra hồ sơ
-                </ButtonV2>
-              }
-              primaryAction={
-                hasSubmitCta ? (
+            {showCompletionGuidance ? (
+              <StickyNextActionBarV2
+                className="static rounded-[8px] border border-[var(--student-v2-divider)] px-4 sm:px-6"
+                title={hasSubmitCta ? "Sẵn sàng gửi hồ sơ" : getBottomActionTitle(nextActions)}
+                description={
+                  hasSubmitCta
+                    ? "Kiểm tra lần cuối trước khi gửi hồ sơ cho cán bộ xét duyệt."
+                    : getBottomActionDescription(nextActions)
+                }
+                secondaryAction={
                   <ButtonV2
                     type="button"
-                    onClick={submitNow}
-                    disabled={submitApplication.isPending}
+                    variant="secondary"
+                    onClick={precheckNow}
+                    disabled={runPrecheck.isPending}
                   >
-                    {submitApplication.isPending ? (
+                    {runPrecheck.isPending ? (
                       <Loader2 className="animate-spin" aria-hidden="true" />
                     ) : (
-                      <Send aria-hidden="true" />
+                      <BookOpenCheck aria-hidden="true" />
                     )}
-                    Nộp hồ sơ
+                    Kiểm tra hồ sơ
                   </ButtonV2>
-                ) : nextActions[0]?.criterionKey ? (
-                  <ButtonV2
-                    type="button"
-                    onClick={() =>
-                      selectCriterion(nextActions[0].criterionKey!, setSelectedCriterion)
-                    }
-                  >
-                    {nextActions[0].actionLabel}
-                    <ChevronRight aria-hidden="true" />
-                  </ButtonV2>
-                ) : null
-              }
-            />
+                }
+                primaryAction={
+                  hasSubmitCta ? (
+                    <ButtonV2
+                      type="button"
+                      onClick={submitNow}
+                      disabled={submitApplication.isPending}
+                    >
+                      {submitApplication.isPending ? (
+                        <Loader2 className="animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Send aria-hidden="true" />
+                      )}
+                      Nộp hồ sơ
+                    </ButtonV2>
+                  ) : nextActions[0]?.criterionKey ? (
+                    <ButtonV2
+                      type="button"
+                      onClick={() =>
+                        selectCriterion(nextActions[0].criterionKey!, setSelectedCriterion)
+                      }
+                    >
+                      {nextActions[0].actionLabel}
+                      <ChevronRight aria-hidden="true" />
+                    </ButtonV2>
+                  ) : null
+                }
+              />
+            ) : null}
           </main>
         </section>
       </div>
@@ -816,7 +830,6 @@ export function StudentApplicationWorkspaceV2() {
             setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
             setEvidenceDrawerContext(null);
             selectCriterion(nextEvidence.criterion, setSelectedCriterion);
-            clearSuggestedEventImportRequestFromLocation();
           }}
         />
       ) : null}
@@ -825,17 +838,15 @@ export function StudentApplicationWorkspaceV2() {
         evidence={selectedEvidence}
         applicationId={application.id}
         canEdit={canEditApplication}
-        initialMode={
-          getEvidenceConfirmRequestFromLocation()?.evidenceId === selectedEvidence?.id
-            ? "confirm"
-            : "view"
-        }
+        initialMode={getEvidenceConfirmRequestFromLocation() ? "confirm" : "view"}
+        onChanged={() => {
+          void evidencesQuery.refetch();
+          void latestPrecheck.refetch();
+          void criteriaCompletion.refetch();
+        }}
         onClose={() => {
           setSelectedEvidence(null);
           clearEvidenceConfirmRequestFromLocation();
-        }}
-        onChanged={() => {
-          void evidencesQuery.refetch();
         }}
       />
 
@@ -876,6 +887,7 @@ function ApplicationWorkspaceContextBar({
   statusLabel,
   isPrechecking,
   onPrecheck,
+  showPrecheck,
 }: {
   title: string;
   helper: string;
@@ -884,6 +896,7 @@ function ApplicationWorkspaceContextBar({
   statusLabel: string;
   isPrechecking: boolean;
   onPrecheck: () => void;
+  showPrecheck: boolean;
 }) {
   return (
     <section
@@ -906,14 +919,16 @@ function ApplicationWorkspaceContextBar({
           <span>Trạng thái: {statusLabel}</span>
         </div>
       </div>
-      <ButtonV2 type="button" variant="secondary" onClick={onPrecheck} disabled={isPrechecking}>
-        {isPrechecking ? (
-          <Loader2 className="animate-spin" aria-hidden="true" />
-        ) : (
-          <BookOpenCheck aria-hidden="true" />
-        )}
-        Kiểm tra hồ sơ
-      </ButtonV2>
+      {showPrecheck ? (
+        <ButtonV2 type="button" variant="secondary" onClick={onPrecheck} disabled={isPrechecking}>
+          {isPrechecking ? (
+            <Loader2 className="animate-spin" aria-hidden="true" />
+          ) : (
+            <BookOpenCheck aria-hidden="true" />
+          )}
+          Kiểm tra hồ sơ
+        </ButtonV2>
+      ) : null}
     </section>
   );
 }
@@ -962,9 +977,11 @@ function CriteriaNavigationV2({
 function CriterionHeaderV2({
   state,
   onOpenGuide,
+  showGuide,
 }: {
   state: CriteriaState;
   onOpenGuide: () => void;
+  showGuide: boolean;
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-3 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-5 sm:px-6">
@@ -977,11 +994,13 @@ function CriterionHeaderV2({
             {state.displayDescription}
           </p>
         </div>
-        <GuideSheetTriggerV2
-          criterionName={state.label}
-          onClick={onOpenGuide}
-          className="shrink-0 self-start"
-        />
+        {showGuide ? (
+          <GuideSheetTriggerV2
+            criterionName={state.label}
+            onClick={onOpenGuide}
+            className="shrink-0 self-start"
+          />
+        ) : null}
       </div>
     </section>
   );
@@ -1283,12 +1302,12 @@ function EthicsDataSectionV2({
     },
     {
       label: "Tình trạng vi phạm",
-      value: getRequirementDisplayValue(noViolation) ?? "Chờ nhà trường xác minh",
+      value: getRequirementDisplayValue(noViolation) ?? "Cán bộ xét duyệt xác minh",
       source: getDisplayRequirementSourceLabel(noViolation),
       status: (
         <StatusPillV2
-          status={mapRequirementStatus(noViolation?.status ?? "needs_verification")}
-          label={getRequirementStatusLabel(noViolation?.status ?? "needs_verification")}
+          status={mapNoViolationRequirementStatus(noViolation)}
+          label={getNoViolationStatusLabel(noViolation)}
         />
       ),
       action: <LongTextValue value={noViolationPassiveCopy(noViolation)} />,
@@ -1362,8 +1381,8 @@ function EthicsDataSectionV2({
       {noViolation && noViolation.status !== "verified" ? (
         <InlineStateMessage
           tone="info"
-          title="Chờ nhà trường xác minh tình trạng vi phạm"
-          description="Sinh viên không tự xác minh mục này. Bạn có thể tiếp tục hoàn thiện các tiêu chí khác trong khi chờ dữ liệu chính thức."
+          title="Cán bộ xét duyệt sẽ xác minh tình trạng vi phạm"
+          description="Sinh viên không tự xác minh mục này. Mục này không chặn nộp hồ sơ khi các phần sinh viên phụ trách đã hoàn tất."
         />
       ) : null}
 
@@ -2785,29 +2804,13 @@ function EvidenceGallerySection({
       ) : evidences.length ? (
         <EvidenceGallery>
           {evidences.map((evidence) => (
-            <EvidenceCardV2
+            <StudentEvidenceGalleryCard
               key={evidence.id}
-              title={evidence.evidenceName || "Minh chứng chưa đặt tên"}
-              metadata={getEvidenceMetadata(evidence, applicationId)}
-              context={
-                studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]
-              }
-              processingDetail={getEvidenceProcessingDetail(evidence)}
-              status={mapEvidenceToProgressStatus(evidence)}
-              preview={getEvidencePreview(evidence)}
-              onOpen={() => onViewEvidence(evidence)}
-              actionItems={[
-                { label: "Xem minh chứng", onSelect: () => onViewEvidence(evidence) },
-                ...(canEdit
-                  ? [
-                      {
-                        label: "Xóa minh chứng",
-                        onSelect: () => onDeleteEvidence(evidence),
-                        destructive: true,
-                      },
-                    ]
-                  : []),
-              ]}
+              applicationId={applicationId}
+              canEdit={canEdit}
+              evidence={evidence}
+              onDeleteEvidence={onDeleteEvidence}
+              onViewEvidence={onViewEvidence}
             />
           ))}
         </EvidenceGallery>
@@ -2824,6 +2827,53 @@ function EvidenceGallerySection({
         />
       )}
     </section>
+  );
+}
+
+function StudentEvidenceGalleryCard({
+  applicationId,
+  canEdit,
+  evidence,
+  onDeleteEvidence,
+  onViewEvidence,
+}: {
+  applicationId: string;
+  canEdit: boolean;
+  evidence: EvidenceResponse;
+  onDeleteEvidence: (evidence: EvidenceResponse) => void;
+  onViewEvidence: (evidence: EvidenceResponse) => void;
+}) {
+  const primaryFile = getPrimaryFile(evidence);
+  const existingPreviewUrl =
+    primaryFile?.signedUrl ?? primaryFile?.url ?? primaryFile?.publicUrl ?? null;
+  const signedUrl = useSignedFileUrl(
+    primaryFile?.id,
+    Boolean(primaryFile?.id) && !existingPreviewUrl,
+  );
+  const previewUrl = existingPreviewUrl ?? signedUrl.data ?? undefined;
+
+  return (
+    <EvidenceCardV2
+      title={evidence.evidenceName || "Minh chứng chưa đặt tên"}
+      metadata={getEvidenceMetadata(evidence, applicationId)}
+      context={studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]}
+      processingDetail={getEvidenceProcessingDetail(evidence)}
+      status={mapEvidenceToProgressStatus(evidence)}
+      preview={getEvidencePreview(evidence, previewUrl, signedUrl.isLoading)}
+      onOpen={() => onViewEvidence(evidence)}
+      actionItems={[
+        { label: "Xem minh chứng", onSelect: () => onViewEvidence(evidence) },
+        ...(canEdit
+          ? [
+              {
+                label: "Xóa minh chứng",
+                onSelect: () => onDeleteEvidence(evidence),
+                destructive: true,
+              },
+            ]
+          : []),
+      ]}
+    />
   );
 }
 
@@ -3142,8 +3192,9 @@ function getRequirementDisplayValue(requirement?: RequirementItem) {
   if (requirement?.key === "no_violation") {
     if (requirement.status === "verified") return "Không vi phạm đã được xác minh";
     if (requirement.status === "rejected") return "Có ghi nhận cần xử lý";
+    if (isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt xác minh";
     if (requirement.status === "needs_verification" || requirement.status === "declared") {
-      return "Chờ nhà trường xác minh";
+      return "Chờ cán bộ xác minh";
     }
   }
   return undefined;
@@ -3152,6 +3203,7 @@ function getRequirementDisplayValue(requirement?: RequirementItem) {
 function getDisplayRequirementSourceLabel(requirement?: RequirementItem, fallbackValue?: string) {
   const response = getLatestRequirementResponse(requirement);
   if (response) return getResponseSourcePresentation(response);
+  if (isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt";
   if (fallbackValue) return "Sinh viên khai báo";
   if (requirement?.acceptedSources?.length) return formatSourceList(requirement.acceptedSources);
   return "Chưa có";
@@ -3182,11 +3234,37 @@ function numericPayloadValue(payloadJson: unknown, field: string) {
 }
 
 function noViolationPassiveCopy(requirement?: RequirementItem) {
-  if (requirement?.status === "verified") return "Đã được nhà trường xác minh.";
+  if (requirement?.status === "verified") return "Đã được cán bộ xác minh.";
   if (requirement?.status === "rejected") {
     return "Có ghi nhận cần xử lý theo hướng dẫn của cán bộ. Sinh viên bổ sung minh chứng nếu được yêu cầu.";
   }
-  return "Chờ nhà trường xác minh tình trạng vi phạm. Sinh viên không tự xác minh mục này.";
+  if (isReviewerOwnedRequirement(requirement)) {
+    return "Cán bộ xét duyệt sẽ xác minh sau khi nộp hồ sơ. Sinh viên không tự xác minh mục này.";
+  }
+  return "Chờ cán bộ xác minh tình trạng vi phạm. Sinh viên không tự xác minh mục này.";
+}
+
+function mapNoViolationRequirementStatus(
+  requirement?: RequirementItem,
+): StudentApplicationV2ProgressStatus {
+  if (requirement?.status === "verified") return "complete";
+  if (requirement?.status === "rejected") return "supplement";
+  if (isReviewerOwnedRequirement(requirement)) return "waiting";
+  return mapRequirementStatus(requirement?.status ?? "not_started");
+}
+
+function getNoViolationStatusLabel(requirement?: RequirementItem) {
+  if (requirement?.status === "verified") return "Đã xác minh";
+  if (requirement?.status === "rejected") return "Cần xử lý";
+  if (isReviewerOwnedRequirement(requirement)) return "Chờ cán bộ";
+  return getRequirementStatusLabel(requirement?.status ?? "not_started");
+}
+
+function isReviewerOwnedRequirement(requirement?: RequirementItem) {
+  return (
+    requirement?.blocksSubmission === false &&
+    (requirement.responsibility === "reviewer" || requirement.responsibility === "committee")
+  );
 }
 
 function academicGpaStatusLabel(requirement?: RequirementItem) {
@@ -3201,7 +3279,7 @@ function academicGpaStatusLabel(requirement?: RequirementItem) {
 function noFGradeStatusCopy(requirement?: RequirementItem) {
   if (requirement?.status === "verified") return "Không có điểm F đã được xác minh";
   if (requirement?.status === "rejected") return "Có điểm F cần cán bộ xử lý";
-  return "Chờ nhà trường xác minh tình trạng điểm F";
+  return "Chờ cán bộ xác minh tình trạng điểm F";
 }
 
 function academicPeriodLabel(requirement?: RequirementItem) {
@@ -3315,7 +3393,11 @@ function getEvidenceMetadata(evidence: EvidenceResponse, applicationId: string) 
     .join(" · ");
 }
 
-function getEvidencePreview(evidence: EvidenceResponse) {
+function getEvidencePreview(
+  evidence: EvidenceResponse,
+  previewUrl?: string,
+  previewLoading = false,
+) {
   const file = getPrimaryFile(evidence) as {
     mimeType?: string | null;
     fileName?: string | null;
@@ -3334,7 +3416,9 @@ function getEvidencePreview(evidence: EvidenceResponse) {
     criterion: evidence.criterion,
     sourceType: evidence.sourceType,
     isOfficialData: evidence.sourceType === "event_import",
+    isLoading: Boolean(previewLoading && file),
     isFailed: evidence.indexingStatus === "failed",
+    src: previewUrl,
     officialData:
       evidence.sourceType === "event_import"
         ? {
@@ -3517,20 +3601,21 @@ function clearUploadEvidenceRequestFromLocation() {
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
-function getEvidenceConfirmRequestFromLocation(): { evidenceId: string } | null {
+function getEvidenceConfirmRequestFromLocation(): string | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
-  const evidenceId = params.get("evidenceId");
-  if (!evidenceId || params.get("mode") !== "confirm") return null;
-  return { evidenceId };
+  if (params.get("mode") !== "confirm") return null;
+  return params.get("evidenceId");
 }
 
 function clearEvidenceConfirmRequestFromLocation() {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
-  url.searchParams.delete("evidenceId");
-  url.searchParams.delete("mode");
-  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  if (url.searchParams.get("mode") === "confirm") {
+    url.searchParams.delete("mode");
+    url.searchParams.delete("evidenceId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
 }
 
 function getSuggestedEventImportRequestFromLocation(): {
@@ -3539,22 +3624,21 @@ function getSuggestedEventImportRequestFromLocation(): {
 } | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
+  if (params.get("mode") !== "suggested-import") return null;
   const eventId = params.get("eventId");
   const criterion = params.get("criterion") as Criterion | null;
-  if (!eventId || params.get("mode") !== "suggested-import") return null;
-  return {
-    eventId,
-    criterion: criterion && coreStudentCriteria.includes(criterion) ? criterion : "academic",
-  };
+  if (!eventId || !criterion || !coreStudentCriteria.includes(criterion)) return null;
+  return { eventId, criterion };
 }
 
 function clearSuggestedEventImportRequestFromLocation() {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
-  if (url.searchParams.get("mode") !== "suggested-import") return;
-  url.searchParams.delete("mode");
-  url.searchParams.delete("eventId");
-  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  if (url.searchParams.get("mode") === "suggested-import") {
+    url.searchParams.delete("mode");
+    url.searchParams.delete("eventId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
 }
 
 function getDefaultEvidenceName(criterion: Criterion) {

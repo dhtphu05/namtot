@@ -233,6 +233,8 @@ export type RequirementType =
   "metric" | "evidence" | "system_confirmation" | "activity_aggregation";
 export type RequirementSourceType =
   "system_data" | "official_event" | "manual_evidence" | "manual_metric";
+export type RequirementResponsibility = "student" | "system" | "reviewer" | "committee";
+export type RequirementVerificationStage = "draft" | "precheck" | "review" | "resolution";
 export type CriterionCompletionStatus =
   | "not_started"
   | "in_progress"
@@ -267,6 +269,9 @@ export interface RequirementItem {
   formSchema?: unknown;
   currentResponses: RequirementResponse[];
   aggregation?: RequirementAggregation;
+  responsibility?: RequirementResponsibility;
+  blocksSubmission?: boolean;
+  verificationStage?: RequirementVerificationStage;
   nextAction?: {
     type: string;
     label: string;

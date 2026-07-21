@@ -11,7 +11,7 @@ describe("officer evidence knowledge workspace", () => {
     const route = read("src/routes/app.evidence-knowledge.tsx");
 
     assert.equal((sidebar.match(/to: "\/app\/evidence-knowledge"/g) ?? []).length, 1);
-    assert.match(sidebar, /label: "Kho minh chứng chuyên trách"/);
+    assert.match(sidebar, /label: "Kho tiền lệ"/);
     assert.match(sidebar, /to: "\/app\/evidence-knowledge"/);
     assert.match(guard, /"\/app\/evidence-knowledge"/);
     assert.match(
@@ -57,29 +57,35 @@ describe("officer evidence knowledge workspace", () => {
     assert.match(page, /title="Kho minh chứng chuyên trách"/);
     assert.match(page, /showSearch=\{false\}/);
     assert.match(page, /h-11 min-w-0 flex-1/);
+    assert.match(page, /border-r/);
     assert.match(page, /xl:grid-cols-\[340px_minmax\(0,1fr\)\]/);
     assert.doesNotMatch(page, /third|grid-cols-3|KPI|gradient|sparkle/i);
-    assert.match(list, /h-\[68px\]/);
+    assert.match(list, /h-\[72px\]/);
     assert.match(list, /divide-y divide-\[#E5E7EB\]/);
     assert.match(list, /w-\[3px\]/);
     assert.match(workspace, /getCriterionLabel\(detail\.criterion\)/);
-    assert.match(workspace, /resolutionPrecedent/);
+    assert.match(workspace, /Hội đồng xác nhận/);
   });
 
-  it("renders accepted-evidence gallery and protected detail sheet without personal data", () => {
+  it("renders accepted-evidence gallery and protected wide detail dialog without personal data", () => {
     const gallery = read("src/features/evidence-knowledge/components/AcceptedEvidenceGallery.tsx");
     const sheet = read("src/features/evidence-knowledge/components/EvidencePrecedentSheet.tsx");
 
-    assert.match(gallery, /md:grid-cols-2/);
+    assert.match(gallery, /minmax\(280px,340px\)/);
     assert.match(gallery, /aspect-video/);
-    assert.match(gallery, /Minh chứng đã chấp nhận #/);
+    assert.match(gallery, /useSignedFileUrl/);
+    assert.match(gallery, /object-contain/);
+    assert.match(gallery, /Không tải được preview/);
     assert.doesNotMatch(gallery, /object-cover|shadow-lg|studentName|studentCode|reviewer/i);
-    assert.match(sheet, /sm:max-w-\[420px\]/);
+    assert.match(sheet, /min\(1120px,92vw\)/);
     assert.match(sheet, /useSignedFileUrl/);
     assert.match(sheet, /object-contain/);
-    assert.match(sheet, /Tên gọi đã xác minh/);
-    assert.match(sheet, /OCR và dữ liệu trích xuất/);
+    assert.match(sheet, /Tổng quan/);
+    assert.match(sheet, /Dữ liệu đọc từ minh chứng/);
+    assert.match(sheet, /Lịch sử xử lý/);
+    assert.match(sheet, /Thông tin cần đối chiếu/);
     assert.doesNotMatch(sheet, /studentName|studentCode|fullName|email|reviewer/i);
+    assert.doesNotMatch(sheet, /Resolution Hub|Committee|raw provider|raw audit JSON/);
   });
 });
 
@@ -110,12 +116,12 @@ describe("review precedent workflow", () => {
     assert.doesNotMatch(precedentPanel, /confidence|percentage|AI recommendation|sparkle/i);
   });
 
-  it("requires a business reason before continuing Resolution when a precedent exists", () => {
+  it("requires a business reason before continuing Hội đồng when a precedent exists", () => {
     const panel = read("src/features/review/components/ReviewDecisionPanel.tsx");
 
     assert.match(panel, /await precedentQuery\.refetch\(\)/);
-    assert.match(panel, /Vui lòng chọn lý do vẫn chuyển Resolution/);
-    assert.match(panel, /Vẫn chuyển Resolution/);
+    assert.match(panel, /Vui lòng chọn lý do vẫn chuyển Hội đồng/);
+    assert.match(panel, /Vẫn chuyển Hội đồng/);
     assert.match(panel, /different_level/);
     assert.match(panel, /different_organizer/);
     assert.match(panel, /conflicting_information/);

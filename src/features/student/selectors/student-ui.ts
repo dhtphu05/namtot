@@ -591,7 +591,7 @@ function getPrimaryApplicationAction(
     return { label: "Xem tiến độ", route: "/app/application" };
   }
   if (status === "completed" || status === "rejected")
-    return { label: "Xem kết quả", route: "/app/application" };
+    return { label: "Xem kết quả", route: "/app/result" };
   return { label: "Hoàn thiện hồ sơ", route: "/app/application" };
 }
 
@@ -599,7 +599,13 @@ function getSecondaryApplicationAction(
   status: ApplicationStatus | "not_started",
   hasPrecheck: boolean,
 ): StudentAction | undefined {
-  if (status === "not_started" || status === "submitted" || status === "under_review")
+  if (
+    status === "not_started" ||
+    status === "submitted" ||
+    status === "under_review" ||
+    status === "completed" ||
+    status === "rejected"
+  )
     return undefined;
   return hasPrecheck
     ? { label: "Xem kiểm tra sơ bộ", route: "/app/application" }

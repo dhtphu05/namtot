@@ -17,7 +17,10 @@ type EventLibrarySearch = {
   criterion?: string;
 };
 
-type StudentReferenceEvent = Pick<OfficialEventLibraryItem, "eventId" | "title">;
+type StudentReferenceEvent = Pick<
+  OfficialEventLibraryItem,
+  "eventId" | "title" | "criterion" | "approvedUsageCount"
+>;
 
 export function ApprovedEvidencePage() {
   const navigate = useNavigate();
@@ -146,10 +149,12 @@ export function ApprovedEvidencePage() {
               ? {
                   eventId: referenceEvent.eventId,
                   title: referenceEvent.title,
+                  criterion: referenceEvent.criterion ?? selectedCriterion,
+                  approvedUsageCount: referenceEvent.approvedUsageCount ?? 0,
                 }
               : null
           }
-          submitLabel={referenceEvent ? "Dùng tên sự kiện" : "Upload minh chứng"}
+          submitLabel="Thêm vào hồ sơ"
           onCreated={handleCreated}
         />
       ) : null}
@@ -163,7 +168,7 @@ function ReferencePageSkeleton() {
       <Skeleton className="h-11 w-full rounded-lg" />
       <Skeleton className="mt-2 h-5 w-72 max-w-full rounded-md" />
       <div className="mt-4 flex gap-2 overflow-hidden">
-        {Array.from({ length: 5 }).map((_, index) => (
+        {Array.from({ length: 6 }).map((_, index) => (
           <Skeleton key={index} className="h-11 w-32 shrink-0 rounded-md" />
         ))}
       </div>
