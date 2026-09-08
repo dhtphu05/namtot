@@ -141,6 +141,15 @@ const NAV: Record<Role, NavGroup[]> = {
   ],
 };
 
+const COMMITTEE_NAV: NavGroup[] = NAV.manager.map((group) => ({
+  ...group,
+  items: group.items.map((item) =>
+    item.to === "/app/settings"
+      ? { ...item, label: "Cấu hình", to: "/app/committee/settings" }
+      : item,
+  ),
+}));
+
 const badgeClass: Record<BadgeTone, string> = {
   core: "bg-emerald-50 text-emerald-700",
   ai: "bg-sky-50 text-sky-700",
@@ -479,7 +488,7 @@ function StudentV2ProfileRow({
 
 function getNavGroups(role: Role, backendRole?: ApiRole): NavGroup[] {
   if (backendRole === "admin") return ADMIN_NAV;
-  if (backendRole === "committee") return NAV.manager;
+  if (backendRole === "committee") return COMMITTEE_NAV;
   return NAV[role];
 }
 

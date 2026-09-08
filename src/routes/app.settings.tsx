@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Settings } from "@/features/core/components/Settings";
+import { CriteriaSettingsOverviewPage } from "@/features/committee-settings/components/CriteriaSettingsOverviewPage";
+import { requireAuthenticatedAppRoute } from "@/features/auth/route-guard";
 
 export const Route = createFileRoute("/app/settings")({
-  component: Settings,
+  beforeLoad: ({ context, location }) =>
+    requireAuthenticatedAppRoute(location.pathname, context.queryClient),
+  component: CriteriaSettingsOverviewPage,
 });

@@ -52,12 +52,14 @@ import { Route as AppManagerResultsRouteImport } from './routes/app.manager.resu
 import { Route as AppManagerResultRouteImport } from './routes/app.manager.result'
 import { Route as AppManagerCollectiveRouteImport } from './routes/app.manager.collective'
 import { Route as AppDecisionImportsDecisionImportIdRouteImport } from './routes/app.decision-imports.$decisionImportId'
+import { Route as AppCommitteeSettingsRouteImport } from './routes/app.committee.settings'
 import { Route as AppCommitteeInboxRouteImport } from './routes/app.committee.inbox'
 import { Route as AppCollectiveIdRouteImport } from './routes/app.collective.$id'
 import { Route as AppAdminWorkspacesRouteImport } from './routes/app.admin.workspaces'
 import { Route as AppAdminWorkspaceRouteImport } from './routes/app.admin.workspace'
 import { Route as AppManagerResultsApplicationIdRouteImport } from './routes/app.manager.results.$applicationId'
 import { Route as AppAdminWorkspacesWorkspaceIdRouteImport } from './routes/app.admin.workspaces.$workspaceId'
+import { Route as AppCommitteeSettingsCriteriaConfigurationIdRouteImport } from './routes/app.committee.settings.criteria.$configurationId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -275,6 +277,11 @@ const AppDecisionImportsDecisionImportIdRoute =
     path: '/$decisionImportId',
     getParentRoute: () => AppDecisionImportsRoute,
   } as any)
+const AppCommitteeSettingsRoute = AppCommitteeSettingsRouteImport.update({
+  id: '/committee/settings',
+  path: '/committee/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCommitteeInboxRoute = AppCommitteeInboxRouteImport.update({
   id: '/committee/inbox',
   path: '/committee/inbox',
@@ -306,6 +313,12 @@ const AppAdminWorkspacesWorkspaceIdRoute =
     id: '/$workspaceId',
     path: '/$workspaceId',
     getParentRoute: () => AppAdminWorkspacesRoute,
+  } as any)
+const AppCommitteeSettingsCriteriaConfigurationIdRoute =
+  AppCommitteeSettingsCriteriaConfigurationIdRouteImport.update({
+    id: '/criteria/$configurationId',
+    path: '/criteria/$configurationId',
+    getParentRoute: () => AppCommitteeSettingsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -350,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
+  '/app/committee/settings': typeof AppCommitteeSettingsRouteWithChildren
   '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
   '/app/manager/collective': typeof AppManagerCollectiveRoute
   '/app/manager/result': typeof AppManagerResultRoute
@@ -358,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/app/review/$id': typeof AppReviewIdRoute
   '/app/admin/workspaces/$workspaceId': typeof AppAdminWorkspacesWorkspaceIdRoute
   '/app/manager/results/$applicationId': typeof AppManagerResultsApplicationIdRoute
+  '/app/committee/settings/criteria/$configurationId': typeof AppCommitteeSettingsCriteriaConfigurationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -400,6 +415,7 @@ export interface FileRoutesByTo {
   '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
+  '/app/committee/settings': typeof AppCommitteeSettingsRouteWithChildren
   '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
   '/app/manager/collective': typeof AppManagerCollectiveRoute
   '/app/manager/result': typeof AppManagerResultRoute
@@ -408,6 +424,7 @@ export interface FileRoutesByTo {
   '/app/review/$id': typeof AppReviewIdRoute
   '/app/admin/workspaces/$workspaceId': typeof AppAdminWorkspacesWorkspaceIdRoute
   '/app/manager/results/$applicationId': typeof AppManagerResultsApplicationIdRoute
+  '/app/committee/settings/criteria/$configurationId': typeof AppCommitteeSettingsCriteriaConfigurationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -452,6 +469,7 @@ export interface FileRoutesById {
   '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
+  '/app/committee/settings': typeof AppCommitteeSettingsRouteWithChildren
   '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
   '/app/manager/collective': typeof AppManagerCollectiveRoute
   '/app/manager/result': typeof AppManagerResultRoute
@@ -460,6 +478,7 @@ export interface FileRoutesById {
   '/app/review/$id': typeof AppReviewIdRoute
   '/app/admin/workspaces/$workspaceId': typeof AppAdminWorkspacesWorkspaceIdRoute
   '/app/manager/results/$applicationId': typeof AppManagerResultsApplicationIdRoute
+  '/app/committee/settings/criteria/$configurationId': typeof AppCommitteeSettingsCriteriaConfigurationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -505,6 +524,7 @@ export interface FileRouteTypes {
     | '/app/admin/workspaces'
     | '/app/collective/$id'
     | '/app/committee/inbox'
+    | '/app/committee/settings'
     | '/app/decision-imports/$decisionImportId'
     | '/app/manager/collective'
     | '/app/manager/result'
@@ -513,6 +533,7 @@ export interface FileRouteTypes {
     | '/app/review/$id'
     | '/app/admin/workspaces/$workspaceId'
     | '/app/manager/results/$applicationId'
+    | '/app/committee/settings/criteria/$configurationId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -555,6 +576,7 @@ export interface FileRouteTypes {
     | '/app/admin/workspaces'
     | '/app/collective/$id'
     | '/app/committee/inbox'
+    | '/app/committee/settings'
     | '/app/decision-imports/$decisionImportId'
     | '/app/manager/collective'
     | '/app/manager/result'
@@ -563,6 +585,7 @@ export interface FileRouteTypes {
     | '/app/review/$id'
     | '/app/admin/workspaces/$workspaceId'
     | '/app/manager/results/$applicationId'
+    | '/app/committee/settings/criteria/$configurationId'
   id:
     | '__root__'
     | '/'
@@ -606,6 +629,7 @@ export interface FileRouteTypes {
     | '/app/admin/workspaces'
     | '/app/collective/$id'
     | '/app/committee/inbox'
+    | '/app/committee/settings'
     | '/app/decision-imports/$decisionImportId'
     | '/app/manager/collective'
     | '/app/manager/result'
@@ -614,6 +638,7 @@ export interface FileRouteTypes {
     | '/app/review/$id'
     | '/app/admin/workspaces/$workspaceId'
     | '/app/manager/results/$applicationId'
+    | '/app/committee/settings/criteria/$configurationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -927,6 +952,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDecisionImportsDecisionImportIdRouteImport
       parentRoute: typeof AppDecisionImportsRoute
     }
+    '/app/committee/settings': {
+      id: '/app/committee/settings'
+      path: '/committee/settings'
+      fullPath: '/app/committee/settings'
+      preLoaderRoute: typeof AppCommitteeSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/committee/inbox': {
       id: '/app/committee/inbox'
       path: '/committee/inbox'
@@ -968,6 +1000,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/admin/workspaces/$workspaceId'
       preLoaderRoute: typeof AppAdminWorkspacesWorkspaceIdRouteImport
       parentRoute: typeof AppAdminWorkspacesRoute
+    }
+    '/app/committee/settings/criteria/$configurationId': {
+      id: '/app/committee/settings/criteria/$configurationId'
+      path: '/criteria/$configurationId'
+      fullPath: '/app/committee/settings/criteria/$configurationId'
+      preLoaderRoute: typeof AppCommitteeSettingsCriteriaConfigurationIdRouteImport
+      parentRoute: typeof AppCommitteeSettingsRoute
     }
   }
 }
@@ -1019,6 +1058,18 @@ const AppAdminWorkspacesRouteChildren: AppAdminWorkspacesRouteChildren = {
 const AppAdminWorkspacesRouteWithChildren =
   AppAdminWorkspacesRoute._addFileChildren(AppAdminWorkspacesRouteChildren)
 
+interface AppCommitteeSettingsRouteChildren {
+  AppCommitteeSettingsCriteriaConfigurationIdRoute: typeof AppCommitteeSettingsCriteriaConfigurationIdRoute
+}
+
+const AppCommitteeSettingsRouteChildren: AppCommitteeSettingsRouteChildren = {
+  AppCommitteeSettingsCriteriaConfigurationIdRoute:
+    AppCommitteeSettingsCriteriaConfigurationIdRoute,
+}
+
+const AppCommitteeSettingsRouteWithChildren =
+  AppCommitteeSettingsRoute._addFileChildren(AppCommitteeSettingsRouteChildren)
+
 interface AppManagerResultsRouteChildren {
   AppManagerResultsApplicationIdRoute: typeof AppManagerResultsApplicationIdRoute
 }
@@ -1066,6 +1117,7 @@ interface AppRouteChildren {
   AppAdminWorkspaceRoute: typeof AppAdminWorkspaceRoute
   AppAdminWorkspacesRoute: typeof AppAdminWorkspacesRouteWithChildren
   AppCommitteeInboxRoute: typeof AppCommitteeInboxRoute
+  AppCommitteeSettingsRoute: typeof AppCommitteeSettingsRouteWithChildren
   AppManagerCollectiveRoute: typeof AppManagerCollectiveRoute
   AppManagerResultRoute: typeof AppManagerResultRoute
   AppManagerResultsRoute: typeof AppManagerResultsRouteWithChildren
@@ -1108,6 +1160,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminWorkspaceRoute: AppAdminWorkspaceRoute,
   AppAdminWorkspacesRoute: AppAdminWorkspacesRouteWithChildren,
   AppCommitteeInboxRoute: AppCommitteeInboxRoute,
+  AppCommitteeSettingsRoute: AppCommitteeSettingsRouteWithChildren,
   AppManagerCollectiveRoute: AppManagerCollectiveRoute,
   AppManagerResultRoute: AppManagerResultRoute,
   AppManagerResultsRoute: AppManagerResultsRouteWithChildren,
