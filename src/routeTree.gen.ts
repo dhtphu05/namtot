@@ -37,6 +37,7 @@ import { Route as AppEventLibraryRouteImport } from './routes/app.event-library'
 import { Route as AppEkycRouteImport } from './routes/app.ekyc'
 import { Route as AppDraftsRouteImport } from './routes/app.drafts'
 import { Route as AppDecisionImportsRouteImport } from './routes/app.decision-imports'
+import { Route as AppDataUploaderRouteImport } from './routes/app.data-uploader'
 import { Route as AppCollectiveRouteImport } from './routes/app.collective'
 import { Route as AppChatbotRouteImport } from './routes/app.chatbot'
 import { Route as AppCascadeRouteImport } from './routes/app.cascade'
@@ -199,6 +200,11 @@ const AppDecisionImportsRoute = AppDecisionImportsRouteImport.update({
   path: '/decision-imports',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDataUploaderRoute = AppDataUploaderRouteImport.update({
+  id: '/data-uploader',
+  path: '/data-uploader',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCollectiveRoute = AppCollectiveRouteImport.update({
   id: '/collective',
   path: '/collective',
@@ -323,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
   '/app/collective': typeof AppCollectiveRouteWithChildren
+  '/app/data-uploader': typeof AppDataUploaderRoute
   '/app/decision-imports': typeof AppDecisionImportsRouteWithChildren
   '/app/drafts': typeof AppDraftsRoute
   '/app/ekyc': typeof AppEkycRoute
@@ -373,6 +380,7 @@ export interface FileRoutesByTo {
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
   '/app/collective': typeof AppCollectiveRouteWithChildren
+  '/app/data-uploader': typeof AppDataUploaderRoute
   '/app/decision-imports': typeof AppDecisionImportsRouteWithChildren
   '/app/drafts': typeof AppDraftsRoute
   '/app/ekyc': typeof AppEkycRoute
@@ -425,6 +433,7 @@ export interface FileRoutesById {
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
   '/app/collective': typeof AppCollectiveRouteWithChildren
+  '/app/data-uploader': typeof AppDataUploaderRoute
   '/app/decision-imports': typeof AppDecisionImportsRouteWithChildren
   '/app/drafts': typeof AppDraftsRoute
   '/app/ekyc': typeof AppEkycRoute
@@ -478,6 +487,7 @@ export interface FileRouteTypes {
     | '/app/cascade'
     | '/app/chatbot'
     | '/app/collective'
+    | '/app/data-uploader'
     | '/app/decision-imports'
     | '/app/drafts'
     | '/app/ekyc'
@@ -528,6 +538,7 @@ export interface FileRouteTypes {
     | '/app/cascade'
     | '/app/chatbot'
     | '/app/collective'
+    | '/app/data-uploader'
     | '/app/decision-imports'
     | '/app/drafts'
     | '/app/ekyc'
@@ -579,6 +590,7 @@ export interface FileRouteTypes {
     | '/app/cascade'
     | '/app/chatbot'
     | '/app/collective'
+    | '/app/data-uploader'
     | '/app/decision-imports'
     | '/app/drafts'
     | '/app/ekyc'
@@ -822,6 +834,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDecisionImportsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/data-uploader': {
+      id: '/app/data-uploader'
+      path: '/data-uploader'
+      fullPath: '/app/data-uploader'
+      preLoaderRoute: typeof AppDataUploaderRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/collective': {
       id: '/app/collective'
       path: '/collective'
@@ -1040,6 +1059,7 @@ interface AppRouteChildren {
   AppCascadeRoute: typeof AppCascadeRoute
   AppChatbotRoute: typeof AppChatbotRoute
   AppCollectiveRoute: typeof AppCollectiveRouteWithChildren
+  AppDataUploaderRoute: typeof AppDataUploaderRoute
   AppDecisionImportsRoute: typeof AppDecisionImportsRouteWithChildren
   AppDraftsRoute: typeof AppDraftsRoute
   AppEkycRoute: typeof AppEkycRoute
@@ -1082,6 +1102,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCascadeRoute: AppCascadeRoute,
   AppChatbotRoute: AppChatbotRoute,
   AppCollectiveRoute: AppCollectiveRouteWithChildren,
+  AppDataUploaderRoute: AppDataUploaderRoute,
   AppDecisionImportsRoute: AppDecisionImportsRouteWithChildren,
   AppDraftsRoute: AppDraftsRoute,
   AppEkycRoute: AppEkycRoute,

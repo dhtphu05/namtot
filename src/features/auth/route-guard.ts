@@ -22,13 +22,8 @@ const studentRoutes = [
   "/app/wizard",
 ];
 
-const officerRoutes = [
-  "/app/queue",
-  "/app/evidence-search",
-  "/app/evidence-knowledge",
-  "/app/review",
-  "/app/decision-imports",
-];
+const officerRoutes = ["/app/queue", "/app/evidence-search", "/app/review"];
+const evidenceKnowledgeRoutes = ["/app/evidence-knowledge"];
 const studentOrCollectiveRoutes = ["/app/upload", "/app/ai-precheck"];
 const managerRoutes = [
   "/app/assignment",
@@ -42,14 +37,62 @@ const managerRoutes = [
   "/app/export",
   "/app/settings",
 ];
+const cityManagerRoutes = [
+  "/app/assignment",
+  "/app/analytics",
+  "/app/manager/results",
+  "/app/manager/collective",
+  "/app/audit",
+  "/app/export",
+];
+const cityCommitteeRoutes = [
+  "/app/manager/results",
+  "/app/manager/collective",
+  "/app/audit",
+  "/app/export",
+];
 const collectiveRoutes = ["/app/collective"];
 const adminRoutes = ["/app/admin"];
+const dataUploaderRoutes = ["/app/data-uploader"];
 
 const sharedAuthenticatedRoutes = ["/app/notifications", "/app/chatbot"];
 const studentEvidenceRoutes = ["/app/evidence", "/app/event-library"];
-const eventRegistryRoles: Role[] = ["officer", "manager", "committee", "admin"];
-const resolutionRoles: Role[] = ["officer", "manager", "committee", "admin"];
-const reviewRoles: Role[] = ["officer", "manager", "committee", "admin"];
+const eventRegistryRoles: Role[] = [
+  "officer",
+  "manager",
+  "committee",
+  "city_officer",
+  "city_manager",
+  "city_committee",
+  "admin",
+];
+const decisionImportRoles: Role[] = ["officer", "manager", "committee", "admin"];
+const evidenceKnowledgeRoles: Role[] = [
+  "officer",
+  "manager",
+  "committee",
+  "city_officer",
+  "city_manager",
+  "city_committee",
+  "admin",
+];
+const resolutionRoles: Role[] = [
+  "officer",
+  "manager",
+  "committee",
+  "city_officer",
+  "city_manager",
+  "city_committee",
+  "admin",
+];
+const reviewRoles: Role[] = [
+  "officer",
+  "manager",
+  "committee",
+  "city_officer",
+  "city_manager",
+  "admin",
+];
 
 export async function requireAuthenticatedAppRoute(pathname: string, queryClient: QueryClient) {
   if (typeof window === "undefined") {
@@ -103,6 +146,7 @@ export async function requireAuthenticatedAppRoute(pathname: string, queryClient
 export function canAccessPath(role: Role, pathname: string): boolean {
   if (pathname === "/app" || pathname === "/app/") return true;
   if (matchesAny(pathname, sharedAuthenticatedRoutes)) return true;
+  if (matchesAny(pathname, dataUploaderRoutes)) return role === "data_uploader";
   if (matchesAny(pathname, studentOrCollectiveRoutes)) {
     return role === "student" || role === "class_representative";
   }
@@ -111,10 +155,13 @@ export function canAccessPath(role: Role, pathname: string): boolean {
   if (matchesAny(pathname, collectiveRoutes)) return role === "class_representative";
   if (matchesAny(pathname, adminRoutes)) return role === "admin";
   if (matchesAny(pathname, officerRoutes)) return reviewRoles.includes(role);
+  if (matchesAny(pathname, evidenceKnowledgeRoutes)) return evidenceKnowledgeRoles.includes(role);
+  if (matchesAny(pathname, cityManagerRoutes)) return role === "city_manager";
+  if (matchesAny(pathname, cityCommitteeRoutes)) return role === "city_committee";
   if (matchesAny(pathname, managerRoutes))
     return role === "manager" || role === "committee" || role === "admin";
   if (pathname.startsWith("/app/event-registry")) return eventRegistryRoles.includes(role);
-  if (pathname.startsWith("/app/decision-imports")) return eventRegistryRoles.includes(role);
+  if (pathname.startsWith("/app/decision-imports")) return decisionImportRoles.includes(role);
   if (pathname.startsWith("/app/resolution")) return resolutionRoles.includes(role);
 
   return false;

@@ -40,7 +40,7 @@ export const Route = createFileRoute("/app/analytics")({
   component: AnalyticsRoute,
 });
 
-const allowedRoles: Role[] = ["manager", "committee", "admin"];
+const allowedRoles: Role[] = ["manager", "committee", "city_manager", "admin"];
 const levels: Level[] = [...ACTIVE_LEVELS];
 const criteria: Criterion[] = [
   "ethics",

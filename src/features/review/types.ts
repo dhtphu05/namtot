@@ -2,7 +2,16 @@ import type { OfficerEvidenceKnowledgeSearchItem } from "@/features/evidence-kno
 import type { Pagination } from "@/lib/api/types";
 
 export type Role =
-  "student" | "class_representative" | "officer" | "manager" | "committee" | "admin";
+  | "student"
+  | "class_representative"
+  | "data_uploader"
+  | "officer"
+  | "manager"
+  | "committee"
+  | "city_officer"
+  | "city_manager"
+  | "city_committee"
+  | "admin";
 
 export type Level = "school" | "university" | "city" | "central";
 

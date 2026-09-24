@@ -85,7 +85,14 @@ export const Route = createFileRoute("/app/review/$id")({
   component: ReviewTaskDetailRoute,
 });
 
-const allowedRoles: Role[] = ["officer", "manager", "committee", "admin"];
+const allowedRoles: Role[] = [
+  "officer",
+  "manager",
+  "committee",
+  "city_officer",
+  "city_manager",
+  "admin",
+];
 const fallbackText = "Chưa có dữ liệu";
 const levelOrder = ["school", "university", "city", "central"] as const;
 const metricLabels: Record<string, string> = {
@@ -205,6 +212,7 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
   const canUseDecisionPanel = canDecide || canRequestSupplement || canEscalateResolution;
   const canViewTechnicalLog =
     role === "manager" ||
+    role === "city_manager" ||
     role === "committee" ||
     role === "admin" ||
     Boolean(task.permissions?.canView);

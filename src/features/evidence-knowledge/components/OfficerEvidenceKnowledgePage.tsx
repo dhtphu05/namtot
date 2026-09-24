@@ -30,6 +30,9 @@ export function OfficerEvidenceKnowledgePage() {
     user?.role === "officer" ||
     user?.role === "manager" ||
     user?.role === "committee" ||
+    user?.role === "city_officer" ||
+    user?.role === "city_manager" ||
+    user?.role === "city_committee" ||
     user?.role === "admin";
   const [search, setSearch] = useState(searchParams.q ?? "");
   const debouncedSearch = useDebouncedValue(search, 280);

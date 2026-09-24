@@ -82,7 +82,14 @@ export const Route = createFileRoute("/app/queue")({
   component: ReviewQueueRoute,
 });
 
-const allowedRoles: Role[] = ["officer", "manager", "committee", "admin"];
+const allowedRoles: Role[] = [
+  "officer",
+  "manager",
+  "committee",
+  "city_officer",
+  "city_manager",
+  "admin",
+];
 const defaultLimit = 10;
 const officerQueueLimit = 100;
 type QueueTab = "all" | "mine" | "due_soon" | "supplement" | "ambiguous";
@@ -186,7 +193,7 @@ function ReviewQueueContent({ role }: { role: Role }) {
   const user = useAuth((state) => state.user);
   const { trackAction } = useSmartUXTracking();
   const lockedOfficerCriterion = useMemo(
-    () => (role === "officer" ? getOfficerLockedCriterion(user) : null),
+    () => (role === "officer" || role === "city_officer" ? getOfficerLockedCriterion(user) : null),
     [role, user],
   );
   const [activeTab, setActiveTab] = useState<QueueTab>("all");
@@ -197,7 +204,7 @@ function ReviewQueueContent({ role }: { role: Role }) {
   const [claimCandidate, setClaimCandidate] = useState<ReviewTaskListItem | null>(null);
   const [filters, setFilters] = useState<ReviewTaskListParams>({
     page: 1,
-    limit: role === "officer" ? officerQueueLimit : defaultLimit,
+    limit: role === "officer" || role === "city_officer" ? officerQueueLimit : defaultLimit,
   });
   const [officerItems, setOfficerItems] = useState<ReviewTaskListItem[]>([]);
 
@@ -217,12 +224,12 @@ function ReviewQueueContent({ role }: { role: Role }) {
   );
 
   useEffect(() => {
-    if (role !== "officer") return;
+    if (role !== "officer" && role !== "city_officer") return;
     setOfficerItems([]);
   }, [officerFilterKey, role]);
 
   useEffect(() => {
-    if (role !== "officer" || !data) return;
+    if ((role !== "officer" && role !== "city_officer") || !data) return;
     setOfficerItems((current) => {
       const nextItems = (filters.page ?? 1) <= 1 ? pageItems : [...current, ...pageItems];
       const byId = new Map<string, ReviewTaskListItem>();
@@ -232,12 +239,12 @@ function ReviewQueueContent({ role }: { role: Role }) {
   }, [data, filters.page, pageItems, role]);
 
   const items = useMemo(
-    () => (role === "officer" ? officerItems : pageItems),
+    () => (role === "officer" || role === "city_officer" ? officerItems : pageItems),
     [officerItems, pageItems, role],
   );
   const officerScopedItems = useMemo(
     () =>
-      role === "officer" && lockedOfficerCriterion
+      (role === "officer" || role === "city_officer") && lockedOfficerCriterion
         ? items.filter(
             (item) => item.criterion === lockedOfficerCriterion && hasCriterionEvidenceTask(item),
           )
@@ -246,37 +253,35 @@ function ReviewQueueContent({ role }: { role: Role }) {
   );
   const officerQueueItems = useMemo(
     () =>
-      role === "officer"
+      role === "officer" || role === "city_officer"
         ? officerScopedItems.filter((item) => isOfficerQueueVisibleTask(item))
         : officerScopedItems,
     [officerScopedItems, role],
   );
-  const summaryItems = role === "officer" ? officerQueueItems : items;
+  const isOfficer = role === "officer" || role === "city_officer";
+  const summaryItems = isOfficer ? officerQueueItems : items;
   const summary = useMemo(() => getCurrentListSummary(summaryItems), [summaryItems]);
   const allApplicationGroups = useMemo(
-    () => groupOfficerApplications(role === "officer" ? officerQueueItems : items),
-    [items, officerQueueItems, role],
+    () => groupOfficerApplications(isOfficer ? officerQueueItems : items),
+    [isOfficer, items, officerQueueItems],
   );
   const officerScopedGroups = useMemo(
     () =>
-      role === "officer" && lockedOfficerCriterion
+      isOfficer && lockedOfficerCriterion
         ? allApplicationGroups.filter((group) =>
             hasCriterionEvidenceTask(getTaskForCriterion(group, lockedOfficerCriterion)),
           )
         : allApplicationGroups,
-    [allApplicationGroups, lockedOfficerCriterion, role],
+    [allApplicationGroups, isOfficer, lockedOfficerCriterion],
   );
   const priorityGroups = useMemo(() => getPriorityApplicationGroups(items).slice(0, 6), [items]);
   const visibleItems = useMemo(
     () =>
-      sortQueueItems(
-        role === "officer" ? filterOfficerTasks(officerQueueItems, activeTab) : items,
-        sortBy,
-      ),
-    [activeTab, items, officerQueueItems, role, sortBy],
+      sortQueueItems(isOfficer ? filterOfficerTasks(officerQueueItems, activeTab) : items, sortBy),
+    [activeTab, isOfficer, items, officerQueueItems, sortBy],
   );
   const visibleGroups = useMemo(() => {
-    if (role === "officer") {
+    if (isOfficer) {
       if (!lockedOfficerCriterion) return [];
       return sortQueueGroups(
         filterOfficerGroupsByCriterion(officerScopedGroups, activeTab, lockedOfficerCriterion),
@@ -285,7 +290,7 @@ function ReviewQueueContent({ role }: { role: Role }) {
       );
     }
     return sortQueueGroups(groupOfficerApplications(visibleItems), sortBy);
-  }, [activeTab, lockedOfficerCriterion, officerScopedGroups, role, sortBy, visibleItems]);
+  }, [activeTab, isOfficer, lockedOfficerCriterion, officerScopedGroups, sortBy, visibleItems]);
   const selectedGroup = useMemo(
     () =>
       visibleGroups.find((group) => group.applicationId === selectedApplicationId) ??
@@ -295,7 +300,7 @@ function ReviewQueueContent({ role }: { role: Role }) {
   );
 
   useEffect(() => {
-    if (role !== "officer" || viewMode !== "application") return;
+    if (!isOfficer || viewMode !== "application") return;
     if (!lockedOfficerCriterion) {
       setSelectedApplicationId(null);
       setSelectedCriterion(null);
@@ -319,7 +324,7 @@ function ReviewQueueContent({ role }: { role: Role }) {
     }
   }, [
     lockedOfficerCriterion,
-    role,
+    isOfficer,
     selectedApplicationId,
     selectedCriterion,
     viewMode,
@@ -362,7 +367,7 @@ function ReviewQueueContent({ role }: { role: Role }) {
     });
   };
 
-  if (role === "officer") {
+  if (isOfficer) {
     if (!lockedOfficerCriterion) {
       return (
         <>
@@ -452,8 +457,8 @@ function ReviewQueueContent({ role }: { role: Role }) {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
-          label={role === "officer" ? "Hồ sơ trong phạm vi" : "Tổng task trong danh sách"}
-          value={role === "officer" ? allApplicationGroups.length : summary.total}
+          label={isOfficer ? "Hồ sơ trong phạm vi" : "Tổng task trong danh sách"}
+          value={isOfficer ? allApplicationGroups.length : summary.total}
           icon={<ClipboardList className="h-5 w-5" />}
         />
         <StatCard
@@ -482,7 +487,7 @@ function ReviewQueueContent({ role }: { role: Role }) {
         />
       </div>
 
-      {role === "officer" ? (
+      {isOfficer ? (
         <>
           <Card className="mt-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -609,7 +614,7 @@ function ReviewQueueContent({ role }: { role: Role }) {
               )}
               onRetry={() => void refetch()}
             />
-          ) : role === "officer" ? (
+          ) : isOfficer ? (
             viewMode === "application" ? (
               <OfficerMasterDetailQueue
                 activeCriterion={selectedCriterion}

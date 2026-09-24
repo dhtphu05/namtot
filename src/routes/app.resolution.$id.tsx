@@ -54,7 +54,15 @@ export const Route = createFileRoute("/app/resolution/$id")({
   component: ResolutionCaseDetailRoute,
 });
 
-const managerRoles: Role[] = ["officer", "manager", "committee", "admin"];
+const managerRoles: Role[] = [
+  "officer",
+  "manager",
+  "committee",
+  "city_officer",
+  "city_manager",
+  "city_committee",
+  "admin",
+];
 const fallbackText = "Chưa có dữ liệu";
 const resolveDecisionOptions: Array<{
   value: ResolutionFinalDecision;
@@ -207,7 +215,7 @@ function ResolutionCaseDetailContent({ caseId, role }: { caseId: string; role: R
           </div>
 
           <div className="space-y-5">
-            {role === "officer" ? (
+            {role === "officer" || role === "city_officer" ? (
               <OfficerResolutionReadonlyCard />
             ) : (
               <ResolveResolutionPanel

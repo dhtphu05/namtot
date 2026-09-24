@@ -33,7 +33,15 @@ export const Route = createFileRoute("/app/resolution")({
   component: ResolutionCasesRoute,
 });
 
-const managerRoles: Role[] = ["officer", "manager", "committee", "admin"];
+const managerRoles: Role[] = [
+  "officer",
+  "manager",
+  "committee",
+  "city_officer",
+  "city_manager",
+  "city_committee",
+  "admin",
+];
 const defaultLimit = 10;
 const fallbackText = "Chưa có dữ liệu";
 
@@ -106,7 +114,7 @@ function ResolutionCasesContent({ role }: { role: Role }) {
   const canGoPrevious = page > 1 && !isFetching;
   const canGoNext = items.length >= limit && !isFetching;
 
-  const officerView = role === "officer";
+  const officerView = role === "officer" || role === "city_officer";
 
   return (
     <>
@@ -461,8 +469,11 @@ function getLevelFilterLabel(level: Level) {
 function formatResolutionRole(role?: string | null) {
   if (!role) return "";
   if (role === "officer") return "Cán bộ xét duyệt";
+  if (role === "city_officer") return "Cán bộ xét duyệt thành phố";
   if (role === "manager") return "Cấp quản lý";
+  if (role === "city_manager") return "Quản lý thành phố";
   if (role === "committee") return "Hội đồng";
+  if (role === "city_committee") return "Hội đồng thành phố";
   if (role === "admin") return "Quản trị viên";
   return role;
 }

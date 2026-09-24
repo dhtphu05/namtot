@@ -78,9 +78,13 @@ type StatusAction = "open-registration" | "close-registration" | "disable" | "re
 const roleLabels: Record<Role, string> = {
   student: "Sinh viên",
   class_representative: "Đại diện lớp",
+  data_uploader: "Cán bộ nhập liệu",
   officer: "Cán bộ xét duyệt",
-  manager: "Quản lý",
-  committee: "Hội đồng",
+  manager: "Quản lý trường",
+  committee: "Hội đồng trường",
+  city_officer: "Cán bộ xét duyệt thành phố",
+  city_manager: "Quản lý thành phố",
+  city_committee: "Hội đồng thành phố",
   admin: "Quản trị viên",
 };
 
@@ -88,9 +92,13 @@ const roleOptions: Array<{ value: Role | "all"; label: string }> = [
   { value: "all", label: "Tất cả vai trò" },
   { value: "student", label: roleLabels.student },
   { value: "class_representative", label: roleLabels.class_representative },
+  { value: "data_uploader", label: roleLabels.data_uploader },
   { value: "officer", label: roleLabels.officer },
   { value: "manager", label: roleLabels.manager },
   { value: "committee", label: roleLabels.committee },
+  { value: "city_officer", label: roleLabels.city_officer },
+  { value: "city_manager", label: roleLabels.city_manager },
+  { value: "city_committee", label: roleLabels.city_committee },
   { value: "admin", label: roleLabels.admin },
 ];
 

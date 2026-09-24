@@ -28,6 +28,17 @@ This file is the current source of truth for ChatGPT planning and Codex implemen
   - Renders `AppLayout`, which delegates to `AppShell`.
 - Role-based redirects and access checks live in `src/features/auth/route-guard.ts`.
 
+## Phase 1 Part 3 — Role Migration
+
+- The frontend API role union includes `student`, `data_uploader`, `city_officer`, `city_manager`, `city_committee`, and `admin`, while retaining `class_representative`, `officer`, `manager`, and `committee` for compatibility.
+- `/api/me` continues to provide workspace `{ id, code, name, shortName }`; it does not provide `WorkspaceType`, and `SafeUser` does not infer or add that field.
+- Default authenticated destinations are student `/app`, data uploader `/app/data-uploader`, City Officer `/app/queue`, City Manager `/app/analytics`, City Committee `/app/resolution`, and admin `/app/admin/workspaces`. Legacy officer, manager, and committee routes retain their earlier defaults.
+- Route authorization uses the authenticated backend role in `src/features/auth/route-guard.ts`. The optional demo role selector changes presentation only; it does not change the authenticated role used for route access or API requests.
+- City Officer has review queue, task detail, specialization, and Resolution read-only surfaces. City Manager has cross-School review operations, assignment, workload, results, export, audit, Event Registry, and Knowledge Base. City Committee has Resolution, results/finalization, export/audit, read-only Event Registry, and Knowledge Base; it does not have assignment or dashboard-summary routes.
+- Data Uploader lands on a short information page without upload controls. Decision Import, criteria configuration, and admin workspace routes remain closed to City roles.
+- Backend regressions found while validating the Part 2 contract now scope approved-evidence-name search by workspace, bind City Officer case detail to a created/assigned case, reject resolution evidence decisions outside the case’s related evidence, and scope resolution watcher notifications. These fixes do not change the API response shape, schema, or JWT.
+- Award Decision Registry is reserved for Phase 2. Eligibility Gate remains a later phase.
+
 ## Layout
 
 - Main app shell: `src/components/layout/AppShell.tsx`.

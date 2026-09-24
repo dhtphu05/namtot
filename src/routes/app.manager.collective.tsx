@@ -30,8 +30,8 @@ export const Route = createFileRoute("/app/manager/collective")({
   component: ManagerCollectiveRoute,
 });
 
-const allowedRoles: Role[] = ["manager", "committee", "admin"];
-const finalizerRoles: Role[] = ["manager", "committee", "admin"];
+const allowedRoles: Role[] = ["manager", "committee", "city_manager", "city_committee", "admin"];
+const finalizerRoles: Role[] = ["manager", "committee", "city_committee", "admin"];
 const levels: Level[] = [...ACTIVE_LEVELS];
 const statuses: CollectiveStatus[] = [
   "draft",

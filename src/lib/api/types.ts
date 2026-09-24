@@ -35,7 +35,16 @@ export interface ApiFailure {
 }
 
 export type Role =
-  "student" | "class_representative" | "officer" | "manager" | "committee" | "admin";
+  | "student"
+  | "class_representative"
+  | "data_uploader"
+  | "officer"
+  | "manager"
+  | "committee"
+  | "city_officer"
+  | "city_manager"
+  | "city_committee"
+  | "admin";
 
 export interface WorkspaceSummary {
   id: string;

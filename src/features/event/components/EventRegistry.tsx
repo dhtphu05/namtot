@@ -61,7 +61,12 @@ type MobileTab = "info" | "documents" | "participants" | "mapping";
 export function EventRegistry() {
   const user = useAuth((state) => state.user);
   const role = user?.role as Role | undefined;
-  const canManageEvents = role === "officer" || role === "manager" || role === "admin";
+  const canManageEvents =
+    role === "officer" ||
+    role === "manager" ||
+    role === "city_officer" ||
+    role === "city_manager" ||
+    role === "admin";
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [eventSearch, setEventSearch] = useState("");
   const [criterion, setCriterion] = useState<Criterion | "all">("all");
@@ -992,7 +997,7 @@ function MappingPanel({
                   Xem phiên import quyết định
                 </Link>
               </Button>
-            ) : role === "committee" ? (
+            ) : role === "committee" || role === "city_committee" ? (
               <p className="rounded-lg border border-slate-200/80 px-3 py-3 text-sm text-[var(--text-secondary)]">
                 Hội đồng đang xem ở chế độ chỉ đọc.
               </p>
