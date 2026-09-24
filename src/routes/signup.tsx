@@ -31,6 +31,7 @@ import { useAuth, waitForAuthHydration } from "@/features/auth/store/auth-store"
 import { ApiError } from "@/lib/api/client";
 import { useApp } from "@/lib/store";
 import type { WorkspaceSummary } from "@/lib/api/types";
+import hsvvnEmblemUrl from "@/assets/hsvvn-emblem.webp";
 
 const onboardingSteps = [
   "Tạo tài khoản sinh viên",
@@ -165,9 +166,11 @@ function Signup() {
       <div className="mx-auto grid w-full max-w-6xl items-start gap-8 lg:grid-cols-[0.85fr_1.15fr]">
         <motion.div initial={false} animate={{ opacity: 1, y: 0 }} className="lg:sticky lg:top-10">
           <div className="rounded-xl bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <div className="gradient-brand mb-5 flex h-16 w-16 items-center justify-center rounded-3xl text-xl font-bold text-white">
-              5T
-            </div>
+            <img
+              src={hsvvnEmblemUrl}
+              alt="Biểu trưng Hội Sinh viên Việt Nam"
+              className="mb-5 h-16 w-16 rounded-full object-contain"
+            />
             <div className="text-xs font-bold uppercase tracking-wide text-[#0057C2]">
               Bắt đầu hồ sơ
             </div>

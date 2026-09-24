@@ -253,9 +253,11 @@ export function Sidebar() {
           </Link>
         ) : (
           <Link to="/app" className="flex items-center gap-3 px-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0057C2] text-sm font-bold text-white">
-              5T
-            </div>
+            <img
+              src={hsvvnEmblemUrl}
+              alt="Biểu trưng Hội Sinh viên Việt Nam"
+              className="h-10 w-10 shrink-0 rounded-full object-contain"
+            />
             <div>
               <div className="text-[15px] font-bold leading-tight text-[#0F172A]">
                 {isAdmin ? "HỘI SINH VIÊN VIỆT NAM" : "5TOT Platform"}

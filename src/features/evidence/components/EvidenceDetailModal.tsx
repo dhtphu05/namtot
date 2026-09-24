@@ -63,12 +63,13 @@ export function EvidenceDetailModal({
   const detail = (detailQuery.data ?? evidence) as EvidenceResponse | null;
   const activeEvidence = detail ?? evidence;
   const isEventImport = activeEvidence?.sourceType === "event_import";
+  const shouldPollCard = Boolean(
+    activeEvidence?.id &&
+    !isEventImport &&
+    !isTerminalEvidenceStatus(activeEvidence?.indexingStatus),
+  );
   const pollingCardQuery = useEvidenceCardPolling(activeEvidence?.id, {
-    enabled: Boolean(
-      activeEvidence?.id &&
-      !isEventImport &&
-      !isTerminalEvidenceStatus(activeEvidence?.indexingStatus),
-    ),
+    enabled: shouldPollCard,
     initialIntervalMs: 2000,
     backoffAfterMs: 20000,
     backoffIntervalMs: 5000,
@@ -78,8 +79,17 @@ export function EvidenceDetailModal({
       isTerminalStudentStatus(card?.studentStatus?.code),
   });
   const officialCardQuery = useEvidenceCard(isEventImport ? activeEvidence?.id : undefined);
-  const cardQuery = isEventImport ? officialCardQuery : pollingCardQuery;
+  const settledCardQuery = useEvidenceCard(
+    activeEvidence?.id && !isEventImport && !shouldPollCard ? activeEvidence.id : undefined,
+  );
+  const cardQuery = isEventImport
+    ? officialCardQuery
+    : shouldPollCard
+      ? pollingCardQuery
+      : settledCardQuery;
   const card = useMemo(() => normalizeEvidenceCard(cardQuery.data), [cardQuery.data]);
+  const polledEvidence = (card as { evidence?: EvidenceResponse | null } | null)?.evidence;
+  const renderedEvidence = polledEvidence ?? activeEvidence;
   const jobId = activeEvidence?.jobId;
   const jobQuery = useJobPolling(jobId, {
     enabled: Boolean(
@@ -309,7 +319,7 @@ export function EvidenceDetailModal({
                 />
               ) : (
                 <EvidenceCardPanel
-                  evidence={activeEvidence}
+                  evidence={renderedEvidence ?? activeEvidence}
                   card={card}
                   job={jobQuery.data}
                   requestId={cardError?.meta?.requestId}

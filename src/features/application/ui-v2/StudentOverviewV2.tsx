@@ -1,14 +1,18 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, BookOpenCheck, Clock3, Loader2, Plus } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowRight, BookOpenCheck, Clock3, Loader2, Plus, RefreshCw } from "lucide-react";
+import { useCallback, useMemo } from "react";
 import {
+  useAssistantNarrativeStream,
   useCriteriaCompletion,
   useCurrentApplication,
   useLatestPrecheck,
   useStartApplication,
   useStudentAssistantContext,
 } from "@/features/application/hooks/useApplication";
-import type { StudentNextBestAction } from "@/features/application/api/student-assistant";
+import type {
+  StudentAssistantContext,
+  StudentNextBestAction,
+} from "@/features/application/api/student-assistant";
 import { buildDashboardAssistantFallback } from "@/features/application/components/student-assistant-fallback";
 import {
   applyActionPresentationToUiAction,
@@ -173,6 +177,16 @@ export function StudentOverviewV2() {
         })
       : null);
   const assistantPrimaryAction = assistantDisplayContext?.nextBestAction ?? null;
+  const assistantNarrative = useAssistantNarrativeStream({
+    schoolYear: SCHOOL_YEAR,
+    contextVersion: assistantDisplayContext?.contextVersion,
+    fallbackText: assistantDisplayContext?.narrative.fallbackText,
+    enabled: Boolean(
+      assistantDisplayContext?.narrative.streamingAvailable &&
+      assistantDisplayContext.contextVersion &&
+      !assistantContext.isError,
+    ),
+  });
   const nextActions = useMemo(
     () => mergeAssistantActionIntoNextActions(assistantPrimaryAction, localNextActions),
     [assistantPrimaryAction, localNextActions],
@@ -189,7 +203,7 @@ export function StudentOverviewV2() {
     status: application?.status ?? summary.statusBadge.label,
   });
 
-  const handleStart = () => {
+  const handleStart = useCallback(() => {
     trackClick("student_start_application", {
       role: "student",
       page: "overview_v2",
@@ -200,7 +214,20 @@ export function StudentOverviewV2() {
       targetLevel: "school",
       applicationType: "individual",
     });
-  };
+  }, [startApplication, trackClick]);
+
+  const handleAssistantPrimaryAction = useCallback(() => {
+    const action = assistantPrimaryAction;
+    if (!action || action.type === "none") return;
+    if (action.type === "start_application" || !application) {
+      handleStart();
+      return;
+    }
+    navigate({
+      to: toStudentRoute(action.destination.route),
+      search: action.destination.query as never,
+    });
+  }, [application, assistantPrimaryAction, handleStart, navigate]);
 
   if (current.isLoading) {
     return <StudentOverviewV2Skeleton firstName={firstName} />;
@@ -242,6 +269,17 @@ export function StudentOverviewV2() {
         summary={summary}
       />
 
+      <DashboardAssistantPanel
+        context={assistantDisplayContext}
+        isError={assistantContext.isError}
+        isLoading={assistantContext.isLoading && !assistantDisplayContext}
+        isStarting={startApplication.isPending}
+        narrativeText={assistantNarrative.text}
+        onPrimaryAction={handleAssistantPrimaryAction}
+        onRetryNarrative={assistantNarrative.retry}
+        streamStatus={assistantNarrative.status}
+      />
+
       <FiveCriteriaSpineV2
         items={criteriaStates}
         onSelect={(key) =>
@@ -264,10 +302,10 @@ function OverviewHeading({ firstName }: { firstName: string }) {
   return (
     <header className="min-w-0">
       <h1 className="m-0 truncate text-[28px] font-bold leading-9 text-[var(--student-v2-text-primary)]">
-        Xin chào, {firstName}
+        Chào {firstName}, mình bắt đầu nhé
       </h1>
       <p className="mt-1 line-clamp-1 max-w-3xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-        Hoàn thiện hồ sơ Sinh viên 5 tốt theo đúng yêu cầu đang áp dụng tại đơn vị của bạn.
+        Trợ lý 5Tốt sẽ theo dõi tiến độ và hướng dẫn bạn ở từng bước hoàn thiện hồ sơ.
       </p>
     </header>
   );
@@ -306,7 +344,7 @@ function PrimaryStatusStrip({
       <div className="flex min-w-0 flex-1 flex-col justify-center pl-1">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-[12px] font-semibold uppercase leading-[17px] text-[var(--student-v2-text-muted)]">
-            Trạng thái hồ sơ
+            Trợ lý theo hồ sơ
           </span>
           <StatusPillV2 status={progressStatus} label={summary.statusBadge.label} />
         </div>
@@ -314,10 +352,12 @@ function PrimaryStatusStrip({
           id="student-overview-status-heading"
           className="mt-2 line-clamp-2 max-w-4xl text-[22px] font-bold leading-7 text-[var(--student-v2-text-primary)] sm:text-[24px] sm:leading-8"
         >
-          {summary.headline}
+          {application ? summary.headline : "Tạo hồ sơ để bắt đầu"}
         </h2>
         <p className="mt-1 line-clamp-2 max-w-3xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-          {summary.description}
+          {application
+            ? summary.description
+            : "Sau khi bạn tạo hồ sơ, trợ lý sẽ giúp đọc minh chứng, tiền kiểm thông tin và hướng dẫn bước tiếp theo."}
         </p>
         <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           {application ? (
@@ -366,6 +406,120 @@ function PrimaryStatusStrip({
               Hỏi trợ lý
             </Link>
           </ButtonV2>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DashboardAssistantPanel({
+  context,
+  isError,
+  isLoading,
+  isStarting,
+  narrativeText,
+  onPrimaryAction,
+  onRetryNarrative,
+  streamStatus,
+}: {
+  context?: StudentAssistantContext | null;
+  isError: boolean;
+  isLoading: boolean;
+  isStarting: boolean;
+  narrativeText?: string;
+  onPrimaryAction: () => void;
+  onRetryNarrative: () => void;
+  streamStatus: "idle" | "connecting" | "streaming" | "complete" | "error";
+}) {
+  if (isLoading) {
+    return (
+      <section
+        className="min-h-[132px] rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-5"
+        aria-busy="true"
+      >
+        <SkeletonLine className="h-4 w-28" />
+        <SkeletonLine className="mt-4 h-6 w-64" />
+        <SkeletonLine className="mt-3 h-4 w-3/5" />
+      </section>
+    );
+  }
+
+  const action = context?.nextBestAction ?? null;
+  const isNewUser = context?.state === "new_user";
+  const displayText =
+    (isNewUser
+      ? "AI có thể đọc minh chứng, tạo Thẻ minh chứng, tiền kiểm thông tin và hướng dẫn bạn đến bước tiếp theo."
+      : narrativeText) ||
+    context?.narrative.fallbackText ||
+    "Hệ thống sẽ gợi ý bước tiếp theo khi hồ sơ có dữ liệu mới.";
+  const showConnecting = streamStatus === "connecting" && !narrativeText;
+
+  return (
+    <section
+      className="grid min-w-0 gap-4 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
+      aria-labelledby="student-dashboard-assistant-heading"
+    >
+      <div className="min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="text-[12px] font-semibold uppercase leading-[17px] text-[var(--student-v2-text-muted)]">
+            Gợi ý theo tiến độ
+          </span>
+          {streamStatus === "streaming" ? (
+            <StatusPillV2 status="waiting" label="Đang cập nhật" />
+          ) : null}
+        </div>
+        <h2
+          id="student-dashboard-assistant-heading"
+          className="mt-2 line-clamp-1 text-[20px] font-bold leading-7 text-[var(--student-v2-text-primary)]"
+        >
+          {isNewUser
+            ? "Trợ lý sẽ đồng hành sau khi bạn tạo hồ sơ"
+            : (context?.greeting.title ?? "Trợ lý hồ sơ")}
+        </h2>
+        <p className="mt-1 line-clamp-2 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+          {context?.greeting.deterministicMessage ?? "Hệ thống đang tải trạng thái hồ sơ mới nhất."}
+        </p>
+        <p
+          className="mt-3 min-h-[44px] max-w-4xl text-[14px] leading-[22px] text-[var(--student-v2-text-primary)]"
+          aria-live={streamStatus === "complete" || streamStatus === "error" ? "polite" : "off"}
+        >
+          {showConnecting ? "Đang chuẩn bị gợi ý phù hợp với hồ sơ của bạn..." : displayText}
+        </p>
+        {isError ? (
+          <p className="mt-2 text-[12px] leading-[17px] text-[var(--student-v2-progress-supplement-text)]">
+            Chưa tải được gợi ý mới nhất. Dashboard vẫn dùng dữ liệu hiện có.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="min-w-0 rounded-[calc(var(--student-v2-radius-section)-4px)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-secondary)] p-4">
+        <p className="text-[12px] font-semibold uppercase leading-[17px] text-[var(--student-v2-text-muted)]">
+          Việc nên làm
+        </p>
+        <h3 className="mt-1 line-clamp-2 text-[16px] font-bold leading-6 text-[var(--student-v2-text-primary)]">
+          {action?.title ?? "Không có việc cần xử lý ngay"}
+        </h3>
+        <p className="mt-1 min-h-10 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
+          {action?.deterministicDescription ??
+            "Khi hồ sơ có yêu cầu mới, hệ thống sẽ hiển thị tại đây."}
+        </p>
+        <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row lg:flex-col">
+          {action && action.type !== "none" ? (
+            <ButtonV2 type="button" onClick={onPrimaryAction} disabled={isStarting}>
+              {isStarting ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <ArrowRight aria-hidden="true" />
+              )}
+              {action.ctaLabel}
+            </ButtonV2>
+          ) : null}
+          {streamStatus === "error" ? (
+            <ButtonV2 type="button" variant="tertiary" size="compact" onClick={onRetryNarrative}>
+              <RefreshCw aria-hidden="true" />
+              Cập nhật gợi ý
+            </ButtonV2>
+          ) : null}
         </div>
       </div>
     </section>

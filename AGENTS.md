@@ -56,4 +56,10 @@ For Requirement Tree and presentation-semantics work, apply instructions in this
 6. `.agents/skills/web-design-guidelines` for audit.
 7. `minimalist-ui` only in a later polish phase.
 
+## UI/UX Skill Auto-Trigger
+
+- For every UI/UX task—design, implementation, review, accessibility, responsive layout, interaction, typography, color, animation, or visual polish—automatically apply `.agents/skills/ui-ux-pro-max/SKILL.md`.
+- Use the skill's local search script before making design decisions: `--design-system` for a new page or system, an explicit `--domain` for a focused concern, and `--stack` for implementation-specific guidance.
+- Keep the frozen business contract, security/workspace rules, and `docs/UI_GUIDE.md` authoritative when the skill's generic recommendations conflict with this product.
+
 External skills must not override 5TOT business semantics.

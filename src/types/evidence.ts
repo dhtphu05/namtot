@@ -82,11 +82,26 @@ export type EvidenceListFilters = {
 export type EvidenceCard = {
   id?: string;
   evidenceId?: string;
+  sourceFileId?: string | null;
+  analysisRevision?: number | null;
   provider?: "openai" | "smartreader" | "mock" | string | null;
   providerModel?: string | null;
   promptVersion?: string | null;
+  documentType?: string | null;
+  suggestedCriteria?: Array<{
+    criterion?: Criterion;
+    reason?: string;
+    confidence?: number | null;
+  }>;
+  evidencePrecheck?: EvidencePrecheckResult | null;
   confirmationStatus?:
-    "pending" | "correction_required" | "confirmed" | "not_required" | string | null;
+    | "pending"
+    | "correction_required"
+    | "confirmed"
+    | "not_required"
+    | "needs_recheck"
+    | string
+    | null;
   requiresHumanConfirmation?: boolean | null;
   confirmedFields?: Record<string, unknown> | null;
   effectiveFields?: Record<string, unknown> | null;
@@ -119,6 +134,103 @@ export type EvidenceCard = {
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
+};
+
+export type EvidencePrecheckResult = {
+  evidenceId?: string;
+  evidenceCardRevision?: number;
+  generatedAt?: string;
+  status?:
+    | "ready_for_confirmation"
+    | "needs_attention"
+    | "file_not_readable"
+    | "insufficient_information"
+    | "possible_mismatch"
+    | string;
+  identifiedAs?: {
+    documentLabel?: string;
+    shortDescription?: string;
+  };
+  completeness?: {
+    score?: number;
+    availableFields?: string[];
+    missingImportantFields?: string[];
+  };
+  quality?: {
+    level?: "clear" | "needs_check" | "poor" | string;
+    issues?: string[];
+  };
+  identityCheck?: {
+    status?: "matched" | "missing" | "possible_mismatch" | "not_applicable" | string;
+    comparedFields?: string[];
+  };
+  relevance?: Array<{
+    criterion?: Criterion;
+    level?: "strong" | "possible" | "unclear" | string;
+    explanation?: string;
+  }>;
+  warnings?: Array<{
+    code?: string;
+    severity?: "info" | "warning" | "blocking" | string;
+    friendlyMessage?: string;
+    field?: string;
+  }>;
+  confirmationRequired?: boolean;
+  recommendedAction?:
+    | "confirm_card"
+    | "correct_card"
+    | "replace_file"
+    | "add_supporting_evidence"
+    | "wait_for_processing"
+    | string;
+  overallScore?: number;
+  sections?: Record<
+    string,
+    {
+      score?: number;
+      status?: string;
+      message?: string;
+    }
+  >;
+  availableFacts?: Array<{
+    key?: string;
+    label?: string;
+    displayValue?: string;
+  }>;
+  missingImportantFacts?: Array<{
+    key?: string;
+    label?: string;
+    reason?: string;
+  }>;
+  documentFacts?: {
+    documentTitle?: string | null;
+    conductEntries?: Array<{
+      semester?: string | null;
+      schoolYear?: string | null;
+      score?: number | null;
+      classification?: string | null;
+    }>;
+    fitness?: {
+      title?: string | null;
+      resultLevel?: string | null;
+      sportName?: string | null;
+    };
+    language?: {
+      certificateType?: string | null;
+      score?: number | null;
+      frameworkLevel?: string | null;
+    };
+    award?: {
+      title?: string | null;
+      rank?: string | null;
+      level?: string | null;
+    };
+    academic?: {
+      gpa?: number | null;
+      gpaScale?: number | null;
+      hasFGrade?: boolean | null;
+    };
+  };
 };
 
 export type EvidenceCardFieldDetail = {

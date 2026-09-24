@@ -96,16 +96,31 @@ export type StudentAssistantContext = {
 };
 
 export type AssistantStreamHandlers = {
-  onMeta?: (data: { contextVersion: string; requestId: string; cached: boolean }) => void;
+  onMeta?: (data: {
+    contextVersion: string;
+    requestId: string;
+    cached: boolean;
+    sequence?: number;
+  }) => void;
   onStatus?: (data: { stage: string }) => void;
   onDelta?: (data: { text: string }) => void;
-  onComplete?: (data: { text: string; contextVersion: string }) => void;
+  onComplete?: (data: {
+    text: string;
+    finalText?: string;
+    contextVersion: string;
+    fallback?: boolean;
+  }) => void;
   onError?: (data: { code: string; recoverable: boolean }) => void;
 };
 
 type ParsedSseEvent = {
   event: string;
   data: unknown;
+};
+
+type DispatchState = {
+  terminal: boolean;
+  requestId: string | null;
 };
 
 export const studentAssistantApi = {
@@ -150,6 +165,7 @@ export async function streamCurrentAssistantNarrative({
   const decoder = new TextDecoder();
   let buffer = "";
   let finalText = "";
+  const state: DispatchState = { terminal: false, requestId: null };
 
   while (true) {
     const { done, value } = await reader.read();
@@ -158,13 +174,14 @@ export async function streamCurrentAssistantNarrative({
     const parsed = parseSseBuffer(buffer);
     buffer = parsed.remainder;
     for (const event of parsed.events) {
-      finalText = dispatchAssistantStreamEvent(event, handlers) ?? finalText;
+      finalText = dispatchAssistantStreamEvent(event, handlers, state) ?? finalText;
     }
+    if (state.terminal) break;
   }
 
   const tail = parseSseBuffer(buffer, true);
   for (const event of tail.events) {
-    finalText = dispatchAssistantStreamEvent(event, handlers) ?? finalText;
+    finalText = dispatchAssistantStreamEvent(event, handlers, state) ?? finalText;
   }
 
   return finalText;
@@ -208,11 +225,16 @@ function parseSseFrame(frame: string): ParsedSseEvent | null {
 function dispatchAssistantStreamEvent(
   event: ParsedSseEvent,
   handlers: AssistantStreamHandlers,
+  state: DispatchState,
 ): string | null {
+  const requestId = readRequestId(event.data);
+  if (state.terminal) return null;
   if (event.event === "meta") {
+    state.requestId = requestId ?? state.requestId;
     handlers.onMeta?.(event.data as { contextVersion: string; requestId: string; cached: boolean });
     return null;
   }
+  if (state.requestId && requestId && requestId !== state.requestId) return null;
   if (event.event === "status") {
     handlers.onStatus?.(event.data as { stage: string });
     return null;
@@ -222,13 +244,21 @@ function dispatchAssistantStreamEvent(
     return null;
   }
   if (event.event === "error") {
+    state.terminal = true;
     handlers.onError?.(event.data as { code: string; recoverable: boolean });
     throw new Error("Luồng hướng dẫn bị gián đoạn.");
   }
   if (event.event === "complete") {
-    const data = event.data as { text: string; contextVersion: string };
+    const data = event.data as { text: string; finalText?: string; contextVersion: string };
+    state.terminal = true;
     handlers.onComplete?.(data);
-    return data.text;
+    return data.finalText || data.text;
   }
   return null;
+}
+
+function readRequestId(data: unknown) {
+  return data && typeof data === "object" && "requestId" in data
+    ? String((data as { requestId?: unknown }).requestId ?? "")
+    : null;
 }

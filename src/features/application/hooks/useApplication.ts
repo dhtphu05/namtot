@@ -268,7 +268,7 @@ export function useAssistantNarrativeStream({
         onComplete: (data) => {
           stopTimer();
           pendingChunksRef.current = [];
-          setText(data.text || fallbackText || "");
+          setText(data.finalText || data.text || fallbackText || "");
           setStatus("complete");
         },
         onError: () => {

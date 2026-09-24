@@ -83,6 +83,7 @@ export function EvidenceCardPanel({
     normalizeCompare(extractedEventName) !== normalizeCompare(evidence.evidenceName);
   const fileCount = getEvidenceFiles(evidence).length;
   const failed = evidence.indexingStatus === "failed";
+  const hasAnalysisContext = Boolean(card?.id && card.evidencePrecheck);
   const showConfirmationWorkspace =
     Boolean(card?.fieldDetails?.length) &&
     evidence.sourceType !== "event_import" &&
@@ -115,7 +116,13 @@ export function EvidenceCardPanel({
         <CompactReadingProgress status={evidence.indexingStatus} />
       ) : null}
 
-      {evidence.applicationId ? (
+      {evidence.sourceType !== "event_import" &&
+      isReading(evidence.indexingStatus) &&
+      !hasAnalysisContext ? (
+        <ProcessingAssistantSection status={evidence.indexingStatus} />
+      ) : null}
+
+      {evidence.applicationId && hasAnalysisContext ? (
         <StudentAssistantExplanation
           params={{
             contextType: "evidence_card",
@@ -126,6 +133,10 @@ export function EvidenceCardPanel({
           title="Giải thích minh chứng"
           compact
         />
+      ) : null}
+
+      {card?.evidencePrecheck ? (
+        <EvidencePrecheckSummary card={card} onUploadMore={onUploadMore} uploading={uploading} />
       ) : null}
 
       {showConfirmationWorkspace ? (
@@ -189,7 +200,9 @@ export function EvidenceCardPanel({
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">Chưa đọc được thông tin tóm tắt.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            AI chưa tìm thấy thông tin chính trong tài liệu này.
+          </p>
         )}
       </section>
 
@@ -298,6 +311,147 @@ export function EvidenceCardPanel({
   );
 }
 
+function EvidencePrecheckSummary({
+  card,
+  onUploadMore,
+  uploading,
+}: {
+  card: EvidenceCard;
+  onUploadMore?: () => void;
+  uploading?: boolean;
+}) {
+  const precheck = card.evidencePrecheck;
+  if (!precheck) return null;
+  const warnings = precheck.warnings ?? [];
+  const suggestedCriteria = card.suggestedCriteria ?? [];
+  const missingFields = precheck.completeness?.missingImportantFields ?? [];
+  const availableFacts = precheck.availableFacts ?? [];
+  const conductEntries = precheck.documentFacts?.conductEntries ?? [];
+
+  return (
+    <section className="rounded-md border border-sky-200 bg-sky-50/40 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold uppercase tracking-normal text-sky-800">
+            AI tiền kiểm minh chứng
+          </div>
+          <h3 className="mt-1 text-base font-semibold text-foreground">
+            {precheck.identifiedAs?.documentLabel ?? documentTypeLabel(card.documentType)}
+          </h3>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {precheck.identifiedAs?.shortDescription ??
+              "AI đã đọc tài liệu và tạo phần kiểm tra sơ bộ để bạn đối chiếu."}
+          </p>
+        </div>
+        <Badge variant="outline" className="bg-background">
+          {evidencePrecheckStatusLabel(precheck.status)}
+        </Badge>
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <FieldInfo
+          label="Mức đầy đủ"
+          value={
+            typeof precheck.completeness?.score === "number"
+              ? `${Math.round(precheck.completeness.score * 100)}%`
+              : "Chưa rõ"
+          }
+          source="AI tiền kiểm"
+        />
+        <FieldInfo
+          label="Chất lượng file"
+          value={qualityLabel(precheck.quality?.level)}
+          source="AI tiền kiểm"
+        />
+        <FieldInfo
+          label="Đối chiếu danh tính"
+          value={identityLabel(precheck.identityCheck?.status)}
+          source="Hệ thống đối chiếu"
+        />
+      </div>
+
+      {conductEntries.length ? (
+        <div className="mt-3 rounded-md border bg-background p-3">
+          <div className="text-xs font-semibold uppercase text-muted-foreground">
+            Kết quả rèn luyện đã đọc được
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {conductEntries.slice(0, 6).map((entry, index) => (
+              <FieldInfo
+                key={`${entry.semester ?? "hk"}-${entry.schoolYear ?? index}`}
+                label={
+                  [entry.semester ? `Học kỳ ${entry.semester}` : null, entry.schoolYear]
+                    .filter(Boolean)
+                    .join(" - ") || "Kết quả"
+                }
+                value={[entry.score ?? null, entry.classification]
+                  .filter((part) => part !== null && part !== undefined && part !== "")
+                  .join(" - ")}
+                source="AI đọc từ tài liệu"
+              />
+            ))}
+          </div>
+        </div>
+      ) : availableFacts.length ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {availableFacts.slice(0, 6).map((fact, index) => (
+            <FieldInfo
+              key={`${fact.key ?? "fact"}-${index}`}
+              label={fact.label ?? "Thông tin đã đọc"}
+              value={fact.displayValue ?? null}
+              source="AI đọc từ tài liệu"
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {missingFields.length ? (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Cần kiểm tra thêm: {missingFields.map(fieldLabel).join(", ")}.
+        </div>
+      ) : null}
+
+      {warnings.length ? (
+        <ul className="mt-3 space-y-1 text-sm text-amber-900">
+          {warnings.slice(0, 3).map((warning, index) => (
+            <li key={`${warning.code ?? "warning"}-${index}`} className="flex gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{warning.friendlyMessage ?? "Có thông tin cần bạn kiểm tra lại."}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {suggestedCriteria.length ? (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          {suggestedCriteria.slice(0, 2).map((item, index) => (
+            <span
+              key={`${item.criterion ?? "criterion"}-${index}`}
+              className="rounded-full border border-sky-200 bg-background px-2.5 py-1 text-sky-900"
+            >
+              Có thể phù hợp: {criterionLabel(String(item.criterion))}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {precheck.recommendedAction === "replace_file" && onUploadMore ? (
+        <Button
+          type="button"
+          size="sm"
+          className="mt-3"
+          variant="outline"
+          onClick={onUploadMore}
+          disabled={uploading}
+        >
+          <FilePlus2 className="h-4 w-4" />
+          Thay hoặc bổ sung file
+        </Button>
+      ) : null}
+    </section>
+  );
+}
+
 function StatusSection({
   status,
   onRetry,
@@ -342,6 +496,23 @@ function StatusSection({
           </Button>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+function ProcessingAssistantSection({ status }: { status: string }) {
+  return (
+    <section className="rounded-md border border-sky-200 bg-sky-50/40 p-4">
+      <div className="text-xs font-semibold uppercase tracking-normal text-sky-800">
+        AI đang đọc minh chứng
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        File đã được tải lên. Bạn có thể tiếp tục công việc khác và quay lại khi Thẻ minh chứng sẵn
+        sàng.
+      </p>
+      <Badge variant="outline" className="mt-3 bg-background">
+        {processingStageLabel(status)}
+      </Badge>
     </section>
   );
 }
@@ -621,15 +792,28 @@ function FieldControl({
 function CompactReadingProgress({ status }: { status: string }) {
   const activeIndex =
     status === "indexed" || status === "needs_manual_review"
-      ? 2
-      : status === "ocr_processing" || status === "processing"
-        ? 1
-        : 0;
-  const steps = ["Đã nhận file", "Đang đọc file", "Đã tạo tóm tắt", "Chờ cán bộ xét duyệt"];
+      ? 5
+      : status === "checking_registry"
+        ? 4
+        : status === "extracting"
+          ? 3
+          : status === "ocr_processing" || status === "processing"
+            ? 2
+            : status === "pending_indexing"
+              ? 1
+              : 0;
+  const steps = [
+    "Đã tải file",
+    "Đang chờ xử lý",
+    "AI đang đọc nội dung",
+    "Đang tạo Thẻ minh chứng",
+    "Đang tiền kiểm thông tin",
+    "Chờ bạn xác nhận",
+  ];
 
   return (
     <div className="rounded-md border bg-muted/20 p-3">
-      <div className="grid gap-2 sm:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-5">
         {steps.map((step, index) => (
           <div key={step} className="flex items-center gap-2 text-sm">
             <span
@@ -702,9 +886,11 @@ function FieldInfo({
   source:
     | "Hồ sơ"
     | "Sinh viên nhập"
-    | "SmartReader gợi ý"
-    | "Hệ thống gợi ý"
+    | "AI đọc từ tài liệu"
+    | "AI tiền kiểm"
+    | "Hệ thống đối chiếu"
     | "Kho chính thức"
+    | "Kho sự kiện"
     | "Cán bộ xác nhận";
   missing?: boolean;
 }) {
@@ -721,7 +907,7 @@ function FieldInfo({
           missing ? "text-muted-foreground" : "text-foreground"
         }`}
       >
-        {value || "Chưa đọc được"}
+        {value || "Chưa tìm thấy thông tin này trong tài liệu."}
       </div>
     </div>
   );
@@ -745,12 +931,41 @@ function getExtractedReadableFields(card?: EvidenceCard | null) {
   const suggestionSource = getSuggestionSource(card);
   const primary = card?.primaryFields ?? {};
   const profile = card?.studentProfileFields ?? {};
-  const fields = card?.normalizedFields ?? card?.extractedFields ?? {};
+  const fields =
+    card?.normalizedFields ??
+    card?.extractedFields ??
+    asRecord(card?.normalizedFieldsJson) ??
+    asRecord(card?.extractedFieldsJson) ??
+    {};
   const summary = card?.readableSummary;
   const confidence = card?.fieldConfidence ?? {};
   const items = [
     fieldFromLayer(
-      "eventName",
+      "student_name",
+      "Họ tên",
+      [fields.student_name, fields.studentName, profile.studentName, primary.studentName],
+      suggestionSource,
+    ),
+    fieldFromLayer(
+      "student_code",
+      "MSSV",
+      [fields.student_code, fields.studentCode, profile.studentCode, primary.studentCode],
+      suggestionSource,
+    ),
+    fieldFromLayer(
+      "class_name",
+      "Lớp",
+      [fields.class_name, fields.className, profile.className, primary.className],
+      suggestionSource,
+    ),
+    fieldFromLayer(
+      "faculty",
+      "Khoa/Trường",
+      [fields.faculty, profile.faculty, primary.faculty],
+      suggestionSource,
+    ),
+    fieldFromLayer(
+      "event_name",
       "Tên hoạt động",
       [fields.event_name, fields.eventName, summary?.eventName],
       suggestionSource,
@@ -768,21 +983,23 @@ function getExtractedReadableFields(card?: EvidenceCard | null) {
       suggestionSource,
     ),
     fieldFromLayer(
-      "activityDate",
+      "certificate_type",
+      "Loại minh chứng",
+      [fields.certificate_type, fields.certificateType],
+      suggestionSource,
+    ),
+    fieldFromLayer(
+      "activity_date",
       "Ngày hoạt động",
       [fields.activity_date, fields.activityDate, summary?.activityTime, summary?.time],
       suggestionSource,
     ),
     fieldFromLayer(
-      "issueDate",
+      "issue_date",
       "Ngày cấp",
       [fields.issue_date, fields.issueDate, summary?.issueDate],
       suggestionSource,
     ),
-    fieldFromLayer("studentName", "Họ tên", [profile.studentName, primary.studentName], "Hồ sơ"),
-    fieldFromLayer("studentCode", "MSSV", [profile.studentCode, primary.studentCode], "Hồ sơ"),
-    fieldFromLayer("className", "Lớp", [profile.className, primary.className], "Hồ sơ"),
-    fieldFromLayer("faculty", "Khoa", [profile.faculty, primary.faculty], "Hồ sơ"),
     fieldFromLayer(
       "convertedValue",
       "Giá trị",
@@ -796,7 +1013,7 @@ function getExtractedReadableFields(card?: EvidenceCard | null) {
     ),
   ];
 
-  return items
+  const layerItems = items
     .map((item) => ({
       ...item,
       confidence: item.source === suggestionSource ? confidence[item.key] : undefined,
@@ -808,7 +1025,21 @@ function getExtractedReadableFields(card?: EvidenceCard | null) {
       item.confidence < 0.5
         ? { ...item, value: null, missing: true }
         : item,
-    );
+    )
+    .filter((item) => !item.missing);
+
+  if (layerItems.length > 0) return layerItems;
+
+  return (card?.evidencePrecheck?.availableFacts ?? [])
+    .map((fact) => ({
+      key: fact.key ?? fact.label ?? "",
+      label: fact.label ?? fact.key ?? "Thông tin",
+      value: getDisplayValue(fact.displayValue),
+      source: suggestionSource,
+      missing: !getDisplayValue(fact.displayValue),
+    }))
+    .filter((item) => item.key && !item.missing)
+    .slice(0, 8);
 }
 
 function formatConvertedValue(value: unknown, unit?: string | null) {
@@ -820,7 +1051,7 @@ function fieldFromLayer(
   key: string,
   label: string,
   values: unknown[],
-  source: "Hồ sơ" | "SmartReader gợi ý" | "Hệ thống gợi ý",
+  source: "Hồ sơ" | "AI đọc từ tài liệu" | "Kho sự kiện",
 ) {
   return {
     key,
@@ -853,10 +1084,8 @@ function getAcademicInfo(card?: EvidenceCard | null) {
   };
 }
 
-function getSuggestionSource(card?: EvidenceCard | null): "SmartReader gợi ý" | "Hệ thống gợi ý" {
-  return card?.provider === "openai" || card?.provider === "mock"
-    ? "Hệ thống gợi ý"
-    : "SmartReader gợi ý";
+function getSuggestionSource(card?: EvidenceCard | null): "AI đọc từ tài liệu" | "Kho sự kiện" {
+  return card?.provider === "event_registry" ? "Kho sự kiện" : "AI đọc từ tài liệu";
 }
 
 function groupFieldDetails(fields: NonNullable<EvidenceCard["fieldDetails"]>) {
@@ -885,6 +1114,80 @@ function confirmationStatusLabel(status?: string | null) {
   if (status === "correction_required") return "Đã chỉnh, chờ xác nhận";
   if (status === "not_required") return "Không cần xác nhận";
   return "Cần xác nhận";
+}
+
+function evidencePrecheckStatusLabel(status?: string | null) {
+  if (status === "ready_for_confirmation") return "Sẵn sàng xác nhận";
+  if (status === "file_not_readable") return "File khó đọc";
+  if (status === "insufficient_information") return "Thiếu thông tin";
+  if (status === "possible_mismatch") return "Cần đối chiếu";
+  if (status === "needs_attention") return "Cần kiểm tra";
+  return "AI đã tiền kiểm";
+}
+
+function documentTypeLabel(type?: string | null) {
+  const labels: Record<string, string> = {
+    conduct_result: "Kết quả rèn luyện",
+    student_healthy_certificate: "Chứng nhận Sinh viên khỏe",
+    volunteer_certificate: "Minh chứng tình nguyện",
+    activity_certificate: "Giấy chứng nhận hoạt động",
+    award_certificate: "Giấy khen/giải thưởng",
+    academic_result: "Kết quả học tập",
+    research_achievement: "Thành tích nghiên cứu",
+    international_exchange: "Minh chứng hội nhập",
+    participant_confirmation: "Xác nhận tham gia",
+    certificate: "Giấy chứng nhận",
+    award: "Giấy khen/giải thưởng",
+    transcript: "Bảng điểm",
+    language_certificate: "Chứng chỉ ngoại ngữ",
+    participant_list: "Danh sách tham gia",
+    other: "Tài liệu minh chứng",
+  };
+  return type ? (labels[type] ?? "Tài liệu minh chứng") : "Tài liệu minh chứng";
+}
+
+function processingStageLabel(status: string) {
+  if (status === "pending_indexing") return "đang chờ xử lý";
+  if (status === "ocr_processing" || status === "processing") return "đang đọc nội dung";
+  if (status === "extracting") return "đang tạo Thẻ minh chứng";
+  if (status === "checking_registry") return "đang tiền kiểm thông tin";
+  return "đang chuẩn bị";
+}
+
+function qualityLabel(level?: string | null) {
+  if (level === "clear") return "Rõ";
+  if (level === "poor") return "Khó đọc";
+  if (level === "needs_check") return "Cần kiểm tra";
+  return "Chưa rõ";
+}
+
+function identityLabel(status?: string | null) {
+  if (status === "matched") return "Có thông tin khớp";
+  if (status === "missing") return "Thiếu thông tin";
+  if (status === "possible_mismatch") return "Có thể chưa khớp";
+  if (status === "not_applicable") return "Không áp dụng";
+  return "Chưa rõ";
+}
+
+function fieldLabel(key: string) {
+  const labels: Record<string, string> = {
+    student_name: "họ tên",
+    student_code: "mã sinh viên",
+    class_name: "lớp",
+    faculty: "khoa",
+    event_name: "tên hoạt động",
+    organizer: "đơn vị tổ chức",
+    organizer_level: "cấp tổ chức",
+    issue_date: "ngày cấp",
+    activity_date: "ngày tham gia",
+    award_level: "mức giải thưởng",
+    volunteer_days: "số ngày tham gia",
+    certificate_type: "loại chứng nhận",
+    language_score: "điểm ngoại ngữ",
+    gpa: "GPA",
+    conduct_score: "điểm rèn luyện",
+  };
+  return labels[key] ?? key;
 }
 
 function ConfidenceBadge({ confidence }: { confidence?: number | null }) {

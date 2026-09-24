@@ -370,7 +370,7 @@ export function AddEvidenceDrawer({
               ? "Tên sự kiện đã được điền sẵn. Bạn vẫn cần tải file minh chứng của mình để cán bộ kiểm tra."
               : hasRequirementContext
                 ? requirementContextLabel
-                : "Tìm hoạt động đã từng được chấp nhận hoặc nhập tên minh chứng thủ công."}
+                : "AI sẽ đọc file và tạo Thẻ minh chứng để bạn kiểm tra trước khi dùng cho tiền kiểm."}
           </DialogDescription>
         </DialogHeader>
 
@@ -532,7 +532,8 @@ export function AddEvidenceDrawer({
               </button>
             )}
             <p className="text-xs text-muted-foreground">
-              Hỗ trợ PDF, JPG, JPEG, PNG, WEBP. Tối đa 10MB.
+              Hỗ trợ PDF, JPG, JPEG, PNG, WEBP. AI sẽ đọc file, tạo Thẻ minh chứng và báo các thông
+              tin cần kiểm tra. Tối đa 10MB.
             </p>
             {fileError ? <p className="text-sm text-destructive">{fileError}</p> : null}
           </div>
@@ -866,7 +867,13 @@ function getSuggestionMatchLabel(level: EvidenceEventSuggestion["match"]["level"
 }
 
 function UploadProgress() {
-  const steps = ["Đã nhận file", "Đang đọc file", "Đã tạo tóm tắt", "Chờ cán bộ xét duyệt"];
+  const steps = [
+    "Đã tải file",
+    "AI đang đọc nội dung",
+    "Đang tạo Thẻ minh chứng",
+    "Đang tiền kiểm thông tin",
+    "Chờ bạn xác nhận",
+  ];
 
   return (
     <div className="rounded-md border bg-muted/20 p-3">

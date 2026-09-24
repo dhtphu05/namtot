@@ -23,9 +23,15 @@ export type StudentAssistantFact = {
 export type StudentAssistantAction = {
   id: string;
   type:
+    | "start_application"
+    | "open_application"
     | "open_evidence"
     | "confirm_evidence"
     | "correct_evidence"
+    | "replace_evidence_file"
+    | "retry_evidence_analysis"
+    | "open_precheck"
+    | "open_criterion"
     | "replace_file"
     | "retry_analysis"
     | "add_evidence"
@@ -74,6 +80,7 @@ export type StudentAssistantContext = {
 
 export type StudentAssistantAnswer = {
   answer: string;
+  finalText?: string;
   intent: string;
   sourceRefs: Array<{
     factId: string;
@@ -81,6 +88,8 @@ export type StudentAssistantAnswer = {
     destination?: StudentAssistantDestination;
   }>;
   suggestedActionId?: string;
+  navigation?: StudentAssistantAction | null;
+  fallback?: boolean;
   requiresOfficerClarification: boolean;
   contextVersion: string;
 };
@@ -102,11 +111,15 @@ export type StudentAssistantContextParams = {
 };
 
 export type StudentAssistantStreamHandlers = {
-  onMeta?: (data: unknown) => void;
+  onMeta?: (data: { requestId?: string; sequence?: number }) => void;
   onStatus?: (data: { stage: string }) => void;
   onDelta?: (data: { text: string }) => void;
   onSources?: (data: { sourceRefs: StudentAssistantAnswer["sourceRefs"] }) => void;
   onAction?: (data: { suggestedActionId: string | null }) => void;
+  onNavigation?: (data: {
+    selectedActionId: string | null;
+    action: StudentAssistantAction | null;
+  }) => void;
   onComplete?: (data: StudentAssistantAnswer) => void;
   onError?: (data: { code: string; recoverable: boolean }) => void;
 };
@@ -132,12 +145,18 @@ export async function streamStudentAssistantAnswer({
   context,
   message,
   recentMessages,
+  clientConversationId,
+  clientTurnId,
+  clientAttemptId,
   handlers,
   signal,
 }: {
   context: StudentAssistantContextParams & { contextVersion: string };
   message: string;
   recentMessages?: StudentAssistantMessage[];
+  clientConversationId?: string;
+  clientTurnId?: string;
+  clientAttemptId?: string;
   handlers: StudentAssistantStreamHandlers;
   signal?: AbortSignal;
 }): Promise<StudentAssistantAnswer | null> {
@@ -156,6 +175,9 @@ export async function streamStudentAssistantAnswer({
       ...context,
       message,
       recentMessages: recentMessages?.slice(-6),
+      clientConversationId,
+      clientTurnId,
+      clientAttemptId,
     }),
   });
 
@@ -167,6 +189,7 @@ export async function streamStudentAssistantAnswer({
   const decoder = new TextDecoder();
   let buffer = "";
   let finalAnswer: StudentAssistantAnswer | null = null;
+  const state: DispatchState = { terminal: false, requestId: null };
 
   while (true) {
     const { done, value } = await reader.read();
@@ -175,13 +198,14 @@ export async function streamStudentAssistantAnswer({
     const parsed = parseSseBuffer(buffer);
     buffer = parsed.remainder;
     for (const event of parsed.events) {
-      finalAnswer = dispatchStudentAssistantEvent(event, handlers) ?? finalAnswer;
+      finalAnswer = dispatchStudentAssistantEvent(event, handlers, state) ?? finalAnswer;
     }
+    if (state.terminal) break;
   }
 
   const tail = parseSseBuffer(buffer, true);
   for (const event of tail.events) {
-    finalAnswer = dispatchStudentAssistantEvent(event, handlers) ?? finalAnswer;
+    finalAnswer = dispatchStudentAssistantEvent(event, handlers, state) ?? finalAnswer;
   }
 
   return finalAnswer;
@@ -190,6 +214,11 @@ export async function streamStudentAssistantAnswer({
 type ParsedSseEvent = {
   event: string;
   data: unknown;
+};
+
+type DispatchState = {
+  terminal: boolean;
+  requestId: string | null;
 };
 
 export function parseSseBuffer(input: string, flush = false) {
@@ -228,8 +257,16 @@ function parseSseFrame(frame: string): ParsedSseEvent | null {
 function dispatchStudentAssistantEvent(
   event: ParsedSseEvent,
   handlers: StudentAssistantStreamHandlers,
+  state: DispatchState,
 ): StudentAssistantAnswer | null {
-  if (event.event === "meta") handlers.onMeta?.(event.data);
+  const requestId = readRequestId(event.data);
+  if (state.terminal) return null;
+  if (event.event === "meta") {
+    state.requestId = requestId ?? state.requestId;
+    handlers.onMeta?.(event.data as { requestId?: string; sequence?: number });
+    return null;
+  }
+  if (state.requestId && requestId && requestId !== state.requestId) return null;
   if (event.event === "status") handlers.onStatus?.(event.data as { stage: string });
   if (event.event === "delta") handlers.onDelta?.(event.data as { text: string });
   if (event.event === "sources") {
@@ -238,15 +275,28 @@ function dispatchStudentAssistantEvent(
   if (event.event === "action") {
     handlers.onAction?.(event.data as { suggestedActionId: string | null });
   }
+  if (event.event === "navigation") {
+    handlers.onNavigation?.(
+      event.data as { selectedActionId: string | null; action: StudentAssistantAction | null },
+    );
+  }
   if (event.event === "error") {
+    state.terminal = true;
     handlers.onError?.(event.data as { code: string; recoverable: boolean });
   }
   if (event.event === "complete") {
     const data = event.data as StudentAssistantAnswer;
+    state.terminal = true;
     handlers.onComplete?.(data);
     return data;
   }
   return null;
+}
+
+function readRequestId(data: unknown) {
+  return data && typeof data === "object" && "requestId" in data
+    ? String((data as { requestId?: unknown }).requestId ?? "")
+    : null;
 }
 
 function toQuery(params: StudentAssistantContextParams) {

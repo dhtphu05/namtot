@@ -84,6 +84,13 @@ export function getStudentEvidenceStatus(
   evidence: EvidenceResponse,
   card?: EvidenceCard | null,
 ): StudentEvidenceStatus {
+  if (
+    evidence.indexingStatus === "indexed" &&
+    card?.evidencePrecheck?.status === "ready_for_confirmation"
+  ) {
+    return studentEvidenceStatusMap.evidence_read;
+  }
+
   const backendStatus = normalizeBackendStatus(card?.studentStatus ?? evidence.studentStatus);
   if (backendStatus) return backendStatus;
 

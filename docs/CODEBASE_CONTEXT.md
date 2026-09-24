@@ -925,6 +925,7 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - `Quy định áp dụng`
   - `Trung tâm hỗ trợ`
   - `Thông tin hệ thống`
+
     These are compact shell links, not a fixed-height page footer.
 - V2 token aliases in `src/styles.css` were extended with primary action blue, accent cyan, spacing scale aliases, and typography scale aliases. These are additive and safe for later V2 page work.
 - V2 component additions/normalization under `src/features/application/ui-v2/components/`:
@@ -1473,3 +1474,9 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - Officer physical seed rendered one precedent, accepted-evidence gallery, and the wide detail dialog with tabs and conflict callout; no raw `Resolution Hub`, `Committee`, `raw audit`, `confidence`, or AI wording appeared.
 - Remaining verification limit:
   - Full review accept-with-precedent and pre-resolution mutation E2E was not executed because it would mutate the configured real data and no disposable matching review fixture was available in this pass.
+
+## Institutional Emblem Usage On 2026-09-09
+
+- The verified Hội Sinh viên Việt Nam emblem is available at `src/assets/hsvvn-emblem.webp`.
+- Existing mock `5T` marks were replaced with the emblem in the login entry point, signup entry point, legacy shared sidebar, and reusable `InstitutionalLockup` primitive.
+- The student V2 sidebar and public landing page continue to use the same bundled emblem asset, so institutional identity stays consistent across entry and workspace surfaces.

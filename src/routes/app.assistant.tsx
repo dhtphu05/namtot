@@ -15,6 +15,19 @@ export const Route = createFileRoute("/app/assistant")({
     feedbackId: typeof search.feedbackId === "string" ? search.feedbackId : undefined,
     message: typeof search.message === "string" ? search.message : undefined,
     nextActions: typeof search.nextActions === "string" ? search.nextActions : undefined,
+    contextType:
+      search.contextType === "dashboard" ||
+      search.contextType === "evidence_card" ||
+      search.contextType === "precheck" ||
+      search.contextType === "event_registry" ||
+      search.contextType === "supplement"
+        ? search.contextType
+        : undefined,
+    contextId: typeof search.contextId === "string" ? search.contextId : undefined,
+    criterion: typeof search.criterion === "string" ? search.criterion : undefined,
+    evidenceId: typeof search.evidenceId === "string" ? search.evidenceId : undefined,
+    eventId: typeof search.eventId === "string" ? search.eventId : undefined,
+    reviewTaskId: typeof search.reviewTaskId === "string" ? search.reviewTaskId : undefined,
   }),
   component: () => (
     <StudentRoleSurface student={<StudentSupport />} fallback={<StudentSupport />} />
