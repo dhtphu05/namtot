@@ -18,6 +18,7 @@ export const applicationKeys = {
   latestPrecheck: (id: string) => ["application", id, "precheck", "latest"] as const,
   criteriaCompletion: (id: string) => ["application", id, "criteria-completion"] as const,
   metrics: (id: string) => ["application", id, "metrics"] as const,
+  cityEligibility: (id: string) => ["application", id, "city-eligibility"] as const,
 };
 
 export function useCurrentApplication(schoolYear?: string) {
@@ -28,6 +29,20 @@ export function useCurrentApplication(schoolYear?: string) {
       return res.data;
     },
     retry: false,
+  });
+}
+
+export function useCitySubmissionEligibility(applicationId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: applicationKeys.cityEligibility(applicationId ?? ""),
+    queryFn: async () => {
+      if (!applicationId) return null;
+      const response = await applicationApi.getCitySubmissionEligibility(applicationId);
+      return response.data;
+    },
+    enabled: Boolean(applicationId && enabled),
+    retry: false,
+    staleTime: 0,
   });
 }
 
@@ -142,6 +157,19 @@ export function useSubmitApplication() {
       );
     },
     onError: (err: Error) => {
+      const code = "code" in err ? String(err.code) : "";
+      if (code === "CITY_SUBMISSION_NOT_ELIGIBLE") {
+        toast.error(
+          "Hồ sơ hiện chưa đủ điều kiện nộp hồ sơ cấp Thành phố. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ và minh chứng.",
+        );
+        return;
+      }
+      if (code === "CITY_SUBMISSION_NEEDS_VERIFICATION") {
+        toast.error(
+          "Điều kiện nộp hồ sơ cấp Thành phố đang chờ cán bộ xác minh. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.",
+        );
+        return;
+      }
       toast.error(`Không thể nộp hồ sơ: ${err.message}`);
     },
   });

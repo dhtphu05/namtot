@@ -123,6 +123,224 @@ test.describe("student application UI V2 acceptance", () => {
     await expect(page.getByRole("button", { name: /Xác nhận tình trạng vi phạm/i })).toHaveCount(0);
   });
 
+  test("city eligibility copy distinguishes direct, eligible, not eligible, and verification states", async ({
+    page,
+  }) => {
+    for (const [status, route, expectedCopy] of [
+      ["ELIGIBLE", "DIRECT_CITY", /xét trực tiếp cấp Thành phố/i],
+      ["ELIGIBLE", "UDN_PREREQUISITE", /đủ điều kiện nộp hồ sơ cấp Thành phố/i],
+      ["NOT_ELIGIBLE", "UDN_PREREQUISITE", /chưa đủ điều kiện để nộp lần đầu cấp Thành phố/i],
+      ["NEEDS_VERIFICATION", "UDN_PREREQUISITE", /cần được cán bộ Thành phố xác minh/i],
+    ] as const) {
+      await loginAndGotoCityApplication(page, status, route);
+      await expect(
+        page.getByRole("heading", { name: /Điều kiện nộp hồ sơ cấp Thành phố/i }),
+      ).toBeVisible();
+      const eligibilityCard = page.locator(
+        'section[aria-labelledby="city-submission-eligibility-title"]',
+      );
+      await expect(eligibilityCard).toContainText(expectedCopy);
+      await expect(eligibilityCard).not.toContainText(/kết quả danh hiệu|được xét đạt/i);
+    }
+  });
+
+  test("not eligible blocks only initial submit while drafting and precheck stay available", async ({
+    page,
+  }) => {
+    await loginAndGotoCityApplication(page, "NOT_ELIGIBLE", "UDN_PREREQUISITE");
+
+    await expect(page.getByRole("button", { name: /Kiểm tra hồ sơ/ }).first()).toBeEnabled();
+    await expect(page.getByRole("button", { name: /Nộp hồ sơ/ }).first()).toBeDisabled();
+    await expect(page.getByRole("button", { name: /Tải minh chứng/ }).first()).toBeEnabled();
+  });
+
+  test("eligibility is refreshed at final submit and a newly blocked result prevents submission", async ({
+    page,
+  }) => {
+    let submitCount = 0;
+    let eligibilityReadCount = 0;
+    page.on("request", (request) => {
+      const path = new URL(request.url()).pathname;
+      if (path.endsWith("/submit")) submitCount += 1;
+    });
+    await mockCityApplication(page, "noTasks");
+    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+      eligibilityReadCount += 1;
+      await json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        route: "UDN_PREREQUISITE",
+        status: eligibilityReadCount > 1 ? "NEEDS_VERIFICATION" : "ELIGIBLE",
+        reasons: eligibilityReadCount > 1 ? ["IDENTITY_MATCH_REQUIRES_VERIFICATION"] : [],
+      });
+    });
+    await loginAndGoto(page, "/app/application");
+    await expect(page.getByRole("heading", { name: "Hồ sơ & minh chứng" })).toBeVisible();
+    await page
+      .getByRole("button", { name: /Nộp hồ sơ/ })
+      .first()
+      .click();
+    await expect(page.getByRole("heading", { name: "Xác nhận nộp hồ sơ" })).toBeVisible();
+    await page
+      .getByRole("button", { name: /Gửi hồ sơ|Nộp hồ sơ/i })
+      .last()
+      .click();
+
+    await expect(
+      page.locator('section[aria-labelledby="city-submission-eligibility-title"]'),
+    ).toContainText(/cần được cán bộ Thành phố xác minh/i);
+    expect(eligibilityReadCount).toBeGreaterThanOrEqual(2);
+    expect(submitCount).toBe(0);
+  });
+
+  test("a backend eligibility conflict refreshes the V2 card and shows one explanation", async ({
+    page,
+  }) => {
+    let eligibilityReadCount = 0;
+    await mockCityApplication(page, "noTasks");
+    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+      eligibilityReadCount += 1;
+      await json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        route: "UDN_PREREQUISITE",
+        status: eligibilityReadCount > 2 ? "NEEDS_VERIFICATION" : "ELIGIBLE",
+        reasons: eligibilityReadCount > 2 ? ["IDENTITY_MATCH_REQUIRES_VERIFICATION"] : [],
+      });
+    });
+    await page.route("http://localhost:8080/api/applications/app-1/submit", async (route) => {
+      await jsonErrorWithCode(
+        route,
+        409,
+        "CITY_SUBMISSION_NEEDS_VERIFICATION",
+        "Manual verification is required.",
+      );
+    });
+
+    await loginAndGoto(page, "/app/application");
+    await expect(page.getByRole("button", { name: /Nộp hồ sơ/ }).first()).toBeEnabled();
+    await page
+      .getByRole("button", { name: /Nộp hồ sơ/ })
+      .first()
+      .click();
+    await page
+      .getByRole("button", { name: /Gửi hồ sơ|Nộp hồ sơ/i })
+      .last()
+      .click();
+
+    await expect(
+      page.locator('section[aria-labelledby="city-submission-eligibility-title"]'),
+    ).toContainText(/cần được cán bộ Thành phố xác minh/i);
+    await expect(
+      page.getByText(/Điều kiện nộp hồ sơ cấp Thành phố đang chờ cán bộ xác minh/i),
+    ).toHaveCount(1);
+    expect(eligibilityReadCount).toBeGreaterThanOrEqual(3);
+  });
+
+  test("supplement resubmission hides and skips city eligibility", async ({ page }) => {
+    let eligibilityReadCount = 0;
+    let submitCount = 0;
+    page.on("request", (request) => {
+      const path = new URL(request.url()).pathname;
+      if (path.endsWith("/eligibility")) eligibilityReadCount += 1;
+      if (path.endsWith("/submit")) submitCount += 1;
+    });
+
+    await mockCityApplication(page, "supplement");
+    await loginAndGoto(page, "/app/application");
+    await expect(page.getByRole("heading", { name: "Hồ sơ & minh chứng" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Điều kiện nộp hồ sơ cấp Thành phố/i }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: /Nộp hồ sơ/ })
+      .first()
+      .click();
+    await page.getByRole("button", { name: /Gửi lại hồ sơ bổ sung/ }).click();
+
+    await expect.poll(() => submitCount).toBe(1);
+    expect(eligibilityReadCount).toBe(0);
+  });
+
+  test("supplement-required with no submittedAt is still checked as an initial City submission", async ({
+    page,
+  }) => {
+    let eligibilityReadCount = 0;
+    await mockCityApplication(page, "supplement", null);
+    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+      eligibilityReadCount += 1;
+      await json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        route: "UDN_PREREQUISITE",
+        status: "NOT_ELIGIBLE",
+        reasons: ["MISSING_UNIVERSITY_SYSTEM_AWARD"],
+      });
+    });
+
+    await loginAndGoto(page, "/app/application");
+    await expect(
+      page.locator('section[aria-labelledby="city-submission-eligibility-title"]'),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Nộp hồ sơ/ }).first()).toBeDisabled();
+    expect(eligibilityReadCount).toBe(1);
+  });
+
+  test("a non-V2 student route explains a backend City eligibility conflict", async ({ page }) => {
+    const applicationResponse = currentApplication("noTasks", "city");
+    if (!applicationResponse.application) throw new Error("Test application fixture is missing.");
+    applicationResponse.application.readinessScore = 100;
+    applicationResponse.application.metrics.push(
+      metric("metric-volunteer-days", "volunteer_days", 15, 20, "pending"),
+    );
+    await page.route("http://localhost:8080/api/applications/current*", async (route) => {
+      await json(route, applicationResponse);
+    });
+    await page.route("http://localhost:8080/api/applications/app-1/evidences*", async (route) => {
+      const allEvidence = [
+        ...evidencesFor(null),
+        evidence(
+          "ev-ethics",
+          "Phiếu xác nhận đạo đức",
+          "ethics",
+          "application/pdf",
+          "accepted",
+          "indexed",
+        ),
+      ];
+      const criterion = new URL(route.request().url()).searchParams.get(
+        "criterion",
+      ) as Criterion | null;
+      await json(
+        route,
+        criterion ? allEvidence.filter((item) => item.criterion === criterion) : allEvidence,
+      );
+    });
+    await page.route(
+      "http://localhost:8080/api/applications/app-1/precheck/latest",
+      async (route) => {
+        await json(route, { ...latestPrecheck("noTasks"), readinessScore: 100 });
+      },
+    );
+    await page.route("http://localhost:8080/api/applications/app-1/submit", async (route) => {
+      await jsonErrorWithCode(
+        route,
+        409,
+        "CITY_SUBMISSION_NOT_ELIGIBLE",
+        "City submission requires an eligible award prerequisite.",
+      );
+    });
+
+    await loginAndGoto(page, "/app/wizard");
+    await page
+      .getByRole("button", { name: /Nộp hồ sơ/ })
+      .last()
+      .click();
+    await page.getByRole("button", { name: "Xác nhận nộp hồ sơ" }).click();
+
+    await expect(page.getByText(/chưa đủ điều kiện nộp hồ sơ cấp Thành phố/i)).toBeVisible();
+  });
+
   test("physical path selection requires confirmation before changing dirty input", async ({
     page,
   }) => {
@@ -264,7 +482,7 @@ test.describe("student legacy flag smoke", () => {
 });
 
 async function installStudentApiMock(page: Page) {
-  await page.route("**/api/**", async (route) => {
+  await page.route("http://localhost:8080/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
@@ -280,7 +498,19 @@ async function installStudentApiMock(page: Page) {
       return json(route, { user: studentUser, accessToken: "test-token", refreshToken: "refresh" });
     }
     if (path === "/api/auth/logout") return json(route, null);
-    if (path === "/api/applications/current") return json(route, currentApplication(state));
+    if (path === "/api/applications/current") {
+      return json(route, currentApplication(state));
+    }
+    if (path.match(/\/api\/applications\/[^/]+\/eligibility$/)) {
+      const status = "ELIGIBLE";
+      return json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        route: "UDN_PREREQUISITE",
+        status,
+        reasons: status === "NOT_ELIGIBLE" ? ["MISSING_UNIVERSITY_SYSTEM_AWARD"] : [],
+      });
+    }
     if (path === "/api/applications/current/start") return json(route, currentApplication("draft"));
     if (path.endsWith("/criteria-completion")) return json(route, criteriaCompletion(state));
     if (path.endsWith("/precheck/latest")) return json(route, latestPrecheck(state));
@@ -362,6 +592,31 @@ async function loginAndGoto(page: Page, route: string) {
   );
   await page.goto(route, { waitUntil: "domcontentloaded" });
   await page.locator("body").waitFor({ state: "visible" });
+}
+
+async function loginAndGotoCityApplication(
+  page: Page,
+  eligibilityStatus: "ELIGIBLE" | "NOT_ELIGIBLE" | "NEEDS_VERIFICATION",
+  eligibilityRoute: "DIRECT_CITY" | "UDN_PREREQUISITE",
+) {
+  await mockCityApplication(page, "noTasks");
+  await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+    await json(route, {
+      applicationId: "app-1",
+      schoolYear: "2025-2026",
+      route: eligibilityRoute,
+      status: eligibilityStatus,
+      reasons: eligibilityStatus === "NOT_ELIGIBLE" ? ["MISSING_UNIVERSITY_SYSTEM_AWARD"] : [],
+    });
+  });
+  await loginAndGoto(page, "/app/application");
+  await expect(page.getByRole("heading", { name: "Hồ sơ & minh chứng" })).toBeVisible();
+}
+
+async function mockCityApplication(page: Page, state: AppMode, submittedAt?: string | null) {
+  await page.route("http://localhost:8080/api/applications/current?*", async (route) => {
+    await json(route, currentApplication(state, "city", submittedAt));
+  });
 }
 
 function collectPageErrors(page: Page) {
@@ -466,7 +721,11 @@ function routeState(url: URL): AppMode {
   return "draft";
 }
 
-function currentApplication(state: AppMode) {
+function currentApplication(
+  state: AppMode,
+  targetLevel: "school" | "city" = "school",
+  submittedAt?: string | null,
+) {
   if (state === "empty") {
     return { application: null, state: "not_started", schoolYear: "2025-2026" };
   }
@@ -487,12 +746,17 @@ function currentApplication(state: AppMode) {
       studentId: "student-1",
       schoolYear: "2025-2026",
       applicationType: "individual",
-      targetLevel: "school",
+      targetLevel,
       status,
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-02T00:00:00Z",
       lastUpdatedAt: "2026-01-02T00:00:00Z",
-      submittedAt: state === "submitted" || state === "completed" ? "2026-01-03T00:00:00Z" : null,
+      submittedAt:
+        submittedAt !== undefined
+          ? submittedAt
+          : state === "submitted" || state === "completed" || state === "supplement"
+            ? "2026-01-03T00:00:00Z"
+            : null,
       currentDraftVersion: 2,
       metrics: [
         metric("metric-conduct", "conduct_score", 87, 100, "pending"),
@@ -937,6 +1201,19 @@ async function jsonError(route: Route, status: number, message: string) {
       success: false,
       data: null,
       error: { code: String(status), message },
+      meta: { requestId: "pw-mock" },
+    }),
+  });
+}
+
+async function jsonErrorWithCode(route: Route, status: number, code: string, message: string) {
+  await route.fulfill({
+    status,
+    headers: { ...mockCorsHeaders, "content-type": "application/json" },
+    body: JSON.stringify({
+      success: false,
+      data: null,
+      error: { code, message },
       meta: { requestId: "pw-mock" },
     }),
   });

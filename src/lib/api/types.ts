@@ -493,6 +493,14 @@ export interface ApplicationState extends Application {
   };
 }
 
+export type CitySubmissionEligibility = {
+  applicationId: string;
+  schoolYear: string;
+  route: "DIRECT_CITY" | "UDN_PREREQUISITE";
+  status: "ELIGIBLE" | "NOT_ELIGIBLE" | "NEEDS_VERIFICATION";
+  reasons: string[];
+};
+
 export interface ApplicationReviewTaskSummary {
   id: string;
   criterion: Criterion;

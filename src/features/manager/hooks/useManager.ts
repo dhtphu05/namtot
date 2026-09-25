@@ -9,6 +9,7 @@ import type {
   ManagerCollectiveFilters,
   ManagerResultFilters,
   ReopenFinalInput,
+  VerifyEligibilityInput,
 } from "../types";
 
 export const managerKeys = {
@@ -23,6 +24,13 @@ export const managerKeys = {
     ["managerCollectiveAggregation", collectiveId ?? ""] as const,
   results: (params?: ManagerResultFilters) => ["managerResults", params ?? {}] as const,
   resultDetail: (applicationId?: string) => ["managerResultDetail", applicationId ?? ""] as const,
+  eligibilityVerificationQueue: [
+    "managerApplications",
+    "eligibilityVerification",
+    "pending",
+  ] as const,
+  eligibilityVerificationDetail: (applicationId?: string) =>
+    ["managerEligibilityVerification", applicationId ?? ""] as const,
 };
 
 export function useManagerApplications(params?: ManagerApplicationsParams) {
@@ -31,6 +39,56 @@ export function useManagerApplications(params?: ManagerApplicationsParams) {
     queryFn: async () => {
       const response = await managerApi.getManagerApplications(params);
       return response.data;
+    },
+  });
+}
+
+export function useEligibilityVerificationQueue() {
+  return useQuery({
+    queryKey: managerKeys.eligibilityVerificationQueue,
+    queryFn: async () => {
+      const response = await managerApi.getEligibilityVerificationQueue();
+      return response.data;
+    },
+  });
+}
+
+export function useEligibilityVerificationDetail(applicationId?: string) {
+  return useQuery({
+    queryKey: managerKeys.eligibilityVerificationDetail(applicationId),
+    queryFn: async () => {
+      const response = await managerApi.getEligibilityVerification(applicationId ?? "");
+      return response.data;
+    },
+    enabled: Boolean(applicationId),
+  });
+}
+
+export function useVerifyApplicationEligibility() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      applicationId,
+      payload,
+    }: {
+      applicationId: string;
+      payload: VerifyEligibilityInput;
+    }) => managerApi.verifyApplicationEligibility(applicationId, payload),
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: managerKeys.eligibilityVerificationQueue }),
+        queryClient.invalidateQueries({
+          queryKey: managerKeys.eligibilityVerificationDetail(variables.applicationId),
+        }),
+      ]);
+      toast.success(
+        variables.payload.decision === "APPROVED"
+          ? "Đã phê duyệt xác minh điều kiện nộp hồ sơ."
+          : "Đã ghi nhận quyết định từ chối xác minh điều kiện.",
+      );
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Không thể lưu quyết định xác minh.");
     },
   });
 }
