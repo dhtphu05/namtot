@@ -154,6 +154,76 @@ test.describe("student application UI V2 acceptance", () => {
     await expect(page.getByRole("button", { name: /Tải minh chứng/ }).first()).toBeEnabled();
   });
 
+  test("City first submission stays available with incomplete criteria and offers add-or-submit-anyway", async ({
+    page,
+  }) => {
+    let submitCount = 0;
+    await mockCityApplication(page, "draft");
+    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+      await json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        route: "DIRECT_CITY",
+        status: "ELIGIBLE",
+        reasons: [],
+      });
+    });
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.endsWith("/submit")) submitCount += 1;
+    });
+
+    await loginAndGoto(page, "/app/application");
+    const submitButton = page.getByRole("button", { name: /Nộp hồ sơ/ }).first();
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
+
+    const modal = page.getByRole("heading", { name: /kiểm tra trước khi nộp hồ sơ thành phố/i });
+    await expect(modal).toBeVisible();
+    const confirmation = page.locator(".fixed.inset-0");
+    await expect(confirmation).toContainText(
+      /bạn vẫn có thể nộp hồ sơ để hội sinh viên thành phố xem xét/i,
+    );
+    await expect(confirmation).toContainText(/đạo đức tốt|đạo đức/i);
+    await expect(confirmation).toContainText(/học tập tốt|học tập/i);
+    await expect(confirmation).toContainText(/thể lực tốt|thể lực/i);
+    await expect(confirmation).toContainText(/tình nguyện tốt|tình nguyện/i);
+    await expect(confirmation).toContainText(/hội nhập tốt|hội nhập/i);
+    await expect(confirmation).toContainText("BỔ SUNG HỒ SƠ");
+    await expect(confirmation).toContainText("VẪN NỘP HỒ SƠ");
+    await expect(confirmation).not.toContainText(/không đạt/i);
+
+    await page.getByRole("button", { name: "BỔ SUNG HỒ SƠ" }).click();
+    await expect(modal).toBeHidden();
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
+    await page.getByRole("button", { name: "VẪN NỘP HỒ SƠ" }).click();
+    await expect.poll(() => submitCount).toBe(1);
+  });
+
+  test("City OCR failure keeps the original file and asks staff to check it", async ({ page }) => {
+    await mockCityApplication(page, "draft");
+    await page.route("http://localhost:8080/api/applications/app-1/evidences**", async (route) => {
+      await json(route, [
+        evidence(
+          "ev-city-ocr-failed",
+          "Bảng điểm gốc",
+          "academic",
+          "application/pdf",
+          "draft",
+          "failed",
+        ),
+      ]);
+    });
+
+    await loginAndGotoCityApplication(page, "ELIGIBLE", "DIRECT_CITY");
+    await page.getByRole("button", { name: /Học tập tốt/ }).click();
+
+    const evidenceCard = page.locator("article").filter({ hasText: "Bảng điểm gốc" });
+    await expect(evidenceCard).toContainText(/cán bộ sẽ kiểm tra file gốc/i);
+    await expect(evidenceCard).toContainText("bang-diem.pdf");
+    await expect(evidenceCard).not.toContainText(/không đọc được minh chứng/i);
+  });
+
   test("eligibility is refreshed at final submit and a newly blocked result prevents submission", async ({
     page,
   }) => {
@@ -180,11 +250,10 @@ test.describe("student application UI V2 acceptance", () => {
       .getByRole("button", { name: /Nộp hồ sơ/ })
       .first()
       .click();
-    await expect(page.getByRole("heading", { name: "Xác nhận nộp hồ sơ" })).toBeVisible();
-    await page
-      .getByRole("button", { name: /Gửi hồ sơ|Nộp hồ sơ/i })
-      .last()
-      .click();
+    await expect(
+      page.getByRole("heading", { name: "Kiểm tra trước khi nộp hồ sơ Thành phố" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "VẪN NỘP HỒ SƠ" }).click();
 
     await expect(
       page.locator('section[aria-labelledby="city-submission-eligibility-title"]'),

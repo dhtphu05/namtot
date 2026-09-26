@@ -1093,7 +1093,14 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - PowerShell flag-enabled build passed with `VITE_STUDENT_APPLICATION_UI_V2=true`.
 - Existing failures/limits for this phase:
   - Full `npx eslint src` still fails on pre-existing CRLF Prettier errors in presentation/student primitive files and reports existing hook/fast-refresh warnings outside the Phase 4 scope. The changed-file scoped lint is clean; unrelated formatting cleanup was intentionally not performed.
-  - Browser connector verification against `http://127.0.0.1:5173/app/application` timed out during DOM evaluation and screenshot capture. No browser-driven visual assertion was recorded in this phase.
+
+## Phase 4 Part 1 — City Criteria and Soft Advisory Precheck (2026-09-27)
+
+- Frontend work is isolated in `/private/tmp/phase4-city-criteria-frontend`, branch `phase4-city-criteria-frontend`, based on `0900b846a0f4316b218d94112612417b568d7223`. The original checkout and its untracked `__pycache__` remain untouched.
+- For a student's initial personal City application, `/app/application` keeps the submit action enabled despite incomplete criteria when Phase 3 eligibility is `ELIGIBLE`. The existing confirmation dialog labels rules/OCR as reference advice, groups findings under the five official City criteria, offers `BỔ SUNG HỒ SƠ` and `VẪN NỘP HỒ SƠ`, and never calls a suggestion an official pass/fail. Phase 3 eligibility is still refreshed and enforced before submit; supplement resubmission does not query or show the initial City eligibility gate.
+- When a source file is saved but City OCR fails or needs manual review, its original file remains on the evidence card and the City first-submit UI says staff will inspect the saved source. This copy/status override is limited to the initial personal City submission; other application levels retain the existing OCR failure behavior.
+- City individual review tasks with a precheck show a compact five-criterion advisory panel on the existing review detail page. It uses neutral labels and asks reviewers to compare the original evidence; it does not update decisions. The reference-data tab separates student-entered GPA from OCR/SmartReader suggestion and confidence. The review route also now reads the authenticated role in the detail component so the existing reviewer page can render.
+- Verification: 10 targeted Playwright tests passed for student City eligibility/copy, first submit with incomplete criteria, retained source after OCR failure, eligibility refresh/conflict handling, supplement resubmission, and reviewer advisory. One separate existing school-level supplement visibility test still fails because its fixture exposes the `Thêm` action while the assertion expects no matching action; it does not exercise the City first-submit changes. `npm run build` passed; `npm run lint` passed with the same 11 existing warnings. TypeScript reports 193 diagnostics versus the recorded baseline of 197; the diagnostics in touched files remain on unchanged code. No new test framework or route was added.
 
 ## Student Application UI V2 Phase 5 On 2026-07-19
 

@@ -1,5 +1,5 @@
 import type { OfficerEvidenceKnowledgeSearchItem } from "@/features/evidence-knowledge/types";
-import type { Pagination } from "@/lib/api/types";
+import type { Pagination, PrecheckResult } from "@/lib/api/types";
 
 export type Role =
   | "student"
@@ -316,6 +316,7 @@ export type ReviewTaskDetail = {
   } | null;
   evidences: ReviewTaskEvidence[];
   metrics: ReviewTaskMetric[];
+  precheck?: PrecheckResult | null;
   checklist?: ReviewTaskChecklistItem[];
   criterionLevelAssessment?: CriterionLevelAssessment | null;
   officerSuggestedLevel?: Level | null;

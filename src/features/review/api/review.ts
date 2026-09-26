@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api/client";
+import type { PrecheckResult } from "@/lib/api/types";
 import type {
   ApplicationStatus,
   Criterion,
@@ -199,6 +200,7 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
       : null,
     evidences: normalizeEvidences(evidenceRecords),
     metrics: normalizeMetrics(asRecordArray(payload.metrics ?? rawApplication?.metrics)),
+    precheck: normalizeReviewPrecheck(payload.precheck),
     checklist: normalizeChecklist(
       asRecordArray(payload.criteriaChecklist ?? payload.checklist ?? rawTask.checklist),
     ),
@@ -215,6 +217,29 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
     ),
     createdAt: asString(rawTask.createdAt),
     updatedAt: asString(rawTask.updatedAt),
+  };
+}
+
+function normalizeReviewPrecheck(value: unknown): PrecheckResult | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const result = asRecord(record.resultJson) ?? record;
+  if (!Array.isArray(result.criteriaResults)) return null;
+
+  return {
+    applicationId: asString(result.applicationId ?? record.applicationId),
+    level: (result.level ?? "city") as PrecheckResult["level"],
+    readinessScore: asNumber(result.readinessScore ?? record.readinessScore),
+    readyToSubmit: Boolean(result.readyToSubmit),
+    criteriaResults: asRecordArray(result.criteriaResults) as PrecheckResult["criteriaResults"],
+    missingItems: asRecordArray(
+      result.missingItems ?? record.missingItemsJson,
+    ) as PrecheckResult["missingItems"],
+    warnings: asStringArray(result.warnings),
+    nextBestAction: asString(result.nextBestAction ?? record.nextBestAction),
+    nextAction: (result.nextAction ?? null) as PrecheckResult["nextAction"],
+    humanConfirmationRequired: result.humanConfirmationRequired !== false,
+    createdAt: asString(record.createdAt ?? result.createdAt),
   };
 }
 

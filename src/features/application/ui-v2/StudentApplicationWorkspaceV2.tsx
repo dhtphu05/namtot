@@ -340,7 +340,8 @@ export function StudentApplicationWorkspaceV2() {
   const hasSubmitCta =
     application?.status === "ready_to_submit" ||
     (canSubmitApplication && completedCriteria === coreStudentCriteria.length) ||
-    isSupplementMode;
+    isSupplementMode ||
+    (showCityEligibility && canSubmitApplication);
   const summary = getStudentApplicationSummary(
     application ? { ...application, evidences } : null,
     precheck,
@@ -759,6 +760,7 @@ export function StudentApplicationWorkspaceV2() {
               <EvidenceGallerySection
                 applicationId={application.id}
                 canEdit={canEditSelectedCriterion}
+                cityInitialSubmission={showCityEligibility && application.submittedAt == null}
                 evidences={selectedEvidences}
                 isLoading={evidencesQuery.isLoading}
                 isError={evidencesQuery.isError}
@@ -904,6 +906,7 @@ export function StudentApplicationWorkspaceV2() {
       {confirmSubmitOpen ? (
         <SubmitConfirmationModal
           application={application}
+          cityInitialSubmission={showCityEligibility && application.submittedAt == null}
           precheck={precheck}
           evidenceCounts={countEvidencesByCriterion(evidences)}
           onCancel={() => setConfirmSubmitOpen(false)}
@@ -2804,6 +2807,7 @@ function DynamicFieldInputV2({
 function EvidenceGallerySection({
   applicationId,
   canEdit,
+  cityInitialSubmission,
   evidences,
   isLoading,
   isError,
@@ -2813,6 +2817,7 @@ function EvidenceGallerySection({
 }: {
   applicationId: string;
   canEdit: boolean;
+  cityInitialSubmission: boolean;
   evidences: EvidenceResponse[];
   isLoading: boolean;
   isError: boolean;
@@ -2865,6 +2870,7 @@ function EvidenceGallerySection({
               key={evidence.id}
               applicationId={applicationId}
               canEdit={canEdit}
+              cityInitialSubmission={cityInitialSubmission}
               evidence={evidence}
               onDeleteEvidence={onDeleteEvidence}
               onViewEvidence={onViewEvidence}
@@ -2890,12 +2896,14 @@ function EvidenceGallerySection({
 function StudentEvidenceGalleryCard({
   applicationId,
   canEdit,
+  cityInitialSubmission,
   evidence,
   onDeleteEvidence,
   onViewEvidence,
 }: {
   applicationId: string;
   canEdit: boolean;
+  cityInitialSubmission: boolean;
   evidence: EvidenceResponse;
   onDeleteEvidence: (evidence: EvidenceResponse) => void;
   onViewEvidence: (evidence: EvidenceResponse) => void;
@@ -2914,8 +2922,8 @@ function StudentEvidenceGalleryCard({
       title={evidence.evidenceName || "Minh chứng chưa đặt tên"}
       metadata={getEvidenceMetadata(evidence, applicationId)}
       context={studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]}
-      processingDetail={getEvidenceProcessingDetail(evidence)}
-      status={mapEvidenceToProgressStatus(evidence)}
+      processingDetail={getEvidenceProcessingDetail(evidence, cityInitialSubmission)}
+      status={mapEvidenceToProgressStatus(evidence, cityInitialSubmission)}
       preview={getEvidencePreview(evidence, previewUrl, signedUrl.isLoading)}
       onOpen={() => onViewEvidence(evidence)}
       actionItems={[
@@ -3494,13 +3502,19 @@ function getEvidencePreview(
   };
 }
 
-function getEvidenceProcessingDetail(evidence: EvidenceResponse) {
+function getEvidenceProcessingDetail(evidence: EvidenceResponse, cityInitialSubmission = false) {
   if (
     ["ocr_processing", "processing", "extracting", "checking_registry"].includes(
       evidence.indexingStatus,
     )
   ) {
     return "Hệ thống đang đọc minh chứng";
+  }
+  if (evidence.indexingStatus === "failed" && cityInitialSubmission) {
+    return "OCR chưa đọc được; cán bộ sẽ kiểm tra file gốc đã lưu.";
+  }
+  if (evidence.indexingStatus === "needs_manual_review" && cityInitialSubmission) {
+    return "Cán bộ sẽ kiểm tra file gốc.";
   }
   if (evidence.indexingStatus === "failed") return "Không đọc được minh chứng";
   return undefined;
@@ -3520,7 +3534,14 @@ function getStringRecordValue(record: Record<string, unknown> | null, key: strin
 
 function mapEvidenceToProgressStatus(
   evidence: EvidenceResponse,
+  cityInitialSubmission = false,
 ): StudentApplicationV2ProgressStatus {
+  if (
+    cityInitialSubmission &&
+    ["failed", "needs_manual_review"].includes(evidence.indexingStatus)
+  ) {
+    return "waiting";
+  }
   if (evidence.status === "accepted" || evidence.indexingStatus === "indexed") return "complete";
   if (
     ["needs_supplement", "rejected"].includes(evidence.status) ||

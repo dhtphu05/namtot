@@ -18,6 +18,7 @@ type SubmitMode = "first_submit" | "supplement" | "locked" | "completed";
 
 export function SubmitConfirmationModal({
   application,
+  cityInitialSubmission = false,
   precheck,
   evidenceCounts,
   onCancel,
@@ -25,6 +26,7 @@ export function SubmitConfirmationModal({
   pending,
 }: {
   application: ApplicationState;
+  cityInitialSubmission?: boolean;
   precheck?: PrecheckResult | null;
   evidenceCounts: Partial<Record<Criterion, number>>;
   onCancel: () => void;
@@ -35,18 +37,23 @@ export function SubmitConfirmationModal({
   const mode = getSubmitMode(application.status);
   const isSupplement = mode === "supplement";
   const isLocked = mode === "locked" || mode === "completed";
-  const criterionSummaries = criteria.map((criterion) =>
-    buildCriterionSummary(criterion, evidenceCounts[criterion] ?? 0, precheck),
-  );
+  const criterionSummaries = criteria.map((criterion) => {
+    const summary = buildCriterionSummary(criterion, evidenceCounts[criterion] ?? 0, precheck);
+    return cityInitialSubmission ? toCityAdvisorySummary(summary) : summary;
+  });
   const hasRequiredAttention = criterionSummaries.some((item) => item.requiredAttention);
   const missingCriteriaCount = criterionSummaries.filter((item) => item.requiredAttention).length;
-  const copy = getModalCopy(mode, readinessScore);
-  const primaryLabel = getPrimaryLabel(mode, readinessScore);
-  const secondaryLabel = isSupplement
-    ? "Quay lại chỉnh sửa"
-    : readinessScore < 80
-      ? "Tiếp tục bổ sung"
-      : "Quay lại bổ sung";
+  const copy = getModalCopy(mode, readinessScore, cityInitialSubmission);
+  const primaryLabel = cityInitialSubmission
+    ? "VẪN NỘP HỒ SƠ"
+    : getPrimaryLabel(mode, readinessScore);
+  const secondaryLabel = cityInitialSubmission
+    ? "BỔ SUNG HỒ SƠ"
+    : isSupplement
+      ? "Quay lại chỉnh sửa"
+      : readinessScore < 80
+        ? "Tiếp tục bổ sung"
+        : "Quay lại bổ sung";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6">
@@ -102,6 +109,7 @@ export function SubmitConfirmationModal({
           <ReadinessWarning
             readinessScore={readinessScore}
             hasRequiredAttention={hasRequiredAttention}
+            cityInitialSubmission={cityInitialSubmission}
           />
 
           <div>
@@ -133,9 +141,11 @@ export function SubmitConfirmationModal({
           </div>
 
           <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {isSupplement
-              ? "Sau khi gửi lại, hồ sơ sẽ được khóa. Bạn chỉ có thể chỉnh sửa khi cán bộ yêu cầu bổ sung lần nữa."
-              : "Sau khi nộp, hồ sơ sẽ được khóa. Bạn chỉ có thể chỉnh sửa khi cán bộ yêu cầu bổ sung."}
+            {cityInitialSubmission
+              ? "Sau khi nộp, hồ sơ và minh chứng sẽ được chuyển cho cán bộ Thành phố xem xét."
+              : isSupplement
+                ? "Sau khi gửi lại, hồ sơ sẽ được khóa. Bạn chỉ có thể chỉnh sửa khi cán bộ yêu cầu bổ sung lần nữa."
+                : "Sau khi nộp, hồ sơ sẽ được khóa. Bạn chỉ có thể chỉnh sửa khi cán bộ yêu cầu bổ sung."}
           </div>
         </div>
 
@@ -171,10 +181,20 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 function ReadinessWarning({
   readinessScore,
   hasRequiredAttention,
+  cityInitialSubmission,
 }: {
   readinessScore: number;
   hasRequiredAttention: boolean;
+  cityInitialSubmission: boolean;
 }) {
+  if (cityInitialSubmission) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        Hệ thống phát hiện một số nội dung cần kiểm tra. Bạn vẫn có thể nộp hồ sơ để Hội Sinh viên
+        Thành phố xem xét.
+      </div>
+    );
+  }
   if (readinessScore >= 100 && !hasRequiredAttention) return null;
 
   const message =
@@ -207,7 +227,15 @@ function getSubmitMode(status: string): SubmitMode {
   return "first_submit";
 }
 
-function getModalCopy(mode: SubmitMode, readinessScore: number) {
+function getModalCopy(mode: SubmitMode, readinessScore: number, cityInitialSubmission: boolean) {
+  if (cityInitialSubmission) {
+    return {
+      badge: "Tiền kiểm tham khảo",
+      title: "Kiểm tra trước khi nộp hồ sơ Thành phố",
+      description: "Các gợi ý dưới đây không thay thế kết luận của cán bộ xét duyệt.",
+    };
+  }
+
   if (mode === "supplement") {
     return {
       badge: "Gửi lại bổ sung",
@@ -240,6 +268,27 @@ function getModalCopy(mode: SubmitMode, readinessScore: number) {
         ? "Hồ sơ còn điểm cần bổ sung. Hãy kiểm tra các cảnh báo trước khi quyết định nộp."
         : "Sau khi nộp, hồ sơ sẽ được khóa để cán bộ xét duyệt.",
   };
+}
+
+function toCityAdvisorySummary(summary: CriterionSummary): CriterionSummary {
+  if (summary.label === "Chưa có minh chứng") {
+    return {
+      ...summary,
+      label: "Chưa đủ dữ liệu để xác định",
+      explanation: "Chưa có minh chứng hoặc kết quả tiền kiểm; cán bộ sẽ xem xét hồ sơ gốc.",
+      tone: "warning",
+    };
+  }
+  if (summary.requiredAttention || summary.label === "Cần bổ sung") {
+    return {
+      ...summary,
+      label: "Hệ thống gợi ý bổ sung",
+      explanation: `Gợi ý tiền kiểm: ${summary.explanation}`,
+      tone: "warning",
+      requiredAttention: true,
+    };
+  }
+  return summary;
 }
 
 function getPrimaryLabel(mode: SubmitMode, readinessScore: number) {
