@@ -17,7 +17,7 @@ export const Route = createFileRoute("/app/export")({
   component: ExportRoute,
 });
 
-const allowedRoles: Role[] = ["manager", "committee", "admin"];
+const allowedRoles: Role[] = ["manager", "committee", "city_manager", "city_committee", "admin"];
 const levelOptions: Level[] = [...ACTIVE_LEVELS];
 const statusOptions: ApplicationStatus[] = [
   "submitted",

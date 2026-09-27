@@ -63,7 +63,7 @@ export function RequestSupplementPanel({ task, onSuccess }: RequestSupplementPan
     ? task.permissions.availableActions.includes("request_supplement")
     : task.permissions
       ? task.permissions.canAct
-      : role === "officer" && !taskClosed;
+      : (role === "officer" || role === "city_officer" || role === "city_manager") && !taskClosed;
   const validationMessage = validateSupplementRequest(note, deadline);
   const apiError =
     requestSupplement.error instanceof Error

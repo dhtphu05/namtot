@@ -66,6 +66,8 @@ export function useStudentAssistantConversation({
   const chunksRef = useRef<string[]>([]);
   const timerRef = useRef<number | null>(null);
   const lastQuestionRef = useRef("");
+  const lastTurnIdRef = useRef("");
+  const conversationIdRef = useRef(createClientId("conversation"));
 
   const contextKey = context
     ? `${context.contextType}:${context.contextId}:${context.contextVersion}`
@@ -123,8 +125,14 @@ export function useStudentAssistantConversation({
       if (!context || !message || !enabled || status === "connecting" || status === "streaming") {
         return;
       }
-      lastQuestionRef.current = message;
       const recentMessages = messages.slice(-6);
+      const retryingLastQuestion = Boolean(
+        rawMessage && rawMessage === lastQuestionRef.current && lastTurnIdRef.current,
+      );
+      const turnId = retryingLastQuestion ? lastTurnIdRef.current : createClientId("turn");
+      const attemptId = createClientId("attempt");
+      lastQuestionRef.current = message;
+      lastTurnIdRef.current = turnId;
       const userMessage: StudentAssistantMessage = { role: "user", content: message };
       setMessages((current) => [...current, userMessage]);
       setDraft("");
@@ -140,6 +148,9 @@ export function useStudentAssistantConversation({
           context: { ...params, contextVersion: context.contextVersion },
           message,
           recentMessages,
+          clientConversationId: conversationIdRef.current,
+          clientTurnId: turnId,
+          clientAttemptId: attemptId,
           signal: controller.signal,
           handlers: {
             onDelta: (data) => {
@@ -149,7 +160,7 @@ export function useStudentAssistantConversation({
             onComplete: (data) => {
               stopTimer();
               flushChunks();
-              const text = data.answer || context.deterministicSummary;
+              const text = data.finalText || data.answer || context.deterministicSummary;
               setStreamText(text);
               setMessages((current) => [...current, { role: "assistant", content: text }]);
               setStatus("complete");
@@ -239,3 +250,11 @@ export function useResubmitSupplement(applicationId?: string, reviewTaskId?: str
 }
 
 export type { StudentAssistantAnswer };
+
+function createClientId(prefix: string) {
+  const random =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  return `${prefix}-${random}`;
+}

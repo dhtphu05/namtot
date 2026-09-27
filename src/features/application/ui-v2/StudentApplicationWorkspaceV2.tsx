@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/features/auth/store/auth-store";
 import {
   ActivityLedgerV2,
   ButtonV2,
@@ -48,6 +49,7 @@ import {
 } from "@/features/application/ui-v2/view-models/criterion-data";
 import {
   useCriteriaCompletion,
+  useCitySubmissionEligibility,
   useAddIntegrationPathResponse,
   useAddVolunteerActivity,
   useCurrentApplication,
@@ -60,6 +62,7 @@ import {
   useSubmitApplication,
   useUpsertMetric,
 } from "@/features/application/hooks/useApplication";
+import { CitySubmissionEligibilityCard } from "@/features/application/ui-v2/components/CitySubmissionEligibilityCard";
 import { AddEvidenceDrawer } from "@/features/evidence/components/AddEvidenceDrawer";
 import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDetailModal";
 import {
@@ -104,6 +107,7 @@ import type {
   RequirementItem,
   RequirementResponse,
 } from "@/lib/api/types";
+import { ApiError } from "@/lib/api/client";
 import {
   Sheet,
   SheetContent,
@@ -214,6 +218,7 @@ const criterionGuide: Record<CoreCriterion, { main: string[]; source: string }> 
 };
 
 export function StudentApplicationWorkspaceV2() {
+  const userRole = useAuth((state) => state.user?.role);
   const current = useCurrentApplication(SCHOOL_YEAR);
   const startApplication = useStartApplication();
   const runPrecheck = usePrecheck();
@@ -277,6 +282,19 @@ export function StudentApplicationWorkspaceV2() {
   const isSupplementMode =
     application?.status === "supplement_required" ||
     String(application?.status) === "draft_supplement";
+  const showCityEligibility = Boolean(
+    userRole === "student" &&
+    application?.applicationType === "individual" &&
+    application.targetLevel === "city" &&
+    (application.status !== "supplement_required" || application.submittedAt === null),
+  );
+  const cityEligibility = useCitySubmissionEligibility(applicationId, showCityEligibility);
+  const cityEligibilityBlocksFirstSubmit = Boolean(
+    showCityEligibility &&
+    (cityEligibility.isLoading ||
+      cityEligibility.isError ||
+      cityEligibility.data?.status !== "ELIGIBLE"),
+  );
   const isReadonlyStatus = Boolean(application && readonlyStatuses.includes(application.status));
   const canEditApplication = Boolean(
     application && editableStatuses.includes(String(application.status)) && !isReadonlyStatus,
@@ -322,7 +340,8 @@ export function StudentApplicationWorkspaceV2() {
   const hasSubmitCta =
     application?.status === "ready_to_submit" ||
     (canSubmitApplication && completedCriteria === coreStudentCriteria.length) ||
-    isSupplementMode;
+    isSupplementMode ||
+    (showCityEligibility && canSubmitApplication);
   const summary = getStudentApplicationSummary(
     application ? { ...application, evidences } : null,
     precheck,
@@ -485,10 +504,24 @@ export function StudentApplicationWorkspaceV2() {
     setConfirmSubmitOpen(true);
   };
 
-  const confirmSubmit = () => {
+  const confirmSubmit = async () => {
     if (!application) return;
-    submitApplication.mutate(
-      {
+    if (showCityEligibility) {
+      const refreshed = await cityEligibility.refetch();
+      if (refreshed.isError || !refreshed.data) {
+        setConfirmSubmitOpen(false);
+        toast.error("Không thể kiểm tra điều kiện nộp hồ sơ. Vui lòng thử tải lại trạng thái.");
+        return;
+      }
+      if (refreshed.data.status !== "ELIGIBLE") {
+        setConfirmSubmitOpen(false);
+        toast.error(getEligibilitySubmitMessage(refreshed.data.status));
+        return;
+      }
+    }
+
+    try {
+      await submitApplication.mutateAsync({
         id: application.id,
         allowSubmitWithWarnings: true,
         studentNote: isSupplementMode
@@ -497,9 +530,19 @@ export function StudentApplicationWorkspaceV2() {
         successMessage: isSupplementMode
           ? "Đã gửi lại hồ sơ bổ sung. Cán bộ sẽ tiếp tục xét duyệt."
           : "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.",
-      },
-      { onSuccess: () => setConfirmSubmitOpen(false) },
-    );
+      });
+      setConfirmSubmitOpen(false);
+    } catch (error) {
+      if (
+        showCityEligibility &&
+        error instanceof ApiError &&
+        (error.code === "CITY_SUBMISSION_NOT_ELIGIBLE" ||
+          error.code === "CITY_SUBMISSION_NEEDS_VERIFICATION")
+      ) {
+        await cityEligibility.refetch();
+        setConfirmSubmitOpen(false);
+      }
+    }
   };
 
   if (current.isLoading) {
@@ -581,6 +624,15 @@ export function StudentApplicationWorkspaceV2() {
             tone="warning"
             title="Chưa tải được trạng thái điều kiện"
             description="Màn hình đang tạm dùng dữ liệu minh chứng và tiền kiểm hiện có."
+          />
+        ) : null}
+
+        {showCityEligibility ? (
+          <CitySubmissionEligibilityCard
+            data={cityEligibility.data ?? undefined}
+            isLoading={cityEligibility.isLoading || cityEligibility.isFetching}
+            isError={cityEligibility.isError}
+            onRetry={() => void cityEligibility.refetch()}
           />
         ) : null}
 
@@ -708,6 +760,7 @@ export function StudentApplicationWorkspaceV2() {
               <EvidenceGallerySection
                 applicationId={application.id}
                 canEdit={canEditSelectedCriterion}
+                cityInitialSubmission={showCityEligibility && application.submittedAt == null}
                 evidences={selectedEvidences}
                 isLoading={evidencesQuery.isLoading}
                 isError={evidencesQuery.isError}
@@ -755,7 +808,7 @@ export function StudentApplicationWorkspaceV2() {
                     <ButtonV2
                       type="button"
                       onClick={submitNow}
-                      disabled={submitApplication.isPending}
+                      disabled={submitApplication.isPending || cityEligibilityBlocksFirstSubmit}
                     >
                       {submitApplication.isPending ? (
                         <Loader2 className="animate-spin" aria-hidden="true" />
@@ -853,6 +906,7 @@ export function StudentApplicationWorkspaceV2() {
       {confirmSubmitOpen ? (
         <SubmitConfirmationModal
           application={application}
+          cityInitialSubmission={showCityEligibility && application.submittedAt == null}
           precheck={precheck}
           evidenceCounts={countEvidencesByCriterion(evidences)}
           onCancel={() => setConfirmSubmitOpen(false)}
@@ -877,6 +931,12 @@ function WorkspaceContextBarShell({ title, helper }: { title: string; helper: st
       </div>
     </section>
   );
+}
+
+function getEligibilitySubmitMessage(status: "NOT_ELIGIBLE" | "NEEDS_VERIFICATION") {
+  return status === "NOT_ELIGIBLE"
+    ? "Hồ sơ hiện chưa đủ điều kiện nộp cấp Thành phố. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ và minh chứng."
+    : "Điều kiện nộp hồ sơ cấp Thành phố đang chờ cán bộ xác minh. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.";
 }
 
 function ApplicationWorkspaceContextBar({
@@ -2747,6 +2807,7 @@ function DynamicFieldInputV2({
 function EvidenceGallerySection({
   applicationId,
   canEdit,
+  cityInitialSubmission,
   evidences,
   isLoading,
   isError,
@@ -2756,6 +2817,7 @@ function EvidenceGallerySection({
 }: {
   applicationId: string;
   canEdit: boolean;
+  cityInitialSubmission: boolean;
   evidences: EvidenceResponse[];
   isLoading: boolean;
   isError: boolean;
@@ -2808,6 +2870,7 @@ function EvidenceGallerySection({
               key={evidence.id}
               applicationId={applicationId}
               canEdit={canEdit}
+              cityInitialSubmission={cityInitialSubmission}
               evidence={evidence}
               onDeleteEvidence={onDeleteEvidence}
               onViewEvidence={onViewEvidence}
@@ -2833,12 +2896,14 @@ function EvidenceGallerySection({
 function StudentEvidenceGalleryCard({
   applicationId,
   canEdit,
+  cityInitialSubmission,
   evidence,
   onDeleteEvidence,
   onViewEvidence,
 }: {
   applicationId: string;
   canEdit: boolean;
+  cityInitialSubmission: boolean;
   evidence: EvidenceResponse;
   onDeleteEvidence: (evidence: EvidenceResponse) => void;
   onViewEvidence: (evidence: EvidenceResponse) => void;
@@ -2857,8 +2922,8 @@ function StudentEvidenceGalleryCard({
       title={evidence.evidenceName || "Minh chứng chưa đặt tên"}
       metadata={getEvidenceMetadata(evidence, applicationId)}
       context={studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]}
-      processingDetail={getEvidenceProcessingDetail(evidence)}
-      status={mapEvidenceToProgressStatus(evidence)}
+      processingDetail={getEvidenceProcessingDetail(evidence, cityInitialSubmission)}
+      status={mapEvidenceToProgressStatus(evidence, cityInitialSubmission)}
       preview={getEvidencePreview(evidence, previewUrl, signedUrl.isLoading)}
       onOpen={() => onViewEvidence(evidence)}
       actionItems={[
@@ -3437,13 +3502,19 @@ function getEvidencePreview(
   };
 }
 
-function getEvidenceProcessingDetail(evidence: EvidenceResponse) {
+function getEvidenceProcessingDetail(evidence: EvidenceResponse, cityInitialSubmission = false) {
   if (
     ["ocr_processing", "processing", "extracting", "checking_registry"].includes(
       evidence.indexingStatus,
     )
   ) {
     return "Hệ thống đang đọc minh chứng";
+  }
+  if (evidence.indexingStatus === "failed" && cityInitialSubmission) {
+    return "OCR chưa đọc được; cán bộ sẽ kiểm tra file gốc đã lưu.";
+  }
+  if (evidence.indexingStatus === "needs_manual_review" && cityInitialSubmission) {
+    return "Cán bộ sẽ kiểm tra file gốc.";
   }
   if (evidence.indexingStatus === "failed") return "Không đọc được minh chứng";
   return undefined;
@@ -3463,7 +3534,14 @@ function getStringRecordValue(record: Record<string, unknown> | null, key: strin
 
 function mapEvidenceToProgressStatus(
   evidence: EvidenceResponse,
+  cityInitialSubmission = false,
 ): StudentApplicationV2ProgressStatus {
+  if (
+    cityInitialSubmission &&
+    ["failed", "needs_manual_review"].includes(evidence.indexingStatus)
+  ) {
+    return "waiting";
+  }
   if (evidence.status === "accepted" || evidence.indexingStatus === "indexed") return "complete";
   if (
     ["needs_supplement", "rejected"].includes(evidence.status) ||

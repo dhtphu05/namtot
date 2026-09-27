@@ -1,5 +1,15 @@
 // Mock data for 5TOT Platform — realistic Vietnamese Sinh viên 5 tốt content
-export type Role = "student" | "officer" | "manager" | "collective";
+export type Role =
+  | "student"
+  | "data_uploader"
+  | "officer"
+  | "manager"
+  | "committee"
+  | "city_officer"
+  | "city_manager"
+  | "city_committee"
+  | "admin"
+  | "collective";
 
 export const ROLES: Record<Role, { label: string; desc: string; initial: string; icon: string }> = {
   student: {
@@ -25,6 +35,42 @@ export const ROLES: Record<Role, { label: string; desc: string; initial: string;
     desc: "Hồ sơ Tập thể Sinh viên 5 tốt",
     initial: "TT",
     icon: "TT",
+  },
+  data_uploader: {
+    label: "Cán bộ nhập liệu",
+    desc: "Thông tin quyền truy cập của đơn vị",
+    initial: "DL",
+    icon: "DL",
+  },
+  city_officer: {
+    label: "Cán bộ xét duyệt thành phố",
+    desc: "Hàng đợi xét duyệt theo chuyên môn",
+    initial: "CB",
+    icon: "CB",
+  },
+  city_manager: {
+    label: "Quản lý thành phố",
+    desc: "Điều phối review và theo dõi vận hành",
+    initial: "QL",
+    icon: "QL",
+  },
+  city_committee: {
+    label: "Hội đồng thành phố",
+    desc: "Resolution Hub và kết luận cuối",
+    initial: "HĐ",
+    icon: "HĐ",
+  },
+  committee: {
+    label: "Hội đồng trường",
+    desc: "Resolution Hub và kết luận cuối",
+    initial: "HĐ",
+    icon: "HĐ",
+  },
+  admin: {
+    label: "Quản trị hệ thống",
+    desc: "Quản lý đơn vị triển khai",
+    initial: "QT",
+    icon: "QT",
   },
 };
 

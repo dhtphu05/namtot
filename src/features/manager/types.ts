@@ -14,6 +14,45 @@ export type ManagerApplicationsParams = {
   level?: Level;
   criterion?: Criterion;
   q?: string;
+  eligibilityVerification?: "pending";
+};
+
+export type ManagerEligibilityVerificationStatus =
+  "ELIGIBLE" | "NOT_ELIGIBLE" | "NEEDS_VERIFICATION";
+
+export type EligibilityVerificationQueueItem = {
+  id: string;
+  schoolYear: string;
+  student: { fullName: string; studentCode: string | null; className: string | null };
+  school: { code: string; name: string };
+  autoStatus: ManagerEligibilityVerificationStatus;
+  effectiveStatus: ManagerEligibilityVerificationStatus;
+  reasons: string[];
+};
+
+export type ManagerEligibilityVerificationQueueResponse = {
+  items: EligibilityVerificationQueueItem[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+};
+
+export type ManagerEligibilityVerificationDetail = Omit<EligibilityVerificationQueueItem, "id"> & {
+  applicationId: string;
+  route: "UDN_PREREQUISITE";
+  existingDecision: {
+    decision: "APPROVED" | "REJECTED";
+    decidedAt: string;
+  } | null;
+  candidates: Array<{
+    fullName: string;
+    studentCode: string;
+    className: string | null;
+    institution: { code: string; name: string };
+  }>;
+};
+
+export type VerifyEligibilityInput = {
+  decision: "APPROVED" | "REJECTED";
+  reason: string;
 };
 
 export type ManagerResultFilters = {
@@ -414,6 +453,7 @@ export type ManagerResultDetail = {
 
 export type ManagerApplicationsResponse = {
   items: ManagerApplicationListItem[];
+  pagination?: { page: number; limit: number; total: number; totalPages: number };
 };
 
 export type OfficerWorkload = {

@@ -58,6 +58,89 @@ const ADMIN_NAV: NavGroup[] = [
   },
 ];
 
+const REVIEWER_NAV: NavGroup[] = [
+  {
+    group: "Xử lý hồ sơ",
+    items: [
+      { label: "Tổng quan xử lý", to: "/app/queue", icon: LayoutDashboard },
+      { label: "Việc được giao", to: "/app/queue", icon: Inbox },
+      { label: "Hồ sơ đang xét", to: "/app/queue", icon: FileText },
+      { label: "Cần bổ sung", to: "/app/queue", icon: FolderUp },
+      { label: "Case hội ý", to: "/app/resolution", icon: ShieldQuestion },
+      { label: "Tra cứu minh chứng", to: "/app/evidence-search", icon: BookOpenCheck },
+      { label: "Kho tiền lệ", to: "/app/evidence-knowledge", icon: BookOpenCheck },
+      { label: "Sự kiện chính thức", to: "/app/event-registry", icon: CalendarCheck },
+      { label: "Thông báo", to: "/app/notifications", icon: Bell },
+    ],
+  },
+];
+
+const LEGACY_MANAGER_NAV: NavGroup[] = [
+  {
+    group: "Quản lý mùa xét",
+    items: [
+      { label: "Tổng quan mùa xét", to: "/app", icon: LayoutDashboard },
+      { label: "Hồ sơ", to: "/app/manager/results", icon: Trophy },
+      { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog },
+      { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion },
+      { label: "Báo cáo & export", to: "/app/export", icon: Download },
+      { label: "Audit log", to: "/app/audit", icon: History },
+      { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal },
+    ],
+  },
+  {
+    group: "Dữ liệu vận hành",
+    items: [
+      { label: "Sự kiện đã xác nhận", to: "/app/event-registry", icon: CalendarCheck },
+      { label: "Import quyết định", to: "/app/decision-imports", icon: FileUp },
+      { label: "Theo dõi tiến độ", to: "/app/analytics", icon: ChartNoAxesCombined },
+      { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound },
+    ],
+  },
+];
+
+const CITY_MANAGER_NAV: NavGroup[] = [
+  {
+    group: "Điều phối xét duyệt",
+    items: [
+      { label: "Theo dõi tiến độ", to: "/app/analytics", icon: ChartNoAxesCombined },
+      { label: "Hồ sơ và kết quả", to: "/app/manager/results", icon: Trophy },
+      { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog },
+      { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion },
+      { label: "Báo cáo & export", to: "/app/export", icon: Download },
+      { label: "Audit log", to: "/app/audit", icon: History },
+    ],
+  },
+  {
+    group: "Dữ liệu vận hành",
+    items: [
+      { label: "Sự kiện đã xác nhận", to: "/app/event-registry", icon: CalendarCheck },
+      { label: "Kho tiền lệ", to: "/app/evidence-knowledge", icon: BookOpenCheck },
+      { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound },
+    ],
+  },
+];
+
+const CITY_COMMITTEE_NAV: NavGroup[] = [
+  {
+    group: "Hội đồng xét duyệt",
+    items: [
+      { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion },
+      { label: "Hồ sơ và kết quả", to: "/app/manager/results", icon: Trophy },
+      { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound },
+      { label: "Báo cáo & export", to: "/app/export", icon: Download },
+      { label: "Audit log", to: "/app/audit", icon: History },
+    ],
+  },
+  {
+    group: "Tài nguyên hỗ trợ",
+    items: [
+      { label: "Sự kiện chính thức", to: "/app/event-registry", icon: CalendarCheck },
+      { label: "Kho tiền lệ", to: "/app/evidence-knowledge", icon: BookOpenCheck },
+    ],
+  },
+];
+
 const NAV: Record<Role, NavGroup[]> = {
   student: [
     {
@@ -72,61 +155,19 @@ const NAV: Record<Role, NavGroup[]> = {
       ],
     },
   ],
-  officer: [
+  data_uploader: [
     {
-      group: "Xử lý hồ sơ",
-      items: [
-        { label: "Tổng quan xử lý", to: "/app", icon: LayoutDashboard },
-        { label: "Việc được giao", to: "/app/queue", icon: Inbox },
-        { label: "Hồ sơ đang xét", to: "/app/queue", icon: FileText },
-        { label: "Cần bổ sung", to: "/app/queue", icon: FolderUp },
-        {
-          label: "Case hội ý",
-          to: "/app/resolution",
-          icon: ShieldQuestion,
-        },
-        {
-          label: "Tra cứu minh chứng",
-          to: "/app/evidence-search",
-          icon: BookOpenCheck,
-        },
-        {
-          label: "Kho tiền lệ",
-          to: "/app/evidence-knowledge",
-          icon: BookOpenCheck,
-        },
-        {
-          label: "Sự kiện chính thức",
-          to: "/app/event-registry",
-          icon: CalendarCheck,
-        },
-        { label: "Thông báo", to: "/app/notifications", icon: Bell },
-      ],
+      group: "Nhập liệu đơn vị",
+      items: [{ label: "Thông tin quyền truy cập", to: "/app/data-uploader", icon: FileUp }],
     },
   ],
-  manager: [
-    {
-      group: "Quản lý mùa xét",
-      items: [
-        { label: "Tổng quan mùa xét", to: "/app", icon: LayoutDashboard },
-        { label: "Hồ sơ", to: "/app/manager/results", icon: Trophy },
-        { label: "Phân công cán bộ", to: "/app/assignment", icon: UserCog },
-        { label: "Resolution Hub", to: "/app/resolution", icon: ShieldQuestion },
-        { label: "Báo cáo & export", to: "/app/export", icon: Download },
-        { label: "Audit log", to: "/app/audit", icon: History },
-        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: SlidersHorizontal },
-      ],
-    },
-    {
-      group: "Dữ liệu vận hành",
-      items: [
-        { label: "Sự kiện đã xác nhận", to: "/app/event-registry", icon: CalendarCheck },
-        { label: "Import quyết định", to: "/app/decision-imports", icon: FileUp },
-        { label: "Theo dõi tiến độ", to: "/app/analytics", icon: ChartNoAxesCombined },
-        { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound },
-      ],
-    },
-  ],
+  officer: REVIEWER_NAV,
+  city_officer: REVIEWER_NAV,
+  manager: LEGACY_MANAGER_NAV,
+  committee: LEGACY_MANAGER_NAV,
+  city_manager: CITY_MANAGER_NAV,
+  city_committee: CITY_COMMITTEE_NAV,
+  admin: ADMIN_NAV,
   collective: [
     {
       group: "Tập thể",
@@ -212,9 +253,11 @@ export function Sidebar() {
           </Link>
         ) : (
           <Link to="/app" className="flex items-center gap-3 px-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0057C2] text-sm font-bold text-white">
-              5T
-            </div>
+            <img
+              src={hsvvnEmblemUrl}
+              alt="Biểu trưng Hội Sinh viên Việt Nam"
+              className="h-10 w-10 shrink-0 rounded-full object-contain"
+            />
             <div>
               <div className="text-[15px] font-bold leading-tight text-[#0F172A]">
                 {isAdmin ? "HỘI SINH VIÊN VIỆT NAM" : "5TOT Platform"}

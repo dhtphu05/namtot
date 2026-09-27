@@ -15,8 +15,9 @@ export function Chatbot() {
 }
 
 function scopeForRole(role?: string): ChatbotContextScope {
-  if (role === "officer") return "reviewer_copilot";
-  if (role === "manager") return "manager_assistant";
-  if (role === "committee" || role === "admin") return "committee_assistant";
+  if (role === "officer" || role === "city_officer") return "reviewer_copilot";
+  if (role === "manager" || role === "city_manager") return "manager_assistant";
+  if (role === "committee" || role === "city_committee" || role === "admin")
+    return "committee_assistant";
   return "student_helpdesk";
 }

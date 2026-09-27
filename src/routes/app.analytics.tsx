@@ -35,12 +35,13 @@ import {
 import { useManagerDashboardSummary } from "@/features/manager/hooks/useManager";
 import type { ManagerDashboardSummary } from "@/features/manager/types";
 import { ACTIVE_LEVELS } from "@/lib/levels";
+import { CityAnalyticsDashboard } from "@/features/manager/city-analytics/CityAnalyticsDashboard";
 
 export const Route = createFileRoute("/app/analytics")({
   component: AnalyticsRoute,
 });
 
-const allowedRoles: Role[] = ["manager", "committee", "admin"];
+const allowedRoles: Role[] = ["manager", "committee", "city_manager", "admin"];
 const levels: Level[] = [...ACTIVE_LEVELS];
 const criteria: Criterion[] = [
   "ethics",
@@ -84,6 +85,10 @@ function AnalyticsRoute() {
         </Card>
       </>
     );
+  }
+
+  if (role === "city_manager" || role === "admin") {
+    return <CityAnalyticsDashboard showEligibilityVerification={role === "city_manager"} />;
   }
 
   return <AnalyticsContent />;

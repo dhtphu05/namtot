@@ -34,7 +34,7 @@ export const Route = createFileRoute("/app/assignment")({
   component: AssignmentWorkloadRoute,
 });
 
-const allowedRoles: Role[] = ["manager", "committee", "admin"];
+const allowedRoles: Role[] = ["manager", "committee", "city_manager", "admin"];
 const fallbackText = "Chưa có dữ liệu";
 const trackedCriteria: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
 

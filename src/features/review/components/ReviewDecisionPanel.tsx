@@ -128,7 +128,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
     ? task.permissions.availableActions.includes("decide")
     : task.permissions
       ? task.permissions.canAct
-      : role === "officer" && !isFinal;
+      : (role === "officer" || role === "city_officer" || role === "city_manager") && !isFinal;
   const canRequestSupplement = task.permissions?.availableActions
     ? task.permissions.availableActions.includes("request_supplement")
     : canDecide;

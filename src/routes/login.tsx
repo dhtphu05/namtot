@@ -18,6 +18,7 @@ import { getDefaultAppPathForRole, toUiRole } from "@/features/auth/role-map";
 import { useAuth, waitForAuthHydration } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
 import { useApp } from "@/lib/store";
+import hsvvnEmblemUrl from "@/assets/hsvvn-emblem.webp";
 
 const quickRoles = [
   {
@@ -139,9 +140,11 @@ function Login() {
       <div className="mx-auto grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <div className="mb-7">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-[#0057C2] text-lg font-bold text-white">
-              5T
-            </div>
+            <img
+              src={hsvvnEmblemUrl}
+              alt="Biểu trưng Hội Sinh viên Việt Nam"
+              className="h-14 w-14 rounded-full object-contain"
+            />
             <div className="mt-5 text-xs font-bold uppercase tracking-wide text-[#0057C2]">
               Đăng nhập
             </div>

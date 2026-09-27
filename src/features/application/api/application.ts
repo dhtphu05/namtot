@@ -4,6 +4,7 @@ import type {
   CurrentApplicationEmpty,
   CurrentApplicationResponse,
   CriteriaCompletionResponse,
+  CitySubmissionEligibility,
   Level,
   MetricInput,
   PrecheckResult,
@@ -200,6 +201,12 @@ function toBackendMetricUpdatePayload(input: MetricPayloadInput) {
 }
 
 export const applicationApi = {
+  getCitySubmissionEligibility: async (applicationId: string) => {
+    return apiClient<CitySubmissionEligibility>(`/api/applications/${applicationId}/eligibility`, {
+      method: "GET",
+    });
+  },
+
   getCurrentApplication: async (schoolYear?: string) => {
     const query = schoolYear ? `?schoolYear=${schoolYear}` : "";
     const res = await apiClient<CurrentApplicationPayload>(`/api/applications/current${query}`, {

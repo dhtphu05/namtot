@@ -79,13 +79,21 @@ import {
   getCriterionMatrixItem,
   getPrimaryMetricInput,
 } from "@/lib/criteria-matrix";
+import type { PrecheckResult } from "@/lib/api/types";
 import { getFinalStatusLabel } from "@/lib/status-labels";
 
 export const Route = createFileRoute("/app/review/$id")({
   component: ReviewTaskDetailRoute,
 });
 
-const allowedRoles: Role[] = ["officer", "manager", "committee", "admin"];
+const allowedRoles: Role[] = [
+  "officer",
+  "manager",
+  "committee",
+  "city_officer",
+  "city_manager",
+  "admin",
+];
 const fallbackText = "Chưa có dữ liệu";
 const levelOrder = ["school", "university", "city", "central"] as const;
 const metricLabels: Record<string, string> = {
@@ -138,6 +146,7 @@ function ReviewTaskDetailRoute() {
 }
 
 function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
+  const role = useAuth((state) => state.user?.role as Role | undefined);
   const { data: task, error, isError, isLoading, refetch } = useReviewTask(taskId);
   const claimTask = useClaimReviewTask(taskId);
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
@@ -205,6 +214,7 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
   const canUseDecisionPanel = canDecide || canRequestSupplement || canEscalateResolution;
   const canViewTechnicalLog =
     role === "manager" ||
+    role === "city_manager" ||
     role === "committee" ||
     role === "admin" ||
     Boolean(task.permissions?.canView);
@@ -221,6 +231,15 @@ function ReviewTaskDetailContent({ taskId }: { taskId: string }) {
       <div className="-mx-4 bg-[#F7F9FC] px-4 pb-8 pt-1 md:-mx-6 md:px-6">
         <div className="space-y-4">
           <ApplicationReviewHeader facultyClass={facultyClass} task={task} />
+
+          {task.application.targetLevel === "city" &&
+          task.application.applicationType === "individual" &&
+          task.precheck ? (
+            <CityAdvisoryFindings
+              precheck={task.precheck}
+              schoolYear={task.application.schoolYear}
+            />
+          ) : null}
 
           <CriteriaStatusStrip
             evidences={evidences}
@@ -448,6 +467,93 @@ function ApplicationReviewHeader({
       </div>
     </Card>
   );
+}
+
+function CityAdvisoryFindings({
+  precheck,
+  schoolYear,
+}: {
+  precheck: PrecheckResult;
+  schoolYear: string;
+}) {
+  const cityCriteria: CoreCriterion[] = [
+    "ethics",
+    "academic",
+    "physical",
+    "volunteer",
+    "integration",
+  ];
+
+  return (
+    <section
+      aria-labelledby="city-advisory-title"
+      className="rounded-xl border border-amber-200 bg-amber-50/70 p-4"
+    >
+      <h2 id="city-advisory-title" className="text-base font-bold text-amber-950">
+        Gợi ý tiền kiểm (tham khảo)
+      </h2>
+      <p className="mt-1 text-sm text-amber-900">
+        Năm học {schoolYear}. Kết quả rules/OCR chỉ là gợi ý; cán bộ cần đối chiếu file gốc. Hệ
+        thống không tự quyết định ReviewTask.
+      </p>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {cityCriteria.map((criterion) => {
+          const result = precheck.criteriaResults.find((item) => item.criterion === criterion);
+          const findings = result ? getCityAdvisoryFindingLabels(result) : [];
+          return (
+            <div key={criterion} className="rounded-lg border border-amber-200/80 bg-white p-3">
+              <div className="text-sm font-semibold text-slate-900">
+                {getCriterionLabel(criterion)}
+              </div>
+              <div className="mt-1 text-xs font-medium text-amber-800">
+                {getCityAdvisoryStatusLabel(result?.status)}
+              </div>
+              {findings.length ? (
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-slate-700">
+                  {findings.map((finding) => (
+                    <li key={finding}>{finding}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {result
+                    ? "Chưa có gợi ý bổ sung cho tiêu chí này."
+                    : "Chưa có dữ liệu tiền kiểm cho tiêu chí này."}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function getCityAdvisoryStatusLabel(status?: string) {
+  if (!status) return "Chưa có dữ liệu";
+  if (["needs_verification", "human_review_required", "unknown"].includes(status)) {
+    return "Cần cán bộ đối chiếu";
+  }
+  if (["failed", "missing", "warning", "precheck_warning"].includes(status)) {
+    return "Có gợi ý cần xem";
+  }
+  return "Thông tin tham khảo";
+}
+
+function getCityAdvisoryFindingLabels(result: PrecheckResult["criteriaResults"][number]) {
+  const codeLabels: Record<string, string> = {
+    ACADEMIC_PROGRAM_TYPE_UNKNOWN: "Chưa xác định hệ đại học/cao đẳng để chọn ngưỡng tham khảo.",
+    CITY_CRITERIA_NEEDS_REVIEW: "Tiêu chí cần cán bộ kiểm tra cùng minh chứng gốc.",
+    LOW_GPA: "GPA/ĐTB đang dưới ngưỡng tham khảo.",
+    OUTSIDE_SCHOOL_YEAR: "Ngày trên minh chứng nằm ngoài năm học đang xét.",
+  };
+  const findings = [...(result.missingRequirements ?? []), ...(result.needsVerification ?? [])].map(
+    (item) => item.title ?? item.message ?? item.reason ?? "Cần cán bộ đối chiếu minh chứng.",
+  );
+  const warnings = (result.warnings ?? []).map(
+    (warning) => codeLabels[warning] ?? "Có cảnh báo cần cán bộ đối chiếu.",
+  );
+  return [...new Set([...findings, ...warnings])];
 }
 
 function CriteriaStatusStrip({
@@ -1348,6 +1454,7 @@ function CriterionMetricsSection({
   const academicModel = evidences
     .map(buildEvidenceDisplayModel)
     .find((model) => model.kind === "academic_transcript");
+  const gpaConfidence = academicModel?.fieldConfidence?.gpa;
   return (
     <section>
       <SectionHeader icon={<ClipboardList className="h-5 w-5" />} title="Dữ liệu đối chiếu" />
@@ -1362,11 +1469,17 @@ function CriterionMetricsSection({
               />
               {metric.metricType === "gpa" ? (
                 <InfoRow
-                  label="SmartReader đọc được"
+                  label="Gợi ý OCR/SmartReader"
                   value={formatEvidenceValue(academicModel?.gpa)}
                 />
               ) : null}
-              <InfoRow label="Nguồn" value="Sinh viên nhập" />
+              {metric.metricType === "gpa" ? (
+                <InfoRow
+                  label="Độ tin cậy gợi ý OCR"
+                  value={formatFieldConfidence(gpaConfidence)}
+                />
+              ) : null}
+              <InfoRow label="Nguồn dữ liệu khai báo" value="Sinh viên nhập" />
               <InfoRow label="Tệp xác nhận" value={hasFiles ? "Đã có" : "Chưa có"} />
             </div>
           ))}
@@ -1554,6 +1667,12 @@ function formatEvidenceValue(value?: unknown) {
   if (typeof value === "number")
     return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, "");
   return String(value);
+}
+
+function formatFieldConfidence(value?: number | null) {
+  if (value === undefined || value === null || !Number.isFinite(value)) return fallbackText;
+  const percentage = value <= 1 ? value * 100 : value;
+  return `${percentage.toLocaleString("vi-VN", { maximumFractionDigits: 0 })}%`;
 }
 
 function formatOrganizerLevel(value?: unknown) {

@@ -1,8 +1,17 @@
 import type { OfficerEvidenceKnowledgeSearchItem } from "@/features/evidence-knowledge/types";
-import type { Pagination } from "@/lib/api/types";
+import type { Pagination, PrecheckResult } from "@/lib/api/types";
 
 export type Role =
-  "student" | "class_representative" | "officer" | "manager" | "committee" | "admin";
+  | "student"
+  | "class_representative"
+  | "data_uploader"
+  | "officer"
+  | "manager"
+  | "committee"
+  | "city_officer"
+  | "city_manager"
+  | "city_committee"
+  | "admin";
 
 export type Level = "school" | "university" | "city" | "central";
 
@@ -307,6 +316,7 @@ export type ReviewTaskDetail = {
   } | null;
   evidences: ReviewTaskEvidence[];
   metrics: ReviewTaskMetric[];
+  precheck?: PrecheckResult | null;
   checklist?: ReviewTaskChecklistItem[];
   criterionLevelAssessment?: CriterionLevelAssessment | null;
   officerSuggestedLevel?: Level | null;

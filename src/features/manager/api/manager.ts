@@ -4,6 +4,8 @@ import type { CollectiveStatus, FinalStatus, Level } from "@/lib/api/types";
 import type {
   ManagerApplicationsParams,
   ManagerApplicationsResponse,
+  ManagerEligibilityVerificationDetail,
+  ManagerEligibilityVerificationQueueResponse,
   ManagerDashboardSummary,
   ManagerCollectiveAggregation,
   ManagerCollectiveFilters,
@@ -17,6 +19,7 @@ import type {
   CommitteeInboxParams,
   CommitteeInboxResponse,
   ReopenFinalInput,
+  VerifyEligibilityInput,
 } from "../types";
 
 const emptyDashboardSummary: ManagerDashboardSummary = {
@@ -148,6 +151,37 @@ export const managerApi = {
     );
 
     return withDataFallback(response, { items: [] });
+  },
+
+  getEligibilityVerificationQueue: async (): Promise<
+    ApiResponse<ManagerEligibilityVerificationQueueResponse>
+  > => {
+    const response = await apiClient<ManagerEligibilityVerificationQueueResponse>(
+      `/api/manager/applications${buildQueryString({
+        eligibilityVerification: "pending",
+        page: 1,
+        limit: 20,
+      })}`,
+    );
+    return withDataFallback(response, {
+      items: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    });
+  },
+
+  getEligibilityVerification: async (
+    applicationId: string,
+  ): Promise<ApiResponse<ManagerEligibilityVerificationDetail>> => {
+    return apiClient<ManagerEligibilityVerificationDetail>(
+      `/api/manager/applications/${applicationId}/eligibility-verification`,
+    );
+  },
+
+  verifyApplicationEligibility: async (applicationId: string, payload: VerifyEligibilityInput) => {
+    return apiClient(`/api/applications/${applicationId}/eligibility-verification`, {
+      method: "POST",
+      body: payload,
+    });
   },
 
   getManagerWorkload: async (): Promise<ApiResponse<ManagerWorkloadResponse>> => {

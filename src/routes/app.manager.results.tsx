@@ -30,8 +30,8 @@ export const Route = createFileRoute("/app/manager/results")({
 });
 
 const levels: Level[] = [...ACTIVE_LEVELS];
-const allowedRoles: Role[] = ["manager", "committee", "admin"];
-const finalizerRoles: Role[] = ["manager", "committee", "admin"];
+const allowedRoles: Role[] = ["manager", "committee", "city_manager", "city_committee", "admin"];
+const finalizerRoles: Role[] = ["manager", "committee", "city_manager", "city_committee", "admin"];
 const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
 
 const criterionShortLabel: Record<Criterion, string> = {

@@ -526,4 +526,24 @@ describe("student application UI V2 visual contract", () => {
     assert.match(source, /Quyết định chính thức/);
     assert.match(source, /cán bộ hoặc Hội đồng/);
   });
+
+  it("keeps visible student AI surfaces on V2 without restoring generic Smartbot route", () => {
+    const overviewSource = readFileSync(
+      "src/features/application/ui-v2/StudentOverviewV2.tsx",
+      "utf8",
+    );
+    const supportSource = readFileSync("src/features/core/components/StudentSupport.tsx", "utf8");
+    const evidenceCardSource = readFileSync(
+      "src/features/evidence/components/EvidenceCardPanel.tsx",
+      "utf8",
+    );
+
+    assert.match(overviewSource, /Trợ lý theo hồ sơ/);
+    assert.match(overviewSource, /Gợi ý theo tiến độ/);
+    assert.match(overviewSource, /AI có thể đọc minh chứng/);
+    assert.match(supportSource, /StudentAssistantExplanation/);
+    assert.doesNotMatch(supportSource, /SmartbotPanel/);
+    assert.match(evidenceCardSource, /AI tiền kiểm minh chứng/);
+    assert.doesNotMatch(evidenceCardSource, /SmartReader gợi ý/);
+  });
 });

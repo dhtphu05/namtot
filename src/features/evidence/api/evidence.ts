@@ -123,12 +123,20 @@ function normalizeEvidenceCard(payload: unknown): EvidenceCard | null {
   const wrapper = asRecord(payload);
   const row = asRecord(wrapper?.card) ?? wrapper;
   if (!row) return null;
+  const rawExtractedFields =
+    row.extractedFields ??
+    row.extracted_fields ??
+    row.extractedFieldsJson ??
+    row.extracted_fields_json;
+  const rawNormalizedFields =
+    row.normalizedFields ??
+    row.normalized_fields ??
+    row.normalizedFieldsJson ??
+    row.normalized_fields_json;
   const readableSummary =
     asRecord(row.readableSummary ?? row.readable_summary) ??
     asRecord(row.summary) ??
-    normalizeReadableSummary(
-      row.extractedFields ?? row.extracted_fields ?? row.extractedFieldsJson,
-    );
+    normalizeReadableSummary(rawNormalizedFields ?? rawExtractedFields);
   const missingFields = normalizeStringOrObjectArray(
     row.missingFields ?? row.missing_fields ?? row.missingInfo ?? row.missing_info,
   );
@@ -137,9 +145,19 @@ function normalizeEvidenceCard(payload: unknown): EvidenceCard | null {
     ...row,
     id: nullableString(row.id) ?? undefined,
     evidenceId: nullableString(row.evidenceId ?? row.evidence_id) ?? undefined,
+    sourceFileId: nullableString(row.sourceFileId ?? row.source_file_id) ?? null,
+    analysisRevision: nullableNumber(row.analysisRevision ?? row.analysis_revision) ?? null,
     provider: nullableString(row.provider),
     providerModel: nullableString(row.providerModel ?? row.provider_model),
     promptVersion: nullableString(row.promptVersion ?? row.prompt_version),
+    documentType: nullableString(row.documentType ?? row.document_type),
+    suggestedCriteria: Array.isArray(row.suggestedCriteria ?? row.suggested_criteria)
+      ? ((row.suggestedCriteria ?? row.suggested_criteria) as EvidenceCard["suggestedCriteria"])
+      : [],
+    evidencePrecheck:
+      (asRecord(
+        row.evidencePrecheck ?? row.evidence_precheck,
+      ) as EvidenceCard["evidencePrecheck"]) ?? null,
     confirmationStatus: nullableString(row.confirmationStatus ?? row.confirmation_status),
     requiresHumanConfirmation:
       typeof (row.requiresHumanConfirmation ?? row.requires_human_confirmation) === "boolean"
@@ -166,14 +184,16 @@ function normalizeEvidenceCard(payload: unknown): EvidenceCard | null {
     studentStatus: normalizeStudentStatus(row.studentStatus ?? row.student_status),
     userProvidedFields: asRecord(row.userProvidedFields ?? row.user_provided_fields) ?? null,
     studentProfileFields: asRecord(row.studentProfileFields ?? row.student_profile_fields) ?? null,
-    extractedFields: asRecord(row.extractedFields ?? row.extracted_fields) ?? null,
-    normalizedFields: asRecord(row.normalizedFields ?? row.normalized_fields) ?? null,
+    extractedFields: asRecord(rawExtractedFields) ?? null,
+    normalizedFields: asRecord(rawNormalizedFields) ?? null,
     verifiedFields: asRecord(row.verifiedFields ?? row.verified_fields) ?? null,
     primaryFields: asRecord(row.primaryFields ?? row.primary_fields) ?? null,
-    fieldConfidence: asRecord(row.fieldConfidence ?? row.field_confidence) as Record<
-      string,
-      number
-    > | null,
+    fieldConfidence: asRecord(
+      row.fieldConfidence ??
+        row.field_confidence ??
+        row.fieldConfidenceJson ??
+        row.field_confidence_json,
+    ) as Record<string, number> | null,
     metricSuggestions: asRecord(row.metricSuggestions ?? row.metric_suggestions) ?? null,
     academic: asRecord(row.academic) ?? null,
     extractedFieldsJson: row.extractedFieldsJson ?? row.extracted_fields_json,
@@ -414,9 +434,19 @@ export const evidenceApi = {
         ? {
             ...normalizedCard,
             evidence: normalizedEvidence ?? undefined,
+            uxStatus: asRecord(wrapper?.uxStatus ?? wrapper?.ux_status) ?? normalizedCard.uxStatus,
             auditSummary: wrapper?.auditSummary ?? wrapper?.audit_summary,
           }
-        : null,
+        : {
+            evidenceId,
+            evidence: normalizedEvidence ?? undefined,
+            uxStatus: asRecord(wrapper?.uxStatus ?? wrapper?.ux_status) ?? null,
+            studentStatus: normalizedEvidence?.studentStatus ?? null,
+            indexingStatus:
+              nullableString(wrapper?.indexingStatus ?? wrapper?.indexing_status) ??
+              normalizedEvidence?.indexingStatus ??
+              null,
+          },
     };
   },
 

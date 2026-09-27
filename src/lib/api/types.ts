@@ -35,7 +35,16 @@ export interface ApiFailure {
 }
 
 export type Role =
-  "student" | "class_representative" | "officer" | "manager" | "committee" | "admin";
+  | "student"
+  | "class_representative"
+  | "data_uploader"
+  | "officer"
+  | "manager"
+  | "committee"
+  | "city_officer"
+  | "city_manager"
+  | "city_committee"
+  | "admin";
 
 export interface WorkspaceSummary {
   id: string;
@@ -483,6 +492,14 @@ export interface ApplicationState extends Application {
     [key: string]: unknown;
   };
 }
+
+export type CitySubmissionEligibility = {
+  applicationId: string;
+  schoolYear: string;
+  route: "DIRECT_CITY" | "UDN_PREREQUISITE";
+  status: "ELIGIBLE" | "NOT_ELIGIBLE" | "NEEDS_VERIFICATION";
+  reasons: string[];
+};
 
 export interface ApplicationReviewTaskSummary {
   id: string;

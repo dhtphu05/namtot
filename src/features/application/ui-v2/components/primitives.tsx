@@ -12,6 +12,7 @@ import {
   School,
 } from "lucide-react";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
+import hsvvnEmblemUrl from "@/assets/hsvvn-emblem.webp";
 import { cn } from "@/lib/utils";
 import {
   buttonV2ClassName,
@@ -62,12 +63,11 @@ export function InstitutionalLockup({
       )}
     >
       {showReservedMark ? (
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-secondary)] text-[13px] font-bold text-[var(--student-v2-institutional-navy)]"
-          aria-hidden="true"
-        >
-          5T
-        </div>
+        <img
+          src={hsvvnEmblemUrl}
+          alt="Biểu trưng Hội Sinh viên Việt Nam"
+          className="h-10 w-10 shrink-0 rounded-full object-contain"
+        />
       ) : null}
       <div className="min-w-0 flex-1">
         {headingLevel === "div" ? (

@@ -28,6 +28,22 @@ This file is the current source of truth for ChatGPT planning and Codex implemen
   - Renders `AppLayout`, which delegates to `AppShell`.
 - Role-based redirects and access checks live in `src/features/auth/route-guard.ts`.
 
+## Phase 1 Part 3 — Role Migration
+
+- The frontend API role union includes `student`, `data_uploader`, `city_officer`, `city_manager`, `city_committee`, and `admin`, while retaining `class_representative`, `officer`, `manager`, and `committee` for compatibility.
+- `/api/me` continues to provide workspace `{ id, code, name, shortName }`; it does not provide `WorkspaceType`, and `SafeUser` does not infer or add that field.
+- Default authenticated destinations are student `/app`, data uploader `/app/data-uploader`, City Officer `/app/queue`, City Manager `/app/analytics`, City Committee `/app/resolution`, and admin `/app/admin/workspaces`. Legacy officer, manager, and committee routes retain their earlier defaults.
+- Route authorization uses the authenticated backend role in `src/features/auth/route-guard.ts`. The optional demo role selector changes presentation only; it does not change the authenticated role used for route access or API requests.
+- City Officer has review queue, task detail, specialization, and Resolution read-only surfaces. City Manager has cross-School review operations, assignment, workload, results, export, audit, Event Registry, and Knowledge Base. City Committee has Resolution, results/finalization, export/audit, read-only Event Registry, and Knowledge Base; it does not have assignment or dashboard-summary routes.
+- Data Uploader lands on a short information page without upload controls. Decision Import, criteria configuration, and admin workspace routes remain closed to City roles.
+- Backend regressions found while validating the Part 2 contract now scope approved-evidence-name search by workspace, bind City Officer case detail to a created/assigned case, reject resolution evidence decisions outside the case’s related evidence, and scope resolution watcher notifications. These fixes do not change the API response shape, schema, or JWT.
+- Award Decision Registry is implemented in Phase 2. Phase 3 adds the City submission eligibility gate, student status read, and City Manager manual verification read surface.
+- Phase 3 Part 3 keeps eligibility in the existing `/app/application` flow for a student's own individual City-level initial submission. It allows draft edits, evidence uploads, and precheck while ineligible or awaiting verification; the final submit action refreshes eligibility and handles the backend's eligibility conflict codes. The UI matches the backend condition: `supplement_required` with `submittedAt === null` is still treated as an initial submission, while a supplement resubmission with a non-null `submittedAt` hides and skips this read/gate.
+- Eligibility conflict codes produce specific feedback from the shared submit mutation hook so legacy student surfaces such as `/app/wizard`, `/app/cascade`, and `/app/ai-precheck` explain blocked submissions too. The V2 workspace refetches and refreshes its card on a submit conflict but leaves the single toast to the shared hook.
+- The student card distinguishes Direct City, UDN eligible, not eligible, and needs verification states; it describes submission eligibility, not an award outcome, and maps only known safe reason codes to student copy.
+- City Manager eligibility verification is a pending-only panel inside `/app/analytics`, visible only to the authenticated `city_manager` role. It uses the existing detail and verification APIs, requires a reason for either decision, confirms approval, and refreshes query data after a decision. No route, navigation item, persistence, or verification workflow was added.
+- Part 3 frontend verification: 7 eligibility Playwright tests and 7 Manager panel/role tests pass; build passes and lint exits 0 with 11 existing warnings. TypeScript still reports the same 197 baseline diagnostics (zero added/resolved signatures). The combined 55-test Playwright run reports 39 passed, 15 failed, 1 skipped; all 15 failures also reproduced in the untouched baseline student V2 suite, with no failures in Part 3 eligibility or Manager tests.
+
 ## Layout
 
 - Main app shell: `src/components/layout/AppShell.tsx`.
@@ -914,6 +930,7 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - `Quy định áp dụng`
   - `Trung tâm hỗ trợ`
   - `Thông tin hệ thống`
+
     These are compact shell links, not a fixed-height page footer.
 - V2 token aliases in `src/styles.css` were extended with primary action blue, accent cyan, spacing scale aliases, and typography scale aliases. These are additive and safe for later V2 page work.
 - V2 component additions/normalization under `src/features/application/ui-v2/components/`:
@@ -1076,7 +1093,14 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - PowerShell flag-enabled build passed with `VITE_STUDENT_APPLICATION_UI_V2=true`.
 - Existing failures/limits for this phase:
   - Full `npx eslint src` still fails on pre-existing CRLF Prettier errors in presentation/student primitive files and reports existing hook/fast-refresh warnings outside the Phase 4 scope. The changed-file scoped lint is clean; unrelated formatting cleanup was intentionally not performed.
-  - Browser connector verification against `http://127.0.0.1:5173/app/application` timed out during DOM evaluation and screenshot capture. No browser-driven visual assertion was recorded in this phase.
+
+## Phase 4 Part 1 — City Criteria and Soft Advisory Precheck (2026-09-27)
+
+- Frontend work is isolated in `/private/tmp/phase4-city-criteria-frontend`, branch `phase4-city-criteria-frontend`, based on `0900b846a0f4316b218d94112612417b568d7223`. The original checkout and its untracked `__pycache__` remain untouched.
+- For a student's initial personal City application, `/app/application` keeps the submit action enabled despite incomplete criteria when Phase 3 eligibility is `ELIGIBLE`. The existing confirmation dialog labels rules/OCR as reference advice, groups findings under the five official City criteria, offers `BỔ SUNG HỒ SƠ` and `VẪN NỘP HỒ SƠ`, and never calls a suggestion an official pass/fail. Phase 3 eligibility is still refreshed and enforced before submit; supplement resubmission does not query or show the initial City eligibility gate.
+- When a source file is saved but City OCR fails or needs manual review, its original file remains on the evidence card and the City first-submit UI says staff will inspect the saved source. This copy/status override is limited to the initial personal City submission; other application levels retain the existing OCR failure behavior.
+- City individual review tasks with a precheck show a compact five-criterion advisory panel on the existing review detail page. It uses neutral labels and asks reviewers to compare the original evidence; it does not update decisions. The reference-data tab separates student-entered GPA from OCR/SmartReader suggestion and confidence. The review route also now reads the authenticated role in the detail component so the existing reviewer page can render.
+- Verification: 10 targeted Playwright tests passed for student City eligibility/copy, first submit with incomplete criteria, retained source after OCR failure, eligibility refresh/conflict handling, supplement resubmission, and reviewer advisory. One separate existing school-level supplement visibility test still fails because its fixture exposes the `Thêm` action while the assertion expects no matching action; it does not exercise the City first-submit changes. `npm run build` passed; `npm run lint` passed with the same 11 existing warnings. TypeScript reports 193 diagnostics versus the recorded baseline of 197; the diagnostics in touched files remain on unchanged code. No new test framework or route was added.
 
 ## Student Application UI V2 Phase 5 On 2026-07-19
 
@@ -1462,3 +1486,25 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - Officer physical seed rendered one precedent, accepted-evidence gallery, and the wide detail dialog with tabs and conflict callout; no raw `Resolution Hub`, `Committee`, `raw audit`, `confidence`, or AI wording appeared.
 - Remaining verification limit:
   - Full review accept-with-precedent and pre-resolution mutation E2E was not executed because it would mutate the configured real data and no disposable matching review fixture was available in this pass.
+
+## Institutional Emblem Usage On 2026-09-09
+
+- The verified Hội Sinh viên Việt Nam emblem is available at `src/assets/hsvvn-emblem.webp`.
+- Existing mock `5T` marks were replaced with the emblem in the login entry point, signup entry point, legacy shared sidebar, and reusable `InstitutionalLockup` primitive.
+- The student V2 sidebar and public landing page continue to use the same bundled emblem asset, so institutional identity stays consistent across entry and workspace surfaces.
+
+## Phase 4 Part 2 — City review completion
+
+- Reuses the existing review queue/detail, human decision panel, supplement flow, Resolution Hub, manager result detail, and finalization dialog; no parallel review workflow or analytics surface was added.
+- The manager result detail now exposes the final decision action to `city_manager` and `city_committee` for individual City applications, and keeps the existing school-role behavior for other application levels. The shared route guard checks City Committee result routes before the broader City Manager route group, so the committee result links already shown in navigation work.
+- `tests/city-review-finalization-roles.spec.ts` protects the City finalization role split and existing City Manager finalization behavior for non-City applications. `tests/city-review-human-authority.spec.ts` proves a City Officer can accept despite incomplete rules/OCR failure and reject despite a positive rules suggestion.
+- Rules Engine/OCR output remains advisory; official criterion and final decisions continue through existing human review and finalization actions. No Award Registry, Eligibility, schema, or migration change is part of Part 2.
+
+## Phase 4 Part 3A — City analytics dashboard (2026-09-27)
+
+- `/app/analytics` selects the City dashboard for `city_manager` and `admin`; legacy `manager` and `committee` continue to use the existing workspace dashboard and endpoint. City Officer, City Committee, uploader, and student roles do not access City analytics.
+- The City dashboard reads `/api/analytics/city` and its paginated `/api/analytics/city/applications` drill-down. Year, school, and exact Application status controls (including `not_started`) are the source of truth for summary and list. List-only filters include criterion, task/final status, `submitted`, `inReview`, `supplementRequired`, and `resolutionBlocked`; result and submitted counts carry `submitted=true`, and KPI scope is synchronized to the visible year/school/status controls.
+- Summary views show workflow counts, progress by five human-reviewed criteria, data anomalies (missing criterion slots and unexpected tasks), school breakdown, final outcomes, supplement/resolution counts, and City Officer workload. The summary does not display student PII. Review-complete and progress-distribution values are informational because no exact list filter maps to those aggregates. Drill-down rows link to the existing manager result detail.
+- City Manager retains the Eligibility Verification panel on analytics. Admin does not see that panel and can use the existing result-detail route from the City drill-down. Drill-down itself adds no mutation controls; existing result-list/detail, assignment, finalization, and reopen behavior remains governed by the existing routes and backend permissions.
+- The role split adds no navigation item, persistence, schema, cache, or background job. The existing legacy dashboard and its workspace scope remain unchanged.
+- Verification: the focused City analytics Playwright suite passes (17 tests), frontend build passes, and lint passes with the same 11 baseline warnings. `npx tsc --noEmit` reports 193 diagnostics, matching the recorded 193 baseline; the new City analytics files add none. The route-guard exceptions are limited to the role sets for analytics and existing results routes; assignment access is unchanged.
