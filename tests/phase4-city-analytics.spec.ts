@@ -38,6 +38,12 @@ test.describe("Phase 4 Part 3A City analytics", () => {
       await expect(page.getByText("Nguyễn An", { exact: true })).toHaveCount(0);
       expect(requests.some((url) => new URL(url).pathname === "/api/analytics/city")).toBe(true);
       expect(requests.some((url) => url.includes("/api/manager/dashboard-summary"))).toBe(false);
+      await expect(page.getByRole("heading", { name: "Quản lý mùa xét Thành phố" })).toBeVisible();
+      expect(
+        requests.some(
+          (url) => new URL(url).pathname === "/api/manager/city-review-seasons/2025-2026",
+        ),
+      ).toBe(true);
 
       if (role === "city_manager") {
         await expect(
@@ -59,10 +65,16 @@ test.describe("Phase 4 Part 3A City analytics", () => {
       await page.goto("/app/analytics", { waitUntil: "domcontentloaded" });
 
       await expect(page.getByRole("heading", { name: "Tổng quan xét duyệt" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Quản lý mùa xét Thành phố" })).toHaveCount(0);
       expect(requests.some((url) => url.includes("/api/manager/dashboard-summary"))).toBe(true);
       expect(requests.some((url) => new URL(url).pathname.startsWith("/api/analytics/city"))).toBe(
         false,
       );
+      expect(
+        requests.some((url) =>
+          new URL(url).pathname.startsWith("/api/manager/city-review-seasons"),
+        ),
+      ).toBe(false);
     });
   }
 
@@ -80,11 +92,358 @@ test.describe("Phase 4 Part 3A City analytics", () => {
         data_uploader: "/app/data-uploader",
       }[role];
       await expect(page).toHaveURL(new RegExp(`${landingPath.replaceAll("/", "\\/")}$`));
+      await expect(page.getByRole("heading", { name: "Quản lý mùa xét Thành phố" })).toHaveCount(0);
       expect(requests.some((url) => new URL(url).pathname.startsWith("/api/analytics/city"))).toBe(
         false,
       );
+      expect(
+        requests.some((url) =>
+          new URL(url).pathname.startsWith("/api/manager/city-review-seasons"),
+        ),
+      ).toBe(false);
     });
   }
+
+  test("City Manager configures a season with reason and explicit Vietnam timezone", async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    let createBody: Record<string, unknown> | undefined;
+    await installMocks(page, "city_manager", requests);
+    await page.route(
+      "http://localhost:8080/api/manager/city-review-seasons/2025-2026",
+      async (route) => {
+        requests.push(`${route.request().method()} ${route.request().url()}`);
+        if (route.request().method() === "GET") return json(route, null);
+        return json(route, null);
+      },
+    );
+    await page.route("http://localhost:8080/api/manager/city-review-seasons", async (route) => {
+      requests.push(`${route.request().method()} ${route.request().url()}`);
+      if (route.request().method() === "POST") {
+        createBody = route.request().postDataJSON() as Record<string, unknown>;
+        return json(route, reviewSeason());
+      }
+      return json(route, null);
+    });
+
+    await page.goto("/app/analytics", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /Cấu hình mùa xét/ }).click();
+
+    await expect(page.getByRole("heading", { name: "Quản lý mùa xét Thành phố" })).toBeVisible();
+    await page.getByLabel("Mở đợt nộp hồ sơ").fill("2026-09-03T09:00");
+    await page.getByLabel("Đóng đợt nộp hồ sơ").fill("2026-09-02T09:00");
+    await page.getByLabel("Hạn hoàn tất review").fill("2026-10-01T09:00");
+    await page.getByLabel("Hạn xử lý bổ sung").fill("2026-10-07T09:00");
+    await page.getByLabel("Hạn chốt kết quả").fill("2026-10-14T09:00");
+    await page.getByLabel("Lý do thay đổi lịch").fill("Điều chỉnh theo kế hoạch năm học.");
+    await page.getByRole("button", { name: "Lưu lịch mùa xét" }).click();
+    await expect(page.getByText("Thời điểm đóng nộp phải sau thời điểm mở nộp.")).toBeVisible();
+    expect(createBody).toBeUndefined();
+
+    await page.getByLabel("Đóng đợt nộp hồ sơ").fill("2026-09-04T09:00");
+    await page.getByRole("button", { name: "Lưu lịch mùa xét" }).click();
+    await expect(page.getByRole("dialog", { name: "Xác nhận lưu lịch mùa xét" })).toBeVisible();
+    await page.getByRole("button", { name: "Xác nhận lưu" }).click();
+
+    await expect
+      .poll(() => createBody)
+      .toEqual({
+        schoolYear: "2025-2026",
+        submissionOpensAt: "2026-09-03T02:00:00.000Z",
+        submissionClosesAt: "2026-09-04T02:00:00.000Z",
+        reviewDeadlineAt: "2026-10-01T02:00:00.000Z",
+        supplementDeadlineAt: "2026-10-07T02:00:00.000Z",
+        finalizationDeadlineAt: "2026-10-14T02:00:00.000Z",
+        reason: "Điều chỉnh theo kế hoạch năm học.",
+      });
+    expect(requests.some((item) => item.startsWith("POST "))).toBe(true);
+  });
+
+  test("admin edits an existing season with its optimistic version and reason", async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    let patchBody: Record<string, unknown> | undefined;
+    await installMocks(page, "admin", requests);
+    await page.route(
+      "http://localhost:8080/api/manager/city-review-seasons/2025-2026",
+      async (route) => {
+        requests.push(`${route.request().method()} ${route.request().url()}`);
+        if (route.request().method() === "GET") return json(route, reviewSeason());
+        if (route.request().method() === "PATCH") {
+          patchBody = route.request().postDataJSON() as Record<string, unknown>;
+          return json(route, reviewSeason(8));
+        }
+        return json(route, null);
+      },
+    );
+
+    await page.goto("/app/analytics", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "Quản lý mùa xét Thành phố" })).toBeVisible();
+    await page.getByRole("button", { name: "Chỉnh sửa lịch" }).click();
+    await expect(page.getByLabel("Lý do thay đổi lịch")).toBeEnabled();
+    await page.getByRole("button", { name: "Cập nhật lịch mùa xét" }).click();
+    await expect(page.getByText("Nhập lý do thay đổi lịch.")).toBeVisible();
+    expect(patchBody).toBeUndefined();
+
+    await page.getByLabel("Lý do thay đổi lịch").fill("Cập nhật theo thông báo.");
+    await page.getByRole("button", { name: "Cập nhật lịch mùa xét" }).click();
+    await page.getByRole("button", { name: "Xác nhận lưu" }).click();
+    await expect
+      .poll(() => patchBody)
+      .toMatchObject({ expectedVersion: 7, reason: "Cập nhật theo thông báo." });
+    expect(requests.some((item) => item.startsWith("PATCH "))).toBe(true);
+  });
+
+  test("deadline exception controls grant and revoke only after confirmation and reason", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date("2026-09-29T02:00:00.000Z") });
+    const requests: Array<{ method: string; url: string; body?: Record<string, unknown> }> = [];
+    let exceptionGranted = false;
+    const detail = cityResultDetail();
+    detail.application.status = "draft";
+    detail.application.submittedAt = null;
+    await installMocks(page, "city_manager", []);
+    await page.route("http://localhost:8080/api/manager/results/app-city-1", async (route) =>
+      json(route, detail),
+    );
+    await page.route(
+      "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline",
+      async (route) => {
+        requests.push({
+          method: route.request().method(),
+          url: route.request().url(),
+          body: route.request().postDataJSON() as Record<string, unknown> | undefined,
+        });
+        return json(route, managerDeadline(exceptionGranted));
+      },
+    );
+    await page.route(
+      "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline-exception",
+      async (route) => {
+        exceptionGranted = route.request().method() !== "DELETE";
+        requests.push({
+          method: route.request().method(),
+          url: route.request().url(),
+          body: route.request().postDataJSON() as Record<string, unknown> | undefined,
+        });
+        return json(route, managerDeadline(exceptionGranted));
+      },
+    );
+
+    await page.goto("/app/manager/results/app-city-1", { waitUntil: "domcontentloaded" });
+    const deadlines = page.getByRole("region", { name: "Hạn nộp hồ sơ" });
+    await expect(deadlines).toBeVisible();
+    await page.getByLabel("Hiệu lực đến").fill("2026-10-03T18:00");
+    await page.getByRole("button", { name: "Cấp ngoại lệ" }).click();
+    await expect(page.getByText("Nhập lý do cấp ngoại lệ.")).toBeVisible();
+    expect(requests.some((item) => item.method === "PUT")).toBe(false);
+
+    await page.getByLabel("Lý do cấp ngoại lệ").fill("Bổ sung hồ sơ sức khỏe.");
+    await page.getByRole("button", { name: "Cấp ngoại lệ" }).click();
+    await expect(page.getByRole("dialog", { name: "Xác nhận cấp ngoại lệ" })).toBeVisible();
+    await page.getByRole("button", { name: "Xác nhận cấp" }).click();
+    await expect.poll(() => requests.some((item) => item.method === "PUT")).toBe(true);
+    expect(requests.find((item) => item.method === "PUT")?.body).toEqual({
+      validUntil: "2026-10-03T11:00:00.000Z",
+      reason: "Bổ sung hồ sơ sức khỏe.",
+    });
+
+    await page.getByRole("button", { name: "Thu hồi ngoại lệ" }).click();
+    await expect(page.getByText("Nhập lý do thu hồi ngoại lệ.")).toBeVisible();
+    expect(requests.some((item) => item.method === "DELETE")).toBe(false);
+
+    await page.getByLabel("Lý do thu hồi ngoại lệ").fill("Đã nộp hồ sơ đúng hạn.");
+    await page.getByRole("button", { name: "Thu hồi ngoại lệ" }).click();
+    await expect(page.getByRole("dialog", { name: "Xác nhận thu hồi ngoại lệ" })).toBeVisible();
+    await page.getByRole("button", { name: "Xác nhận thu hồi" }).click();
+    await expect.poll(() => requests.some((item) => item.method === "DELETE")).toBe(true);
+    expect(requests.find((item) => item.method === "DELETE")?.body).toEqual({
+      reason: "Đã nộp hồ sơ đúng hạn.",
+    });
+  });
+
+  test("allows deadline exception management for an unsubmitted supplement-required City application", async ({
+    page,
+  }) => {
+    const detail = cityResultDetail();
+    detail.application.status = "supplement_required";
+    detail.application.submittedAt = null;
+    await installMocks(page, "city_manager", []);
+    await page.route("http://localhost:8080/api/manager/results/app-city-1", async (route) =>
+      json(route, detail),
+    );
+    await page.route(
+      "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline",
+      async (route) => json(route, managerDeadline(false)),
+    );
+
+    await page.goto("/app/manager/results/app-city-1", { waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("region", { name: "Hạn nộp hồ sơ" })).toBeVisible();
+  });
+
+  test("rejects an already-expired exception before asking for confirmation", async ({ page }) => {
+    await page.clock.install({ time: new Date("2026-09-29T02:00:00.000Z") });
+    const requests: string[] = [];
+    const detail = cityResultDetail();
+    detail.application.status = "draft";
+    detail.application.submittedAt = null;
+    await installMocks(page, "city_manager", []);
+    await page.route("http://localhost:8080/api/manager/results/app-city-1", async (route) =>
+      json(route, detail),
+    );
+    await page.route(
+      "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline",
+      async (route) => json(route, managerDeadline(false)),
+    );
+    await page.route(
+      "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline-exception",
+      async (route) => {
+        requests.push(route.request().method());
+        return json(route, managerDeadline(true));
+      },
+    );
+
+    await page.goto("/app/manager/results/app-city-1", { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Hiệu lực đến").fill("2026-09-28T18:00");
+    await page.getByLabel("Lý do cấp ngoại lệ").fill("Lý do kiểm thử.");
+    await page.getByRole("button", { name: "Cấp ngoại lệ" }).click();
+
+    await expect(page.getByText("Thời điểm hết hiệu lực phải nằm trong tương lai.")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Xác nhận cấp ngoại lệ" })).toHaveCount(0);
+    expect(requests).toEqual([]);
+  });
+
+  test("manager deadline panel follows the explicit initial-draft role allowlist", async ({
+    page,
+  }) => {
+    const allowedRoles: Role[] = ["city_manager", "admin"];
+    const deniedDetailRoles: Array<{ role: Role; landingPath: string }> = [
+      { role: "city_officer", landingPath: "/app/queue" },
+      { role: "data_uploader", landingPath: "/app/data-uploader" },
+    ];
+    const detailRolesWithoutDeadlineManagement: Role[] = ["city_committee", "manager", "committee"];
+
+    for (const role of allowedRoles) {
+      const requests: string[] = [];
+      const draft = cityResultDetail();
+      draft.application.status = "draft";
+      draft.application.submittedAt = null;
+      await installMocks(page, role, requests);
+      await page.route("http://localhost:8080/api/manager/results/app-city-1", async (route) =>
+        json(route, draft),
+      );
+      await page.route(
+        "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline",
+        async (route) => {
+          requests.push(route.request().url());
+          return json(route, managerDeadline(false));
+        },
+      );
+      await page.goto("/app/manager/results/app-city-1", { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("region", { name: "Hạn nộp hồ sơ" })).toBeVisible();
+      await expect
+        .poll(() => requests.some((url) => url.includes("submission-deadline")))
+        .toBe(true);
+      await page.goto("about:blank");
+    }
+
+    for (const { role, landingPath } of deniedDetailRoles) {
+      const requests: string[] = [];
+      await installMocks(page, role, requests);
+      await page.goto("/app/manager/results/app-city-1", { waitUntil: "domcontentloaded" });
+      await expect(page).toHaveURL(new RegExp(`${landingPath.replaceAll("/", "\\/")}$`));
+      expect(requests.some((url) => url.includes("submission-deadline"))).toBe(false);
+      await page.goto("about:blank");
+    }
+
+    for (const role of detailRolesWithoutDeadlineManagement) {
+      const requests: string[] = [];
+      const draft = cityResultDetail();
+      draft.application.status = "draft";
+      draft.application.submittedAt = null;
+      await installMocks(page, role, requests);
+      await page.route("http://localhost:8080/api/manager/results/app-city-1", async (route) =>
+        json(route, draft),
+      );
+      await page.route(
+        "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline",
+        async (route) => {
+          requests.push(route.request().url());
+          return json(route, managerDeadline(false));
+        },
+      );
+      await page.goto("/app/manager/results/app-city-1", { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("heading", { name: "Chi tiết kết quả hồ sơ" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Hạn nộp hồ sơ" })).toHaveCount(0);
+      expect(requests.some((url) => url.includes("submission-deadline"))).toBe(false);
+      await page.goto("about:blank");
+    }
+  });
+
+  test("a future deadline exception is visible and revocable before the base window closes", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date("2026-09-29T02:00:00.000Z") });
+    const requests: string[] = [];
+    const draft = cityResultDetail();
+    draft.application.status = "draft";
+    draft.application.submittedAt = null;
+    const response = managerDeadline(false);
+    response.submission.status = "OPEN";
+    response.submission.exceptionActive = true;
+    response.exception = {
+      validUntil: "2026-10-03T11:00:00.000Z",
+      reason: "Kế hoạch hỗ trợ sinh viên.",
+      grantedAt: "2026-09-20T02:00:00.000Z",
+      revokedAt: null,
+    };
+    await installMocks(page, "admin", requests);
+    await page.route("http://localhost:8080/api/manager/results/app-city-1", async (route) =>
+      json(route, draft),
+    );
+    await page.route(
+      "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline",
+      async (route) => {
+        requests.push(route.request().url());
+        return json(route, response);
+      },
+    );
+
+    await page.goto("/app/manager/results/app-city-1", { waitUntil: "domcontentloaded" });
+    const panel = page.getByRole("region", { name: "Hạn nộp hồ sơ" });
+    await expect(panel.getByText(/Ngoại lệ có hiệu lực đến/)).toBeVisible();
+    await expect(panel.getByText("Lý do: Kế hoạch hỗ trợ sinh viên.")).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Thu hồi ngoại lệ" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Cấp ngoại lệ" })).toHaveCount(0);
+  });
+
+  test("uses the server's active-exception status when the browser clock is ahead", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date("2026-10-05T02:00:00.000Z") });
+    const requests: string[] = [];
+    const draft = cityResultDetail();
+    draft.application.status = "draft";
+    draft.application.submittedAt = null;
+    await installMocks(page, "admin", requests);
+    await page.route("http://localhost:8080/api/manager/results/app-city-1", async (route) =>
+      json(route, draft),
+    );
+    await page.route(
+      "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline",
+      async (route) => json(route, managerDeadline(true)),
+    );
+
+    await page.goto("/app/manager/results/app-city-1", { waitUntil: "domcontentloaded" });
+    const panel = page.getByRole("region", { name: "Hạn nộp hồ sơ" });
+    await expect(panel.getByText(/Ngoại lệ có hiệu lực đến/)).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Thu hồi ngoại lệ" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Cấp ngoại lệ" })).toHaveCount(0);
+  });
 
   test("filters the dashboard and paginated drill-down with the selected scope", async ({
     page,
@@ -491,6 +850,7 @@ function cityResultDetail(finalized = false) {
       applicationType: "individual",
       targetLevel: "city",
       status: finalized ? "completed" : "under_review",
+      submittedAt: "2026-01-03T00:00:00.000Z",
       readinessScore: 100,
       finalStatus: finalized ? "passed" : "pending",
       finalLevel: finalized ? "city" : null,
@@ -526,6 +886,56 @@ function cityResultDetail(finalized = false) {
       canFinalize: true,
       blockingIssues: [],
     },
+  };
+}
+
+function reviewSeason(version = 7) {
+  return {
+    id: "season-2025-2026",
+    schoolYear: "2025-2026",
+    submissionOpensAt: "2026-09-01T02:00:00.000Z",
+    submissionClosesAt: "2026-09-02T02:00:00.000Z",
+    reviewDeadlineAt: "2026-10-01T02:00:00.000Z",
+    supplementDeadlineAt: "2026-10-07T02:00:00.000Z",
+    finalizationDeadlineAt: "2026-10-14T02:00:00.000Z",
+    version,
+    updatedAt: "2026-08-20T02:00:00.000Z",
+    submissionStatus: "NOT_OPEN",
+    reviewStatus: "ON_TRACK",
+    supplementStatus: "ON_TRACK",
+    finalizationStatus: "ON_TRACK",
+  };
+}
+
+function managerDeadline(exceptionActive: boolean) {
+  return {
+    applicationId: "app-city-1",
+    schoolYear: "2025-2026",
+    application: {
+      applicationType: "individual",
+      targetLevel: "city",
+      status: "draft",
+      submittedAt: null,
+    },
+    submission: {
+      status: exceptionActive ? "EXCEPTION_ACTIVE" : "OPEN",
+      opensAt: "2026-09-01T02:00:00.000Z",
+      closesAt: "2026-10-01T02:00:00.000Z",
+      effectiveClosesAt: exceptionActive ? "2026-10-03T11:00:00.000Z" : "2026-10-01T02:00:00.000Z",
+      exceptionActive,
+      exceptionValidUntil: exceptionActive ? "2026-10-03T11:00:00.000Z" : null,
+    },
+    review: { deadlineAt: "2026-10-10T02:00:00.000Z", status: "ON_TRACK" },
+    supplement: { deadlineAt: "2026-10-13T02:00:00.000Z", status: "ON_TRACK" },
+    finalization: { deadlineAt: "2026-10-20T02:00:00.000Z", status: "ON_TRACK" },
+    exception: exceptionActive
+      ? {
+          validUntil: "2026-10-03T11:00:00.000Z",
+          reason: "Bổ sung hồ sơ sức khỏe.",
+          grantedAt: "2026-09-29T02:00:00.000Z",
+          revokedAt: null,
+        }
+      : null,
   };
 }
 

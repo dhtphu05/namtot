@@ -19,6 +19,7 @@ export const applicationKeys = {
   criteriaCompletion: (id: string) => ["application", id, "criteria-completion"] as const,
   metrics: (id: string) => ["application", id, "metrics"] as const,
   cityEligibility: (id: string) => ["application", id, "city-eligibility"] as const,
+  submissionDeadline: (id: string) => ["application", id, "submission-deadline"] as const,
 };
 
 export function useCurrentApplication(schoolYear?: string) {
@@ -38,6 +39,20 @@ export function useCitySubmissionEligibility(applicationId: string | undefined, 
     queryFn: async () => {
       if (!applicationId) return null;
       const response = await applicationApi.getCitySubmissionEligibility(applicationId);
+      return response.data;
+    },
+    enabled: Boolean(applicationId && enabled),
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+export function useStudentSubmissionDeadline(applicationId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: applicationKeys.submissionDeadline(applicationId ?? ""),
+    queryFn: async () => {
+      if (!applicationId) return null;
+      const response = await applicationApi.getSubmissionDeadline(applicationId);
       return response.data;
     },
     enabled: Boolean(applicationId && enabled),
@@ -168,6 +183,18 @@ export function useSubmitApplication() {
         toast.error(
           "Điều kiện nộp hồ sơ cấp Thành phố đang chờ cán bộ xác minh. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.",
         );
+        return;
+      }
+      if (code === "CITY_SUBMISSION_NOT_OPEN") {
+        toast.error("Chưa đến thời gian tiếp nhận hồ sơ cấp Thành phố.");
+        return;
+      }
+      if (code === "CITY_SUBMISSION_CLOSED") {
+        toast.error("Đã hết thời hạn nộp hồ sơ cấp Thành phố.");
+        return;
+      }
+      if (code === "CITY_SUBMISSION_WINDOW_NOT_CONFIGURED") {
+        toast.error("Chưa cấu hình thời hạn nộp hồ sơ cấp Thành phố cho năm học này.");
         return;
       }
       toast.error(`Không thể nộp hồ sơ: ${err.message}`);

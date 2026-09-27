@@ -5,6 +5,7 @@ import type {
   CurrentApplicationResponse,
   CriteriaCompletionResponse,
   CitySubmissionEligibility,
+  ApplicationSubmissionDeadline,
   Level,
   MetricInput,
   PrecheckResult,
@@ -201,6 +202,13 @@ function toBackendMetricUpdatePayload(input: MetricPayloadInput) {
 }
 
 export const applicationApi = {
+  getSubmissionDeadline: async (applicationId: string) => {
+    return apiClient<ApplicationSubmissionDeadline>(
+      `/api/applications/${applicationId}/submission-deadline`,
+      { method: "GET" },
+    );
+  },
+
   getCitySubmissionEligibility: async (applicationId: string) => {
     return apiClient<CitySubmissionEligibility>(`/api/applications/${applicationId}/eligibility`, {
       method: "GET",
