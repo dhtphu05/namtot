@@ -27,9 +27,7 @@ export function CitySubmissionDeadlineExceptionPanel({ applicationId }: { applic
   const [confirmAction, setConfirmAction] = useState<"grant" | "revoke" | null>(null);
 
   const exception = deadline.data?.exception;
-  const hasActiveException = Boolean(
-    exception && exception.revokedAt === null && Date.parse(exception.validUntil) > Date.now(),
-  );
+  const hasActiveException = Boolean(exception && deadline.data?.submission.exceptionActive);
 
   function requestGrant() {
     setFormError("");

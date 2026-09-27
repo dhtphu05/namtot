@@ -394,7 +394,7 @@ test.describe("Phase 4 Part 3A City analytics", () => {
     draft.application.submittedAt = null;
     const response = managerDeadline(false);
     response.submission.status = "OPEN";
-    response.submission.exceptionActive = false;
+    response.submission.exceptionActive = true;
     response.exception = {
       validUntil: "2026-10-03T11:00:00.000Z",
       reason: "Kế hoạch hỗ trợ sinh viên.",
@@ -417,6 +417,30 @@ test.describe("Phase 4 Part 3A City analytics", () => {
     const panel = page.getByRole("region", { name: "Hạn nộp hồ sơ" });
     await expect(panel.getByText(/Ngoại lệ có hiệu lực đến/)).toBeVisible();
     await expect(panel.getByText("Lý do: Kế hoạch hỗ trợ sinh viên.")).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Thu hồi ngoại lệ" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Cấp ngoại lệ" })).toHaveCount(0);
+  });
+
+  test("uses the server's active-exception status when the browser clock is ahead", async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date("2026-10-05T02:00:00.000Z") });
+    const requests: string[] = [];
+    const draft = cityResultDetail();
+    draft.application.status = "draft";
+    draft.application.submittedAt = null;
+    await installMocks(page, "admin", requests);
+    await page.route("http://localhost:8080/api/manager/results/app-city-1", async (route) =>
+      json(route, draft),
+    );
+    await page.route(
+      "http://localhost:8080/api/manager/applications/app-city-1/submission-deadline",
+      async (route) => json(route, managerDeadline(true)),
+    );
+
+    await page.goto("/app/manager/results/app-city-1", { waitUntil: "domcontentloaded" });
+    const panel = page.getByRole("region", { name: "Hạn nộp hồ sơ" });
+    await expect(panel.getByText(/Ngoại lệ có hiệu lực đến/)).toBeVisible();
     await expect(panel.getByRole("button", { name: "Thu hồi ngoại lệ" })).toBeVisible();
     await expect(panel.getByRole("button", { name: "Cấp ngoại lệ" })).toHaveCount(0);
   });
