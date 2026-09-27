@@ -15,7 +15,36 @@ export type ManagerApplicationsParams = {
   criterion?: Criterion;
   q?: string;
   eligibilityVerification?: "pending";
+  workspaceId?: string;
+  lifecycle?: ApplicationLifecycleFilter;
+  archive?: ApplicationArchiveFilter;
 };
+
+export type ApplicationLifecycleFilter = "active" | "cancelled" | "all";
+export type ApplicationArchiveFilter = "exclude" | "only" | "all";
+
+export type ManagerApplicationLifecycleFields = {
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  archivedAt: string | null;
+  archiveReason: string | null;
+};
+
+export type ApplicationFinalDecisionHistoryItem = {
+  id: string;
+  finalStatus: FinalStatus;
+  finalLevel: Level | null;
+  finalNote: string | null;
+  finalizedAt: string | null;
+  finalizedBy: { id: string; fullName: string } | null;
+  supersededAt: string;
+  supersededBy: { id: string; fullName: string } | null;
+  supersedeReason: string;
+};
+
+export type CancelApplicationInput = { reason: string };
+export type ReopenCancelledApplicationInput = { reason: string };
+export type ArchiveApplicationInput = { reason?: string };
 
 export type ManagerEligibilityVerificationStatus =
   "ELIGIBLE" | "NOT_ELIGIBLE" | "NEEDS_VERIFICATION";
@@ -56,6 +85,10 @@ export type VerifyEligibilityInput = {
 };
 
 export type ManagerResultFilters = {
+  workspaceId?: string;
+  lifecycle?: ApplicationLifecycleFilter;
+  archive?: ApplicationArchiveFilter;
+  status?: ApplicationStatus;
   schoolYear?: string;
   finalStatus?: FinalStatus | "unfinalized";
   finalLevel?: Level;
@@ -165,6 +198,10 @@ export type ManagerApplicationListItem = {
   schoolYear?: string;
   targetLevel: Level;
   status: ApplicationStatus;
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
+  archivedAt?: string | null;
+  archiveReason?: string | null;
   progress: number;
   submittedAt?: string | null;
   updatedAt: string;
@@ -198,6 +235,10 @@ export type ManagerResultItem = {
   readinessScore: number;
   submittedAt?: string | null;
   finalizedAt?: string | null;
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
+  archivedAt?: string | null;
+  archiveReason?: string | null;
   updatedAt: string;
   lastActivityAt: string;
   finalizedBy?: {
@@ -387,7 +428,11 @@ export type ManagerResultDetail = {
       id: string;
       fullName: string;
     } | null;
-  };
+  } & ManagerApplicationLifecycleFields & {
+      cancelledBy: { id: string; fullName: string } | null;
+      archivedBy: { id: string; fullName: string } | null;
+    };
+  finalDecisionHistory: ApplicationFinalDecisionHistoryItem[];
   student: {
     id: string;
     fullName: string;

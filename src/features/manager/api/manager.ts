@@ -20,6 +20,9 @@ import type {
   CommitteeInboxResponse,
   ReopenFinalInput,
   VerifyEligibilityInput,
+  CancelApplicationInput,
+  ReopenCancelledApplicationInput,
+  ArchiveApplicationInput,
 } from "../types";
 
 const emptyDashboardSummary: ManagerDashboardSummary = {
@@ -289,6 +292,37 @@ export const managerApi = {
     applicationId: string,
   ): Promise<ApiResponse<ManagerResultDetail>> => {
     return apiClient<ManagerResultDetail>(`/api/manager/results/${applicationId}`);
+  },
+
+  cancelApplication: async (applicationId: string, payload: CancelApplicationInput) => {
+    return apiClient(`/api/manager/applications/${applicationId}/cancel`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  reopenCancelledApplication: async (
+    applicationId: string,
+    payload: ReopenCancelledApplicationInput,
+  ) => {
+    return apiClient(`/api/manager/applications/${applicationId}/reopen-cancelled`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  archiveApplication: async (applicationId: string, payload: ArchiveApplicationInput = {}) => {
+    return apiClient(`/api/manager/applications/${applicationId}/archive`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  unarchiveApplication: async (applicationId: string) => {
+    return apiClient(`/api/manager/applications/${applicationId}/unarchive`, {
+      method: "POST",
+      body: {},
+    });
   },
 
   finalizeApplication: async (

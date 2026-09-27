@@ -10,6 +10,9 @@ import type {
   ManagerResultFilters,
   ReopenFinalInput,
   VerifyEligibilityInput,
+  ArchiveApplicationInput,
+  CancelApplicationInput,
+  ReopenCancelledApplicationInput,
 } from "../types";
 
 export const managerKeys = {
@@ -162,6 +165,89 @@ export function useManagerResultDetail(applicationId?: string) {
       const response = await managerApi.getManagerResultDetail(applicationId ?? "");
       return response.data;
     },
+  });
+}
+
+async function invalidateApplicationLifecycleQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  applicationId: string,
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: managerKeys.applications }),
+    queryClient.invalidateQueries({ queryKey: ["managerResults"] }),
+    queryClient.invalidateQueries({ queryKey: ["managerResultDetail"] }),
+    queryClient.invalidateQueries({ queryKey: managerKeys.dashboard }),
+    queryClient.invalidateQueries({ queryKey: managerKeys.workload }),
+    queryClient.invalidateQueries({ queryKey: ["cityAnalytics"] }),
+    queryClient.invalidateQueries({ queryKey: ["managerSubmissionDeadline", applicationId] }),
+    queryClient.invalidateQueries({ queryKey: ["committeeInbox"] }),
+  ]);
+}
+
+export function useCancelManagerApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      applicationId,
+      payload,
+    }: {
+      applicationId: string;
+      payload: CancelApplicationInput;
+    }) => managerApi.cancelApplication(applicationId, payload),
+    onSuccess: async (_, input) => {
+      await invalidateApplicationLifecycleQueries(queryClient, input.applicationId);
+      toast.success("Đã hủy hồ sơ.");
+    },
+    onError: (error: Error) => toast.error(error.message || "Không thể hủy hồ sơ."),
+  });
+}
+
+export function useReopenCancelledManagerApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      applicationId,
+      payload,
+    }: {
+      applicationId: string;
+      payload: ReopenCancelledApplicationInput;
+    }) => managerApi.reopenCancelledApplication(applicationId, payload),
+    onSuccess: async (_, input) => {
+      await invalidateApplicationLifecycleQueries(queryClient, input.applicationId);
+      toast.success("Đã mở lại hồ sơ.");
+    },
+    onError: (error: Error) => toast.error(error.message || "Không thể mở lại hồ sơ."),
+  });
+}
+
+export function useArchiveManagerApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      applicationId,
+      payload,
+    }: {
+      applicationId: string;
+      payload: ArchiveApplicationInput;
+    }) => managerApi.archiveApplication(applicationId, payload),
+    onSuccess: async (_, input) => {
+      await invalidateApplicationLifecycleQueries(queryClient, input.applicationId);
+      toast.success("Đã lưu hồ sơ vào kho lưu trữ.");
+    },
+    onError: (error: Error) => toast.error(error.message || "Không thể lưu trữ hồ sơ."),
+  });
+}
+
+export function useUnarchiveManagerApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ applicationId }: { applicationId: string }) =>
+      managerApi.unarchiveApplication(applicationId),
+    onSuccess: async (_, input) => {
+      await invalidateApplicationLifecycleQueries(queryClient, input.applicationId);
+      toast.success("Đã bỏ lưu trữ hồ sơ.");
+    },
+    onError: (error: Error) => toast.error(error.message || "Không thể bỏ lưu trữ hồ sơ."),
   });
 }
 
