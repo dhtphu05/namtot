@@ -50,7 +50,8 @@ export const Route = createFileRoute("/app/manager/results/$applicationId")({
   component: ManagerResultDetailRoute,
 });
 
-const finalizerRoles: Role[] = ["manager", "committee", "admin"];
+const finalizerRoles: Role[] = ["manager", "committee", "city_manager", "city_committee", "admin"];
+const cityFinalizerRoles: Role[] = ["city_manager", "city_committee", "admin"];
 const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
 
 const criterionLabel: Record<Criterion, string> = {
@@ -143,7 +144,12 @@ function ManagerResultDetailRoute() {
   }
 
   const detail = detailQuery.data;
-  const canFinalize = role ? finalizerRoles.includes(role) : false;
+  const isIndividualCityApplication =
+    detail.application.applicationType === "individual" &&
+    detail.application.targetLevel === "city";
+  const canFinalize = role
+    ? (isIndividualCityApplication ? cityFinalizerRoles : finalizerRoles).includes(role)
+    : false;
   const selectedItem = toFinalizationItem(detail);
   const suggestedLevel = getSuggestedLevel(detail);
   const processedCount = detail.reviewTasks.filter((task) =>

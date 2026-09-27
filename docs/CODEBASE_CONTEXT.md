@@ -1492,3 +1492,10 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 - The verified Hội Sinh viên Việt Nam emblem is available at `src/assets/hsvvn-emblem.webp`.
 - Existing mock `5T` marks were replaced with the emblem in the login entry point, signup entry point, legacy shared sidebar, and reusable `InstitutionalLockup` primitive.
 - The student V2 sidebar and public landing page continue to use the same bundled emblem asset, so institutional identity stays consistent across entry and workspace surfaces.
+
+## Phase 4 Part 2 — City review completion
+
+- Reuses the existing review queue/detail, human decision panel, supplement flow, Resolution Hub, manager result detail, and finalization dialog; no parallel review workflow or analytics surface was added.
+- The manager result detail now exposes the final decision action to `city_manager` and `city_committee` for individual City applications, and keeps the existing school-role behavior for other application levels. The shared route guard checks City Committee result routes before the broader City Manager route group, so the committee result links already shown in navigation work.
+- `tests/city-review-finalization-roles.spec.ts` protects the City finalization role split and existing City Manager finalization behavior for non-City applications. `tests/city-review-human-authority.spec.ts` proves a City Officer can accept despite incomplete rules/OCR failure and reject despite a positive rules suggestion.
+- Rules Engine/OCR output remains advisory; official criterion and final decisions continue through existing human review and finalization actions. No Award Registry, Eligibility, schema, or migration change is part of Part 2.

@@ -156,8 +156,10 @@ export function canAccessPath(role: Role, pathname: string): boolean {
   if (matchesAny(pathname, adminRoutes)) return role === "admin";
   if (matchesAny(pathname, officerRoutes)) return reviewRoles.includes(role);
   if (matchesAny(pathname, evidenceKnowledgeRoutes)) return evidenceKnowledgeRoles.includes(role);
+  if (matchesAny(pathname, cityCommitteeRoutes)) {
+    return role === "city_committee" || role === "city_manager";
+  }
   if (matchesAny(pathname, cityManagerRoutes)) return role === "city_manager";
-  if (matchesAny(pathname, cityCommitteeRoutes)) return role === "city_committee";
   if (matchesAny(pathname, managerRoutes))
     return role === "manager" || role === "committee" || role === "admin";
   if (pathname.startsWith("/app/event-registry")) return eventRegistryRoles.includes(role);
