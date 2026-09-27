@@ -27,6 +27,7 @@ import {
 import { useAuth } from "@/features/auth/store/auth-store";
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import { FinalizationDialog } from "@/features/manager/components/FinalizationDialog";
+import { CitySubmissionDeadlineExceptionPanel } from "@/features/manager/components/CitySubmissionDeadlineExceptionPanel";
 import {
   useManagerResultDetail,
   useReopenFinalApplication,
@@ -147,6 +148,13 @@ function ManagerResultDetailRoute() {
   const isIndividualCityApplication =
     detail.application.applicationType === "individual" &&
     detail.application.targetLevel === "city";
+  const canManageCityDeadline = role === "city_manager" || role === "admin";
+  const isInitialCityDraft =
+    isIndividualCityApplication &&
+    detail.application.submittedAt == null &&
+    ["draft", "prechecked", "ready_to_submit", "supplement_required"].includes(
+      detail.application.status,
+    );
   const canFinalize = role
     ? (isIndividualCityApplication ? cityFinalizerRoles : finalizerRoles).includes(role)
     : false;
@@ -177,6 +185,9 @@ function ManagerResultDetailRoute() {
             resolutionCaseId={inboxFocus.resolutionCaseId}
           />
           <HeaderCard detail={detail} />
+          {canManageCityDeadline && isInitialCityDraft ? (
+            <CitySubmissionDeadlineExceptionPanel applicationId={detail.application.id} />
+          ) : null}
           <AnalysisSection detail={detail} />
           <CriterionDecisionBoard detail={detail} />
           <ResolutionSection detail={detail} />

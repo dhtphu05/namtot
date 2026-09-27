@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EligibilityVerificationPanel } from "@/features/manager/components/EligibilityVerificationPanel";
+import { CityReviewSeasonAdministration } from "@/features/manager/components/CityReviewSeasonAdministration";
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
 import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingState";
 import { getErrorMessage } from "@/features/review/utils/errors";
@@ -200,6 +201,8 @@ export function CityAnalyticsDashboard({
               </div>
             </Card>
           ) : null}
+
+          <CityReviewSeasonAdministration defaultSchoolYear={activeSchoolYear} />
 
           <CityAnalyticsSummarySections summary={summary} onOpenList={openDrilldown} />
 

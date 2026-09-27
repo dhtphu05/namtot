@@ -501,6 +501,42 @@ export type CitySubmissionEligibility = {
   reasons: string[];
 };
 
+export type SubmissionWindowStatus =
+  "NOT_CONFIGURED" | "NOT_OPEN" | "OPEN" | "CLOSED" | "EXCEPTION_ACTIVE";
+
+export type ReviewPhaseDeadlineStatus = "NOT_CONFIGURED" | "ON_TRACK" | "OVERDUE";
+
+export type ApplicationSubmissionDeadline = {
+  applicationId: string;
+  schoolYear: string;
+  submission: {
+    status: SubmissionWindowStatus;
+    opensAt: string | null;
+    closesAt: string | null;
+    effectiveClosesAt: string | null;
+    exceptionActive: boolean;
+    exceptionValidUntil: string | null;
+  };
+  review: { deadlineAt: string | null; status: ReviewPhaseDeadlineStatus };
+  supplement: { deadlineAt: string | null; status: ReviewPhaseDeadlineStatus };
+  finalization: { deadlineAt: string | null; status: ReviewPhaseDeadlineStatus };
+};
+
+export type ManagerSubmissionDeadline = ApplicationSubmissionDeadline & {
+  application?: {
+    applicationType?: string;
+    targetLevel?: Level;
+    status?: ApplicationStatus;
+    submittedAt?: string | null;
+  };
+  exception?: {
+    validUntil: string;
+    reason: string;
+    grantedAt: string;
+    revokedAt: string | null;
+  } | null;
+};
+
 export interface ApplicationReviewTaskSummary {
   id: string;
   criterion: Criterion;

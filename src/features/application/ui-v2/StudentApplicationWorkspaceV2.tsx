@@ -50,6 +50,7 @@ import {
 import {
   useCriteriaCompletion,
   useCitySubmissionEligibility,
+  useStudentSubmissionDeadline,
   useAddIntegrationPathResponse,
   useAddVolunteerActivity,
   useCurrentApplication,
@@ -63,6 +64,7 @@ import {
   useUpsertMetric,
 } from "@/features/application/hooks/useApplication";
 import { CitySubmissionEligibilityCard } from "@/features/application/ui-v2/components/CitySubmissionEligibilityCard";
+import { CityDeadlineStatusCard } from "@/features/application/ui-v2/components/CityDeadlineStatusCard";
 import { AddEvidenceDrawer } from "@/features/evidence/components/AddEvidenceDrawer";
 import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDetailModal";
 import {
@@ -288,12 +290,26 @@ export function StudentApplicationWorkspaceV2() {
     application.targetLevel === "city" &&
     (application.status !== "supplement_required" || application.submittedAt === null),
   );
+  const showCityDeadline = Boolean(
+    userRole === "student" &&
+    application?.applicationType === "individual" &&
+    application.targetLevel === "city" &&
+    (application.submittedAt === null || isSupplementMode),
+  );
+  const isSupplementResubmission = Boolean(isSupplementMode && application?.submittedAt !== null);
   const cityEligibility = useCitySubmissionEligibility(applicationId, showCityEligibility);
+  const cityDeadline = useStudentSubmissionDeadline(applicationId, showCityDeadline);
   const cityEligibilityBlocksFirstSubmit = Boolean(
     showCityEligibility &&
     (cityEligibility.isLoading ||
       cityEligibility.isError ||
       cityEligibility.data?.status !== "ELIGIBLE"),
+  );
+  const cityDeadlineBlocksFirstSubmit = Boolean(
+    showCityEligibility &&
+    (cityDeadline.isLoading ||
+      cityDeadline.isError ||
+      !["OPEN", "EXCEPTION_ACTIVE"].includes(cityDeadline.data?.submission.status ?? "")),
   );
   const isReadonlyStatus = Boolean(application && readonlyStatuses.includes(application.status));
   const canEditApplication = Boolean(
@@ -518,6 +534,16 @@ export function StudentApplicationWorkspaceV2() {
         toast.error(getEligibilitySubmitMessage(refreshed.data.status));
         return;
       }
+      const refreshedDeadline = await cityDeadline.refetch();
+      if (
+        refreshedDeadline.isError ||
+        !refreshedDeadline.data ||
+        !["OPEN", "EXCEPTION_ACTIVE"].includes(refreshedDeadline.data.submission.status)
+      ) {
+        setConfirmSubmitOpen(false);
+        toast.error(getSubmissionDeadlineSubmitMessage(refreshedDeadline.data?.submission.status));
+        return;
+      }
     }
 
     try {
@@ -540,6 +566,16 @@ export function StudentApplicationWorkspaceV2() {
           error.code === "CITY_SUBMISSION_NEEDS_VERIFICATION")
       ) {
         await cityEligibility.refetch();
+        setConfirmSubmitOpen(false);
+      } else if (
+        error instanceof ApiError &&
+        [
+          "CITY_SUBMISSION_NOT_OPEN",
+          "CITY_SUBMISSION_CLOSED",
+          "CITY_SUBMISSION_WINDOW_NOT_CONFIGURED",
+        ].includes(error.code)
+      ) {
+        await cityDeadline.refetch();
         setConfirmSubmitOpen(false);
       }
     }
@@ -633,6 +669,16 @@ export function StudentApplicationWorkspaceV2() {
             isLoading={cityEligibility.isLoading || cityEligibility.isFetching}
             isError={cityEligibility.isError}
             onRetry={() => void cityEligibility.refetch()}
+          />
+        ) : null}
+
+        {showCityDeadline ? (
+          <CityDeadlineStatusCard
+            data={cityDeadline.data ?? undefined}
+            isLoading={cityDeadline.isLoading || cityDeadline.isFetching}
+            isError={cityDeadline.isError}
+            isSupplement={isSupplementResubmission}
+            onRetry={() => void cityDeadline.refetch()}
           />
         ) : null}
 
@@ -808,7 +854,11 @@ export function StudentApplicationWorkspaceV2() {
                     <ButtonV2
                       type="button"
                       onClick={submitNow}
-                      disabled={submitApplication.isPending || cityEligibilityBlocksFirstSubmit}
+                      disabled={
+                        submitApplication.isPending ||
+                        cityEligibilityBlocksFirstSubmit ||
+                        cityDeadlineBlocksFirstSubmit
+                      }
                     >
                       {submitApplication.isPending ? (
                         <Loader2 className="animate-spin" aria-hidden="true" />
@@ -937,6 +987,15 @@ function getEligibilitySubmitMessage(status: "NOT_ELIGIBLE" | "NEEDS_VERIFICATIO
   return status === "NOT_ELIGIBLE"
     ? "Hồ sơ hiện chưa đủ điều kiện nộp cấp Thành phố. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ và minh chứng."
     : "Điều kiện nộp hồ sơ cấp Thành phố đang chờ cán bộ xác minh. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.";
+}
+
+function getSubmissionDeadlineSubmitMessage(status?: string) {
+  if (status === "NOT_OPEN") return "Chưa đến thời gian tiếp nhận hồ sơ cấp Thành phố.";
+  if (status === "CLOSED") return "Đã hết thời hạn nộp hồ sơ cấp Thành phố.";
+  if (status === "OPEN" || status === "EXCEPTION_ACTIVE") {
+    return "Không thể xác nhận thời hạn nộp hồ sơ. Vui lòng thử lại.";
+  }
+  return "Chưa cấu hình thời hạn nộp hồ sơ cấp Thành phố cho năm học này.";
 }
 
 function ApplicationWorkspaceContextBar({

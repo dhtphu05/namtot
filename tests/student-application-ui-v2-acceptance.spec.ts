@@ -331,6 +331,168 @@ test.describe("student application UI V2 acceptance", () => {
     expect(eligibilityReadCount).toBe(0);
   });
 
+  test("initial City deadline status shows an active exception without overriding eligibility", async ({
+    page,
+  }) => {
+    await mockCityApplication(page, "noTasks");
+    let deadlineRequests = 0;
+    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+      await json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        route: "UDN_PREREQUISITE",
+        status: "NEEDS_VERIFICATION",
+        reasons: ["IDENTITY_MATCH_REQUIRES_VERIFICATION"],
+      });
+    });
+    await page.route(
+      "http://localhost:8080/api/applications/app-1/submission-deadline",
+      async (route) => {
+        deadlineRequests += 1;
+        await json(route, {
+          applicationId: "app-1",
+          schoolYear: "2025-2026",
+          submission: {
+            status: "EXCEPTION_ACTIVE",
+            opensAt: "2026-02-01T08:00:00.000Z",
+            closesAt: "2026-02-01T14:00:00.000Z",
+            effectiveClosesAt: "2026-02-02T15:00:00.000Z",
+            exceptionActive: true,
+            exceptionValidUntil: "2026-02-02T15:00:00.000Z",
+          },
+          review: { deadlineAt: null, status: "NOT_CONFIGURED" },
+          supplement: { deadlineAt: null, status: "NOT_CONFIGURED" },
+          finalization: { deadlineAt: null, status: "NOT_CONFIGURED" },
+        });
+      },
+    );
+
+    await loginAndGoto(page, "/app/application");
+
+    const deadline = page.locator('section[aria-labelledby="city-submission-deadline-title"]');
+    await expect(deadline).toContainText("Ngoại lệ nộp hồ sơ đang có hiệu lực");
+    await expect(deadline).toContainText("22:00");
+    await expect(
+      page.locator('section[aria-labelledby="city-submission-eligibility-title"]'),
+    ).toContainText("cần được cán bộ Thành phố xác minh");
+    await expect(page.getByRole("button", { name: /Nộp hồ sơ/ }).first()).toBeDisabled();
+    expect(deadlineRequests).toBe(1);
+  });
+
+  test("a closed City window blocks initial submit while eligible status stays visible", async ({
+    page,
+  }) => {
+    await mockCityApplication(page, "noTasks");
+    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+      await json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        route: "UDN_PREREQUISITE",
+        status: "ELIGIBLE",
+        reasons: [],
+      });
+    });
+    await page.route(
+      "http://localhost:8080/api/applications/app-1/submission-deadline",
+      async (route) =>
+        json(route, {
+          applicationId: "app-1",
+          schoolYear: "2025-2026",
+          submission: {
+            status: "CLOSED",
+            opensAt: "2026-01-01T00:00:00.000Z",
+            closesAt: "2026-02-01T00:00:00.000Z",
+            effectiveClosesAt: "2026-02-01T00:00:00.000Z",
+            exceptionActive: false,
+            exceptionValidUntil: null,
+          },
+          review: { deadlineAt: null, status: "NOT_CONFIGURED" },
+          supplement: { deadlineAt: null, status: "NOT_CONFIGURED" },
+          finalization: { deadlineAt: null, status: "NOT_CONFIGURED" },
+        }),
+    );
+
+    await loginAndGoto(page, "/app/application");
+
+    await expect(
+      page.locator('section[aria-labelledby="city-submission-deadline-title"]'),
+    ).toContainText("Đã hết thời hạn nộp hồ sơ");
+    await expect(
+      page.locator('section[aria-labelledby="city-submission-eligibility-title"]'),
+    ).toContainText("đủ điều kiện nộp hồ sơ cấp Thành phố");
+    await expect(page.getByRole("button", { name: /Nộp hồ sơ/ }).first()).toBeDisabled();
+  });
+
+  test("supplement uses its own deadline and skips initial eligibility", async ({ page }) => {
+    await mockCityApplication(page, "supplement");
+    let eligibilityRequests = 0;
+    let deadlineRequests = 0;
+    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+      eligibilityRequests += 1;
+      await json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        route: "UDN_PREREQUISITE",
+        status: "NOT_ELIGIBLE",
+        reasons: ["MISSING_UNIVERSITY_SYSTEM_AWARD"],
+      });
+    });
+    await page.route(
+      "http://localhost:8080/api/applications/app-1/submission-deadline",
+      async (route) => {
+        deadlineRequests += 1;
+        await json(route, {
+          applicationId: "app-1",
+          schoolYear: "2025-2026",
+          submission: {
+            status: "CLOSED",
+            opensAt: "2026-01-01T00:00:00.000Z",
+            closesAt: "2026-02-01T00:00:00.000Z",
+            effectiveClosesAt: "2026-02-01T00:00:00.000Z",
+            exceptionActive: false,
+            exceptionValidUntil: null,
+          },
+          review: { deadlineAt: "2026-02-03T17:00:00.000Z", status: "ON_TRACK" },
+          supplement: { deadlineAt: "2026-02-05T17:00:00.000Z", status: "OVERDUE" },
+          finalization: { deadlineAt: null, status: "NOT_CONFIGURED" },
+        });
+      },
+    );
+
+    await loginAndGoto(page, "/app/application");
+
+    const deadline = page.locator('section[aria-labelledby="city-supplement-deadline-title"]');
+    await expect(deadline).toContainText("Hạn bổ sung");
+    await expect(deadline).toContainText("00:00");
+    await expect(deadline).not.toContainText("Đã hết thời hạn nộp hồ sơ");
+    await expect(
+      page.locator('section[aria-labelledby="city-submission-eligibility-title"]'),
+    ).toHaveCount(0);
+    expect(deadlineRequests).toBe(1);
+    expect(eligibilityRequests).toBe(0);
+  });
+
+  test("non-City individual application does not request City deadlines", async ({ page }) => {
+    await page.route("http://localhost:8080/api/applications/current?*", async (route) => {
+      await json(route, currentApplication("noTasks", "school"));
+    });
+    let deadlineRequests = 0;
+    await page.route(
+      "http://localhost:8080/api/applications/app-1/submission-deadline",
+      async (route) => {
+        deadlineRequests += 1;
+        await json(route, null);
+      },
+    );
+
+    await loginAndGoto(page, "/app/application");
+
+    await expect(
+      page.locator('section[aria-labelledby="city-submission-deadline-title"]'),
+    ).toHaveCount(0);
+    expect(deadlineRequests).toBe(0);
+  });
+
   test("supplement-required with no submittedAt is still checked as an initial City submission", async ({
     page,
   }) => {
@@ -686,6 +848,25 @@ async function mockCityApplication(page: Page, state: AppMode, submittedAt?: str
   await page.route("http://localhost:8080/api/applications/current?*", async (route) => {
     await json(route, currentApplication(state, "city", submittedAt));
   });
+  await page.route(
+    "http://localhost:8080/api/applications/app-1/submission-deadline",
+    async (route) =>
+      json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        submission: {
+          status: "OPEN",
+          opensAt: "2026-01-01T00:00:00.000Z",
+          closesAt: "2026-02-01T00:00:00.000Z",
+          effectiveClosesAt: "2026-02-01T00:00:00.000Z",
+          exceptionActive: false,
+          exceptionValidUntil: null,
+        },
+        review: { deadlineAt: "2026-02-03T17:00:00.000Z", status: "ON_TRACK" },
+        supplement: { deadlineAt: "2026-02-05T17:00:00.000Z", status: "ON_TRACK" },
+        finalization: { deadlineAt: "2026-02-10T17:00:00.000Z", status: "ON_TRACK" },
+      }),
+  );
 }
 
 function collectPageErrors(page: Page) {
