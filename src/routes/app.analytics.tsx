@@ -35,7 +35,7 @@ import {
 import { useManagerDashboardSummary } from "@/features/manager/hooks/useManager";
 import type { ManagerDashboardSummary } from "@/features/manager/types";
 import { ACTIVE_LEVELS } from "@/lib/levels";
-import { EligibilityVerificationPanel } from "@/features/manager/components/EligibilityVerificationPanel";
+import { CityAnalyticsDashboard } from "@/features/manager/city-analytics/CityAnalyticsDashboard";
 
 export const Route = createFileRoute("/app/analytics")({
   component: AnalyticsRoute,
@@ -87,14 +87,14 @@ function AnalyticsRoute() {
     );
   }
 
-  return <AnalyticsContent showEligibilityVerification={role === "city_manager"} />;
+  if (role === "city_manager" || role === "admin") {
+    return <CityAnalyticsDashboard showEligibilityVerification={role === "city_manager"} />;
+  }
+
+  return <AnalyticsContent />;
 }
 
-function AnalyticsContent({
-  showEligibilityVerification,
-}: {
-  showEligibilityVerification: boolean;
-}) {
+function AnalyticsContent() {
   const { data: summary, error, isError, isLoading, refetch } = useManagerDashboardSummary();
   const hasData = Boolean(summary);
   const levelRows = useMemo(() => getLevelRows(summary), [summary]);
@@ -108,8 +108,6 @@ function AnalyticsContent({
         title="Tổng quan xét duyệt"
         subtitle="Theo dõi tiến độ hồ sơ và khối lượng xử lý theo trạng thái, tiêu chí và cấp xét."
       />
-
-      {showEligibilityVerification ? <EligibilityVerificationPanel /> : null}
 
       {isLoading ? (
         <ReviewLoadingState label="Đang tải tổng quan xét duyệt..." />

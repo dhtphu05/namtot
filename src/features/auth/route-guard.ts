@@ -146,6 +146,9 @@ export async function requireAuthenticatedAppRoute(pathname: string, queryClient
 export function canAccessPath(role: Role, pathname: string): boolean {
   if (pathname === "/app" || pathname === "/app/") return true;
   if (matchesAny(pathname, sharedAuthenticatedRoutes)) return true;
+  if (pathname === "/app/analytics") {
+    return ["city_manager", "manager", "committee", "admin"].includes(role);
+  }
   if (matchesAny(pathname, dataUploaderRoutes)) return role === "data_uploader";
   if (matchesAny(pathname, studentOrCollectiveRoutes)) {
     return role === "student" || role === "class_representative";
@@ -156,6 +159,12 @@ export function canAccessPath(role: Role, pathname: string): boolean {
   if (matchesAny(pathname, adminRoutes)) return role === "admin";
   if (matchesAny(pathname, officerRoutes)) return reviewRoles.includes(role);
   if (matchesAny(pathname, evidenceKnowledgeRoutes)) return evidenceKnowledgeRoles.includes(role);
+  if (pathname === "/app/manager/results") {
+    return ["city_manager", "city_committee", "manager", "committee", "admin"].includes(role);
+  }
+  if (pathname.startsWith("/app/manager/results/")) {
+    return ["city_manager", "city_committee", "manager", "committee", "admin"].includes(role);
+  }
   if (matchesAny(pathname, cityCommitteeRoutes)) {
     return role === "city_committee" || role === "city_manager";
   }
