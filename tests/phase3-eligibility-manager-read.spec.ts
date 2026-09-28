@@ -21,7 +21,7 @@ test.describe("Phase 3 City Manager eligibility verification UI", () => {
         : 0,
     );
     await page.goto("/app/analytics", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "Tổng quan xét duyệt" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Theo dõi hồ sơ cấp Thành phố" })).toBeVisible();
 
     await expect(page.getByRole("heading", { name: "Hồ sơ cần xác minh điều kiện" })).toBeVisible();
     await expect(page.getByText("Nguyễn An", { exact: true })).toBeVisible();
@@ -57,7 +57,7 @@ test.describe("Phase 3 City Manager eligibility verification UI", () => {
     const requests: Array<{ method: string; url: string; body: unknown }> = [];
     await installManagerMock(page, "city_manager", requests);
     await page.goto("/app/analytics", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "Tổng quan xét duyệt" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Theo dõi hồ sơ cấp Thành phố" })).toBeVisible();
     await page.getByRole("button", { name: /Xem hồ sơ cần xác minh/i }).click();
 
     const dialog = page.getByRole("dialog");
