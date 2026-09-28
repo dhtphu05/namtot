@@ -39,6 +39,7 @@ export class ApiError extends Error {
   public status?: number;
   public details?: unknown;
   public meta?: { requestId?: string };
+  public serverMessage?: string;
 
   constructor(
     message: string,
@@ -46,6 +47,7 @@ export class ApiError extends Error {
     details?: unknown,
     meta?: { requestId?: string },
     status?: number,
+    serverMessage?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -53,6 +55,7 @@ export class ApiError extends Error {
     this.status = status;
     this.details = details;
     this.meta = meta;
+    this.serverMessage = serverMessage;
   }
 }
 
@@ -225,6 +228,7 @@ async function executeApiRequest<T>(
         responseEnvelope.error?.details,
         { ...responseEnvelope.meta, requestId },
         status,
+        responseEnvelope.error?.message,
       );
     }
 
