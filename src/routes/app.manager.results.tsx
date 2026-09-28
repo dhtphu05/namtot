@@ -6,7 +6,12 @@ import { Button, Card, Chip, StatCard } from "@/components/ui-kit";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useManagerDashboardSummary, useManagerResults } from "@/features/manager/hooks/useManager";
 import { FinalizationDialog } from "@/features/manager/components/FinalizationDialog";
-import type { ManagerResultFilters, ManagerResultItem } from "@/features/manager/types";
+import type {
+  ApplicationArchiveFilter,
+  ApplicationLifecycleFilter,
+  ManagerResultFilters,
+  ManagerResultItem,
+} from "@/features/manager/types";
 import type { Criterion, Level, ReviewTaskStatus, Role } from "@/features/review/types";
 import type { FinalStatus } from "@/lib/api/types";
 import {
@@ -97,6 +102,8 @@ function ManagerResultsContent({ role }: { role: Role }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [lifecycle, setLifecycle] = useState<ApplicationLifecycleFilter>("active");
+  const [archive, setArchive] = useState<ApplicationArchiveFilter>("exclude");
   const [sortBy, setSortBy] =
     useState<NonNullable<ManagerResultFilters["sortBy"]>>("lastActivityAt");
   const [selected, setSelected] = useState<ManagerResultItem | null>(null);
@@ -106,6 +113,8 @@ function ManagerResultsContent({ role }: { role: Role }) {
     const next: ManagerResultFilters = {
       page,
       pageSize,
+      lifecycle,
+      archive,
       sortBy,
       sortOrder: sortBy === "oldest" ? "asc" : "desc",
       search: search.trim() || undefined,
@@ -132,7 +141,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
       next.resultView = activeFilter;
     }
     return next;
-  }, [activeFilter, page, pageSize, search, sortBy]);
+  }, [activeFilter, archive, lifecycle, page, pageSize, search, sortBy]);
   const resultsQuery = useManagerResults(filters);
   const summary = summaryQuery.data;
   const breakdown = summary?.finalLevelBreakdown;
@@ -204,6 +213,38 @@ function ManagerResultsContent({ role }: { role: Role }) {
               {label}
             </Button>
           ))}
+          {role === "city_manager" || role === "admin" ? (
+            <>
+              <label className="sr-only" htmlFor="application-lifecycle-filter">
+                Vòng đời hồ sơ
+              </label>
+              <select
+                id="application-lifecycle-filter"
+                aria-label="Vòng đời hồ sơ"
+                value={lifecycle}
+                onChange={(event) => setLifecycle(event.target.value as ApplicationLifecycleFilter)}
+                className="rounded-lg border border-[#DCE7F2] bg-white px-3 py-2 text-[13px] font-medium text-brand-deep outline-none focus:ring-2 focus:ring-[#0057C2]/20"
+              >
+                <option value="active">Đang hoạt động</option>
+                <option value="cancelled">Đã hủy</option>
+                <option value="all">Tất cả vòng đời</option>
+              </select>
+              <label className="sr-only" htmlFor="application-archive-filter">
+                Trạng thái lưu trữ
+              </label>
+              <select
+                id="application-archive-filter"
+                aria-label="Trạng thái lưu trữ"
+                value={archive}
+                onChange={(event) => setArchive(event.target.value as ApplicationArchiveFilter)}
+                className="rounded-lg border border-[#DCE7F2] bg-white px-3 py-2 text-[13px] font-medium text-brand-deep outline-none focus:ring-2 focus:ring-[#0057C2]/20"
+              >
+                <option value="exclude">Chưa lưu trữ</option>
+                <option value="only">Đã lưu trữ</option>
+                <option value="all">Tất cả trạng thái lưu trữ</option>
+              </select>
+            </>
+          ) : null}
           <div className="relative ml-auto min-w-[240px] flex-1 sm:flex-none">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -333,16 +374,20 @@ function ResultSummaryCard({
   const finalized = item.finalStatus !== "pending" && Boolean(item.finalizedAt);
   const blockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
   const legacyCentral = isLegacyCentral(item.targetLevel);
-  const finalizeDisabled = !canFinalize || finalized || !item.canFinalize || legacyCentral;
+  const cancelled = Boolean(item.cancelledAt);
+  const finalizeDisabled =
+    !canFinalize || finalized || !item.canFinalize || legacyCentral || cancelled;
   const finalizeTitle = !canFinalize
     ? "Chỉ Hội đồng/Cấp quản lý được chốt kết quả."
     : finalized
       ? "Hồ sơ đã có kết quả cuối."
       : legacyCentral
         ? "Scope Trung ương không nằm trong flow chính hiện tại."
-        : !item.canFinalize
-          ? blockedReason
-          : "Chốt kết quả hồ sơ";
+        : cancelled
+          ? "Hồ sơ đã hủy; cần mở lại trước khi chốt kết quả."
+          : !item.canFinalize
+            ? blockedReason
+            : "Chốt kết quả hồ sơ";
   const downrankReason =
     item.topBlockerReason ??
     getDownrankReason(item.targetLevel, item.suggestedLevel, item.blockingReasons);
@@ -367,6 +412,18 @@ function ResultSummaryCard({
             <span>•</span>
             <span className="max-w-full truncate">{item.faculty ?? "--"}</span>
           </div>
+          {cancelled || item.archivedAt ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {cancelled ? <Chip tone="error">Đã hủy hồ sơ</Chip> : null}
+              {item.archivedAt ? <Chip tone="muted">Đã lưu trữ</Chip> : null}
+              {cancelled && item.cancelReason ? (
+                <span className="text-xs text-rose-700">{item.cancelReason}</span>
+              ) : null}
+              {item.archivedAt && item.archiveReason ? (
+                <span className="text-xs text-muted-foreground">{item.archiveReason}</span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <SmallInfo label="Cấp đăng ký" value={getLevelLabel(item.targetLevel)} />
             <SmallInfo
