@@ -113,6 +113,28 @@ export function useUpdateAwardDecision(id: string) {
   });
 }
 
+export function useArchiveAwardDecision(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => requireAwardData(await awardRegistryApi.archive(id)),
+    onSuccess: () => {
+      invalidateDecision(client, id);
+      toast.success("Đã lưu trữ quyết định.");
+    },
+  });
+}
+
+export function useUnarchiveAwardDecision(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => requireAwardData(await awardRegistryApi.unarchive(id)),
+    onSuccess: () => {
+      invalidateDecision(client, id);
+      toast.success("Đã khôi phục quyết định.");
+    },
+  });
+}
+
 export function useUploadAwardFile(id: string) {
   const client = useQueryClient();
   return useMutation({

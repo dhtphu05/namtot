@@ -39,6 +39,12 @@ export const awardRegistryApi = {
       body: input,
     }),
 
+  archive: (decisionId: string) =>
+    apiClient<AwardDecision>(`/api/award-decisions/${decisionId}/archive`, { method: "POST" }),
+
+  unarchive: (decisionId: string) =>
+    apiClient<AwardDecision>(`/api/award-decisions/${decisionId}/unarchive`, { method: "POST" }),
+
   upload: (decisionId: string, kind: "decision" | "roster", file: File) => {
     const body = new FormData();
     body.append("file", file);

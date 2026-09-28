@@ -10,6 +10,7 @@ export type AwardRegistryFilters = {
   q?: string;
   schoolYear?: string;
   status?: AwardDecisionStatus;
+  archive?: "exclude" | "only" | "all";
   issuerWorkspaceId?: string;
   page?: number;
   limit?: number;

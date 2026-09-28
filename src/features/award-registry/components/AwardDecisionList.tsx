@@ -34,11 +34,13 @@ export function AwardDecisionList() {
   const [qInput, setQInput] = useState("");
   const [schoolYearInput, setSchoolYearInput] = useState("");
   const [statusInput, setStatusInput] = useState<"all" | AwardDecisionStatus>("all");
+  const [archiveInput, setArchiveInput] = useState<"exclude" | "only" | "all">("exclude");
   const [filters, setFilters] = useState({
     page: 1,
     q: "",
     schoolYear: "",
     status: "all" as "all" | AwardDecisionStatus,
+    archive: "exclude" as "exclude" | "only" | "all",
   });
   const [createOpen, setCreateOpen] = useState(false);
   const decisions = useAwardDecisions({
@@ -47,6 +49,7 @@ export function AwardDecisionList() {
     q: filters.q || undefined,
     schoolYear: filters.schoolYear || undefined,
     status: filters.status === "all" ? undefined : filters.status,
+    archive: filters.archive,
   });
   const isAdmin = role === "admin";
   const workspaces = useAwardWorkspaceNames(isAdmin && createOpen);
@@ -60,6 +63,7 @@ export function AwardDecisionList() {
       q: qInput.trim(),
       schoolYear: schoolYearInput.trim(),
       status: statusInput,
+      archive: archiveInput,
     });
   };
 
@@ -76,7 +80,7 @@ export function AwardDecisionList() {
       />
 
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(200px,1fr)_minmax(150px,0.65fr)_190px_auto_auto]">
+        <div className="grid gap-3 md:grid-cols-[minmax(200px,1fr)_minmax(150px,0.65fr)_190px_170px_auto_auto]">
           <label className="relative block">
             <span className="sr-only">Tìm số quyết định hoặc năm học</span>
             <Search
@@ -107,15 +111,34 @@ export function AwardDecisionList() {
             <select
               aria-label="Trạng thái"
               value={statusInput}
-              onChange={(event) =>
-                setStatusInput(event.target.value as "all" | AwardDecisionStatus)
-              }
+              onChange={(event) => {
+                const status = event.target.value as "all" | AwardDecisionStatus;
+                setStatusInput(status);
+                if (status === "ARCHIVED") setArchiveInput("only");
+                else if (archiveInput === "only") setArchiveInput("exclude");
+              }}
               className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="DRAFT">Bản nháp</option>
               <option value="CONFIRMED">Đã xác nhận</option>
               <option value="ARCHIVED">Đã lưu trữ</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-xs font-medium text-slate-700">
+            <span>Lưu trữ</span>
+            <select
+              aria-label="Lưu trữ"
+              value={archiveInput}
+              onChange={(event) => {
+                setArchiveInput(event.target.value as "exclude" | "only" | "all");
+                setStatusInput("all");
+              }}
+              className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+            >
+              <option value="exclude">Đang hoạt động</option>
+              <option value="only">Đã lưu trữ</option>
+              <option value="all">Tất cả</option>
             </select>
           </label>
           <Button className="self-end" type="button" variant="secondary" onClick={applyFilters}>
@@ -133,8 +156,8 @@ export function AwardDecisionList() {
           </Button>
         </div>
         <p className="mt-3 text-xs leading-5 text-slate-600">
-          Danh sách được lọc theo trạng thái server hỗ trợ. Backend hiện chưa có bộ lọc “chỉ bản
-          đang hoạt động” hoặc thao tác lưu trữ.
+          Mặc định chỉ hiển thị quyết định đang hoạt động. Có thể chuyển sang quyết định đã lưu trữ
+          hoặc xem tất cả trạng thái.
         </p>
       </Card>
 

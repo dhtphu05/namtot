@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, FileCheck2, FileUp, RefreshCw, Save, Upload } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowLeft,
+  FileCheck2,
+  FileUp,
+  RefreshCw,
+  Save,
+  Upload,
+} from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,10 +40,12 @@ import {
   useAwardRosterPreview,
   useAwardRosterProcessing,
   useAwardWorkspaceNames,
+  useArchiveAwardDecision,
   useConfirmAwardDecision,
   useProcessAwardRoster,
   useUpdateAwardDecision,
   useUpdateAwardRosterMapping,
+  useUnarchiveAwardDecision,
   useUploadAwardFile,
 } from "@/features/award-registry/hooks/useAwardRegistry";
 import { errorMessage } from "@/features/award-registry/utils/errors";
@@ -68,6 +79,8 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
   const startProcessing = useProcessAwardRoster(decisionId);
   const updateMapping = useUpdateAwardRosterMapping(decisionId);
   const confirm = useConfirmAwardDecision(decisionId);
+  const archive = useArchiveAwardDecision(decisionId);
+  const unarchive = useUnarchiveAwardDecision(decisionId);
   const [schoolYear, setSchoolYear] = useState("");
   const [decisionNumber, setDecisionNumber] = useState("");
   const [decisionDate, setDecisionDate] = useState("");
@@ -175,7 +188,68 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
                   Cập nhật lần cuối {formatDate(decision.updatedAt)}
                 </p>
               </div>
-              <DecisionBadge status={decision.status} />
+              <div className="flex flex-wrap items-center gap-2">
+                {decision.status === "ARCHIVED" ? (
+                  <AlertDialog key="unarchive">
+                    <AlertDialogTrigger asChild>
+                      <Button type="button" variant="outline" disabled={unarchive.isPending}>
+                        <ArchiveRestore aria-hidden="true" /> Khôi phục
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Khôi phục quyết định?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Quyết định sẽ được khôi phục về trạng thái trước khi lưu trữ. Nếu quyết
+                          định đã được xác nhận, hiệu lực eligibility sẽ được khôi phục.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Để sau</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => unarchive.mutate()}>
+                          Khôi phục quyết định
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : (
+                  <AlertDialog key="archive">
+                    <AlertDialogTrigger asChild>
+                      <Button type="button" variant="outline" disabled={archive.isPending}>
+                        <Archive aria-hidden="true" /> Lưu trữ
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Lưu trữ quyết định?</AlertDialogTitle>
+                        <AlertDialogDescription
+                          className={
+                            decision.status === "CONFIRMED"
+                              ? "rounded-md border border-amber-300 bg-amber-50 p-3 font-semibold text-amber-950"
+                              : undefined
+                          }
+                        >
+                          Quyết định lưu trữ sẽ không còn được dùng để xác định điều kiện nộp hồ sơ
+                          cấp Thành phố. Dữ liệu quyết định và danh sách sinh viên vẫn được giữ lại.
+                        </AlertDialogDescription>
+                        {decision.status === "CONFIRMED" && (
+                          <p className="rounded-md bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950">
+                            Quyết định đã xác nhận này đang có hiệu lực eligibility. Lưu trữ sẽ tắt
+                            hiệu lực đó cho các lần nộp hồ sơ mới.
+                          </p>
+                        )}
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Không lưu trữ</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => archive.mutate()}>
+                          Xác nhận lưu trữ
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                <DecisionBadge status={decision.status} />
+              </div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="space-y-1 text-xs font-medium text-slate-700">
@@ -228,6 +302,11 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
             {update.isError && (
               <p role="alert" className="mt-3 text-sm text-red-700">
                 {errorMessage(update.error)}
+              </p>
+            )}
+            {(archive.isError || unarchive.isError) && (
+              <p role="alert" className="mt-3 text-sm text-red-700">
+                {errorMessage(archive.isError ? archive.error : unarchive.error)}
               </p>
             )}
           </Card>
@@ -429,20 +508,12 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
             <Card className="border-slate-200 bg-slate-50 p-4">
               <h2 className="text-sm font-semibold text-slate-900">Quyết định đã lưu trữ</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Backend trả trạng thái ARCHIVED nhưng hiện chưa có API archive/unarchive để vận hành
-                trạng thái này từ giao diện.
+                Dữ liệu quyết định và danh sách sinh viên vẫn được giữ lại. Quyết định chưa có hiệu
+                lực eligibility cho đến khi được khôi phục; trạng thái khôi phục do máy chủ xác
+                định.
               </p>
             </Card>
           )}
-
-          <Card className="border-amber-200 bg-amber-50/70 p-4">
-            <h2 className="text-sm font-semibold text-amber-950">Giới hạn backend hiện tại</h2>
-            <p className="mt-1 text-sm leading-5 text-amber-900">
-              Backend chưa có API lưu trữ/khôi phục quyết định hoặc xem audit history riêng cho
-              uploader. Trạng thái hiện tại do server quản lý; giao diện không giả lập các thao tác
-              này.
-            </p>
-          </Card>
         </section>
       </div>
     </>

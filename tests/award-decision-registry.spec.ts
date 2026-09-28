@@ -1,7 +1,16 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 type RegistryRole =
-  "data_uploader" | "admin" | "student" | "city_officer" | "city_manager" | "city_committee";
+  | "data_uploader"
+  | "admin"
+  | "student"
+  | "class_representative"
+  | "officer"
+  | "manager"
+  | "committee"
+  | "city_officer"
+  | "city_manager"
+  | "city_committee";
 
 const corsHeaders = {
   "access-control-allow-headers": "authorization, content-type",
@@ -135,7 +144,11 @@ test.describe("Award Decision Registry", () => {
     await expect(page.getByRole("columnheader", { name: "Ngày quyết định" })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Ghi nhận lúc" })).toBeVisible();
     await expect(page.getByRole("table").getByText("Bản nháp")).toBeVisible();
-    expect(requests.some((url) => url.startsWith("GET /api/award-decisions?"))).toBeTruthy();
+    expect(
+      requests.some(
+        (url) => url.includes("GET /api/award-decisions?") && url.includes("archive=exclude"),
+      ),
+    ).toBeTruthy();
   });
 
   test("UDN uploader sees issuer and year filters without City review controls", async ({
@@ -153,7 +166,16 @@ test.describe("Award Decision Registry", () => {
     ).toHaveCount(0);
   });
 
-  for (const role of ["student", "city_officer", "city_manager", "city_committee"] as const) {
+  for (const role of [
+    "student",
+    "class_representative",
+    "officer",
+    "manager",
+    "committee",
+    "city_officer",
+    "city_manager",
+    "city_committee",
+  ] as const) {
     test(`${role} cannot see or open Award Registry management`, async ({ page }) => {
       await installMocks(page, role);
       await page.goto("/app/award-registry");
@@ -163,11 +185,13 @@ test.describe("Award Decision Registry", () => {
         .toBe(
           role === "student"
             ? "/app"
-            : role === "city_officer"
-              ? "/app/queue"
-              : role === "city_manager"
-                ? "/app/analytics"
-                : "/app/resolution",
+            : role === "class_representative"
+              ? "/app/collective"
+              : role === "officer" || role === "city_officer"
+                ? "/app/queue"
+                : role === "manager" || role === "committee" || role === "city_manager"
+                  ? "/app/analytics"
+                  : "/app/resolution",
         );
       await expect(page.locator("aside nav a[href='/app/award-registry']")).toHaveCount(0);
     });
@@ -212,9 +236,36 @@ test.describe("Award Decision Registry", () => {
     await page.getByLabel("Trạng thái").selectOption("ARCHIVED");
     await page.getByRole("button", { name: "Lọc" }).click();
     await expect
-      .poll(() => requests.some((request) => request.includes("status=ARCHIVED")))
+      .poll(() =>
+        requests.some(
+          (request) => request.includes("status=ARCHIVED") && request.includes("archive=only"),
+        ),
+      )
       .toBeTruthy();
     await expect(page.getByRole("table").getByText("Đã lưu trữ")).toBeVisible();
+  });
+
+  test("archive visibility defaults to active and supports archived and all server filters", async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    await installMocks(page, "data_uploader", requests);
+    await page.goto("/app/award-registry");
+    await expect
+      .poll(() => requests.some((request) => request.includes("archive=exclude")))
+      .toBeTruthy();
+
+    await page.getByLabel("Lưu trữ").selectOption("only");
+    await page.getByRole("button", { name: "Lọc" }).click();
+    await expect
+      .poll(() => requests.some((request) => request.includes("archive=only")))
+      .toBeTruthy();
+
+    await page.getByLabel("Lưu trữ").selectOption("all");
+    await page.getByRole("button", { name: "Lọc" }).click();
+    await expect
+      .poll(() => requests.some((request) => request.includes("archive=all")))
+      .toBeTruthy();
   });
 
   test("shows the backend authorization message for a workspace denial", async ({ page }) => {
@@ -511,11 +562,100 @@ test.describe("Award Decision Registry", () => {
     await expect(page.getByText("Chưa khớp tài khoản")).toBeVisible();
   });
 
-  test("does not pretend archive is available without a backend operation", async ({ page }) => {
-    await installMocks(page, "data_uploader");
+  test("archives a draft and renders the server-refetched archived state", async ({ page }) => {
+    const requests: string[] = [];
+    let currentDecision = { ...decisionDraft };
+    await installMocks(page, "data_uploader", requests, "SCHOOL", {
+      decision: async (route) => await json(route, currentDecision),
+      archive: async (route) => {
+        currentDecision = { ...currentDecision, status: "ARCHIVED" };
+        await json(route, currentDecision);
+      },
+    });
     await page.goto("/app/award-registry/award-school-1");
-    await expect(page.getByText(/chưa có API lưu trữ.*uploader/i)).toBeVisible();
-    await expect(page.getByRole("button", { name: /archive|lưu trữ/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Lưu trữ", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Lưu trữ", exact: true }).click();
+    await expect(page.getByRole("alertdialog")).toContainText(
+      "Quyết định lưu trữ sẽ không còn được dùng để xác định điều kiện nộp hồ sơ cấp Thành phố. Dữ liệu quyết định và danh sách sinh viên vẫn được giữ lại.",
+    );
+    await page.getByRole("button", { name: "Xác nhận lưu trữ" }).click();
+    await expect(page.getByText("Đã lưu trữ").first()).toBeVisible();
+    expect(
+      requests.some((request) => request === "POST /api/award-decisions/award-school-1/archive"),
+    ).toBeTruthy();
+    await expect(page.getByRole("button", { name: "Khôi phục" })).toBeVisible();
+  });
+
+  test("confirmed archive emphasizes eligibility impact and unarchive restores CONFIRMED from server", async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    let currentDecision = { ...decisionDraft, status: "CONFIRMED", recipientCount: 1 };
+    await installMocks(page, "data_uploader", requests, "SCHOOL", {
+      decision: async (route) => await json(route, currentDecision),
+      archive: async (route) => {
+        currentDecision = { ...currentDecision, status: "ARCHIVED" };
+        await json(route, currentDecision);
+      },
+      unarchive: async (route) => {
+        currentDecision = { ...currentDecision, status: "CONFIRMED" };
+        await json(route, currentDecision);
+      },
+    });
+    await page.goto("/app/award-registry/award-school-1");
+    await page.getByRole("button", { name: "Lưu trữ", exact: true }).click();
+    await expect(page.getByRole("alertdialog")).toContainText(
+      "không còn được dùng để xác định điều kiện",
+    );
+    await page.getByRole("button", { name: "Xác nhận lưu trữ" }).click();
+    await expect(page.getByRole("button", { name: "Khôi phục" })).toBeVisible();
+    await page.getByRole("button", { name: "Khôi phục", exact: true }).click();
+    await expect(page.getByRole("alertdialog")).toContainText(
+      "Nếu quyết định đã được xác nhận, hiệu lực eligibility sẽ được khôi phục.",
+    );
+    await page.getByRole("button", { name: "Khôi phục quyết định" }).click();
+    await expect(page.getByText("Đã xác nhận").first()).toBeVisible();
+    expect(
+      requests.some((request) => request === "POST /api/award-decisions/award-school-1/unarchive"),
+    ).toBeTruthy();
+  });
+
+  test("unarchives a former draft as DRAFT and surfaces an archive conflict", async ({ page }) => {
+    let currentDecision = { ...decisionDraft, status: "ARCHIVED" };
+    await installMocks(page, "data_uploader", [], "SCHOOL", {
+      decision: async (route) => await json(route, currentDecision),
+      processing: async (route) => await json(route, { status: "not_started" }),
+      unarchive: async (route) => {
+        currentDecision = { ...currentDecision, status: "DRAFT" };
+        await json(route, currentDecision);
+      },
+    });
+    await page.goto("/app/award-registry/award-school-1");
+    await page.getByRole("button", { name: "Khôi phục" }).click();
+    await page.getByRole("button", { name: "Khôi phục quyết định" }).click();
+    await expect(page.getByRole("button", { name: "Lưu trữ", exact: true })).toBeVisible();
+    await expect(page.getByLabel("Năm học quyết định")).toBeEnabled();
+
+    await page.route(
+      "http://localhost:8080/api/award-decisions/award-school-1/archive",
+      async (route) => {
+        await route.fulfill({
+          status: 409,
+          headers: { ...corsHeaders, "content-type": "application/json" },
+          body: JSON.stringify({
+            success: false,
+            data: null,
+            error: { code: "CONFLICT", message: "Award decision is already archived" },
+            meta: { requestId: "award-conflict" },
+          }),
+        });
+      },
+    );
+    await page.getByRole("button", { name: "Lưu trữ", exact: true }).click();
+    await page.getByRole("button", { name: "Xác nhận lưu trữ" }).click();
+    await expect(
+      page.getByText("Award decision is already archived", { exact: true }),
+    ).toBeVisible();
   });
 });
 
@@ -531,6 +671,8 @@ type OverrideHandlers = Partial<{
   detail: (route: Route) => Promise<void>;
   recipients: (route: Route) => Promise<void>;
   updateMapping: (route: Route) => Promise<void>;
+  archive: (route: Route) => Promise<void>;
+  unarchive: (route: Route) => Promise<void>;
 }>;
 
 async function installMocks(
@@ -589,6 +731,10 @@ async function installMocks(
       });
     if (path.endsWith("/confirm") && request.method() === "POST" && overrides.confirm)
       return overrides.confirm(route);
+    if (path.endsWith("/archive") && request.method() === "POST" && overrides.archive)
+      return overrides.archive(route);
+    if (path.endsWith("/unarchive") && request.method() === "POST" && overrides.unarchive)
+      return overrides.unarchive(route);
     if (path.endsWith("/recipients") && request.method() === "GET" && overrides.recipients)
       return overrides.recipients(route);
     const isDecisionDetail = /^\/api\/award-decisions\/[^/]+$/.test(path);
