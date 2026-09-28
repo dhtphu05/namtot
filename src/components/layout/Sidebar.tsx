@@ -56,6 +56,10 @@ const ADMIN_NAV: NavGroup[] = [
     group: "QUẢN LÝ ĐƠN VỊ",
     items: [{ label: "Trường triển khai", to: "/app/admin/workspaces", icon: Building2 }],
   },
+  {
+    group: "DỮ LIỆU CHÍNH THỨC",
+    items: [{ label: "Award Registry", to: "/app/award-registry", icon: FileUp }],
+  },
 ];
 
 const REVIEWER_NAV: NavGroup[] = [
@@ -158,7 +162,10 @@ const NAV: Record<Role, NavGroup[]> = {
   data_uploader: [
     {
       group: "Nhập liệu đơn vị",
-      items: [{ label: "Thông tin quyền truy cập", to: "/app/data-uploader", icon: FileUp }],
+      items: [
+        { label: "Award Registry", to: "/app/award-registry", icon: FileUp },
+        { label: "Thông tin quyền truy cập", to: "/app/data-uploader", icon: IdCard },
+      ],
     },
   ],
   officer: REVIEWER_NAV,

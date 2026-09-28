@@ -54,6 +54,7 @@ const cityCommitteeRoutes = [
 const collectiveRoutes = ["/app/collective"];
 const adminRoutes = ["/app/admin"];
 const dataUploaderRoutes = ["/app/data-uploader"];
+const awardRegistryRoutes = ["/app/award-registry"];
 
 const sharedAuthenticatedRoutes = ["/app/notifications", "/app/chatbot"];
 const studentEvidenceRoutes = ["/app/evidence", "/app/event-library"];
@@ -150,6 +151,8 @@ export function canAccessPath(role: Role, pathname: string): boolean {
     return ["city_manager", "manager", "committee", "admin"].includes(role);
   }
   if (matchesAny(pathname, dataUploaderRoutes)) return role === "data_uploader";
+  if (matchesAny(pathname, awardRegistryRoutes))
+    return role === "data_uploader" || role === "admin";
   if (matchesAny(pathname, studentOrCollectiveRoutes)) {
     return role === "student" || role === "class_representative";
   }

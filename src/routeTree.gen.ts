@@ -41,6 +41,7 @@ import { Route as AppDataUploaderRouteImport } from './routes/app.data-uploader'
 import { Route as AppCollectiveRouteImport } from './routes/app.collective'
 import { Route as AppChatbotRouteImport } from './routes/app.chatbot'
 import { Route as AppCascadeRouteImport } from './routes/app.cascade'
+import { Route as AppAwardRegistryRouteImport } from './routes/app.award-registry'
 import { Route as AppAuditRouteImport } from './routes/app.audit'
 import { Route as AppAssistantRouteImport } from './routes/app.assistant'
 import { Route as AppAssignmentRouteImport } from './routes/app.assignment'
@@ -55,6 +56,7 @@ import { Route as AppManagerCollectiveRouteImport } from './routes/app.manager.c
 import { Route as AppDecisionImportsDecisionImportIdRouteImport } from './routes/app.decision-imports.$decisionImportId'
 import { Route as AppCommitteeInboxRouteImport } from './routes/app.committee.inbox'
 import { Route as AppCollectiveIdRouteImport } from './routes/app.collective.$id'
+import { Route as AppAwardRegistryAwardDecisionIdRouteImport } from './routes/app.award-registry.$awardDecisionId'
 import { Route as AppAdminWorkspacesRouteImport } from './routes/app.admin.workspaces'
 import { Route as AppAdminWorkspaceRouteImport } from './routes/app.admin.workspace'
 import { Route as AppManagerResultsApplicationIdRouteImport } from './routes/app.manager.results.$applicationId'
@@ -220,6 +222,11 @@ const AppCascadeRoute = AppCascadeRouteImport.update({
   path: '/cascade',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAwardRegistryRoute = AppAwardRegistryRouteImport.update({
+  id: '/award-registry',
+  path: '/award-registry',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAuditRoute = AppAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -291,6 +298,12 @@ const AppCollectiveIdRoute = AppCollectiveIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppCollectiveRoute,
 } as any)
+const AppAwardRegistryAwardDecisionIdRoute =
+  AppAwardRegistryAwardDecisionIdRouteImport.update({
+    id: '/$awardDecisionId',
+    path: '/$awardDecisionId',
+    getParentRoute: () => AppAwardRegistryRoute,
+  } as any)
 const AppAdminWorkspacesRoute = AppAdminWorkspacesRouteImport.update({
   id: '/admin/workspaces',
   path: '/admin/workspaces',
@@ -326,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/app/assignment': typeof AppAssignmentRoute
   '/app/assistant': typeof AppAssistantRoute
   '/app/audit': typeof AppAuditRoute
+  '/app/award-registry': typeof AppAwardRegistryRouteWithChildren
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
   '/app/collective': typeof AppCollectiveRouteWithChildren
@@ -355,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/app/admin/workspace': typeof AppAdminWorkspaceRoute
   '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
+  '/app/award-registry/$awardDecisionId': typeof AppAwardRegistryAwardDecisionIdRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
   '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
@@ -377,6 +392,7 @@ export interface FileRoutesByTo {
   '/app/assignment': typeof AppAssignmentRoute
   '/app/assistant': typeof AppAssistantRoute
   '/app/audit': typeof AppAuditRoute
+  '/app/award-registry': typeof AppAwardRegistryRouteWithChildren
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
   '/app/collective': typeof AppCollectiveRouteWithChildren
@@ -406,6 +422,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/app/admin/workspace': typeof AppAdminWorkspaceRoute
   '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
+  '/app/award-registry/$awardDecisionId': typeof AppAwardRegistryAwardDecisionIdRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
   '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
@@ -430,6 +447,7 @@ export interface FileRoutesById {
   '/app/assignment': typeof AppAssignmentRoute
   '/app/assistant': typeof AppAssistantRoute
   '/app/audit': typeof AppAuditRoute
+  '/app/award-registry': typeof AppAwardRegistryRouteWithChildren
   '/app/cascade': typeof AppCascadeRoute
   '/app/chatbot': typeof AppChatbotRoute
   '/app/collective': typeof AppCollectiveRouteWithChildren
@@ -459,6 +477,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/app/admin/workspace': typeof AppAdminWorkspaceRoute
   '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
+  '/app/award-registry/$awardDecisionId': typeof AppAwardRegistryAwardDecisionIdRoute
   '/app/collective/$id': typeof AppCollectiveIdRoute
   '/app/committee/inbox': typeof AppCommitteeInboxRoute
   '/app/decision-imports/$decisionImportId': typeof AppDecisionImportsDecisionImportIdRoute
@@ -484,6 +503,7 @@ export interface FileRouteTypes {
     | '/app/assignment'
     | '/app/assistant'
     | '/app/audit'
+    | '/app/award-registry'
     | '/app/cascade'
     | '/app/chatbot'
     | '/app/collective'
@@ -513,6 +533,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/admin/workspace'
     | '/app/admin/workspaces'
+    | '/app/award-registry/$awardDecisionId'
     | '/app/collective/$id'
     | '/app/committee/inbox'
     | '/app/decision-imports/$decisionImportId'
@@ -535,6 +556,7 @@ export interface FileRouteTypes {
     | '/app/assignment'
     | '/app/assistant'
     | '/app/audit'
+    | '/app/award-registry'
     | '/app/cascade'
     | '/app/chatbot'
     | '/app/collective'
@@ -564,6 +586,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/admin/workspace'
     | '/app/admin/workspaces'
+    | '/app/award-registry/$awardDecisionId'
     | '/app/collective/$id'
     | '/app/committee/inbox'
     | '/app/decision-imports/$decisionImportId'
@@ -587,6 +610,7 @@ export interface FileRouteTypes {
     | '/app/assignment'
     | '/app/assistant'
     | '/app/audit'
+    | '/app/award-registry'
     | '/app/cascade'
     | '/app/chatbot'
     | '/app/collective'
@@ -616,6 +640,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/admin/workspace'
     | '/app/admin/workspaces'
+    | '/app/award-registry/$awardDecisionId'
     | '/app/collective/$id'
     | '/app/committee/inbox'
     | '/app/decision-imports/$decisionImportId'
@@ -862,6 +887,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCascadeRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/award-registry': {
+      id: '/app/award-registry'
+      path: '/award-registry'
+      fullPath: '/app/award-registry'
+      preLoaderRoute: typeof AppAwardRegistryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/audit': {
       id: '/app/audit'
       path: '/audit'
@@ -960,6 +992,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCollectiveIdRouteImport
       parentRoute: typeof AppCollectiveRoute
     }
+    '/app/award-registry/$awardDecisionId': {
+      id: '/app/award-registry/$awardDecisionId'
+      path: '/$awardDecisionId'
+      fullPath: '/app/award-registry/$awardDecisionId'
+      preLoaderRoute: typeof AppAwardRegistryAwardDecisionIdRouteImport
+      parentRoute: typeof AppAwardRegistryRoute
+    }
     '/app/admin/workspaces': {
       id: '/app/admin/workspaces'
       path: '/admin/workspaces'
@@ -990,6 +1029,17 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AppAwardRegistryRouteChildren {
+  AppAwardRegistryAwardDecisionIdRoute: typeof AppAwardRegistryAwardDecisionIdRoute
+}
+
+const AppAwardRegistryRouteChildren: AppAwardRegistryRouteChildren = {
+  AppAwardRegistryAwardDecisionIdRoute: AppAwardRegistryAwardDecisionIdRoute,
+}
+
+const AppAwardRegistryRouteWithChildren =
+  AppAwardRegistryRoute._addFileChildren(AppAwardRegistryRouteChildren)
 
 interface AppCollectiveRouteChildren {
   AppCollectiveIdRoute: typeof AppCollectiveIdRoute
@@ -1056,6 +1106,7 @@ interface AppRouteChildren {
   AppAssignmentRoute: typeof AppAssignmentRoute
   AppAssistantRoute: typeof AppAssistantRoute
   AppAuditRoute: typeof AppAuditRoute
+  AppAwardRegistryRoute: typeof AppAwardRegistryRouteWithChildren
   AppCascadeRoute: typeof AppCascadeRoute
   AppChatbotRoute: typeof AppChatbotRoute
   AppCollectiveRoute: typeof AppCollectiveRouteWithChildren
@@ -1099,6 +1150,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAssignmentRoute: AppAssignmentRoute,
   AppAssistantRoute: AppAssistantRoute,
   AppAuditRoute: AppAuditRoute,
+  AppAwardRegistryRoute: AppAwardRegistryRouteWithChildren,
   AppCascadeRoute: AppCascadeRoute,
   AppChatbotRoute: AppChatbotRoute,
   AppCollectiveRoute: AppCollectiveRouteWithChildren,
