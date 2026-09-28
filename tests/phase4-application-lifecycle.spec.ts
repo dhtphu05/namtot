@@ -57,6 +57,90 @@ test("manager lifecycle API serializes filters and mutation payloads", async ({ 
   expect(requestFor("POST", "/api/manager/applications/application-1/unarchive")?.body).toEqual({});
 });
 
+test("lifecycle actions invalidate officer queues and dashboard caches", async ({ page }) => {
+  requests.length = 0;
+  await page.route("http://localhost:8080/api/**", async (route) => respondToApi(route));
+  await page.goto("/login", { waitUntil: "networkidle" });
+
+  await page.evaluate(async () => {
+    const source = await fetch("/src/features/manager/hooks/useManager.ts").then((response) =>
+      response.text(),
+    );
+    const version = source.match(/@tanstack_react-query\.js(\?v=[^"]+)/)?.[1];
+    if (!version) throw new Error("Could not resolve the Vite dependency version");
+    const ReactModule = await import(`/node_modules/.vite/deps/react.js${version}`);
+    const React = ReactModule.default;
+    const { createRoot } = (await import(`/node_modules/.vite/deps/react-dom_client.js${version}`))
+      .default;
+    const { QueryClient, QueryClientProvider } = await import(
+      `/node_modules/.vite/deps/@tanstack_react-query.js${version}`
+    );
+    const { useCancelManagerApplication } =
+      await import("/src/features/manager/hooks/useManager.ts");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const keys = [
+      ["reviewTasks", { filter: "assigned" }],
+      ["officerTasks", "officer-1", { filter: "assigned" }],
+      ["officerDashboard", "officer-1"],
+    ];
+    for (const key of keys) queryClient.setQueryData(key, {});
+
+    function MutationHarness() {
+      const mutation = useCancelManagerApplication();
+      return React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "lifecycle-mutation-done",
+          "data-done": mutation.isSuccess ? "true" : "false",
+          onClick: () =>
+            mutation.mutate({
+              applicationId: "application-1",
+              payload: { reason: "Duplicate submission" },
+            }),
+        },
+        "Run lifecycle mutation",
+      );
+    }
+
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    root.render(
+      React.createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        React.createElement(MutationHarness),
+      ),
+    );
+    (window as Window & { __lifecycleQueryClient?: typeof queryClient }).__lifecycleQueryClient =
+      queryClient;
+  });
+
+  await page.getByTestId("lifecycle-mutation-done").click();
+  await expect(page.getByTestId("lifecycle-mutation-done")).toHaveAttribute("data-done", "true");
+  const invalidationStates = await page.evaluate(() => {
+    const queryClient = (
+      window as Window & {
+        __lifecycleQueryClient?: {
+          getQueryCache: () => {
+            findAll: (filters?: {
+              queryKey?: unknown[];
+            }) => Array<{ state: { isInvalidated: boolean } }>;
+          };
+        };
+      }
+    ).__lifecycleQueryClient;
+    return queryClient
+      ?.getQueryCache()
+      .findAll()
+      .map((query) => query.state.isInvalidated);
+  });
+
+  expect(requestFor("POST", "/api/manager/applications/application-1/cancel")).toBeDefined();
+  expect(invalidationStates).toEqual([true, true, true]);
+});
+
 test("City Manager list defaults to active records and can discover cancelled and archived applications", async ({
   page,
 }) => {

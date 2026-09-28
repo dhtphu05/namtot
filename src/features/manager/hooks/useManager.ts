@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { reviewKeys } from "@/features/review/hooks/useReview";
 import { managerApi } from "../api/manager";
 import type {
   FinalizeApplicationInput,
@@ -174,6 +175,9 @@ async function invalidateApplicationLifecycleQueries(
 ) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: managerKeys.applications }),
+    queryClient.invalidateQueries({ queryKey: reviewKeys.all }),
+    queryClient.invalidateQueries({ queryKey: ["officerTasks"] }),
+    queryClient.invalidateQueries({ queryKey: ["officerDashboard"] }),
     queryClient.invalidateQueries({ queryKey: ["managerResults"] }),
     queryClient.invalidateQueries({ queryKey: ["managerResultDetail"] }),
     queryClient.invalidateQueries({ queryKey: managerKeys.dashboard }),
