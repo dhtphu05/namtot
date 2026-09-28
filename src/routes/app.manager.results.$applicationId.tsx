@@ -28,6 +28,8 @@ import { useAuth } from "@/features/auth/store/auth-store";
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import { FinalizationDialog } from "@/features/manager/components/FinalizationDialog";
 import { CitySubmissionDeadlineExceptionPanel } from "@/features/manager/components/CitySubmissionDeadlineExceptionPanel";
+import { ApplicationFinalDecisionHistory } from "@/features/manager/components/ApplicationFinalDecisionHistory";
+import { ApplicationLifecycleActions } from "@/features/manager/components/ApplicationLifecycleActions";
 import {
   useManagerResultDetail,
   useReopenFinalApplication,
@@ -158,6 +160,8 @@ function ManagerResultDetailRoute() {
   const canFinalize = role
     ? (isIndividualCityApplication ? cityFinalizerRoles : finalizerRoles).includes(role)
     : false;
+  const canManageLifecycle =
+    isIndividualCityApplication && (role === "city_manager" || role === "admin");
   const selectedItem = toFinalizationItem(detail);
   const suggestedLevel = getSuggestedLevel(detail);
   const processedCount = detail.reviewTasks.filter((task) =>
@@ -185,6 +189,10 @@ function ManagerResultDetailRoute() {
             resolutionCaseId={inboxFocus.resolutionCaseId}
           />
           <HeaderCard detail={detail} />
+          {canManageLifecycle ? (
+            <ApplicationLifecycleActions application={detail.application} />
+          ) : null}
+          <ApplicationFinalDecisionHistory history={detail.finalDecisionHistory ?? []} />
           {canManageCityDeadline && isInitialCityDraft ? (
             <CitySubmissionDeadlineExceptionPanel applicationId={detail.application.id} />
           ) : null}
@@ -197,7 +205,7 @@ function ManagerResultDetailRoute() {
         <aside className="space-y-5 xl:sticky xl:top-4 xl:self-start">
           <DecisionPanel
             detail={detail}
-            canFinalize={canFinalize}
+            canFinalize={canFinalize && !detail.application.cancelledAt}
             processedCount={processedCount}
             openResolutionCount={openResolutionCount}
             supplementCount={supplementCount}

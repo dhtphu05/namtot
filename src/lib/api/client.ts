@@ -121,6 +121,9 @@ function toUserFriendlyMessage(message: string, code?: string, status?: number):
   if (status === 404) {
     return "Không tìm thấy dữ liệu cần xử lý.";
   }
+  if (normalizedCode === "application_cancelled") {
+    return "Hồ sơ đã bị hủy. Mở lại hồ sơ trước khi tiếp tục xử lý.";
+  }
   if (status === 409) {
     return "Trạng thái hồ sơ đã thay đổi. Vui lòng tải lại trang và thử lại.";
   }
