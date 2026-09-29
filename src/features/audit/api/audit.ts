@@ -1,7 +1,6 @@
 import { apiClient } from "@/lib/api/client";
 import type { ApiResponse, QueryValue } from "@/features/review/types";
 import type { AuditLogParams, AuditLogResponse } from "../types";
-import type { AuditTimelineResponse } from "@/types/audit";
 
 function buildQueryString(params?: Record<string, QueryValue>) {
   const query = new URLSearchParams();
@@ -25,14 +24,10 @@ function withDataFallback<T>(response: ApiResponse<T>, fallback: T | null = null
 
 export const auditApi = {
   getAuditLogs: async (params?: AuditLogParams): Promise<ApiResponse<AuditLogResponse>> => {
-    const response = await apiClient<AuditLogResponse>(`/api/audit${buildQueryString(params)}`);
+    const response = await apiClient<AuditLogResponse>(
+      `/api/audit/logs${buildQueryString(params)}`,
+    );
 
     return withDataFallback(response, { items: [] });
-  },
-
-  getEntityAudit: async (entityType: string, entityId: string) => {
-    return apiClient<AuditTimelineResponse>(`/api/audit/entity/${entityType}/${entityId}`, {
-      method: "GET",
-    });
   },
 };

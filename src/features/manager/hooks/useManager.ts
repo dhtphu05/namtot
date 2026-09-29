@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useAuth } from "@/features/auth/store/auth-store";
 import { reviewKeys } from "@/features/review/hooks/useReview";
+import type { Role } from "@/lib/api/types";
 import { managerApi } from "../api/manager";
 import type {
   FinalizeApplicationInput,
@@ -22,7 +24,8 @@ export const managerKeys = {
     [...managerKeys.applications, params ?? {}] as const,
   workload: ["managerWorkload"] as const,
   dashboard: ["managerDashboard"] as const,
-  committeeInbox: (params?: CommitteeInboxParams) => ["committeeInbox", params ?? {}] as const,
+  committeeInbox: (params?: CommitteeInboxParams, role?: Role) =>
+    ["committeeInbox", role ?? "unknown", params ?? {}] as const,
   collectives: (params?: ManagerCollectiveFilters) => ["managerCollectives", params ?? {}] as const,
   collectiveAggregation: (collectiveId?: string) =>
     ["managerCollectiveAggregation", collectiveId ?? ""] as const,
@@ -118,10 +121,12 @@ export function useManagerDashboardSummary() {
 }
 
 export function useCommitteeInbox(params?: CommitteeInboxParams) {
+  const role = useAuth((state) => state.user?.role);
+
   return useQuery({
-    queryKey: managerKeys.committeeInbox(params),
+    queryKey: managerKeys.committeeInbox(params, role),
     queryFn: async () => {
-      const response = await managerApi.getCommitteeInbox(params);
+      const response = await managerApi.getCommitteeInbox(params, role);
       return response.data;
     },
   });
