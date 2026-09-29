@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -14,7 +15,12 @@ import {
   toVietnamDateTimeInput,
 } from "@/lib/datetime-vietnam";
 import { type CityReviewSeason, type SaveCityReviewSeasonInput } from "../api/city-season";
-import { useCityReviewSeason, useSaveCityReviewSeason } from "../hooks/useCitySeason";
+import {
+  useCityReviewSeason,
+  useCityReviewSeasons,
+  useDeleteCityReviewSeason,
+  useSaveCityReviewSeason,
+} from "../hooks/useCitySeason";
 
 type FormValues = Record<keyof Omit<SaveCityReviewSeasonInput, "schoolYear" | "reason">, string>;
 
@@ -39,15 +45,30 @@ export function CityReviewSeasonAdministration({
 }: {
   defaultSchoolYear: string;
 }) {
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(
+    /^\d{4}-\d{4}$/.test(defaultSchoolYear) ? defaultSchoolYear : "",
+  );
+  const [newYearMode, setNewYearMode] = useState(!/^\d{4}-\d{4}$/.test(defaultSchoolYear));
   const [manualSchoolYear, setManualSchoolYear] = useState("");
-  const schoolYear = /^\d{4}-\d{4}$/.test(defaultSchoolYear) ? defaultSchoolYear : manualSchoolYear;
+  const schoolYear = newYearMode ? manualSchoolYear : selectedSchoolYear;
+  const seasons = useCityReviewSeasons();
   const season = useCityReviewSeason(schoolYear);
   const saveSeason = useSaveCityReviewSeason();
+  const deleteSeason = useDeleteCityReviewSeason();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<FormValues>(emptyForm);
   const [reason, setReason] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+
+  useEffect(() => {
+    if (/^\d{4}-\d{4}$/.test(defaultSchoolYear)) {
+      setSelectedSchoolYear(defaultSchoolYear);
+      setNewYearMode(false);
+    }
+  }, [defaultSchoolYear]);
 
   useEffect(() => {
     setEditing(false);
@@ -122,6 +143,16 @@ export function CityReviewSeasonAdministration({
     }
   }
 
+  async function confirmDelete() {
+    try {
+      await deleteSeason.mutateAsync({ schoolYear, reason: deleteReason.trim() });
+      setDeleteOpen(false);
+      setDeleteReason("");
+    } catch {
+      setDeleteOpen(false);
+    }
+  }
+
   return (
     <Card className="!p-0">
       <section aria-labelledby="city-review-season-title">
@@ -135,13 +166,54 @@ export function CityReviewSeasonAdministration({
             </p>
           </div>
           {season.data ? (
-            <Button variant="outline" size="sm" onClick={() => beginEdit(season.data!)}>
-              Chỉnh sửa lịch
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => beginEdit(season.data!)}>
+                Chỉnh sửa lịch
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!season.data.canDelete}
+                onClick={() => setDeleteOpen(true)}
+              >
+                Xóa mùa rỗng
+              </Button>
+            </div>
           ) : null}
         </div>
 
-        {!/^\d{4}-\d{4}$/.test(defaultSchoolYear) ? (
+        <div className="border-b p-4">
+          <label className="grid max-w-sm gap-1 text-xs font-semibold text-muted-foreground">
+            Mùa xét
+            <select
+              aria-label="Mùa xét"
+              value={newYearMode ? "__new__" : selectedSchoolYear}
+              onChange={(event) => {
+                if (event.target.value === "__new__") {
+                  setNewYearMode(true);
+                  setSelectedSchoolYear("");
+                } else {
+                  setNewYearMode(false);
+                  setSelectedSchoolYear(event.target.value);
+                }
+              }}
+              className="h-9 rounded-md border bg-white px-3 text-sm text-brand-deep"
+            >
+              {selectedSchoolYear &&
+              !seasons.data?.some((item) => item.schoolYear === selectedSchoolYear) ? (
+                <option value={selectedSchoolYear}>{selectedSchoolYear} · chưa tạo</option>
+              ) : null}
+              {(seasons.data ?? []).map((item) => (
+                <option key={item.id} value={item.schoolYear}>
+                  {item.schoolYear} · {item.applicationCount} hồ sơ
+                </option>
+              ))}
+              <option value="__new__">Tạo mùa xét mới</option>
+            </select>
+          </label>
+        </div>
+
+        {newYearMode ? (
           <div className="border-b p-4">
             <label className="grid max-w-xs gap-1 text-xs font-semibold text-muted-foreground">
               Năm học cần cấu hình
@@ -189,6 +261,12 @@ export function CityReviewSeasonAdministration({
             <p className="text-xs text-muted-foreground sm:col-span-2 xl:col-span-4">
               Mở nộp {formatVietnamDateTime(season.data.submissionOpensAt)} · Đóng nộp{" "}
               {formatVietnamDateTime(season.data.submissionClosesAt)}
+            </p>
+            <p className="text-xs text-muted-foreground sm:col-span-2 xl:col-span-4">
+              {season.data.applicationCount} hồ sơ tham chiếu mùa xét.
+              {!season.data.canDelete
+                ? " Mùa đã phát sinh hồ sơ và không thể xóa; hãy đóng hoặc cập nhật lịch."
+                : " Có thể xóa an toàn khi cần tạo lại."}
             </p>
           </div>
         )}
@@ -262,6 +340,43 @@ export function CityReviewSeasonAdministration({
               {saveSeason.isPending ? "Đang lưu…" : "Xác nhận lưu"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa mùa xét rỗng?</DialogTitle>
+            <DialogDescription>
+              Chỉ xóa được khi chưa có hồ sơ. Không có dữ liệu hồ sơ, quyết định hoặc lịch sử nào bị
+              xóa.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="grid gap-1 text-sm font-medium">
+            Lý do xóa
+            <input
+              aria-label="Lý do xóa mùa xét"
+              value={deleteReason}
+              onChange={(event) => setDeleteReason(event.target.value)}
+              className="h-9 rounded-md border px-3"
+            />
+          </label>
+          {deleteSeason.isError ? (
+            <p role="alert" className="text-sm text-rose-700">
+              {deleteSeason.error.message}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              variant="danger"
+              disabled={!deleteReason.trim() || deleteSeason.isPending}
+              onClick={() => void confirmDelete()}
+            >
+              {deleteSeason.isPending ? "Đang xóa…" : "Xóa mùa rỗng"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>

@@ -9,9 +9,18 @@ import {
 
 export const citySeasonKeys = {
   season: (schoolYear: string) => ["cityReviewSeason", schoolYear] as const,
+  seasons: () => ["cityReviewSeasons"] as const,
   applicationDeadline: (applicationId: string) =>
     ["managerSubmissionDeadline", applicationId] as const,
 };
+
+export function useCityReviewSeasons() {
+  return useQuery({
+    queryKey: citySeasonKeys.seasons(),
+    queryFn: async () => (await citySeasonApi.listSeasons()).data,
+    retry: false,
+  });
+}
 
 export function useCityReviewSeason(schoolYear: string) {
   return useQuery({
@@ -39,9 +48,26 @@ export function useSaveCityReviewSeason() {
         : citySeasonApi.updateSeason(schoolYear, { ...payload, expectedVersion }),
     onSuccess: async (_, input) => {
       await queryClient.invalidateQueries({ queryKey: citySeasonKeys.season(input.schoolYear) });
+      await queryClient.invalidateQueries({ queryKey: citySeasonKeys.seasons() });
       toast.success("Đã lưu lịch mùa xét Thành phố.");
     },
     onError: (error: Error) => toast.error(error.message || "Không thể lưu lịch mùa xét."),
+  });
+}
+
+export function useDeleteCityReviewSeason() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ schoolYear, reason }: { schoolYear: string; reason: string }) =>
+      citySeasonApi.deleteSeason(schoolYear, reason),
+    onSuccess: async (_result, input) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: citySeasonKeys.seasons() }),
+        queryClient.invalidateQueries({ queryKey: citySeasonKeys.season(input.schoolYear) }),
+      ]);
+      toast.success("Đã xóa mùa xét chưa phát sinh hồ sơ.");
+    },
+    onError: (error: Error) => toast.error(error.message || "Không thể xóa mùa xét."),
   });
 }
 

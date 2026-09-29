@@ -15,6 +15,8 @@ export type CityReviewSeason = {
   reviewStatus: "NOT_CONFIGURED" | "ON_TRACK" | "OVERDUE";
   supplementStatus: "NOT_CONFIGURED" | "ON_TRACK" | "OVERDUE";
   finalizationStatus: "NOT_CONFIGURED" | "ON_TRACK" | "OVERDUE";
+  applicationCount: number;
+  canDelete: boolean;
 };
 
 export type SaveCityReviewSeasonInput = {
@@ -35,6 +37,9 @@ function seasonPath(schoolYear: string) {
 }
 
 export const citySeasonApi = {
+  listSeasons(): Promise<ApiResponse<CityReviewSeason[]>> {
+    return apiClient<CityReviewSeason[]>("/api/manager/city-review-seasons");
+  },
   getSeason(schoolYear: string): Promise<ApiResponse<CityReviewSeason | null>> {
     return apiClient<CityReviewSeason | null>(seasonPath(schoolYear));
   },
@@ -51,6 +56,12 @@ export const citySeasonApi = {
     return apiClient<CityReviewSeason>(seasonPath(schoolYear), {
       method: "PATCH",
       body: input,
+    });
+  },
+  deleteSeason(schoolYear: string, reason: string): Promise<ApiResponse<CityReviewSeason>> {
+    return apiClient<CityReviewSeason>(seasonPath(schoolYear), {
+      method: "DELETE",
+      body: { reason },
     });
   },
   getApplicationDeadline(applicationId: string): Promise<ApiResponse<ManagerSubmissionDeadline>> {
