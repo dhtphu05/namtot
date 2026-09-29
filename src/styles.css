@@ -50,24 +50,49 @@
 }
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem;
+  --radius-control: 0.5rem;
+  --radius-section: 0.75rem;
+  --radius-dialog: 1rem;
+  --radius-pill: 999px;
   --surface-app: #f6f8fb;
   --surface-primary: #ffffff;
   --surface-secondary: #f1f6fc;
   --surface-muted: #f8fafc;
   --surface-selected: #eaf3ff;
+  --surface-info: #eaf3ff;
   --surface-warning: #fff7e6;
   --surface-danger: #fef2f2;
   --surface-success: #ecfdf3;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #64748b;
+  --text-inverse: #ffffff;
   --brand-primary: #0057c2;
   --brand-primary-soft: #eaf3ff;
+  --brand-navy: #123b6d;
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-control: rgba(15, 23, 42, 0.12);
+  --focus-ring: #79aef5;
   --danger: #dc2626;
   --warning: #d97706;
   --success: #15803d;
   --info: #0369a1;
+  --status-success: #15803d;
+  --status-warning: #b45309;
+  --status-danger: #b42318;
+  --status-info: var(--brand-primary);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --type-page-title: 24px;
+  --type-section-title: 18px;
+  --type-body: 14px;
+  --type-meta: 12px;
 
   --background: oklch(0.985 0.006 230);
   --foreground: var(--text-primary);
@@ -88,8 +113,8 @@
   --brand: #0b74d1;
   --brand-deep: var(--brand-primary);
   --brand-soft: var(--brand-primary-soft);
-  --border: rgba(15, 23, 42, 0.08);
-  --input: rgba(15, 23, 42, 0.09);
+  --border: var(--border-subtle);
+  --input: var(--border-control);
   --ring: var(--brand-primary);
   --sidebar: var(--surface-primary);
   --sidebar-foreground: var(--text-secondary);
@@ -111,43 +136,43 @@
   --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.035);
   --shadow-lift: 0 14px 34px -30px rgba(15, 23, 42, 0.35);
 
-  --student-v2-institutional-navy: #123b6d;
-  --student-v2-institutional-blue: #0057c2;
+  --student-v2-institutional-navy: var(--brand-navy);
+  --student-v2-institutional-blue: var(--brand-primary);
   --student-v2-institutional-cyan: #0796d2;
   --student-v2-accent-cyan: var(--student-v2-institutional-cyan);
   --student-v2-primary-action-blue: var(--student-v2-institutional-blue);
-  --student-v2-surface-app: #f5f7fa;
-  --student-v2-surface-primary: #ffffff;
-  --student-v2-surface-secondary: #f0f4f8;
-  --student-v2-surface-muted: #f7f9fc;
-  --student-v2-surface-selected: #eaf3ff;
-  --student-v2-surface-hover: #f1f6fc;
-  --student-v2-text-primary: #162033;
-  --student-v2-text-secondary: #526174;
-  --student-v2-text-muted: #6b7787;
-  --student-v2-text-inverse: #ffffff;
-  --student-v2-border-default: #d8e0e8;
-  --student-v2-border-strong: #c5cfdc;
-  --student-v2-divider: rgba(22, 32, 51, 0.08);
-  --student-v2-focus-ring: #79aef5;
-  --student-v2-progress-complete-text: #166534;
-  --student-v2-progress-complete-bg: #ecfdf3;
-  --student-v2-progress-complete-icon: #15803d;
-  --student-v2-progress-waiting-text: #1d4ed8;
-  --student-v2-progress-waiting-bg: #eff6ff;
-  --student-v2-progress-waiting-icon: #2563eb;
-  --student-v2-progress-supplement-text: #b45309;
-  --student-v2-progress-supplement-bg: #fff7ed;
-  --student-v2-progress-supplement-icon: #d97706;
+  --student-v2-surface-app: var(--surface-app);
+  --student-v2-surface-primary: var(--surface-primary);
+  --student-v2-surface-secondary: var(--surface-secondary);
+  --student-v2-surface-muted: var(--surface-muted);
+  --student-v2-surface-selected: var(--surface-selected);
+  --student-v2-surface-hover: var(--surface-secondary);
+  --student-v2-text-primary: var(--text-primary);
+  --student-v2-text-secondary: var(--text-secondary);
+  --student-v2-text-muted: var(--text-muted);
+  --student-v2-text-inverse: var(--text-inverse);
+  --student-v2-border-default: var(--border-control);
+  --student-v2-border-strong: rgba(15, 23, 42, 0.18);
+  --student-v2-divider: var(--border-subtle);
+  --student-v2-focus-ring: var(--focus-ring);
+  --student-v2-progress-complete-text: var(--status-success);
+  --student-v2-progress-complete-bg: var(--surface-success);
+  --student-v2-progress-complete-icon: var(--status-success);
+  --student-v2-progress-waiting-text: var(--status-info);
+  --student-v2-progress-waiting-bg: var(--surface-info);
+  --student-v2-progress-waiting-icon: var(--status-info);
+  --student-v2-progress-supplement-text: var(--status-warning);
+  --student-v2-progress-supplement-bg: var(--surface-warning);
+  --student-v2-progress-supplement-icon: var(--status-warning);
   --student-v2-progress-not-started-text: #475569;
   --student-v2-progress-not-started-bg: #f1f5f9;
   --student-v2-progress-not-started-icon: #64748b;
-  --student-v2-critical-text: #b42318;
-  --student-v2-critical-bg: #fef3f2;
-  --student-v2-radius-control: 8px;
-  --student-v2-radius-section: 12px;
-  --student-v2-radius-overlay: 16px;
-  --student-v2-radius-pill: 999px;
+  --student-v2-critical-text: var(--status-danger);
+  --student-v2-critical-bg: var(--surface-danger);
+  --student-v2-radius-control: var(--radius-control);
+  --student-v2-radius-section: var(--radius-section);
+  --student-v2-radius-overlay: var(--radius-dialog);
+  --student-v2-radius-pill: var(--radius-pill);
   --student-v2-elevation-overlay: 0 18px 44px -24px rgba(22, 32, 51, 0.36);
   --student-v2-elevation-paper: 0 2px 8px rgba(22, 32, 51, 0.08);
   --student-v2-space-1: 4px;
@@ -227,6 +252,17 @@
 
   .responsive-grid {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

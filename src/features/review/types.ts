@@ -1,5 +1,6 @@
 import type { OfficerEvidenceKnowledgeSearchItem } from "@/features/evidence-knowledge/types";
 import type { Pagination, PrecheckResult } from "@/lib/api/types";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 
 export type Role =
   | "student"
@@ -113,11 +114,11 @@ export type ReviewTaskPriorityReason =
   | null;
 
 export const criterionLabels: Record<Criterion, string> = {
-  ethics: "Đạo đức tốt",
-  academic: "Học tập tốt",
-  physical: "Thể lực tốt",
-  volunteer: "Tình nguyện tốt",
-  integration: "Hội nhập tốt",
+  ethics: getCoreCriterionLabel("ethics"),
+  academic: getCoreCriterionLabel("academic"),
+  physical: getCoreCriterionLabel("physical"),
+  volunteer: getCoreCriterionLabel("volunteer"),
+  integration: getCoreCriterionLabel("integration"),
   priority: "Ưu tiên / bổ sung",
   collective: "Tập thể",
 };

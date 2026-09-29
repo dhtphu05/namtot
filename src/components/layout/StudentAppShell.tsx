@@ -1,13 +1,14 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { BookOpenCheck, FileText, LayoutDashboard, LifeBuoy, Trophy } from "lucide-react";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { SkipLink } from "@/components/layout/SkipLink";
 import { UserWorkspaceInfo } from "@/components/layout/UserWorkspaceInfo";
 import { ApplicationContextBar } from "@/features/application/ui-v2/components";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { StudentPageShell } from "@/features/student/components/primitives";
 import { STUDENT_APPLICATION_UI_V2 } from "@/lib/student-application-ui-v2";
-import { useApp } from "@/lib/store";
 
 const mobileItems = [
   { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
@@ -20,7 +21,7 @@ const mobileItems = [
 export function StudentAppShell() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const user = useAuth((s) => s.user);
-  const schoolYear = useApp((s) => s.application.schoolYear);
+  const reduceMotion = useReducedMotion();
 
   return (
     <div
@@ -28,13 +29,17 @@ export function StudentAppShell() {
         STUDENT_APPLICATION_UI_V2 ? "bg-[var(--student-v2-surface-app)]" : "bg-[var(--surface-app)]"
       }`}
     >
+      <SkipLink />
       <Sidebar />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <AppHeader />
         <motion.div
+          id="app-content"
+          tabIndex={-1}
           className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-24 pt-0 md:pb-20"
-          initial={{ opacity: 0, y: 8 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22 }}
+          transition={{ duration: reduceMotion ? 0 : 0.22 }}
           key={typeof window !== "undefined" ? window.location.pathname : ""}
         >
           <StudentPageShell
@@ -46,7 +51,6 @@ export function StudentAppShell() {
               <ApplicationContextBar
                 workspaceName={user?.workspace?.name}
                 workspaceShortName={user?.workspace?.shortName}
-                schoolYear={schoolYear}
                 className="mb-3 md:hidden"
               />
             ) : (

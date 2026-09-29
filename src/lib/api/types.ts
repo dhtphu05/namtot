@@ -1,3 +1,5 @@
+import { getCoreCriterionLabel } from "../criteria-presentation";
+
 export interface Pagination {
   page: number;
   limit: number;
@@ -133,11 +135,11 @@ export const levelLabel: Record<Level, string> = {
 };
 
 export const criterionLabel: Record<Criterion, string> = {
-  ethics: "Đạo đức tốt",
-  academic: "Học tập tốt",
-  physical: "Thể lực tốt",
-  volunteer: "Tình nguyện tốt",
-  integration: "Hội nhập tốt",
+  ethics: getCoreCriterionLabel("ethics"),
+  academic: getCoreCriterionLabel("academic"),
+  physical: getCoreCriterionLabel("physical"),
+  volunteer: getCoreCriterionLabel("volunteer"),
+  integration: getCoreCriterionLabel("integration"),
   priority: "Thành tích ưu tiên",
   collective: "Tập thể",
 };

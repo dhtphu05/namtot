@@ -30,6 +30,7 @@ import { FinalizationDialog } from "@/features/manager/components/FinalizationDi
 import { CitySubmissionDeadlineExceptionPanel } from "@/features/manager/components/CitySubmissionDeadlineExceptionPanel";
 import { ApplicationFinalDecisionHistory } from "@/features/manager/components/ApplicationFinalDecisionHistory";
 import { ApplicationLifecycleActions } from "@/features/manager/components/ApplicationLifecycleActions";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 import {
   useManagerResultDetail,
   useReopenFinalApplication,
@@ -58,11 +59,11 @@ const cityFinalizerRoles: Role[] = ["city_manager", "city_committee", "admin"];
 const criterionOrder: Criterion[] = ["ethics", "academic", "physical", "volunteer", "integration"];
 
 const criterionLabel: Record<Criterion, string> = {
-  ethics: "Đạo đức tốt",
-  academic: "Học tập tốt",
-  physical: "Thể lực tốt",
-  volunteer: "Tình nguyện tốt",
-  integration: "Hội nhập tốt",
+  ethics: getCoreCriterionLabel("ethics"),
+  academic: getCoreCriterionLabel("academic"),
+  physical: getCoreCriterionLabel("physical"),
+  volunteer: getCoreCriterionLabel("volunteer"),
+  integration: getCoreCriterionLabel("integration"),
   priority: "Ưu tiên",
   collective: "Tập thể",
 };

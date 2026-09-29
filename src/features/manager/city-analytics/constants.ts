@@ -1,4 +1,5 @@
 import type { CityAnalyticsCriterion } from "./types";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 
 export const criterionOrder: CityAnalyticsCriterion[] = [
   "ethics",
@@ -9,11 +10,11 @@ export const criterionOrder: CityAnalyticsCriterion[] = [
 ];
 
 export const criterionLabels: Record<CityAnalyticsCriterion, string> = {
-  ethics: "Đạo đức tốt",
-  academic: "Học tập tốt",
-  physical: "Thể lực tốt",
-  volunteer: "Tình nguyện tốt",
-  integration: "Hội nhập tốt",
+  ethics: getCoreCriterionLabel("ethics"),
+  academic: getCoreCriterionLabel("academic"),
+  physical: getCoreCriterionLabel("physical"),
+  volunteer: getCoreCriterionLabel("volunteer"),
+  integration: getCoreCriterionLabel("integration"),
 };
 
 export const criterionTaskStatusKeys = [

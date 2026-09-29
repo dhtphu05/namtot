@@ -116,9 +116,11 @@ export function ApplicationContextBar({
           <div className="text-[13px] font-semibold leading-[18px] [overflow-wrap:anywhere]">
             {workspaceLabel}
           </div>
-          <div className="mt-0.5 text-[12px] leading-[17px] text-[var(--student-v2-text-muted)]">
-            {schoolYear ? `Năm học ${schoolYear}` : "Thông tin đơn vị sẽ hiển thị khi tải xong"}
-          </div>
+          {schoolYear ? (
+            <div className="mt-0.5 text-[12px] leading-[17px] text-[var(--student-v2-text-muted)]">
+              Năm học {schoolYear}
+            </div>
+          ) : null}
         </div>
       </div>
       {links.length ? (

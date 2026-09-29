@@ -1,13 +1,14 @@
 import type { UxStatus } from "@/types/api";
 import type { EvidenceCard } from "@/types/evidence";
 import type { EvidenceResponse } from "@/lib/api/types";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 
 export const studentEvidenceCriteria = [
-  { key: "ethics", label: "Đạo đức tốt" },
-  { key: "academic", label: "Học tập tốt" },
-  { key: "physical", label: "Thể lực tốt" },
-  { key: "volunteer", label: "Tình nguyện tốt" },
-  { key: "integration", label: "Hội nhập tốt" },
+  { key: "ethics", label: getCoreCriterionLabel("ethics") },
+  { key: "academic", label: getCoreCriterionLabel("academic") },
+  { key: "physical", label: getCoreCriterionLabel("physical") },
+  { key: "volunteer", label: getCoreCriterionLabel("volunteer") },
+  { key: "integration", label: getCoreCriterionLabel("integration") },
 ] as const;
 
 export const sourceTypeCopy: Record<string, string> = {

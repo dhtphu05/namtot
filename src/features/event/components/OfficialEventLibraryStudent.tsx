@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/features/student/components/primitives";
 import { ApiError } from "@/lib/api/client";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 import { cn } from "@/lib/utils";
 import type { Criterion, EvidenceResponse, Level } from "@/lib/api/types";
 import type { OfficialEventLibraryItem } from "@/types/evidence";
@@ -85,11 +86,11 @@ const referenceCriterionOptions: Array<{
   label: string;
 }> = [
   { value: "all", number: "00", label: "Tất cả" },
-  { value: "ethics", number: "01", label: "Đạo đức tốt" },
-  { value: "academic", number: "02", label: "Học tập tốt" },
-  { value: "physical", number: "03", label: "Thể lực tốt" },
-  { value: "volunteer", number: "04", label: "Tình nguyện tốt" },
-  { value: "integration", number: "05", label: "Hội nhập tốt" },
+  { value: "ethics", number: "01", label: getCoreCriterionLabel("ethics") },
+  { value: "academic", number: "02", label: getCoreCriterionLabel("academic") },
+  { value: "physical", number: "03", label: getCoreCriterionLabel("physical") },
+  { value: "volunteer", number: "04", label: getCoreCriterionLabel("volunteer") },
+  { value: "integration", number: "05", label: getCoreCriterionLabel("integration") },
 ];
 
 type StudentReferenceEventLibraryProps = {

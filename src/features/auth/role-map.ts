@@ -1,6 +1,7 @@
 import type { Role as ApiRole } from "@/lib/api/types";
 import { ROLES, type Role as UiRole } from "@/lib/mock-data";
 import type { Criterion, SafeUser } from "@/lib/api/types";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 
 export const ENABLE_DEMO_ROLE_SWITCH =
   import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_ROLE_SWITCH === "true";
@@ -42,11 +43,11 @@ export function getRoleLabel(role: ApiRole): string {
 }
 
 const officerCriterionLabel: Partial<Record<Criterion, string>> = {
-  ethics: "Đạo đức tốt",
-  academic: "Học tập tốt",
-  physical: "Thể lực tốt",
-  volunteer: "Tình nguyện tốt",
-  integration: "Hội nhập tốt",
+  ethics: getCoreCriterionLabel("ethics"),
+  academic: getCoreCriterionLabel("academic"),
+  physical: getCoreCriterionLabel("physical"),
+  volunteer: getCoreCriterionLabel("volunteer"),
+  integration: getCoreCriterionLabel("integration"),
 };
 
 const officerCriterionOrder: Criterion[] = [

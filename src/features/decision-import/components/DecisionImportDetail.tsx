@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { ProgressBadges } from "@/components/status/ProgressBadges";
+import { StatusBadge } from "@/components/status/StatusBadge";
 import { UxStatusCard } from "@/components/status/UxStatusCard";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useDecisionImportPolling } from "@/hooks/useDecisionImportPolling";
@@ -36,7 +37,6 @@ import { RosterPreviewSummary } from "./RosterPreviewSummary";
 import { RosterPreviewTable } from "./RosterPreviewTable";
 import {
   compactFacts,
-  decisionStatusLabel,
   fallbackDecisionUxStatus,
   formatConvertedValue,
   formatCriterion,
@@ -213,7 +213,7 @@ export function DecisionImportDetail({ importId }: DecisionImportDetailProps) {
                 {formatLevel(activeItem.organizerLevel) ? (
                   <Badge variant="outline">{formatLevel(activeItem.organizerLevel)}</Badge>
                 ) : null}
-                <Badge variant="outline">{decisionStatusLabel(activeItem.status)}</Badge>
+                <StatusBadge domain="decisionImport" status={activeItem.status} compact />
                 {activeItem.fileStatus ? (
                   <Badge variant="outline">File: {activeItem.fileStatus}</Badge>
                 ) : null}

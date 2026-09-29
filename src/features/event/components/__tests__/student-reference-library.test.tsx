@@ -9,6 +9,7 @@ const librarySource = () =>
 const drawerSource = () =>
   readFileSync("src/features/evidence/components/AddEvidenceDrawer.tsx", "utf8");
 const sidebarSource = () => readFileSync("src/components/layout/Sidebar.tsx", "utf8");
+const navigationSource = () => readFileSync("src/lib/role-navigation.ts", "utf8");
 const studentShellSource = () => readFileSync("src/components/layout/StudentAppShell.tsx", "utf8");
 const routeGuardSource = () => readFileSync("src/features/auth/route-guard.ts", "utf8");
 const referenceLibrarySource = () => {
@@ -66,11 +67,23 @@ describe("student evidence reference library", () => {
 
     assert.match(source, /referenceCriterionOptions/);
     assert.match(source, /value: "all",\s*number: "00",\s*label: "Tất cả"/);
-    assert.match(source, /"01",\s*label: "Đạo đức tốt"/);
-    assert.match(source, /"02",\s*label: "Học tập tốt"/);
-    assert.match(source, /"03",\s*label: "Thể lực tốt"/);
-    assert.match(source, /"04",\s*label: "Tình nguyện tốt"/);
-    assert.match(source, /"05",\s*label: "Hội nhập tốt"/);
+    assert.match(source, /value: "ethics", number: "01", label: getCoreCriterionLabel\("ethics"\)/);
+    assert.match(
+      source,
+      /value: "academic", number: "02", label: getCoreCriterionLabel\("academic"\)/,
+    );
+    assert.match(
+      source,
+      /value: "physical", number: "03", label: getCoreCriterionLabel\("physical"\)/,
+    );
+    assert.match(
+      source,
+      /value: "volunteer", number: "04", label: getCoreCriterionLabel\("volunteer"\)/,
+    );
+    assert.match(
+      source,
+      /value: "integration", number: "05", label: getCoreCriterionLabel\("integration"\)/,
+    );
     assert.match(source, /role="tablist"/);
     assert.match(source, /overflow-x-auto/);
     assert.match(source, /min-h-11/);
@@ -99,14 +112,16 @@ describe("student evidence reference library", () => {
 
   it("adds the student navigation entry and keeps route guard ownership", () => {
     const sidebar = sidebarSource();
+    const navigation = navigationSource();
     const shell = studentShellSource();
     const guard = routeGuardSource();
 
-    assert.equal((sidebar.match(/to: "\/app\/event-library"/g) ?? []).length, 1);
+    assert.equal((navigation.match(/to: "\/app\/event-library"/g) ?? []).length, 1);
     assert.match(
-      sidebar,
-      /label: "Kho minh chứng", to: "\/app\/event-library", icon: BookOpenCheck/,
+      navigation,
+      /label: "Kho minh chứng", to: "\/app\/event-library", icon: "knowledge"/,
     );
+    assert.match(sidebar, /getRoleNavigation\(/);
     assert.match(sidebar, /return "\/app\/event-library"/);
     assert.match(shell, /label: "Kho minh chứng", to: "\/app\/event-library", icon: BookOpenCheck/);
     assert.match(shell, /grid grid-cols-5 gap-1/);

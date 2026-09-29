@@ -18,7 +18,7 @@ const TableHeader = React.forwardRef<
   <thead
     ref={ref}
     className={cn(
-      "sticky top-0 z-10 bg-[var(--surface-muted)] [&_tr]:border-b [&_tr]:border-slate-200/60",
+      "sticky top-0 z-10 bg-[var(--surface-muted)] [&_tr]:border-b [&_tr]:border-[var(--border-subtle)]",
       className,
     )}
     {...props}
@@ -41,7 +41,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t border-slate-200/70 bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      "border-t border-[var(--border-subtle)] bg-muted/50 font-medium [&>tr]:last:border-b-0",
       className,
     )}
     {...props}
@@ -54,7 +54,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
     <tr
       ref={ref}
       className={cn(
-        "border-b border-slate-100 transition-colors hover:bg-[var(--surface-secondary)] data-[state=selected]:bg-[var(--surface-selected)]",
+        "border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--surface-secondary)] data-[state=selected]:bg-[var(--surface-selected)]",
         className,
       )}
       {...props}

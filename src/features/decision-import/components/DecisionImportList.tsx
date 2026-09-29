@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { UxStatusCard } from "@/components/status/UxStatusCard";
+import { StatusBadge } from "@/components/status/StatusBadge";
 import { useAuth } from "@/features/auth/store/auth-store";
 import type { Criterion, Role } from "@/lib/api/types";
 import type { DecisionImport, DecisionImportStatus } from "@/types/decision-import";
@@ -25,7 +26,6 @@ import {
   compactFacts,
   criterionOptions,
   decisionStatusIcon,
-  decisionStatusLabel,
   fallbackDecisionUxStatus,
   formatCriterion,
   formatDecisionDateTime,
@@ -204,7 +204,7 @@ function DecisionImportCard({ item }: { item: DecisionImport }) {
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap gap-2">
             {criterion ? <Badge variant="outline">{criterion}</Badge> : null}
-            <Badge variant="outline">{decisionStatusLabel(item.status)}</Badge>
+            <StatusBadge domain="decisionImport" status={item.status} compact />
             {item.fileStatus ? <Badge variant="outline">File: {item.fileStatus}</Badge> : null}
           </div>
           <h2 className="line-clamp-2 text-base font-bold text-brand-deep">{title}</h2>

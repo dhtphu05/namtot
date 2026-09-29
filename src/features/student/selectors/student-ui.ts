@@ -1,4 +1,5 @@
 import type { Notification } from "@/features/notifications/api/notifications";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 import type {
   ApplicationStatus,
   Criterion,
@@ -39,11 +40,11 @@ export const studentApplicationStatusCopy: Record<ApplicationStatus | "not_start
 };
 
 export const criterionLabels: Record<Criterion, string> = {
-  ethics: "Đạo đức tốt",
-  academic: "Học tập tốt",
-  physical: "Thể lực tốt",
-  volunteer: "Tình nguyện tốt",
-  integration: "Hội nhập tốt",
+  ethics: getCoreCriterionLabel("ethics"),
+  academic: getCoreCriterionLabel("academic"),
+  physical: getCoreCriterionLabel("physical"),
+  volunteer: getCoreCriterionLabel("volunteer"),
+  integration: getCoreCriterionLabel("integration"),
   priority: "Thành tích ưu tiên",
   collective: "Tập thể",
 };

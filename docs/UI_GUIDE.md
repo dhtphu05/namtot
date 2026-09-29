@@ -29,13 +29,18 @@ Primary tokens:
 - muted text: `--text-muted`
 - brand blue: `--brand-primary`
 - soft brand background: `--brand-primary-soft`
-- radius base: `--radius: 0.5rem`
+- navy identity: `--brand-navy`
+- semantic state colors: `--status-info`, `--status-success`, `--status-warning`, `--status-danger`
+- shared borders and focus: `--border-subtle`, `--border-control`, `--focus-ring`
+- control, section, dialog, and pill radius: `--radius-control`, `--radius-section`, `--radius-dialog`, `--radius-pill`
+- spacing/type scale: `--space-*` and `--type-*`
+- radius base: `--radius: 0.75rem`
 
 Prefer tokens and semantic Tailwind classes over new hard-coded color families. Existing blue accents such as `#0057C2`, `#EAF3FF`, `#E3ECF6`, and `#F8FBFE` are common in current workflow screens.
 
 ## Layout Rules
 
-- Use the existing shell and route layout. Do not introduce a new top-level app frame.
+- Use the existing shell and route layout. `AppHeader` is shared by `AppShell` and `StudentAppShell`; page-specific title/description/actions belong in `PageHeader`, with `TopBar` retained as a compatibility wrapper.
 - Keep pages inside the current max-width operational canvas unless the existing route does otherwise.
 - Use responsive grids with `minmax(0, 1fr)` and explicit overflow handling for tables and dense panels.
 - Keep content scannable: compact headings, small metadata rows, short status labels, and predictable action placement.
@@ -64,7 +69,7 @@ Avoid:
 
 ## Buttons And Controls
 
-- Prefer `Button` from `src/components/ui/button.tsx` or project-level `ui-kit` buttons.
+- Prefer primitives from `src/components/ui/*`. `src/components/ui-kit.tsx` adapts existing project APIs to those primitives for compatibility.
 - Use icon buttons for compact actions when an icon is clear.
 - Use lucide-react icons when icons are needed.
 - Keep button text short and prevent wrapping inside fixed-width controls.
@@ -87,6 +92,8 @@ Avoid:
 ## Status And Feedback
 
 - Use existing badge/chip/status components when available.
+- Use `StatusBadge` with an explicit `domain` when mapping backend workflow, evidence, final-result, processing, resolution, lifecycle, or alert status. Unknown keys display a safe fallback instead of the raw backend value.
+- Use `CriterionBadge` and the shared criterion presentation map for the five individual award criteria. `priority` is an award attribute, not a sixth criterion.
 - Status colors should remain semantic:
   - blue for info/progress
   - green for success/accepted
@@ -100,7 +107,7 @@ Avoid:
 - Avoid marketing language inside app workflows.
 - Do not add instructional paragraphs explaining obvious UI controls.
 - Use Vietnamese user-facing text where the surrounding screen uses Vietnamese.
-- Shared page headers should preserve readable titles at narrow widths. When a header has notification/actions/search, stack the title/subtitle above the action row before allowing the title to be squeezed or clipped.
+- Shared page headers should preserve readable titles at narrow widths. Keep notification and user/logout controls in `AppHeader`; do not repeat them in page headers. The header hides season context unless a real season value is available.
 
 ## Verification For UI Tasks
 
@@ -130,7 +137,15 @@ The student application V2 rollout uses additive aliases and primitives under `s
 - Phase 2 overview responsiveness: at tablet/mobile sizes the criteria spine scrolls horizontally with snap and 150px minimum segments, the operational grid stacks, top mobile tasks stay compact, and text must not create horizontal overflow.
 - Phase 3 workspace layout: the V2 application workspace must use one context bar and a two-column grid of `232px minmax(0, 1fr)` on desktop. Do not add a fixed guide column or a third operational column.
 - Phase 3 workspace content: each criterion renders exactly one data component before the evidence gallery: `DefinitionTableV2`, `PathSelectorListV2`, `ActivityLedgerV2`, or one dynamic disclosure. Keep evidence as a gallery, not mixed row/card layouts.
-- Phase 3 workspace sidebar: use the verified/provided Hội Sinh viên emblem asset in the student V2 sidebar and other existing institutional entry points that previously used the mock `5T` mark. Keep the emblem, profile rows, active left nav marker, and bottom logout treatment in the student V2 sidebar; do not invent alternate logo treatments.
+- Phase 3 workspace sidebar: use the verified/provided Hội Sinh viên emblem asset in the student V2 sidebar and other existing institutional entry points that previously used the mock `5T` mark. Keep the emblem, profile rows, and active left nav marker; account/logout actions live in the shared `AppHeader`.
+
+## Phase 2 UI Foundation Consolidation
+
+- Keep Tailwind v4, Radix/shadcn primitives, Lucide, Sonner, document viewers, and Student V2. Do not add a second component system or dependencies.
+- Keep existing `student-v2-*` variables as aliases to shared semantic tokens; do not remove them while V2 screens still consume them.
+- Role navigation is a presentation map in `src/lib/role-navigation.ts`; it must not change route authorization. Keep legacy roles distinct, and do not repeat a destination within a role menu.
+- `/app/settings` is a read-only view of `GET /api/criteria/configs/active`. It must not expose edit/activate controls or imply the endpoint represents every runtime rule.
+- Use `ConfirmDialog` for consequential confirmations when it fits the existing flow. Include impact, pending, and server error details when available.
 
 ## Proactive Recommendations / Gemini UX Planning Context
 

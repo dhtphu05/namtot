@@ -1,4 +1,18 @@
 export type StatusTone = "brand" | "success" | "warning" | "error" | "muted";
+export type StatusDomain =
+  | "workflow"
+  | "application"
+  | "reviewTask"
+  | "evidence"
+  | "final"
+  | "criterion"
+  | "resolution"
+  | "decisionImport"
+  | "processing"
+  | "lifecycle"
+  | "alert";
+
+export type StatusPresentation = { label: string; tone: StatusTone };
 
 export type ApplicationStatusLabelKey =
   | "not_started"
@@ -196,4 +210,111 @@ export function getStatusTone(status?: string | null): StatusTone {
     finalStatusTone[status as FinalStatusLabelKey] ??
     "muted"
   );
+}
+
+const decisionImportStatus: Record<string, StatusPresentation> = {
+  draft: { label: "Bản nháp", tone: "muted" },
+  uploaded: { label: "Đã tải tệp", tone: "brand" },
+  queued: { label: "Đang chờ xử lý", tone: "brand" },
+  processing: { label: "Đang xử lý", tone: "brand" },
+  extracting_metadata: { label: "Đang đọc thông tin", tone: "brand" },
+  metadata_ready: { label: "Đã đọc thông tin", tone: "success" },
+  ocr_processing: { label: "Đang nhận diện văn bản", tone: "brand" },
+  tables_ready: { label: "Đã nhận diện bảng", tone: "success" },
+  parsing_roster: { label: "Đang đọc danh sách", tone: "brand" },
+  preview_ready: { label: "Sẵn sàng kiểm tra", tone: "success" },
+  confirmed: { label: "Đã xác nhận", tone: "success" },
+  failed: { label: "Xử lý thất bại", tone: "error" },
+  cancelled: { label: "Đã hủy", tone: "muted" },
+};
+
+const resolutionStatus: Record<string, StatusPresentation> = {
+  open: { label: "Đang chờ hội ý", tone: "warning" },
+  in_review: { label: "Đang hội ý", tone: "brand" },
+  resolved: { label: "Đã kết luận", tone: "success" },
+};
+
+const processingStatus: Record<string, StatusPresentation> = {
+  queued: { label: "Đang chờ xử lý", tone: "brand" },
+  processing: { label: "Đang xử lý", tone: "brand" },
+  completed: { label: "Đã xử lý", tone: "success" },
+  indexed: { label: "Đã xử lý", tone: "success" },
+  preview_ready: { label: "Sẵn sàng kiểm tra", tone: "success" },
+  confirmed: { label: "Đã xác nhận", tone: "success" },
+  failed: { label: "Xử lý thất bại", tone: "error" },
+  cancelled: { label: "Đã hủy", tone: "muted" },
+};
+
+const lifecycleStatus: Record<string, StatusPresentation> = {
+  draft: { label: "Bản nháp", tone: "muted" },
+  active: { label: "Đang hoạt động", tone: "success" },
+  archived: { label: "Đã lưu trữ", tone: "muted" },
+};
+
+const alertStatus: Record<string, StatusPresentation> = {
+  info: { label: "Thông tin", tone: "brand" },
+  success: { label: "Thành công", tone: "success" },
+  warning: { label: "Cần chú ý", tone: "warning" },
+  error: { label: "Có lỗi", tone: "error" },
+};
+
+export function getStatusPresentation(
+  domain: StatusDomain,
+  status?: string | null,
+): StatusPresentation {
+  if (!status) return { label: fallbackStatusLabel, tone: "muted" };
+
+  if (domain === "workflow") {
+    return { label: getWorkflowStatusLabel(status), tone: getStatusTone(status) };
+  }
+  if (domain === "application") {
+    return {
+      label: getStudentApplicationStatusLabel(status),
+      tone: getStatusToneForMap(applicationStatusTone, status),
+    };
+  }
+  if (domain === "reviewTask") {
+    return {
+      label: getReviewTaskStatusLabel(status),
+      tone: getStatusToneForMap(reviewTaskStatusTone, status),
+    };
+  }
+  if (domain === "evidence") {
+    return {
+      label: getEvidenceStatusLabel(status),
+      tone: getStatusToneForMap(evidenceStatusTone, status),
+    };
+  }
+  if (domain === "final") {
+    return {
+      label: getFinalStatusLabel(status),
+      tone: getStatusToneForMap(finalStatusTone, status),
+    };
+  }
+  if (domain === "criterion") {
+    const label = getCriterionResultStatusLabel(status);
+    if (status === "passed" || status === "complete" || status === "ready") {
+      return { label, tone: "success" };
+    }
+    if (status === "failed" || status === "missing_evidence" || status === "ai_failed") {
+      return { label, tone: "warning" };
+    }
+    return { label, tone: "brand" };
+  }
+  if (domain === "resolution")
+    return resolutionStatus[status] ?? { label: fallbackStatusLabel, tone: "muted" };
+  if (domain === "decisionImport")
+    return decisionImportStatus[status] ?? { label: fallbackStatusLabel, tone: "muted" };
+  if (domain === "processing")
+    return processingStatus[status] ?? { label: fallbackStatusLabel, tone: "muted" };
+  if (domain === "lifecycle")
+    return lifecycleStatus[status] ?? { label: fallbackStatusLabel, tone: "muted" };
+  return alertStatus[status] ?? { label: fallbackStatusLabel, tone: "muted" };
+}
+
+function getStatusToneForMap<T extends string>(
+  map: Record<T, StatusTone>,
+  status: string,
+): StatusTone {
+  return Object.prototype.hasOwnProperty.call(map, status) ? map[status as T] : "muted";
 }

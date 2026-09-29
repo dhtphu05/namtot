@@ -1561,7 +1561,6 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 - The roster UI calls the row correction and revert endpoints documented in the backend contract. Raw OCR/table data remains separate from correction overlays; replacing the roster starts a fresh processing job. No Event Registry, DecisionImport, evidence OCR, eligibility, submission, review, or Award confirmation/archive behavior was changed.
 - The student V2 acceptance suite now passes 31 tests with one intentional legacy-flag skip. The previous valid-backend baseline was 15 pass / 15 fail / 1 skip; the earlier 1/29/1 run was caused by an incorrect API port and is not a comparable baseline. The 15 stale failures were repaired at their harness/fixture/assertion causes without deleting tests or weakening business checks. Frontend build and lint pass; TypeScript remains at its established 193 diagnostics.
 
-
 ## Phase 1.5 Backend/UI Contract Closure (2026-09-29)
 
 - City roles no longer see or open the legacy officer evidence-knowledge page. The reviewer precedent search and detail query are also disabled for City Officer/Manager/Committee; the separate City Knowledge Base is not treated as an interchangeable source.
@@ -1569,3 +1568,13 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 - The criteria config GET endpoint has no corresponding write API and does not represent the complete runtime criteria source; admin criteria editing remains blocked pending a versioned write contract.
 - Award Registry roster row correction/revert and admin password reset are committed FE/BE capabilities. Award-specific audit/history remains unavailable to Data Uploader.
 - Phase 1.5 makes no visual redesign or design-system changes.
+
+## Phase 2 UI Foundation Consolidation (2026-09-29)
+
+- The existing Tailwind v4, Radix/shadcn, Lucide, Sonner, document viewers, and Student V2 components remain the UI foundation. `src/components/ui/*` is canonical; `ui-kit.tsx` adapts legacy project APIs. Shared semantic tokens are in `src/styles.css`, and the `student-v2-*` names remain aliases.
+- `AppHeader` is shared by operations and student shells for 5TOT Đà Nẵng identity, notifications, account details, and logout. `PageHeader` handles page title/description/actions; `TopBar` remains compatible. No hardcoded season context is shown.
+- Role menu data is in `src/lib/role-navigation.ts`. The target six roles have one menu item per destination. Legacy roles retain separate navigation, while `route-guard.ts` remains unchanged and authoritative for access.
+- Criterion label/icon presentation for the five individual criteria is centralized in `src/lib/criteria-presentation.ts`; `priority` is excluded. `StatusBadge` accepts domain-specific presentations and unknown backend statuses use safe Vietnamese fallbacks. Job progress now displays localized status copy.
+- `/app/settings` now reads `GET /api/criteria/configs/active` and has loading/error/empty states. It has no write controls and explains that active configs do not represent the full runtime rules source. No backend or API contract changed.
+- `ConfirmDialog` reuses the existing Radix Alert Dialog for impact warnings, pending state, and server errors. The shell includes a keyboard skip link and honors reduced motion.
+- See `UI_DESIGN_SYSTEM.md` and `docs/UI_GUIDE.md` for the token/component conventions. Verification: the Phase 2 shell suite, Phase 1 role-guard suite, and Phase 3 eligibility workflow suite pass 42/42; Node presentation-map, route-search, and student reference-library source-contract tests pass 24/24; `pnpm build` passes; `pnpm lint` has 0 errors and the same 11 existing warnings; TypeScript remains at the established 193 diagnostics.

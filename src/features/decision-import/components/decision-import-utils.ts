@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { AlertCircle, CheckCircle2, Clock3, FileCheck2, Loader2, XCircle } from "lucide-react";
 import { criterionLabel, levelLabel, type Criterion, type Level } from "@/lib/api/types";
+import { getStatusPresentation } from "@/lib/status-labels";
 import type {
   DecisionImport,
   DecisionImportPreviewRow,
@@ -21,15 +22,24 @@ export const levelOptions = Object.entries(levelLabel).map(([value, label]) => (
 
 export const statusOptions: Array<{ value: DecisionImportStatus | "all"; label: string }> = [
   { value: "all", label: "Tất cả" },
-  { value: "draft", label: "Đang chuẩn bị" },
-  { value: "uploaded", label: "Đã nhận tài liệu" },
-  { value: "extracting_metadata", label: "Đọc thông tin văn bản" },
-  { value: "ocr_processing", label: "Đọc danh sách sinh viên" },
-  { value: "parsing_roster", label: "Chuẩn hoá danh sách" },
-  { value: "preview_ready", label: "Sẵn sàng kiểm tra" },
-  { value: "confirmed", label: "Đã xác nhận" },
-  { value: "failed", label: "Thất bại" },
-  { value: "cancelled", label: "Đã huỷ" },
+  { value: "draft", label: getStatusPresentation("decisionImport", "draft").label },
+  { value: "uploaded", label: getStatusPresentation("decisionImport", "uploaded").label },
+  {
+    value: "extracting_metadata",
+    label: getStatusPresentation("decisionImport", "extracting_metadata").label,
+  },
+  {
+    value: "ocr_processing",
+    label: getStatusPresentation("decisionImport", "ocr_processing").label,
+  },
+  {
+    value: "parsing_roster",
+    label: getStatusPresentation("decisionImport", "parsing_roster").label,
+  },
+  { value: "preview_ready", label: getStatusPresentation("decisionImport", "preview_ready").label },
+  { value: "confirmed", label: getStatusPresentation("decisionImport", "confirmed").label },
+  { value: "failed", label: getStatusPresentation("decisionImport", "failed").label },
+  { value: "cancelled", label: getStatusPresentation("decisionImport", "cancelled").label },
 ];
 
 export const validationStatusOptions: Array<{
@@ -70,7 +80,7 @@ export function warningLabel(code: string) {
 }
 
 export function decisionStatusLabel(status?: string | null) {
-  return statusOptions.find((item) => item.value === status)?.label ?? formatOptional(status);
+  return getStatusPresentation("decisionImport", status).label;
 }
 
 export function decisionStatusIcon(status?: DecisionImportStatus | null): LucideIcon {

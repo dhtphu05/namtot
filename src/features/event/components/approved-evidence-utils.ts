@@ -1,13 +1,14 @@
 import type { Criterion } from "@/lib/api/types";
 import type { ApprovedEvidenceSearchItem } from "@/types/evidence";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 
 export const criterionCopy: Record<string, string> = {
   all: "Tất cả",
-  ethics: "Đạo đức tốt",
-  academic: "Học tập tốt",
-  physical: "Thể lực tốt",
-  volunteer: "Tình nguyện tốt",
-  integration: "Hội nhập tốt",
+  ethics: getCoreCriterionLabel("ethics"),
+  academic: getCoreCriterionLabel("academic"),
+  physical: getCoreCriterionLabel("physical"),
+  volunteer: getCoreCriterionLabel("volunteer"),
+  integration: getCoreCriterionLabel("integration"),
 };
 
 export const criterionOptions: Array<{ value: Criterion | "all"; label: string }> = [

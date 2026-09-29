@@ -1,11 +1,14 @@
 import { Outlet } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { SkipLink } from "@/components/layout/SkipLink";
 import { StudentAppShell } from "@/components/layout/StudentAppShell";
 import { toUiRole } from "@/features/auth/role-map";
 import { useAuth } from "@/features/auth/store/auth-store";
 
 export function AppShell() {
+  const reduceMotion = useReducedMotion();
   const user = useAuth((state) => state.user);
   const role = user ? toUiRole(user.role) : "student";
 
@@ -15,13 +18,17 @@ export function AppShell() {
 
   return (
     <div className="flex h-[100dvh] min-w-0 overflow-hidden bg-[var(--surface-app)] text-[var(--text-primary)]">
+      <SkipLink />
       <Sidebar />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <AppHeader />
         <motion.div
+          id="app-content"
+          tabIndex={-1}
           className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-20 pt-0 sm:px-5 lg:px-7"
-          initial={{ opacity: 0, y: 8 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ duration: reduceMotion ? 0 : 0.25 }}
           key={typeof window !== "undefined" ? window.location.pathname : ""}
         >
           <div className="mx-auto min-w-0 max-w-[1280px]">

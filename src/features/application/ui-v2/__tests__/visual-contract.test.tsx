@@ -105,7 +105,7 @@ describe("student application UI V2 visual contract", () => {
     assert.match(lockup, /HỘI SINH VIÊN VIỆT NAM/);
     assert.match(lockup, /Đơn vị triển khai/);
     assert.match(context, /Đơn vị đang tải/);
-    assert.match(context, /Thông tin đơn vị sẽ hiển thị khi tải xong/);
+    assert.doesNotMatch(context, /Năm học|Thông tin đơn vị sẽ hiển thị khi tải xong/);
   });
 
   it("keeps long workspace names visible and wrapped instead of truncated", () => {

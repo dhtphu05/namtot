@@ -7,15 +7,16 @@ import type {
   ReviewTaskStatus,
 } from "../types";
 import { getWorkflowStatusLabel } from "@/lib/status-labels";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 
 export const fallbackText = "Chưa có dữ liệu";
 
 const criterionLabels: Record<Criterion, string> = {
-  ethics: "Đạo đức tốt",
-  academic: "Học tập tốt",
-  physical: "Thể lực tốt",
-  volunteer: "Tình nguyện tốt",
-  integration: "Hội nhập tốt",
+  ethics: getCoreCriterionLabel("ethics"),
+  academic: getCoreCriterionLabel("academic"),
+  physical: getCoreCriterionLabel("physical"),
+  volunteer: getCoreCriterionLabel("volunteer"),
+  integration: getCoreCriterionLabel("integration"),
   priority: "Ưu tiên",
   collective: "Tập thể",
 };

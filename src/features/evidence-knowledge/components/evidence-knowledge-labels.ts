@@ -1,12 +1,13 @@
 import type { Criterion, Level } from "@/lib/api/types";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 import type { EvidenceKnowledgeApprovalSource, EvidenceKnowledgeMatchReason } from "../types";
 
 export const criterionLabels: Record<Criterion, string> = {
-  ethics: "Đạo đức tốt",
-  academic: "Học tập tốt",
-  physical: "Thể lực tốt",
-  volunteer: "Tình nguyện tốt",
-  integration: "Hội nhập tốt",
+  ethics: getCoreCriterionLabel("ethics"),
+  academic: getCoreCriterionLabel("academic"),
+  physical: getCoreCriterionLabel("physical"),
+  volunteer: getCoreCriterionLabel("volunteer"),
+  integration: getCoreCriterionLabel("integration"),
   priority: "Ưu tiên / bổ sung",
   collective: "Tập thể",
 };

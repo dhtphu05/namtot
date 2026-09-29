@@ -39,6 +39,7 @@ import {
   ListTodo,
   type LucideIcon,
 } from "lucide-react";
+import { getCoreCriterionPresentation } from "@/lib/criteria-presentation";
 
 export const IconMap = {
   dashboard: LayoutDashboard,
@@ -107,20 +108,6 @@ export function AppIcon({
   return <Icon size={size} strokeWidth={1.8} className={`${tones[tone]} ${className}`} />;
 }
 
-const CRIT_ICON: Record<string, IconKey> = {
-  ethics: "ShieldCheck",
-  academic: "GraduationCap",
-  physical: "Dumbbell",
-  volunteer: "HeartHandshake",
-  integration: "Globe2",
-  "dao-duc": "ShieldCheck",
-  "hoc-tap": "GraduationCap",
-  "the-luc": "Dumbbell",
-  "tinh-nguyen": "HeartHandshake",
-  "hoi-nhap": "Globe2",
-  priority: "ai",
-};
-
 export function CriterionIcon({
   criterion,
   size = 16,
@@ -132,7 +119,7 @@ export function CriterionIcon({
   color?: string;
   className?: string;
 }) {
-  const key = CRIT_ICON[criterion] ?? "criteria";
+  const key = getCoreCriterionPresentation(criterion)?.icon ?? "criteria";
   const Icon = IconMap[key];
   return <Icon size={size} strokeWidth={1.8} className={className} color={color} />;
 }
@@ -146,7 +133,7 @@ export function CriterionIconTile({
   color?: string;
   size?: number;
 }) {
-  const key = CRIT_ICON[criterion] ?? "criteria";
+  const key = getCoreCriterionPresentation(criterion)?.icon ?? "criteria";
   const Icon = IconMap[key];
   const tint = color ?? "#0057C2";
   return (

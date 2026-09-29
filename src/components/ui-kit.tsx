@@ -1,5 +1,7 @@
-import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
+import { Button as PrimitiveButton } from "@/components/ui/button";
+import { Card as PrimitiveCard } from "@/components/ui/card";
+import { Progress as PrimitiveProgress } from "@/components/ui/progress";
 
 export function Card({
   className,
@@ -8,12 +10,16 @@ export function Card({
   ...rest
 }: React.HTMLAttributes<HTMLDivElement> & { glow?: boolean }) {
   return (
-    <div
-      className={cn(glow ? "card-glow" : "card-soft", "min-w-0 max-w-full p-4 md:p-5", className)}
+    <PrimitiveCard
+      className={cn(
+        "min-w-0 max-w-full p-4 md:p-5",
+        glow && "shadow-[var(--shadow-lift)]",
+        className,
+      )}
       {...rest}
     >
       {children}
-    </div>
+    </PrimitiveCard>
   );
 }
 
@@ -31,7 +37,7 @@ export function StatCard({
   tint?: string;
 }) {
   return (
-    <div className="card-soft min-w-0 max-w-full p-3.5 md:p-4">
+    <PrimitiveCard className="min-w-0 max-w-full p-3.5 md:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
@@ -44,14 +50,14 @@ export function StatCard({
         </div>
         {icon && (
           <div
-            className="w-9 h-9 rounded-2xl flex items-center justify-center text-white shrink-0"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-white"
             style={{ background: tint }}
           >
             {icon}
           </div>
         )}
       </div>
-    </div>
+    </PrimitiveCard>
   );
 }
 
@@ -63,16 +69,16 @@ export function Chip({
   tone?: "brand" | "success" | "warning" | "error" | "muted";
 }) {
   const map = {
-    brand: "bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]",
-    success: "bg-[var(--surface-success)] text-emerald-700",
-    warning: "bg-[var(--surface-warning)] text-amber-700",
-    error: "bg-[var(--surface-danger)] text-rose-700",
-    muted: "bg-[var(--surface-muted)] text-slate-700",
+    brand: "bg-[var(--surface-info)] text-[var(--status-info)]",
+    success: "bg-[var(--surface-success)] text-[var(--status-success)]",
+    warning: "bg-[var(--surface-warning)] text-[var(--status-warning)]",
+    error: "bg-[var(--surface-danger)] text-[var(--status-danger)]",
+    muted: "bg-[var(--surface-muted)] text-[var(--text-secondary)]",
   };
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold",
+        "inline-flex h-auto items-center gap-1 rounded-[var(--radius-pill)] px-2.5 py-0.5 text-[11px] font-semibold",
         map[tone],
       )}
     >
@@ -93,43 +99,38 @@ export function Button({
   variant?: "primary" | "secondary" | "ghost" | "outline" | "danger" | "success";
   size?: "sm" | "md" | "lg";
 }) {
-  const Comp = asChild ? Slot : "button";
-  const variants = {
-    primary: "bg-[var(--brand-primary)] text-white hover:bg-[#004BA8]",
-    secondary: "bg-[var(--brand-primary-soft)] text-[var(--brand-primary)] hover:bg-[#DCEBFF]",
-    ghost: "text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]",
-    outline:
-      "bg-white text-[var(--brand-primary)] shadow-[0_0_0_1px_rgba(15,23,42,0.08)] hover:bg-[var(--brand-primary-soft)]",
-    danger: "bg-rose-500 text-white hover:bg-rose-600",
-    success: "bg-emerald-600 text-white hover:bg-emerald-700",
-  };
-  const sizes = {
-    sm: "px-3 py-1.5 text-[12px]",
-    md: "px-3.5 py-2 text-[13px]",
-    lg: "px-5 py-2.5 text-sm",
-  };
+  const primitiveVariant = {
+    primary: "default",
+    secondary: "secondary",
+    ghost: "ghost",
+    outline: "outline",
+    danger: "destructive",
+    success: "default",
+  } as const;
+  const primitiveSize = { sm: "sm", md: "default", lg: "lg" } as const;
   return (
-    <Comp
+    <PrimitiveButton
+      asChild={asChild}
+      variant={primitiveVariant[variant]}
+      size={primitiveSize[size]}
       className={cn(
-        "inline-flex max-w-full items-center justify-center gap-2 rounded-2xl font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/25 disabled:opacity-60 disabled:pointer-events-none",
-        variants[variant],
-        sizes[size],
+        "max-w-full font-semibold",
+        variant === "success" && "bg-[var(--status-success)] text-white hover:bg-emerald-700",
         className,
       )}
       {...rest}
     >
       {children}
-    </Comp>
+    </PrimitiveButton>
   );
 }
 
 export function Progress({ value, tint = "#0057C2" }: { value: number; tint?: string }) {
   return (
-    <div className="w-full h-2 rounded-full bg-[#E2E8F0] overflow-hidden">
-      <div
-        className="h-full rounded-full transition-all"
-        style={{ width: `${Math.min(100, Math.max(0, value))}%`, background: tint }}
-      />
-    </div>
+    <PrimitiveProgress
+      value={Math.min(100, Math.max(0, value))}
+      className="bg-[var(--surface-secondary)]"
+      indicatorStyle={{ backgroundColor: tint }}
+    />
   );
 }

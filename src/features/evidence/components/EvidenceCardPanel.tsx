@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
 import type { EvidenceResponse } from "@/lib/api/types";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 import type { EvidenceCard } from "@/types/evidence";
 import type { JobResponse } from "@/types/jobs";
 import { getSafeOcrText, normalizeWarnings, warningCopy } from "./evidence-card-utils";
@@ -1263,14 +1264,7 @@ function mapOrganizerLevel(value: string) {
 }
 
 function criterionLabel(value: string) {
-  const labels: Record<string, string> = {
-    ethics: "Đạo đức tốt",
-    academic: "Học tập tốt",
-    physical: "Thể lực tốt",
-    volunteer: "Tình nguyện tốt",
-    integration: "Hội nhập tốt",
-  };
-  return labels[value] ?? value;
+  return getCoreCriterionLabel(value);
 }
 
 function normalizeCompare(value?: string | null) {

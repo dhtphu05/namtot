@@ -2,16 +2,7 @@ import { useState } from "react";
 import { BadgeCheck, Building2, Clock3, Loader2, RefreshCw, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui-kit";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -283,30 +274,21 @@ export function EligibilityVerificationPanel() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={approveConfirmationOpen} onOpenChange={setApproveConfirmationOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Phê duyệt điều kiện nộp hồ sơ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Quyết định sẽ cho phép sinh viên tiếp tục lần nộp đầu tiên. Hãy chắc chắn lý do đã ghi
-              rõ căn cứ đối chiếu.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={verify.isPending}>Quay lại</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={!reason.trim() || verify.isPending}
-              onClick={(event) => {
-                event.preventDefault();
-                void saveDecision("APPROVED");
-              }}
-            >
-              {verify.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Xác nhận phê duyệt
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={approveConfirmationOpen}
+        onOpenChange={(open) => {
+          if (!verify.isPending) setApproveConfirmationOpen(open);
+        }}
+        title="Phê duyệt điều kiện nộp hồ sơ?"
+        description="Quyết định sẽ cho phép sinh viên tiếp tục lần nộp đầu tiên. Hãy chắc chắn lý do đã ghi rõ căn cứ đối chiếu."
+        impact="Quyết định này chỉ áp dụng cho điều kiện nộp lần đầu, không quyết định kết quả Sinh viên 5 tốt."
+        confirmLabel="Xác nhận phê duyệt"
+        pendingLabel="Đang lưu quyết định…"
+        error={verify.error instanceof Error ? verify.error.message : null}
+        isPending={verify.isPending}
+        disabled={!reason.trim()}
+        onConfirm={() => saveDecision("APPROVED")}
+      />
     </section>
   );
 }
