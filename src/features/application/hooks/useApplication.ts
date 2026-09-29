@@ -65,11 +65,7 @@ export function useStartApplication() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      schoolYear?: string;
-      applicationType?: "individual" | "collective";
-      targetLevel?: Level;
-    }) => {
+    mutationFn: async (data: { schoolYear?: string }) => {
       const res = await applicationApi.startCurrentApplication(data);
       return res.data;
     },

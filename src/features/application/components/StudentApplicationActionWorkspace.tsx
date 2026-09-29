@@ -548,13 +548,7 @@ export function StudentApplicationActionWorkspace() {
           description="Tạo hồ sơ để bắt đầu chọn cấp đăng ký, thêm minh chứng và kiểm tra trước khi nộp."
           primaryAction={
             <AppButton
-              onClick={() =>
-                startApplication.mutate({
-                  schoolYear: SCHOOL_YEAR,
-                  applicationType: "individual",
-                  targetLevel: "school",
-                })
-              }
+              onClick={() => startApplication.mutate({})}
               disabled={startApplication.isPending}
             >
               {startApplication.isPending ? (

@@ -222,13 +222,8 @@ export function StudentOverview() {
             trackClick("student_start_application", {
               role: "student",
               page: "overview",
-              target_level: "school",
             });
-            startApplication.mutate({
-              schoolYear: SCHOOL_YEAR,
-              targetLevel: "school",
-              applicationType: "individual",
-            });
+            startApplication.mutate({});
           }}
           summary={summary}
         />

@@ -666,7 +666,7 @@ export function StudentApplicationWorkspaceV2() {
           action={
             <ButtonV2
               type="button"
-              onClick={() => startApplication.mutate({ applicationType: "individual" })}
+              onClick={() => startApplication.mutate({})}
               disabled={startApplication.isPending}
             >
               {startApplication.isPending ? (
