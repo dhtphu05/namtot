@@ -63,6 +63,11 @@ export function EvidenceDetailModal({
   const detail = (detailQuery.data ?? evidence) as EvidenceResponse | null;
   const activeEvidence = detail ?? evidence;
   const isEventImport = activeEvidence?.sourceType === "event_import";
+  const canMutateEvidence = Boolean(
+    canEdit &&
+    activeEvidence &&
+    !["accepted", "rejected", "resolution_needed"].includes(activeEvidence.status),
+  );
   const shouldPollCard = Boolean(
     activeEvidence?.id &&
     !isEventImport &&
@@ -93,7 +98,11 @@ export function EvidenceDetailModal({
   const jobId = activeEvidence?.jobId;
   const jobQuery = useJobPolling(jobId, {
     enabled: Boolean(
-      jobId && !isEventImport && !isTerminalEvidenceStatus(activeEvidence?.indexingStatus),
+      jobId &&
+      canMutateEvidence &&
+      !isEventImport &&
+      (!isTerminalEvidenceStatus(activeEvidence?.indexingStatus) ||
+        activeEvidence?.indexingStatus === "failed"),
     ),
     initialIntervalMs: 2000,
     backoffAfterMs: 20000,
@@ -109,11 +118,16 @@ export function EvidenceDetailModal({
   if (!evidence) return null;
 
   const cardError = cardQuery.error instanceof ApiError ? cardQuery.error : null;
-  const canUploadMore = Boolean(canEdit && activeEvidence);
-  const retryable = canRetryEvidence(activeEvidence);
+  const canUploadMore = canMutateEvidence;
+  const retryable = Boolean(
+    canMutateEvidence &&
+    canRetryEvidence(activeEvidence) &&
+    jobQuery.data?.status === "failed" &&
+    jobQuery.data.retryable === true,
+  );
 
   const uploadMore = async (file?: File) => {
-    if (!file || !activeEvidence) return;
+    if (!canMutateEvidence || !file || !activeEvidence) return;
     try {
       const uploaded = await uploadFile.mutateAsync({
         evidenceId: activeEvidence.id,
@@ -133,7 +147,15 @@ export function EvidenceDetailModal({
   };
 
   const retry = async () => {
-    if (!activeEvidence?.jobId) return;
+    if (
+      !canMutateEvidence ||
+      !canRetryEvidence(activeEvidence) ||
+      jobQuery.data?.status !== "failed" ||
+      jobQuery.data.retryable !== true ||
+      !activeEvidence?.jobId
+    ) {
+      return;
+    }
     await retryJob.mutateAsync({ evidenceId: activeEvidence.id, jobId: activeEvidence.jobId });
     onChanged?.();
   };
@@ -321,7 +343,7 @@ export function EvidenceDetailModal({
                 <EvidenceCardPanel
                   evidence={renderedEvidence ?? activeEvidence}
                   card={card}
-                  job={jobQuery.data}
+                  job={activeEvidence?.indexingStatus === "failed" ? null : jobQuery.data}
                   requestId={cardError?.meta?.requestId}
                   onRetry={retryable ? () => void retry() : undefined}
                   retrying={retryJob.isPending}

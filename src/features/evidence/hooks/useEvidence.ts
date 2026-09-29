@@ -111,7 +111,7 @@ export function useSignedFileUrl(fileId?: string, enabled = false) {
   });
 }
 
-export function useCreateEvidence(applicationId?: string) {
+export function useCreateEvidence(applicationId?: string, options: { silent?: boolean } = {}) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -124,6 +124,7 @@ export function useCreateEvidence(applicationId?: string) {
         evidenceName: string;
         criterion: Criterion;
         sourceType: EvidenceSourceType;
+        eventId?: string;
         description?: string;
         note?: string;
         metadata?: Record<string, unknown>;
@@ -139,7 +140,7 @@ export function useCreateEvidence(applicationId?: string) {
       invalidateStudentState(queryClient, activeAppId, data?.id);
     },
     onError: (err: Error) => {
-      toast.error(`Không thể tạo minh chứng: ${err.message}`);
+      if (!options.silent) toast.error(`Không thể tạo minh chứng: ${err.message}`);
     },
   });
 }
@@ -202,7 +203,7 @@ export function useDeleteEvidence(applicationId?: string) {
   });
 }
 
-export function useUploadEvidenceFile(applicationId?: string) {
+export function useUploadEvidenceFile(applicationId?: string, options: { silent?: boolean } = {}) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -221,10 +222,10 @@ export function useUploadEvidenceFile(applicationId?: string) {
     },
     onSuccess: (data) => {
       invalidateStudentState(queryClient, data.applicationId, data.evidenceId);
-      toast.success("Đã tải lên tệp tin minh chứng thành công");
+      if (!options.silent) toast.success("Đã tải lên tệp tin minh chứng thành công");
     },
     onError: (err: Error) => {
-      toast.error(`Lỗi tải tệp tin: ${err.message}`);
+      if (!options.silent) toast.error(`Lỗi tải tệp tin: ${err.message}`);
     },
   });
 }
@@ -234,7 +235,10 @@ export function useUploadAndIndex() {
   return useUploadEvidenceFile();
 }
 
-export function useStartEvidenceIndexing(applicationId?: string) {
+export function useStartEvidenceIndexing(
+  applicationId?: string,
+  options: { silent?: boolean } = {},
+) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -248,10 +252,10 @@ export function useStartEvidenceIndexing(applicationId?: string) {
         applicationId ?? data?.applicationId ?? undefined,
         variables.evidenceId,
       );
-      toast.success("Đã bắt đầu đọc minh chứng.");
+      if (!options.silent) toast.success("Đã bắt đầu đọc minh chứng.");
     },
     onError: (err: Error) => {
-      toast.error(`Không thể bắt đầu đọc minh chứng: ${err.message}`);
+      if (!options.silent) toast.error(`Không thể bắt đầu đọc minh chứng: ${err.message}`);
     },
   });
 }

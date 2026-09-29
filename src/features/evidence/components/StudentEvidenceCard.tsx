@@ -27,10 +27,8 @@ import {
   sourceTypeLabel,
   studentCriterionLabel,
 } from "./student-evidence-utils";
-
-const maxFileSize = 10 * 1024 * 1024;
-const acceptedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
-const acceptedMimeTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+import type { EvidenceLibraryStatus } from "../utils/evidenceLibrary";
+import { EVIDENCE_UPLOAD_ACCEPT, validateEvidenceUploadFile } from "../utils/evidenceLibrary";
 
 export function StudentEvidenceCard({
   evidence,
@@ -39,6 +37,8 @@ export function StudentEvidenceCard({
   profile,
   onViewDetails,
   onDelete,
+  statusOverride,
+  viewLabel = "Xem",
 }: {
   evidence: EvidenceResponse;
   applicationId: string;
@@ -46,6 +46,8 @@ export function StudentEvidenceCard({
   profile?: { fullName?: string | null; studentCode?: string | null };
   onViewDetails: (evidence: EvidenceResponse) => void;
   onDelete?: (evidence: EvidenceResponse) => void;
+  statusOverride?: Pick<EvidenceLibraryStatus, "label" | "message" | "tone">;
+  viewLabel?: string;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(evidence.evidenceName);
@@ -57,6 +59,11 @@ export function StudentEvidenceCard({
   const primaryFile = useMemo(() => getPrimaryFile(evidence), [evidence]);
   const status = getEvidenceStudentStatus(evidence);
   const display = useMemo(() => getEvidenceDisplayModel(evidence), [evidence]);
+  const statusTone = statusOverride
+    ? mapLibraryTone(statusOverride.tone)
+    : PRESENTATION_SEMANTICS_V2
+      ? display.tone
+      : status.tone;
   const isBusy = updateEvidence.isPending || uploadFile.isPending;
   const extractedSummary = getExtractedSummary(evidence);
   const warnings = getEvidenceWarnings(evidence, profile);
@@ -103,7 +110,7 @@ export function StudentEvidenceCard({
 
   const replaceFile = async (file: File | undefined) => {
     if (!file) return;
-    const validationError = validateEvidenceFile(file);
+    const validationError = validateEvidenceUploadFile(file);
     if (validationError) {
       toast.error(validationError);
       if (inputRef.current) inputRef.current.value = "";
@@ -124,7 +131,7 @@ export function StudentEvidenceCard({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.png,.jpg,.jpeg,.webp"
+        accept={EVIDENCE_UPLOAD_ACCEPT}
         className="hidden"
         onChange={(event) => void replaceFile(event.target.files?.[0])}
         disabled={!canEdit || uploadFile.isPending}
@@ -201,18 +208,25 @@ export function StudentEvidenceCard({
             </div>
             <div>
               <StatusBadge
-                tone={PRESENTATION_SEMANTICS_V2 ? display.tone : status.tone}
-                label={PRESENTATION_SEMANTICS_V2 ? display.statusLabel : status.label}
+                tone={statusTone}
+                label={
+                  statusOverride?.label ??
+                  (PRESENTATION_SEMANTICS_V2 ? display.statusLabel : status.label)
+                }
               />
             </div>
           </div>
 
-          <p className="mt-2 line-clamp-2 text-sm leading-5 text-[var(--text-secondary)]">
-            {extractedSummary ||
-              (primaryFile
-                ? `Tệp: ${getFileName(primaryFile)}`
-                : "Chưa có tệp đính kèm. Bạn có thể bổ sung tệp để cán bộ có căn cứ xét.")}
-          </p>
+          {statusOverride?.message ? (
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">{statusOverride.message}</p>
+          ) : null}
+
+          {extractedSummary || !primaryFile ? (
+            <p className="mt-2 line-clamp-2 text-sm leading-5 text-[var(--text-secondary)]">
+              {extractedSummary ||
+                "Chưa có tệp đính kèm. Bạn có thể bổ sung tệp để cán bộ có căn cứ xét."}
+            </p>
+          ) : null}
 
           {warnings.length ? (
             <div className="mt-3">
@@ -235,7 +249,7 @@ export function StudentEvidenceCard({
           <div className="mt-3 flex flex-wrap gap-2">
             <AppButton size="sm" variant="secondary" onClick={() => onViewDetails(evidence)}>
               <FileText className="h-4 w-4" />
-              Xem
+              {viewLabel}
             </AppButton>
             {canEdit ? (
               <AppButton
@@ -277,6 +291,12 @@ export function StudentEvidenceCard({
   );
 }
 
+function mapLibraryTone(tone: EvidenceLibraryStatus["tone"]) {
+  if (tone === "success") return "good" as const;
+  if (tone === "error") return "danger" as const;
+  return tone;
+}
+
 function PreviewFallback({ evidence, fileName }: { evidence: EvidenceResponse; fileName: string }) {
   const extension = getExtension(fileName);
   const isEvent = evidence.sourceType === "event_import";
@@ -289,15 +309,6 @@ function PreviewFallback({ evidence, fileName }: { evidence: EvidenceResponse; f
       </span>
     </div>
   );
-}
-
-function validateEvidenceFile(file: File) {
-  const extension = `.${file.name.split(".").pop()?.toLowerCase() ?? ""}`;
-  const validType = acceptedMimeTypes.includes(file.type) || acceptedExtensions.includes(extension);
-  if (!validType) return "Tệp không đúng định dạng. Vui lòng tải PDF, PNG, JPG, JPEG hoặc WEBP.";
-  if (file.size > maxFileSize)
-    return "Tệp vượt quá dung lượng cho phép. Vui lòng chọn file tối đa 10MB.";
-  return "";
 }
 
 function getExtractedSummary(evidence: EvidenceResponse) {
