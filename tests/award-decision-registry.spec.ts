@@ -365,18 +365,25 @@ test.describe("Award Decision Registry", () => {
         ),
     });
     await page.goto("/app/award-registry");
-    await page.getByRole("button", { name: "Tạo quyết định" }).click();
+    await expect(page.getByRole("heading", { name: "Tiến độ hoàn thiện quyết định" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Tạo quyết định công nhận" }).click();
     await page.getByLabel("Năm học", { exact: true }).last().fill("2025-2026");
     await page.getByRole("button", { name: "Tạo bản nháp" }).click();
     await expect(page).toHaveURL(/\/app\/award-registry\/award-school-1$/);
+    await expect(page.getByRole("heading", { name: "Tiến độ hoàn thiện quyết định" })).toBeVisible();
+    await expect(page.getByText("Văn bản quyết định", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByText("Danh sách sinh viên được công nhận", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(page.getByText("Không có phần trăm xử lý giả", { exact: true })).toHaveCount(0);
 
     await page.getByLabel("Tệp danh sách").setInputFiles({
       name: "roster.csv",
       mimeType: "text/csv",
       buffer: Buffer.from("MSSV,Họ và tên\n0010220001,Nguyễn An"),
     });
-    await page.getByRole("button", { name: "Xử lý danh sách" }).click();
-    await expect(page.getByText("Sẵn sàng xem trước")).toBeVisible();
+    await page.getByRole("button", { name: "Đọc danh sách" }).click();
+    await expect(page.getByText("Sẵn sàng kiểm tra")).toBeVisible();
     await expect(page.getByText("0010220001", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Xác nhận quyết định" }).click();
     await expect(page.getByRole("alertdialog")).toBeVisible();
@@ -602,7 +609,7 @@ test.describe("Award Decision Registry", () => {
       },
     });
     await page.goto("/app/award-registry/award-school-1");
-    await expect(page.getByText("Đang xử lý", { exact: true })).toBeVisible();
+    await expect(page.getByText("Đang đọc danh sách", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Làm mới trạng thái" }).click();
     await expect(page.getByText(/ROSTER_PARSE_FAILED|không đọc được danh sách/i)).toBeVisible();
     await page.getByRole("button", { name: /thử lại/i }).click();
@@ -639,9 +646,9 @@ test.describe("Award Decision Registry", () => {
         await json(route, validPreview, { pagination: validPreview.pagination }),
     });
     await page.goto("/app/award-registry/award-school-1");
-    await page.getByRole("button", { name: "Xử lý danh sách" }).click();
-    await expect(page.getByText("Sẵn sàng xem trước")).toBeVisible();
-    await expect(page.getByText("Xem trước người nhận")).toBeVisible();
+    await page.getByRole("button", { name: "Đọc danh sách" }).click();
+    await expect(page.getByText("Sẵn sàng kiểm tra")).toBeVisible();
+    await expect(page.getByText("Kiểm tra dữ liệu", { exact: true }).first()).toBeVisible();
   });
 
   test("confirmed UDN recipient rows show exact server institution resolution", async ({

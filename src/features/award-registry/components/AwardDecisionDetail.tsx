@@ -6,12 +6,10 @@ import {
   ArchiveRestore,
   ArrowLeft,
   FileCheck2,
-  FileUp,
   PencilLine,
   RefreshCw,
   Save,
   Undo2,
-  Upload,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +37,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
+import { AwardNextAction } from "@/features/award-registry/components/AwardNextAction";
+import { AwardSourceFilePanel } from "@/features/award-registry/components/AwardSourceFilePanel";
+import { AwardWorkflowProgress } from "@/features/award-registry/components/AwardWorkflowProgress";
 import type {
   AwardDecisionStatus,
   AwardRecipientMatchStatus,
@@ -198,6 +199,8 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
         }
       />
 
+      <AwardWorkflowProgress decision={decision} processing={processing.data} />
+
       <div className="grid gap-4 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
         <section className="space-y-4">
           <Card className="p-4">
@@ -331,52 +334,21 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
             )}
           </Card>
 
-          <Card className="space-y-4 p-4">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Tệp nguồn</h2>
-              <p className="mt-1 text-xs leading-5 text-slate-600">
-                Tệp quyết định chỉ được lưu làm nguồn. Tệp danh sách mới được đưa vào xử lý roster.
-              </p>
-            </div>
-            <UploadField
-              label="Văn bản quyết định"
-              kind="decision"
-              fileName={decision.decisionFile?.originalName}
-              disabled={!isDraft || upload.isPending}
-              accept=".pdf,.jpg,.jpeg,.png,.webp"
-              onSelect={(input) => handleUpload("decision", input)}
-            />
-            <UploadField
-              label="Danh sách người nhận"
-              kind="roster"
-              fileName={decision.rosterFile?.originalName}
-              disabled={!isDraft || upload.isPending}
-              accept=".csv,.xlsx,.pdf"
-              onSelect={(input) => handleUpload("roster", input)}
-            />
-            {upload.isPending && (
-              <p role="status" className="text-sm text-slate-600">
-                Đang tải tệp lên...
-              </p>
-            )}
-            {upload.isError && (
-              <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-                {errorMessage(upload.error)}
-              </p>
-            )}
-            {mappingError && (
-              <p role="alert" className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-                {mappingError}
-              </p>
-            )}
-          </Card>
+          <AwardSourceFilePanel
+            decisionFile={decision.decisionFile}
+            rosterFile={decision.rosterFile}
+            disabled={!isDraft || upload.isPending}
+            uploadPending={upload.isPending}
+            error={upload.isError ? errorMessage(upload.error) : mappingError}
+            onSelect={(kind, input) => handleUpload(kind, input)}
+          />
 
           <Card className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">Trạng thái xử lý roster</h2>
+                <h2 className="text-sm font-semibold text-slate-900">Đọc và kiểm tra danh sách</h2>
                 <p className="mt-1 text-xs text-slate-600">
-                  PDF được OCR bất đồng bộ; CSV/XLSX được phân tích bằng parser hiện có.
+                  Hệ thống đọc danh sách bất đồng bộ rồi trả lại kết quả để bạn kiểm tra.
                 </p>
               </div>
               <ProcessingBadge status={processing.data?.status ?? "not_started"} />
@@ -394,47 +366,70 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
             )}
             {processing.data?.status === "processing" && (
               <p role="status" className="mt-3 text-sm text-blue-800">
-                Đang xử lý tệp. Hệ thống tự làm mới trong tối đa 2 phút; nếu chưa xong, hãy kiểm tra
-                lại thủ công.
+                Đang đọc danh sách sinh viên. Hệ thống tự làm mới trong tối đa 2 phút; nếu chưa xong,
+                bạn có thể kiểm tra lại thủ công.
               </p>
             )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {isDraft &&
-                decision.rosterFile &&
-                (processing.data?.status === "not_started" || !processing.data) && (
-                  <Button
-                    type="button"
-                    onClick={() => startProcessing.mutate()}
-                    disabled={startProcessing.isPending}
-                  >
-                    <FileCheck2 aria-hidden="true" />
-                    {startProcessing.isPending ? "Đang gửi xử lý..." : "Xử lý danh sách"}
-                  </Button>
-                )}
-              {isDraft && decision.rosterFile && processing.data?.status === "processing" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={processing.isFetching}
-                  onClick={() => void processing.refetch()}
-                >
-                  <RefreshCw aria-hidden="true" /> Làm mới trạng thái
-                </Button>
-              )}
-              {isDraft && processing.data?.status === "failed" && processing.data.retryable && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => startProcessing.mutate()}
-                  disabled={startProcessing.isPending}
-                >
-                  Thử lại
-                </Button>
-              )}
-              {!decision.rosterFile && (
-                <p className="text-sm text-slate-600">Tải tệp danh sách lên để bắt đầu xử lý.</p>
-              )}
-            </div>
+            <AwardNextAction
+              title={
+                !decision.rosterFile
+                  ? "Tải danh sách sinh viên"
+                  : processing.data?.status === "processing"
+                    ? "Chờ hệ thống đọc danh sách"
+                    : processing.data?.status === "failed"
+                      ? "Xử lý lại danh sách"
+                      : processing.data?.status === "preview_ready"
+                        ? "Mở Kiểm tra dữ liệu"
+                        : "Bắt đầu đọc danh sách"
+              }
+              description={
+                !decision.rosterFile
+                  ? "Tải tệp CSV, XLSX hoặc PDF để bắt đầu."
+                  : processing.data?.status === "processing"
+                    ? "Trạng thái lấy từ máy chủ; không hiển thị phần trăm ước tính."
+                    : processing.data?.status === "failed"
+                      ? "Kiểm tra lại tệp hoặc thử lại thao tác đọc danh sách."
+                      : processing.data?.status === "preview_ready"
+                        ? "Danh sách đã sẵn sàng để kiểm tra và xử lý các dòng có vấn đề."
+                        : "Hệ thống sẽ đọc và đối chiếu danh sách với dữ liệu đơn vị."
+              }
+              action={
+                <div className="flex flex-wrap gap-2">
+                  {isDraft &&
+                    decision.rosterFile &&
+                    (processing.data?.status === "not_started" || !processing.data) && (
+                      <Button
+                        type="button"
+                        onClick={() => startProcessing.mutate()}
+                        disabled={startProcessing.isPending}
+                      >
+                        <FileCheck2 aria-hidden="true" />
+                        {startProcessing.isPending ? "Đang bắt đầu..." : "Đọc danh sách"}
+                      </Button>
+                    )}
+                  {isDraft && decision.rosterFile && processing.data?.status === "processing" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={processing.isFetching}
+                      onClick={() => void processing.refetch()}
+                    >
+                      <RefreshCw aria-hidden="true" /> Làm mới trạng thái
+                    </Button>
+                  )}
+                  {isDraft && processing.data?.status === "failed" && processing.data.retryable && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => startProcessing.mutate()}
+                      disabled={startProcessing.isPending}
+                    >
+                      Thử lại
+                    </Button>
+                  )}
+                </div>
+              }
+            />
             {startProcessing.isError && (
               <p role="alert" className="mt-3 text-sm text-red-800">
                 {errorMessage(startProcessing.error)}
@@ -547,51 +542,6 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
         </section>
       </div>
     </>
-  );
-}
-
-function UploadField({
-  label,
-  kind,
-  fileName,
-  disabled,
-  accept,
-  onSelect,
-}: {
-  label: string;
-  kind: "decision" | "roster";
-  fileName?: string;
-  disabled: boolean;
-  accept: string;
-  onSelect: (input: HTMLInputElement) => void;
-}) {
-  return (
-    <label className="block rounded-md border border-slate-200 p-3">
-      <span className="flex items-center gap-2 text-sm font-medium text-slate-800">
-        <FileUp aria-hidden="true" className="h-4 w-4 text-slate-500" />
-        {label}
-      </span>
-      <span className="mt-1 block truncate text-xs text-slate-600">
-        {fileName || "Chưa tải tệp"}
-      </span>
-      {disabled ? (
-        <span className="mt-2 block text-xs text-slate-500">
-          Tải tệp chỉ khả dụng khi quyết định ở trạng thái nháp.
-        </span>
-      ) : (
-        <span className="mt-2 inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-slate-200 px-3 text-sm text-slate-700 hover:bg-slate-50">
-          <Upload aria-hidden="true" className="h-4 w-4" /> Chọn tệp
-          <input
-            aria-label={kind === "roster" ? "Tệp danh sách" : "Tệp văn bản quyết định"}
-            type="file"
-            accept={accept}
-            className="sr-only"
-            onChange={(event) => onSelect(event.currentTarget)}
-          />
-        </span>
-      )}
-      {!disabled && <span className="sr-only">Định dạng: {accept.replaceAll(",", " ")}</span>}
-    </label>
   );
 }
 
@@ -1162,9 +1112,9 @@ function ProcessingBadge({
 }) {
   const content = {
     not_started: ["Chưa xử lý", "border-slate-200 bg-slate-100 text-slate-700"],
-    processing: ["Đang xử lý", "border-blue-200 bg-blue-50 text-blue-800"],
+    processing: ["Đang đọc danh sách", "border-blue-200 bg-blue-50 text-blue-800"],
     failed: ["Xử lý thất bại", "border-red-200 bg-red-50 text-red-800"],
-    preview_ready: ["Sẵn sàng xem trước", "border-emerald-200 bg-emerald-50 text-emerald-800"],
+    preview_ready: ["Sẵn sàng kiểm tra", "border-emerald-200 bg-emerald-50 text-emerald-800"],
   }[status];
   return (
     <Badge variant="outline" className={content[1]}>
