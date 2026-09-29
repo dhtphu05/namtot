@@ -6,7 +6,7 @@ type WorkflowStep = {
   state: "complete" | "current" | "upcoming";
 };
 
-export function getAwardWorkflowSteps(
+function getAwardWorkflowSteps(
   decision: Pick<AwardDecision, "status" | "decisionFile" | "rosterFile">,
   processing?: AwardRosterProcessing,
 ): WorkflowStep[] {

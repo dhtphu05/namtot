@@ -210,3 +210,34 @@ S0 audit
 - No database integration coverage is claimed by these unit/source/route tests.
 
 P0: none. Remaining P2 work is legacy containment and baseline formatting/artifact cleanup, deferred from S1.
+
+## S2 Award Registry production UX addendum — 2026-09-30
+
+S2 hoàn thành trên FE branch `feat/staff-lane`; BE Award Registry giữ nguyên runtime contract và không có file BE thay đổi.
+
+### Implemented FE map
+
+| Concern | Source | Result |
+|---|---|---|
+| Data Uploader overview | `src/routes/app.data-uploader.tsx` | Purpose-first overview, workspace context, one primary CTA, list-backed current work và loading/error/empty states |
+| Registry list | `src/features/award-registry/components/AwardDecisionList.tsx`, `src/features/award-registry/presentation.ts` | Server filters preserved; clear active/archive states; deterministic lifecycle labels and filtered-empty recovery |
+| Decision workspace | `src/features/award-registry/components/AwardDecisionDetail.tsx`, `AwardWorkflowProgress.tsx`, `AwardSourceFilePanel.tsx`, `AwardNextAction.tsx` | Object → progress → work → next action hierarchy; exact file roles/formats; no fake progress or invented status |
+| Roster review | `AwardRosterValidationSummary.tsx`, `AwardRosterReviewTable.tsx`, `presentation.ts` | Summary counts, deterministic presentation groups, source/current values, issue explanations, mapping/filter/correction controls |
+| Confirmation | `AwardConfirmationPanel.tsx` | Readiness summary and shared confirmation dialog; server remains final authority; confirmed/archived workspace is read-only |
+| Acceptance | `tests/award-decision-registry.spec.ts`, `src/features/award-registry/__tests__/presentation.test.ts` | Covers role/navigation, server filters, upload/process/retry, preview review, mapping, correction/revert, confirm, recipients, archive/unarchive and presentation mapping |
+
+### Locked contract carried into S2
+
+- Canonical endpoints remain `GET/POST /api/award-decisions`, `GET/PATCH /api/award-decisions/:id`, file upload `POST /files/decision` and `POST /files/roster`, `POST /process-roster`, `GET /roster-processing`, `GET /roster-preview`, `PATCH /roster-mapping`, `PATCH /roster-preview/:sourceRow`, `DELETE /roster-preview/:sourceRow/correction`, `POST /confirm`, `GET /recipients`, `POST /archive`, and `POST /unarchive`.
+- Actors remain `data_uploader` and `admin`. Lifecycle remains `DRAFT`, `CONFIRMED`, `ARCHIVED`; recipient matching remains `MATCHED`, `UNMATCHED`, `CONFLICT`; backend preview row status remains `VALID`, `INVALID`, `DUPLICATE`, `CONFLICT`.
+- No dashboard, history, analytics, recipient-editing, migration, permission, City role, or API alias was added. Data Uploader has no Award-specific audit/history endpoint.
+- Legacy Decision Import and Event Registry remain separate domains and were not redesigned by S2.
+
+### S2 verification map
+
+- FE presentation unit: `node --test src/features/award-registry/__tests__/presentation.test.ts`.
+- FE Award workflow: `npx playwright test tests/award-decision-registry.spec.ts --project=chromium`.
+- FE S1 contract and role/navigation regression remain required before release; no database integration coverage is claimed by the FE acceptance tests.
+- BE is unchanged by S2; the S1 BE verification baseline remains the applicable BE evidence.
+
+S2 DONE for Award Registry production UX. S3 City Officer Queue has not been started.

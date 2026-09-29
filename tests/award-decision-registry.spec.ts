@@ -654,6 +654,51 @@ test.describe("Award Decision Registry", () => {
     await expect(page.getByText("Kiểm tra dữ liệu", { exact: true }).first()).toBeVisible();
   });
 
+  test("keeps the Award workspace desktop layout contained across QA widths and zooms", async ({
+    page,
+  }) => {
+    await installMocks(page, "data_uploader", [], "SCHOOL", {
+      processing: async (route) => await json(route, { status: "preview_ready" }),
+    });
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/app/award-registry/award-school-1");
+    await expect(page.getByRole("heading", { name: "Kiểm tra dữ liệu", exact: true })).toBeVisible();
+
+    for (const viewport of [
+      { width: 1280, height: 720 },
+      { width: 1366, height: 768 },
+      { width: 1440, height: 900 },
+      { width: 1600, height: 900 },
+      { width: 1920, height: 1080 },
+    ]) {
+      await page.setViewportSize(viewport);
+      for (const zoom of [0.9, 1, 1.1, 1.25]) {
+        await page.evaluate((scale) => {
+          document.documentElement.style.zoom = String(scale);
+        }, zoom);
+        const layout = await page.evaluate(() => {
+          const table = document.querySelector("table");
+          const tableContainer = table?.parentElement;
+          return {
+            documentOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+            tableOverflow: Boolean(
+              table && tableContainer && table.scrollWidth > tableContainer.clientWidth,
+            ),
+          };
+        });
+        expect(layout.documentOverflow, `${viewport.width}x${viewport.height} at ${zoom * 100}%`).toBe(
+          false,
+        );
+        expect(layout.tableOverflow, `${viewport.width}x${viewport.height} at ${zoom * 100}%`).toBe(
+          true,
+        );
+      }
+    }
+    await page.evaluate(() => {
+      document.documentElement.style.zoom = "1";
+    });
+  });
+
   test("confirmed UDN recipient rows show exact server institution resolution", async ({
     page,
   }) => {

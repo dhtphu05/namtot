@@ -92,3 +92,21 @@ S1 nên ưu tiên route/permission/contract alignment quanh những màn đã c�
 - `/app/evidence-knowledge` remains legacy-only. City roles are intentionally absent from its nav, guard and precedent access.
 - City Committee review detail remains context/read oriented for resolution-needed tasks. Normal ReviewTask mutations are not a City Committee capability; Resolution and finalization remain the lane's canonical actions.
 - Individual City review presentation is five-core only; auxiliary `priority`/`collective` are not shown as individual City criterion rows.
+
+## 7. S2 Award Registry UX addendum — 2026-09-30
+
+S2 hoàn thiện production UX cho hai màn Data Uploader/Award Registry mà không đổi route, role hoặc API contract.
+
+| Surface | Route | Vai trò | Mục đích hiện tại | Trạng thái S2 |
+|---|---|---|---|---|
+| Data Uploader overview | `/app/data-uploader` | `data_uploader` | Giải thích mục đích đưa dữ liệu công nhận vào hệ thống và dẫn tới một CTA chính `Tạo quyết định công nhận` | DONE; dùng dữ liệu list hiện có, không dựng dashboard/metric giả |
+| Award Registry list | `/app/award-registry` | `data_uploader`, `admin` | Danh sách quyết định theo issuer, năm học, trạng thái và archive filter server-side | DONE; phân biệt empty registry với empty do filter/search |
+| Award decision workspace | `/app/award-registry/:awardDecisionId` | `data_uploader`, `admin` | Hoàn thiện thông tin quyết định, upload hai tệp, đọc/kiểm tra roster, xác nhận hoặc lưu trữ | DONE; progress và next action lấy từ state thật |
+| Roster review | Trong workspace quyết định | `data_uploader`, `admin` khi `DRAFT` | Summary, filter nhóm cần xử lý, mapping, source/current values, correction/revert và server revalidation | DONE; table có overflow ngang có chủ đích, không tạo client matching |
+| Confirmed recipients | Trong workspace quyết định | `data_uploader`, `admin` | Hiển thị recipients do server trả sau xác nhận; confirmed/archived read-only | DONE |
+
+Award Registry vẫn là domain riêng với legacy Decision Import (`/app/decision-imports`) và Event Registry (`/app/event-registry`). Canonical API family giữ nguyên `/api/award-decisions/*`; quyền router-wide là `data_uploader` và `admin`, không mở rộng City role.
+
+UX presentation map giữ tách bạch: lifecycle `DRAFT`/`CONFIRMED`/`ARCHIVED`; matching `MATCHED`/`UNMATCHED`/`CONFLICT`; nhóm hiển thị `valid`/`warning`/`invalid`/`duplicate`/`missing_student_code`/`needs_manual_review` không phải state mới.
+
+QA desktop được kiểm tra bằng Playwright ở các workflow upload CSV/XLSX/PDF, processing/retry, mapping, invalid/conflict, correction/revert, confirm, recipients, archive/unarchive và role denial. Bảng roster dùng scroll container nội bộ để không làm vỡ shell ở viewport hẹp.
