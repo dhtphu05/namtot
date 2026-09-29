@@ -64,6 +64,7 @@ export type QueryValue = string | number | boolean | null | undefined;
 export type ReviewTaskListParams = {
   criterion?: Criterion;
   status?: ReviewTaskStatus;
+  statuses?: ReviewTaskStatus[];
   targetLevel?: Level;
   faculty?: string;
   className?: string;
@@ -169,6 +170,7 @@ export type ReviewTaskListItem = {
 
 export type ReviewTaskListResponse = {
   items: ReviewTaskListItem[];
+  pagination?: Pagination;
 };
 
 export type ReviewTaskEvidenceFile = {

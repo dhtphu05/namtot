@@ -299,4 +299,12 @@ different layers:
 - FE S1 contract and role/navigation regression remain required before release; no database integration coverage is claimed by the FE acceptance tests.
 - BE is unchanged by S2; the S1 BE verification baseline remains the applicable BE evidence.
 
-S2 DONE for Award Registry production UX. S3 City Officer Queue has not been started.
+### S3 verification map
+
+- FE City Officer queue: `src/features/review/components/CityOfficerQueue.tsx`, mounted from `/app/queue` for `city_officer`.
+- FE queue contract: exactly five canonical criteria (`ethics`, `academic`, `physical`, `volunteer`, `integration`); active tabs use one `status`, while “Đã hoàn thành” uses one `statuses=accepted,rejected` request.
+- FE regression: `tests/city-officer-queue-s3.spec.ts` covers server-backed tabs/pagination, claim idempotency and conflict refresh behavior.
+- BE contract regression: `tests/unit/review-list-query-contract.test.ts` and `tests/unit/review.routes-access.test.ts` cover union validation, pagination/count scope, workspace isolation and authorization.
+- No new endpoint, migration, permission/scope change or school filter was introduced by S3.
+
+S2 and S3 are complete on `feat/staff-review`. S4 has not been started.

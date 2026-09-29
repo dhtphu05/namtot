@@ -538,8 +538,14 @@ export const reviewApi = {
   getReviewTasks: async (
     params?: ReviewTaskListParams,
   ): Promise<ApiResponse<ReviewTaskListResponse>> => {
+    const serializedParams = params
+      ? ({
+          ...params,
+          statuses: params.statuses?.join(","),
+        } as Record<string, QueryValue>)
+      : undefined;
     const response = await apiClient<ReviewTaskListResponse>(
-      `/api/review/tasks${buildQueryString(params)}`,
+      `/api/review/tasks${buildQueryString(serializedParams)}`,
     );
 
     return withDataFallback(
@@ -549,6 +555,7 @@ export const reviewApi = {
           items: (response.data?.items ?? []).map((item) =>
             normalizeListItem(item as unknown as RawRecord),
           ),
+          pagination: response.meta.pagination ?? response.data?.pagination,
         },
       },
       { items: [] },

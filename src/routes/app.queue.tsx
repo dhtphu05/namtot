@@ -44,6 +44,7 @@ import {
 import { getOfficerLockedCriterion } from "@/features/auth/role-map";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
+import { CityOfficerQueue } from "@/features/review/components/CityOfficerQueue";
 import { ReviewFilters } from "@/features/review/components/ReviewFilters";
 import { ReviewDecisionPanel } from "@/features/review/components/ReviewDecisionPanel";
 import { ReviewTaskTable } from "@/features/review/components/ReviewTaskTable";
@@ -183,6 +184,10 @@ function ReviewQueueRoute() {
         </Card>
       </>
     );
+  }
+
+  if (role === "city_officer") {
+    return <CityOfficerQueue />;
   }
 
   return <ReviewQueueContent role={role} />;

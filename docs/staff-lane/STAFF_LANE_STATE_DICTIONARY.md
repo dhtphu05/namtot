@@ -95,12 +95,15 @@ Prisma `ReviewTaskStatus` exact values:
 
 `ReviewDecision` exact values: `accepted`, `rejected`, `supplement_required`, `resolution_needed`.
 
+City Officer queue presentation maps the canonical task states to five server-backed tabs: `waiting` → “Cần xử lý”, `reviewing` → “Đang xét”, `supplement_required` → “Chờ bổ sung”, `resolution_needed` → “Cần Hội đồng”, and one `statuses=accepted,rejected` query → “Đã hoàn thành”. The completed tab is a filter union, not a new lifecycle state.
+
 Important permission distinction:
 
 - Route role lists are not task permissions.
 - `ReviewService.getTaskPermissions` gives `canView`, `canAct`, `canClaim` and a reason.
 - Committee roles view tasks only when status is `resolution_needed` in the current service implementation.
 - City Officer claim/act is specialization-aware.
+- Claim is an immediate action from a `waiting` row; the UI sends the existing `/claim` mutation once and maps a server conflict to a refreshable “vừa được cán bộ khác nhận xử lý” message.
 
 ## 6. Supplement lifecycle
 

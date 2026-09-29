@@ -9,7 +9,7 @@ Quy ước: “Match” chỉ có nghĩa path/action/role chính đã đối chi
 | Award Registry list/detail | `src/features/award-registry/api/award-registry.ts` → `/api/award-decisions`, `/:id` | `src/modules/award-decisions/award-decisions.routes.ts` | `data_uploader`, `admin` | `data_uploader`, `admin` | Match |
 | Award Registry upload/process | `/files/:kind`, `/process-roster`, `/roster-processing`, `/roster-preview` | same router | same | same router-wide guard | Match; preserve as separate domain |
 | Award Registry confirm/recipients | `/confirm`, `/recipients` | same router | same | same | Match |
-| Review queue/dashboard | `src/features/review/api/review.ts` → `/api/review/tasks`, `/dashboard` | `src/modules/review/review.routes.ts` | officer/manager/committee/city_officer/city_manager/admin; City Committee is absent in FE review guard | officer/manager/committee/city_officer/city_manager/city_committee/admin | Partial; role matrix differs |
+| Review queue/dashboard | `src/features/review/api/review.ts` → `/api/review/tasks`, `/dashboard` | `src/modules/review/review.routes.ts` | officer/manager/committee/city_officer/city_manager/admin; City Committee is absent in FE review guard | officer/manager/committee/city_officer/city_manager/city_committee/admin | City Officer queue now uses server-side `status` or backward-compatible `statuses` union; role matrix otherwise unchanged |
 | Review task detail/timeline | `/api/review/tasks/:id`, `/timeline`, `/criterion-level-assessment` | same routes | same FE review set | same plus City Committee | Partial |
 | Review claim | `/api/review/tasks/:id/claim` | same route; service uses conditional update and application lock | FE action is officer-oriented | `officer`, `city_officer` | Match |
 | Review decision/supplement/escalation | `/decision`, `/request-supplement`, `/escalate-resolution` | same routes | FE screen can render several roles | BE route accepts broad City/legacy roles, service applies task permissions | Route match; semantic mismatch for City Committee needs decision |
@@ -47,6 +47,7 @@ Review task actions are separate from role guard:
 - Officer/city officer claim is specialization-based.
 - City individual applications are hidden from legacy `officer/manager/committee` in service logic.
 - City Manager can coordinate/view City individual tasks, while City Committee is resolution-view only in task permissions.
+- City Officer queue tabs use the existing endpoint: one `status` for each active state and one `statuses=accepted,rejected` request for completed tasks. The server validates, trims/deduplicates and applies the union before count/pagination; `status` and `statuses` together are invalid.
 
 This two-layer behavior must be represented in FE types and acceptance tests; checking only HTTP role lists is insufficient.
 
