@@ -1560,3 +1560,12 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 - Award Registry roster preview is a human-review surface for draft decisions. It shows original and effective values, marks manual corrections, explains server row states, filters rows requiring review, and offers correction/revert controls only while the decision is `DRAFT`. Every edit or revert refetches the server preview/status; the client does not recompute matching, institution resolution, duplicate, or validation outcomes. Confirmed/archived decisions remain read-only.
 - The roster UI calls the row correction and revert endpoints documented in the backend contract. Raw OCR/table data remains separate from correction overlays; replacing the roster starts a fresh processing job. No Event Registry, DecisionImport, evidence OCR, eligibility, submission, review, or Award confirmation/archive behavior was changed.
 - The student V2 acceptance suite now passes 31 tests with one intentional legacy-flag skip. The previous valid-backend baseline was 15 pass / 15 fail / 1 skip; the earlier 1/29/1 run was caused by an incorrect API port and is not a comparable baseline. The 15 stale failures were repaired at their harness/fixture/assertion causes without deleting tests or weakening business checks. Frontend build and lint pass; TypeScript remains at its established 193 diagnostics.
+
+
+## Phase 1.5 Backend/UI Contract Closure (2026-09-29)
+
+- City roles no longer see or open the legacy officer evidence-knowledge page. The reviewer precedent search and detail query are also disabled for City Officer/Manager/Committee; the separate City Knowledge Base is not treated as an interchangeable source.
+- Initial City submission and configured City supplement-season deadlines are hard gates. Per-request supplement/review due dates and review/final season milestones remain informational and must not be described as action locks.
+- The criteria config GET endpoint has no corresponding write API and does not represent the complete runtime criteria source; admin criteria editing remains blocked pending a versioned write contract.
+- Award Registry roster row correction/revert and admin password reset are committed FE/BE capabilities. Award-specific audit/history remains unavailable to Data Uploader.
+- Phase 1.5 makes no visual redesign or design-system changes.

@@ -92,16 +92,19 @@ test.describe("Phase 1 role migration and route authorization", () => {
 
       if (fixture.role === "city_officer") {
         await expect(page.locator("aside nav a[href^='/app/assignment']")).toHaveCount(0);
+        await expect(page.locator("aside nav a[href='/app/evidence-knowledge']")).toHaveCount(0);
       }
 
       if (fixture.role === "city_committee") {
         await expect(page.locator("aside nav a[href^='/app/resolution']").first()).toBeVisible();
         await expect(page.locator("aside nav a[href^='/app/assignment']")).toHaveCount(0);
+        await expect(page.locator("aside nav a[href='/app/evidence-knowledge']")).toHaveCount(0);
       }
 
       if (fixture.role === "city_manager") {
         await expect(page.locator("aside nav a[href^='/app/assignment']").first()).toBeVisible();
         await expect(page.locator("aside nav a[href^='/app/admin']")).toHaveCount(0);
+        await expect(page.locator("aside nav a[href='/app/evidence-knowledge']")).toHaveCount(0);
       }
 
       if (fixture.role === "admin") {
@@ -119,6 +122,9 @@ test.describe("Phase 1 role migration and route authorization", () => {
     { role: "city_committee", path: "/app/queue" },
     { role: "city_committee", path: "/app/assignment" },
     { role: "city_manager", path: "/app/admin/workspaces" },
+    { role: "city_officer", path: "/app/evidence-knowledge" },
+    { role: "city_manager", path: "/app/evidence-knowledge" },
+    { role: "city_committee", path: "/app/evidence-knowledge" },
     { role: "city_officer", path: "/app/decision-imports" },
     { role: "city_manager", path: "/app/decision-imports" },
     { role: "city_committee", path: "/app/decision-imports" },
@@ -142,7 +148,6 @@ test.describe("Phase 1 role migration and route authorization", () => {
     { role: "city_officer", path: "/app/queue" },
     { role: "city_manager", path: "/app/assignment" },
     { role: "city_committee", path: "/app/resolution" },
-    { role: "city_committee", path: "/app/evidence-knowledge" },
     { role: "admin", path: "/app/admin/workspaces" },
   ];
 
@@ -153,11 +158,6 @@ test.describe("Phase 1 role migration and route authorization", () => {
       await page.goto(allowed.path, { waitUntil: "domcontentloaded" });
       await expectPathname(page, allowed.path);
       await expect(page.locator("main")).toBeVisible();
-      if (allowed.role === "city_committee" && allowed.path === "/app/evidence-knowledge") {
-        await expect(
-          page.getByRole("heading", { name: "Kho minh chứng chuyên trách" }),
-        ).toBeVisible();
-      }
     });
   }
 });

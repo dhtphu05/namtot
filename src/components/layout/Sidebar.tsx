@@ -84,6 +84,11 @@ const REVIEWER_NAV: NavGroup[] = [
   },
 ];
 
+const CITY_OFFICER_NAV: NavGroup[] = REVIEWER_NAV.map((group) => ({
+  ...group,
+  items: group.items.filter((item) => item.to !== "/app/evidence-knowledge"),
+}));
+
 const LEGACY_MANAGER_NAV: NavGroup[] = [
   {
     group: "Quản lý mùa xét",
@@ -124,7 +129,6 @@ const CITY_MANAGER_NAV: NavGroup[] = [
     group: "Dữ liệu vận hành",
     items: [
       { label: "Sự kiện đã xác nhận", to: "/app/event-registry", icon: CalendarCheck },
-      { label: "Kho tiền lệ", to: "/app/evidence-knowledge", icon: BookOpenCheck },
       { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: UsersRound },
     ],
   },
@@ -143,10 +147,7 @@ const CITY_COMMITTEE_NAV: NavGroup[] = [
   },
   {
     group: "Tài nguyên hỗ trợ",
-    items: [
-      { label: "Sự kiện chính thức", to: "/app/event-registry", icon: CalendarCheck },
-      { label: "Kho tiền lệ", to: "/app/evidence-knowledge", icon: BookOpenCheck },
-    ],
+    items: [{ label: "Sự kiện chính thức", to: "/app/event-registry", icon: CalendarCheck }],
   },
 ];
 
@@ -174,7 +175,7 @@ const NAV: Record<Role, NavGroup[]> = {
     },
   ],
   officer: REVIEWER_NAV,
-  city_officer: REVIEWER_NAV,
+  city_officer: CITY_OFFICER_NAV,
   manager: LEGACY_MANAGER_NAV,
   committee: LEGACY_MANAGER_NAV,
   city_manager: CITY_MANAGER_NAV,

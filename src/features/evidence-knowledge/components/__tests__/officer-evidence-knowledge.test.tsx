@@ -32,6 +32,7 @@ describe("officer evidence knowledge workspace", () => {
     assert.match(page, /user\?\.role === "manager"/);
     assert.match(page, /user\?\.role === "committee"/);
     assert.match(page, /user\?\.role === "admin"/);
+    assert.doesNotMatch(page, /user\?\.role === "city_(officer|manager|committee)"/);
     assert.match(page, /useOfficerEvidenceKnowledgeSearch\(filters, canViewOfficerKnowledge\)/);
     assert.match(page, /canViewOfficerKnowledge && Boolean\(selected\?\.eventId\)/);
     assert.match(page, /if \(!canViewOfficerKnowledge\) \{\s*return null;\s*\}/);
@@ -97,7 +98,14 @@ describe("review precedent workflow", () => {
 
     assert.match(api, /\/api\/review\/tasks\/\$\{id\}\/precedents\/check/);
     assert.match(hooks, /useReviewTaskPrecedents/);
-    assert.match(panel, /useReviewTaskPrecedents\(task\.id, canUsePrecedentSearch\(task\), 3\)/);
+    assert.match(panel, /canSearchPrecedents && canUsePrecedentSearch\(task\)/);
+    assert.match(
+      panel,
+      /canSearchPrecedents \? \(precedentQuery\.data\?\.items \?\? \[\]\) : \[\]/,
+    );
+    assert.match(panel, /canSearchPrecedents \? \([\s\S]*?<ReviewPrecedentPanel/);
+    assert.match(panel, /canSearchPrecedents && Boolean\(selectedPrecedentEventId\)/);
+    assert.match(panel, /open=\{canSearchPrecedents && Boolean\(selectedPrecedentEventId\)\}/);
     assert.match(panel, /Đã tìm thấy tiền lệ phù hợp/);
   });
 

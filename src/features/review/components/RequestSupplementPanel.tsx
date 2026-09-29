@@ -211,7 +211,7 @@ export function RequestSupplementPanel({ task, onSuccess }: RequestSupplementPan
 
         <div>
           <label className="text-sm font-semibold text-brand-deep" htmlFor="supplement-deadline">
-            Hạn bổ sung
+            Hạn đề nghị bổ sung
           </label>
           <Input
             className="mt-2"
@@ -225,7 +225,7 @@ export function RequestSupplementPanel({ task, onSuccess }: RequestSupplementPan
             }}
           />
           <div className="mt-1 text-xs text-muted-foreground">
-            Có thể bỏ trống nếu backend hoặc quy định hiện hành tự xác định hạn.
+            Mốc nhắc cho yêu cầu này; ngày này không tự khóa thao tác gửi lại.
           </div>
           {formError && isDeadlineError ? (
             <div className="mt-1 text-xs text-destructive">{formError}</div>

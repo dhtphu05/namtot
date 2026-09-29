@@ -37,7 +37,7 @@ Existing routes/components to reuse: `/app/` or `/app/overview`, `/app/applicati
 - Nhập danh sách *(Award detail/process flow, not the legacy Decision Import unless the backend product flow is explicitly reconciled)*
 - Lịch sử — **BLOCKED_BY_BACKEND**: no Award history endpoint and general audit excludes `data_uploader`.
 
-Existing `/app/data-uploader` is a landing/instruction page and `/app/award-registry` + detail are the real operational workspace. “Tổng quan” can be a compact view composed from existing list/status APIs if the needed aggregates suffice. Do not promise per-row edits unless the WIP correction endpoints are released.
+Existing `/app/data-uploader` is a landing/instruction page and `/app/award-registry` + detail are the real operational workspace. “Tổng quan” can be a compact view composed from existing list/status APIs if the needed aggregates suffice. Draft roster rows can be corrected and reverted through the released endpoints. Keep validation, duplicate detection, and matching server-owned. Uploader history remains **BLOCKED_BY_BACKEND** because Award has no history endpoint and general audit excludes `data_uploader`.
 
 ### City Officer — “Xét duyệt”
 
@@ -47,7 +47,7 @@ Existing `/app/data-uploader` is a landing/instruction page and `/app/award-regi
 - Cần Hội đồng
 - Đã hoàn thành
 
-These are views/filters of review tasks, not new states or necessarily five separate routes. Use queue/dashboard APIs and task status enums. Keep `/app/queue`, `/app/review/$id`, and escalation path. Evidence search/reference can be secondary. City access to evidence knowledge is **BLOCKED_BY_BACKEND/FE-BE mismatch** until API permissions or FE route is aligned. Review detail also requests precedent search for City Officer tasks, but the backend precedent route currently excludes `city_officer`; this core panel is a separate P1 mismatch.
+These are views/filters of review tasks, not new states or necessarily five separate routes. Use queue/dashboard APIs and task status enums. Keep `/app/queue`, `/app/review/$id`, and escalation path. Evidence search can be secondary. City Officer does not use the legacy evidence-knowledge page or precedent panel: the approved-evidence endpoints are legacy-role scoped, and the separate City Knowledge Base has a different data contract.
 
 ### City Manager — “Điều hành mùa xét”
 
@@ -58,7 +58,7 @@ These are views/filters of review tasks, not new states or necessarily five sepa
 - Kết quả
 - Báo cáo
 
-Existing routes: `/app/analytics`, `/app/queue` (currently hidden from City Manager nav despite direct access), `/app/assignment`, `/app/resolution`, `/app/manager/results`, `/app/export`, plus season operations. Season CRUD is supported. Review/final deadline fields are informational only today; do not display as enforced SLA without backend work.
+Existing routes: `/app/analytics`, `/app/queue` (currently hidden from City Manager nav despite direct access), `/app/assignment`, `/app/resolution`, `/app/manager/results`, `/app/export`, plus season operations. Season CRUD is supported. Do not surface the legacy evidence-knowledge page to City Manager. Initial submission and configured supplement-season cutoffs are enforced; per-request due dates and review/final milestones are informational, not action locks or enforced SLAs.
 
 ### City Committee — “Hội đồng”
 
@@ -66,7 +66,7 @@ Existing routes: `/app/analytics`, `/app/queue` (currently hidden from City Mana
 - Kết quả cuối
 - Lịch sử
 
-Use the City Committee inbox (`/api/manager/committee-inbox`), resolution case detail, and explicit final result/history APIs. Frontend `/app/committee/inbox` currently corresponds to a separate legacy `/api/committee/inbox`; this is a contract mismatch to resolve during implementation. Audit log access is available to City Committee. No committee role may be inferred from the screen name alone; retain backend authorization.
+Use the City Committee inbox (`/api/manager/committee-inbox`), resolution case detail, and explicit final result/history APIs. Frontend `/app/committee/inbox` currently corresponds to a separate legacy `/api/committee/inbox`; this is a contract mismatch to resolve during implementation. Audit log access is available to City Committee. Do not surface the legacy evidence-knowledge page. Target resolution decisions use `/resolve`; the case-only legacy status PATCH is denied to City roles. No committee role may be inferred from the screen name alone; retain backend authorization.
 
 ### Admin — “Vận hành hệ thống”
 
@@ -78,7 +78,7 @@ Use the City Committee inbox (`/api/manager/committee-inbox`), resolution case d
 - Bộ tiêu chí — **BLOCKED_BY_BACKEND** for editing; active config is read-only.
 - Nhật ký hệ thống
 
-Workspace management and season operations have APIs. Readiness overview may compose currently available workspace/season/user data; if no aggregate endpoint exists, do not present fabricated “ready” status. Password reset is WIP in current dirty worktrees, not a stable capability.
+Workspace management and season operations have APIs. Readiness overview may compose currently available workspace/season/user data; if no aggregate endpoint exists, do not present fabricated “ready” status. Admin password reset is a committed admin-only capability.
 
 ## High-level target screen blueprint
 
@@ -92,7 +92,7 @@ Workspace management and season operations have APIs. Readiness overview may com
 | Thông báo (student) | Communicate requested actions/outcomes | Open the linked item | Mark read / mark all read | User-scoped paginated notifications | Unread/read, empty, load error | Any workflow → linked screen |
 | Uploader Tổng quan | Surface roster work needing attention | Open processing/attention item | Start new recognized decision | Award decision list/status APIs | Draft, processing states, confirmed, archived | Sign in → Decision Registry |
 | Quyết định công nhận | Maintain decision record and roster | Create/import a decision or continue processing | Filter/search/archive/unarchive | Award Decision list/detail | DRAFT/CONFIRMED/ARCHIVED; recipient and preview row statuses | Tổng quan → Nhập danh sách / Chi tiết |
-| Nhập danh sách / detail | Process OCR roster and verify before confirm | Start/retry supported processing or confirm reviewed decision | Correct row only if WIP capability is released; archive/unarchive | Award processing, paged preview, confirm/archive APIs | not_started/processing/failed/preview_ready; VALID/INVALID/DUPLICATE/CONFLICT; MATCHED/UNMATCHED/CONFLICT | Decision Registry → preview → confirm → registry |
+| Nhập danh sách / detail | Process OCR roster and verify before confirm | Start/retry supported processing or confirm reviewed decision | Correct/revert draft row; archive/unarchive | Award processing, paged preview, confirm/archive/correction APIs | not_started/processing/failed/preview_ready; VALID/INVALID/DUPLICATE/CONFLICT; MATCHED/UNMATCHED/CONFLICT | Decision Registry → preview → confirm → registry |
 | Lịch sử (uploader) | Show uploader audit/history | None until API exists | — | No Award history endpoint; general audit denies uploader | — | **BLOCKED_BY_BACKEND** |
 | Việc cần xử lý (Officer) | Present actionable queue | Claim an available task | Filter by criterion/status/risk/due/search | Review dashboard/tasks | waiting/reviewing and derived filter groups | Sign in → Queue → Review detail |
 | Review detail | Review one criterion task with its evidence | Record allowed criterion decision | Request supplement, escalate, inspect timeline/reference | Review detail/decision/supplement/escalation | task status, assigned/unassigned, evidence processing, request state | Queue → Detail → queue / Supplement / Resolution |
@@ -118,7 +118,7 @@ Workspace management and season operations have APIs. Readiness overview may com
 - Keep current route URLs alive during subsequent implementation; redirects already exist for `/app/evidence`, `/app/drafts`, `/app/my-application`, `/app/profile`, `/app/chatbot`, `/app/manager/result`, `/app/admin/workspace`, and `/admin`.
 - Converge duplicated student `/app/` and `/app/overview`; `/app/feedback` and `/app/notifications`; `/app/data-uploader` landing and Award Registry; `/app/admin/officers` and `/app/admin/users`; City Committee inbox and its City manager-module API.
 - Remove target-level/cascade/wizard concepts from the target navigation, but do not remove old handlers/data in this phase.
-- Keep legacy Decision Import separate from Award Registry. Its audit endpoint has P0 cross-workspace scope exposure; avoid promoting it as the uploader workflow.
+- Keep legacy Decision Import separate from Award Registry. Its audit endpoint now verifies import scope and filters returned audit rows to the same workspace; it remains a legacy staff flow, not the uploader workflow.
 - Keep technical integration pages (`/app/ekyc`, `/app/vnpt`) out of top-level navigation unless identity verification is made a defined product task.
 - Use existing master-detail, split evidence viewer, three-column review, scoped supplement, explicit confirmation, async polling, and manager drill-through patterns as documented in the inventory.
 
@@ -128,8 +128,8 @@ Workspace management and season operations have APIs. Readiness overview may com
 |---|---|---|
 | Uploader Lịch sử | `BLOCKED_BY_BACKEND` | Award-scoped audit/history read endpoint with uploader role and issuer workspace scope. |
 | Admin Bộ tiêu chí editor | `BLOCKED_BY_BACKEND` | Defined criteria config mutation API and draft/version/apply behavior. |
-| City evidence knowledge page and review precedent panel | `BLOCKED_BY_BACKEND` until mismatches are resolved | Grant compatible City role scope to current endpoint or wire the page to City-friendly knowledge base; align precedent check route or hide it from City Officer. |
+| City precedent/knowledge panel | Not in target City UI | City roles have no legacy page/menu/query access. A later City precedent feature needs an explicit scoped data and API contract; do not repoint to the separate general Knowledge Base by assumption. |
 | Enforced review/final deadlines | Backend behavior gap | Define and enforce semantics before presenting deadlines as blockers/SLA. |
 | Admin readiness score | `UNVERIFIED` aggregate capability | Compose only observable API facts or define a server-side readiness DTO. |
-| Reset-password admin action | `WIP` | Backend and frontend changes currently uncommitted; confirm release and credential delivery/security contract. |
-| Award row correction/revert | `WIP` | Current FE/BE worktree changes uncommitted; confirm shipped route, validation and audit semantics. |
+| Reset-password admin action | Available in committed FE/BE | Admin-only endpoint/UI; reset revokes refresh sessions and returns no password material. |
+| Award row correction/revert | Available in committed FE/BE | Draft-only corrections/reverts; backend revalidates rows and FE refetches. |

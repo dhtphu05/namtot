@@ -135,6 +135,8 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const canEscalateResolution = task.permissions?.availableActions
     ? task.permissions.availableActions.includes("escalate_resolution")
     : canDecide;
+  const canSearchPrecedents =
+    role === "officer" || role === "manager" || role === "committee" || role === "admin";
   const evidenceOptions = useMemo(() => task.evidences ?? [], [task.evidences]);
   const visibleDecisionOptions = useMemo(
     () =>
@@ -148,8 +150,12 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const selectedCanSubmit = decision
     ? canSubmitDecision(decision, canDecide, canRequestSupplement, canEscalateResolution)
     : false;
-  const precedentQuery = useReviewTaskPrecedents(task.id, canUsePrecedentSearch(task), 3);
-  const precedentItems = precedentQuery.data?.items ?? [];
+  const precedentQuery = useReviewTaskPrecedents(
+    task.id,
+    canSearchPrecedents && canUsePrecedentSearch(task),
+    3,
+  );
+  const precedentItems = canSearchPrecedents ? (precedentQuery.data?.items ?? []) : [];
   const primaryPrecedent = precedentItems[0] ?? null;
   const needsResolutionGuard = decision === "resolution_needed" && Boolean(primaryPrecedent);
   const guardValidationMessage =
@@ -180,7 +186,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const isSubmitting = submitDecision.isPending || escalateResolution.isPending;
   const precedentDetail = useOfficerEvidenceKnowledgeEvent(
     selectedPrecedentEventId ?? undefined,
-    Boolean(selectedPrecedentEventId),
+    canSearchPrecedents && Boolean(selectedPrecedentEventId),
   );
   const selectedPrecedentEvidence = precedentDetail.data?.acceptedEvidence[0] ?? null;
 
@@ -262,7 +268,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
       return;
     }
 
-    if (decision === "resolution_needed") {
+    if (decision === "resolution_needed" && canSearchPrecedents) {
       const refreshed = await precedentQuery.refetch();
       const guardPrecedent = refreshed.data?.items?.[0] ?? primaryPrecedent;
       if (guardPrecedent && !resolutionGuardReason) {
@@ -370,16 +376,18 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
               </div>
             ) : null}
 
-            <ReviewPrecedentPanel
-              item={primaryPrecedent}
-              isLoading={precedentQuery.isLoading}
-              isError={precedentQuery.isError}
-              canAccept={canDecide && !isFinal}
-              isAccepting={isSubmitting}
-              onRetry={() => void precedentQuery.refetch()}
-              onView={(eventId) => setSelectedPrecedentEventId(eventId)}
-              onAccept={handleAcceptWithPrecedent}
-            />
+            {canSearchPrecedents ? (
+              <ReviewPrecedentPanel
+                item={primaryPrecedent}
+                isLoading={precedentQuery.isLoading}
+                isError={precedentQuery.isError}
+                canAccept={canDecide && !isFinal}
+                isAccepting={isSubmitting}
+                onRetry={() => void precedentQuery.refetch()}
+                onView={(eventId) => setSelectedPrecedentEventId(eventId)}
+                onAccept={handleAcceptWithPrecedent}
+              />
+            ) : null}
 
             {!visibleDecisionOptions.length ? (
               <div className="mt-3 rounded-xl border bg-muted/40 p-3 text-sm text-muted-foreground">
@@ -548,7 +556,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                 className="block text-sm font-semibold text-brand-deep"
                 htmlFor="supplement-deadline"
               >
-                Hạn bổ sung
+                Hạn đề nghị bổ sung
                 <Input
                   className="mt-2"
                   disabled={!selectedCanSubmit || isSubmitting}
@@ -561,7 +569,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                   }}
                 />
                 <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                  Có thể bỏ trống nếu quy định hiện hành tự xác định hạn.
+                  Mốc nhắc cho yêu cầu này; ngày này không tự khóa thao tác gửi lại.
                 </span>
               </label>
             </div>
@@ -629,7 +637,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
         </div>
       </form>
       <EvidencePrecedentSheet
-        open={Boolean(selectedPrecedentEventId)}
+        open={canSearchPrecedents && Boolean(selectedPrecedentEventId)}
         event={precedentDetail.data}
         item={selectedPrecedentEvidence}
         index={0}

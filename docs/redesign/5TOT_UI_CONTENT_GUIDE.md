@@ -105,6 +105,8 @@ These are display recommendations for actual API values. Derived queue groupings
 | `OPEN` | Đang nhận hồ sơ | Display server dates. |
 | `EXCEPTION_ACTIVE` | Được gia hạn theo ngoại lệ | Explain the specific exception window. |
 | `CLOSED` | Đã hết hạn nhận hồ sơ | Show deadline and allowed follow-up; do not suggest a bypass. |
+| Per-request `SupplementRequest.deadline` / `ReviewTask.dueDate` | Hạn đề nghị | Reminder for the requested response/review; backend does not enforce it as a submit lock. |
+| Configured City supplement-season close | Hạn cuối gửi bổ sung | Enforced only when a submitted application is actually resubmitted; a missing cutoff does not block. |
 | Review/final deadline `ON_TRACK` | Trong thời hạn theo dõi | Informational indicator only with current backend behavior. |
 | `OVERDUE` | Đã quá mốc theo dõi | Do not block actions; backend currently does not enforce review/final deadlines. |
 | Resolution `open` | Mới chuyển Hội đồng | — |
@@ -115,6 +117,13 @@ These are display recommendations for actual API values. Derived queue groupings
 | `passed` | Được công nhận | Show final level only if backend supplies it; do not invent levels. |
 | `failed` | Không được công nhận | Show official rationale. |
 | `partially_passed` | Được công nhận một phần | Legacy state remains; do not use as a multi-level progression cue. |
+
+## Deadline wording
+
+- Initial submission uses the configured City opening/closing window and the server enforces it. Use “Chưa đến hạn nhận hồ sơ” or “Đã hết hạn gửi hồ sơ” only from the server state/error.
+- A configured City supplement-season cutoff is enforced when an already-submitted application is actually resubmitted. Say “Hạn cuối gửi bổ sung” for this cutoff.
+- A reviewer's per-request date is a reminder, not a lock. Label it “Hạn đề nghị bổ sung” and explain “Mốc nhắc cho yêu cầu này; ngày này không tự khóa thao tác gửi lại.”
+- Review and finalization milestones are monitoring dates. Use “Hạn dự kiến xử lý” / “Hạn dự kiến chốt” or “Đã quá mốc theo dõi”; do not say the system will block review or finalization.
 
 ## Required content patterns
 

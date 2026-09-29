@@ -10,6 +10,7 @@ test("city reviewer sees criteria precheck as reference, not an official decisio
   page,
 }) => {
   const pageErrors: string[] = [];
+  const precedentRequests: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   const user = {
     id: "city-officer-1",
@@ -23,6 +24,7 @@ test("city reviewer sees criteria precheck as reference, not an official decisio
   await page.route("http://localhost:8080/api/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    if (path.endsWith("/precedents/check")) precedentRequests.push(path);
     if (request.method() === "OPTIONS") {
       await route.fulfill({ status: 204, headers: corsHeaders, body: "" });
       return;
@@ -60,7 +62,17 @@ test("city reviewer sees criteria precheck as reference, not an official decisio
                     className: "22T1",
                   },
                 },
-                evidences: [],
+                evidences: [
+                  {
+                    id: "evidence-city-1",
+                    evidenceName: "Bảng điểm năm học",
+                    criterion: "academic",
+                    sourceType: "manual_upload",
+                    status: "under_review",
+                    createdAt: "2026-09-26T00:00:00.000Z",
+                    files: [],
+                  },
+                ],
                 metrics: [],
               },
               precheck: {
@@ -100,9 +112,10 @@ test("city reviewer sees criteria precheck as reference, not an official decisio
 
   await page.goto("/app/review/task-city-1", { waitUntil: "domcontentloaded" });
 
-  expect(pageErrors).toEqual([]);
   const advisory = page.getByRole("region", { name: /gợi ý tiền kiểm/i });
   await expect(advisory).toBeVisible();
+  expect(pageErrors).toEqual([]);
+  expect(precedentRequests).toEqual([]);
   await expect(advisory).toContainText(/tham khảo/i);
   await expect(advisory).toContainText(/OUTSIDE_SCHOOL_YEAR|nằm ngoài năm học/i);
   await expect(advisory).toContainText(/đối chiếu file gốc/i);

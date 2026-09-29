@@ -68,15 +68,7 @@ const eventRegistryRoles: Role[] = [
   "admin",
 ];
 const decisionImportRoles: Role[] = ["officer", "manager", "committee", "admin"];
-const evidenceKnowledgeRoles: Role[] = [
-  "officer",
-  "manager",
-  "committee",
-  "city_officer",
-  "city_manager",
-  "city_committee",
-  "admin",
-];
+const evidenceKnowledgeRoles: Role[] = ["officer", "manager", "committee", "admin"];
 const resolutionRoles: Role[] = [
   "officer",
   "manager",
