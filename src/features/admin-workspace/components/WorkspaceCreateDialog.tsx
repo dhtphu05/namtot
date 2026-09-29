@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api/client";
 import { useCreateWorkspace } from "@/features/admin-workspace/hooks/useCreateWorkspace";
-import type { CreateWorkspacePayload } from "@/features/admin-workspace/types";
+import { useAdminWorkspaces } from "@/features/admin-workspace/hooks/useAdminWorkspaces";
+import type { CreateWorkspacePayload, WorkspaceType } from "@/features/admin-workspace/types";
 
 type WorkspaceCreateDialogProps = {
   open: boolean;
@@ -26,6 +27,8 @@ type FormState = {
   code: string;
   isActive: boolean;
   registrationEnabled: boolean;
+  type: WorkspaceType;
+  parentWorkspaceId: string;
 };
 
 const initialForm: FormState = {
@@ -34,6 +37,8 @@ const initialForm: FormState = {
   code: "",
   isActive: true,
   registrationEnabled: false,
+  type: "SCHOOL",
+  parentWorkspaceId: "none",
 };
 
 const codePattern = /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
@@ -42,6 +47,7 @@ export function WorkspaceCreateDialog({ open, onOpenChange }: WorkspaceCreateDia
   const [form, setForm] = useState<FormState>(initialForm);
   const [localError, setLocalError] = useState<string | null>(null);
   const createWorkspace = useCreateWorkspace();
+  const parentWorkspaces = useAdminWorkspaces({ type: "UNIVERSITY_SYSTEM", page: 1, limit: 100 });
 
   useEffect(() => {
     if (!open) setLocalError(null);
@@ -74,6 +80,9 @@ export function WorkspaceCreateDialog({ open, onOpenChange }: WorkspaceCreateDia
       shortName: form.shortName.trim() || null,
       isActive: form.isActive,
       registrationEnabled: form.registrationEnabled,
+      type: form.type,
+      parentWorkspaceId:
+        form.type === "SCHOOL" && form.parentWorkspaceId !== "none" ? form.parentWorkspaceId : null,
     };
 
     createWorkspace.mutate(payload, {
@@ -92,10 +101,9 @@ export function WorkspaceCreateDialog({ open, onOpenChange }: WorkspaceCreateDia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="grid max-h-[calc(100dvh-32px)] max-w-xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden p-0">
         <DialogHeader className="px-5 pb-3 pt-5">
-          <DialogTitle>Thêm trường triển khai</DialogTitle>
+          <DialogTitle>Thêm đơn vị</DialogTitle>
           <DialogDescription>
-            Tạo đơn vị sử dụng hệ thống Sinh viên 5 tốt. Tiêu chí và tài khoản demo không được tạo
-            trong bước này.
+            Chọn loại đơn vị và cấu hình quan hệ trực thuộc nếu đây là trường thành viên UDN.
           </DialogDescription>
         </DialogHeader>
 
@@ -106,14 +114,59 @@ export function WorkspaceCreateDialog({ open, onOpenChange }: WorkspaceCreateDia
         >
           <div className="space-y-4 pb-5">
             <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-[#0F172A]" htmlFor="workspace-type">
+                Loại đơn vị
+              </label>
+              <select
+                id="workspace-type"
+                value={form.type}
+                onChange={(event) => {
+                  const type = event.target.value as WorkspaceType;
+                  setForm((current) => ({
+                    ...current,
+                    type,
+                    parentWorkspaceId: "none",
+                    registrationEnabled: type === "SCHOOL" ? current.registrationEnabled : false,
+                  }));
+                }}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="SCHOOL">Trường</option>
+                <option value="UNIVERSITY_SYSTEM">Đại học / hệ thống</option>
+                <option value="CITY">Thành phố</option>
+              </select>
+            </div>
+
+            {form.type === "SCHOOL" ? (
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-[#0F172A]" htmlFor="workspace-parent">
+                  Đơn vị đại học trực thuộc
+                </label>
+                <select
+                  id="workspace-parent"
+                  value={form.parentWorkspaceId}
+                  onChange={(event) => updateField("parentWorkspaceId", event.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="none">Không có — trực tiếp cấp Thành phố</option>
+                  {(parentWorkspaces.data?.items ?? []).map((parent) => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.name} ({parent.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+
+            <div className="space-y-1.5">
               <label className="text-sm font-semibold text-[#0F172A]" htmlFor="workspace-name">
-                Tên trường
+                Tên đơn vị
               </label>
               <Input
                 id="workspace-name"
                 value={form.name}
                 onChange={(event) => updateField("name", event.target.value)}
-                placeholder="Trường Đại học..."
+                placeholder="Tên đơn vị..."
                 autoComplete="organization"
               />
             </div>
@@ -170,10 +223,16 @@ export function WorkspaceCreateDialog({ open, onOpenChange }: WorkspaceCreateDia
                 label="Cho phép đăng ký"
                 description="Không bật mặc định. Backend vẫn kiểm tra bộ tiêu chí active."
                 checked={form.registrationEnabled}
-                disabled={!form.isActive}
+                disabled={!form.isActive || form.type !== "SCHOOL"}
                 onCheckedChange={(checked) => updateField("registrationEnabled", checked)}
               />
             </div>
+
+            {form.type !== "SCHOOL" ? (
+              <p className="text-xs text-[#64748B]">
+                Chỉ trường mới có thể bật đăng ký tài khoản sinh viên.
+              </p>
+            ) : null}
 
             {form.registrationEnabled ? (
               <div className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -200,7 +259,7 @@ export function WorkspaceCreateDialog({ open, onOpenChange }: WorkspaceCreateDia
             Hủy
           </Button>
           <Button type="submit" form="create-workspace-form" disabled={!canSubmit}>
-            {createWorkspace.isPending ? "Đang tạo..." : "Tạo trường triển khai"}
+            {createWorkspace.isPending ? "Đang tạo..." : "Tạo đơn vị"}
           </Button>
         </DialogFooter>
       </DialogContent>

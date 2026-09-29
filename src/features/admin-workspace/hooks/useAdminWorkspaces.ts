@@ -127,6 +127,12 @@ export function mapWorkspaceError(error: Error) {
     if (error.code === "WORKSPACE_STATUS_INVALID") {
       return "Trạng thái trường chưa hợp lệ. Vui lòng tải lại và thử lại.";
     }
+    if (error.code === "UNSUPPORTED_WORKSPACE_HIERARCHY") {
+      return "Trường chỉ có thể trực thuộc một đơn vị đại học / hệ thống hợp lệ.";
+    }
+    if (error.code === "WORKSPACE_HIERARCHY_IN_USE") {
+      return error.message || "Đơn vị đã có hồ sơ và không thể đổi quan hệ trực thuộc.";
+    }
     if (error.code === "WORKSPACE_INACTIVE") return "Trường đang tạm dừng hoạt động.";
   }
   return error.message || "Không thể thực hiện thao tác. Vui lòng thử lại.";

@@ -2,6 +2,7 @@ import type { Pagination, Role } from "@/lib/api/types";
 
 export type AdminWorkspaceListFilters = {
   search?: string;
+  type?: WorkspaceType;
   isActive?: boolean;
   registrationEnabled?: boolean;
   page?: number;
@@ -15,6 +16,16 @@ export type AdminWorkspaceListItem = {
   shortName: string | null;
   isActive: boolean;
   registrationEnabled: boolean;
+  type: WorkspaceType;
+  parentWorkspaceId: string | null;
+  parentWorkspace: {
+    id: string;
+    code: string;
+    name: string;
+    shortName: string | null;
+    type: WorkspaceType;
+  } | null;
+  childWorkspaceCount?: number;
   userCount: number;
   applicationCount: number;
   createdAt: string;
@@ -32,12 +43,17 @@ export type CreateWorkspacePayload = {
   shortName?: string | null;
   isActive?: boolean;
   registrationEnabled?: boolean;
+  type: WorkspaceType;
+  parentWorkspaceId?: string | null;
 };
 
 export type UpdateWorkspacePayload = {
   name?: string;
   shortName?: string | null;
+  parentWorkspaceId?: string | null;
 };
+
+export type WorkspaceType = "CITY" | "UNIVERSITY_SYSTEM" | "SCHOOL";
 
 export type UpdateWorkspaceStatusPayload = {
   isActive?: boolean;

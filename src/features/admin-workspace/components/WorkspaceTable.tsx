@@ -86,7 +86,7 @@ export function WorkspaceTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[260px] px-4">Trường triển khai</TableHead>
+            <TableHead className="min-w-[260px] px-4">Đơn vị triển khai</TableHead>
             <TableHead className="min-w-[130px]">Mã đơn vị</TableHead>
             <TableHead className="min-w-[140px]">Tình trạng</TableHead>
             <TableHead className="min-w-[150px]">Đăng ký</TableHead>
@@ -102,6 +102,12 @@ export function WorkspaceTable({
               <TableCell className="px-4">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-[#0F172A]">{item.name}</div>
+                  <div className="mt-0.5 truncate text-xs text-[#64748B]">
+                    {workspaceTypeLabel(item.type)}
+                    {item.parentWorkspace
+                      ? ` · trực thuộc ${item.parentWorkspace.shortName ?? item.parentWorkspace.name}`
+                      : " · cấp Thành phố"}
+                  </div>
                   {item.shortName ? (
                     <div className="mt-0.5 truncate text-xs text-[#64748B]">{item.shortName}</div>
                   ) : null}
@@ -171,6 +177,12 @@ export function WorkspaceTable({
       ) : null}
     </Card>
   );
+}
+
+function workspaceTypeLabel(type: AdminWorkspaceListItem["type"]) {
+  if (type === "CITY") return "Thành phố";
+  if (type === "UNIVERSITY_SYSTEM") return "Đại học / hệ thống";
+  return "Trường";
 }
 
 function WorkspaceStatusBadge({ active }: { active: boolean }) {

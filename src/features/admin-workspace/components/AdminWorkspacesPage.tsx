@@ -24,6 +24,7 @@ export function AdminWorkspacesPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<WorkspaceStatusFilter>("all");
   const [registration, setRegistration] = useState<WorkspaceRegistrationFilter>("all");
+  const [type, setType] = useState<"all" | "CITY" | "UNIVERSITY_SYSTEM" | "SCHOOL">("all");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -40,10 +41,11 @@ export function AdminWorkspacesPage() {
       search: search || undefined,
       isActive: status === "all" ? undefined : status === "active",
       registrationEnabled: registration === "all" ? undefined : registration === "open",
+      type: type === "all" ? undefined : type,
       page,
       limit: pageSize,
     }),
-    [page, registration, search, status],
+    [page, registration, search, status, type],
   );
 
   const workspaces = useAdminWorkspaces(filters);
@@ -74,6 +76,7 @@ export function AdminWorkspacesPage() {
           search={searchInput}
           status={status}
           registration={registration}
+          type={type}
           onSearchChange={setSearchInput}
           onStatusChange={(value) => {
             setStatus(value);
@@ -81,6 +84,10 @@ export function AdminWorkspacesPage() {
           }}
           onRegistrationChange={(value) => {
             setRegistration(value);
+            setPage(1);
+          }}
+          onTypeChange={(value) => {
+            setType(value);
             setPage(1);
           }}
         />

@@ -60,6 +60,7 @@ import {
   mapWorkspaceError,
   useAdminWorkspaceDetail,
   useAdminWorkspaceUsers,
+  useAdminWorkspaces,
   useUpdateWorkspace,
   useUpdateWorkspaceStatus,
 } from "@/features/admin-workspace/hooks/useAdminWorkspaces";
@@ -243,6 +244,15 @@ function OverviewTab({ workspace }: { workspace: AdminWorkspaceDetail }) {
           <h2 className="text-base font-bold text-[#0F172A]">Thông tin trường</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <InfoRow label="Tên trường" value={workspace.name} />
+            <InfoRow label="Loại đơn vị" value={workspaceTypeLabel(workspace.type)} />
+            <InfoRow
+              label="Trực thuộc"
+              value={
+                workspace.parentWorkspace
+                  ? `${workspace.parentWorkspace.name} (${workspace.parentWorkspace.code})`
+                  : "Cấp Thành phố"
+              }
+            />
             <InfoRow label="Tên viết tắt" value={workspace.shortName ?? "Chưa đặt"} />
             <InfoRow label="Mã đơn vị" value={workspace.code} />
             <InfoRow label="Ngày tạo" value={formatDateTime(workspace.createdAt)} />
@@ -528,15 +538,18 @@ function EditWorkspaceDialog({
   const updateWorkspace = useUpdateWorkspace(workspace.id);
   const [name, setName] = useState(workspace.name);
   const [shortName, setShortName] = useState(workspace.shortName ?? "");
+  const [parentWorkspaceId, setParentWorkspaceId] = useState(workspace.parentWorkspaceId ?? "none");
   const [error, setError] = useState<string | null>(null);
+  const parentWorkspaces = useAdminWorkspaces({ type: "UNIVERSITY_SYSTEM", page: 1, limit: 100 });
 
   useEffect(() => {
     if (open) {
       setName(workspace.name);
       setShortName(workspace.shortName ?? "");
+      setParentWorkspaceId(workspace.parentWorkspaceId ?? "none");
       setError(null);
     }
-  }, [open, workspace.name, workspace.shortName]);
+  }, [open, workspace.name, workspace.shortName, workspace.parentWorkspaceId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -545,6 +558,12 @@ function EditWorkspaceDialog({
       await updateWorkspace.mutateAsync({
         name,
         shortName: shortName.trim() ? shortName : null,
+        parentWorkspaceId:
+          workspace.type === "SCHOOL"
+            ? parentWorkspaceId === "none"
+              ? null
+              : parentWorkspaceId
+            : null,
       });
       onOpenChange(false);
     } catch (submitError) {
@@ -583,6 +602,31 @@ function EditWorkspaceDialog({
               onChange={(event) => setShortName(event.target.value)}
             />
           </div>
+          {workspace.type === "SCHOOL" ? (
+            <div className="space-y-2">
+              <Label htmlFor="workspace-parent">Đại học trực thuộc</Label>
+              <select
+                id="workspace-parent"
+                value={parentWorkspaceId}
+                disabled={workspace.totalApplications > 0}
+                onChange={(event) => setParentWorkspaceId(event.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="none">Không có — trực tiếp cấp Thành phố</option>
+                {(parentWorkspaces.data?.items ?? []).map((parent) => (
+                  <option key={parent.id} value={parent.id} disabled={!parent.isActive}>
+                    {parent.name} ({parent.code}){parent.isActive ? "" : " — tạm dừng"}
+                  </option>
+                ))}
+              </select>
+              {workspace.totalApplications > 0 ? (
+                <p className="text-xs text-amber-700">
+                  Đơn vị đã phát sinh hồ sơ; không thể đổi quan hệ trực thuộc để giữ nguyên ngữ cảnh
+                  lịch sử.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="workspace-code">Mã đơn vị</Label>
             <Input id="workspace-code" value={workspace.code} readOnly className="bg-[#F8FBFE]" />
@@ -609,6 +653,12 @@ function EditWorkspaceDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function workspaceTypeLabel(type: AdminWorkspaceDetail["type"]) {
+  if (type === "CITY") return "Thành phố";
+  if (type === "UNIVERSITY_SYSTEM") return "Đại học / hệ thống";
+  return "Trường";
 }
 
 function WorkspaceStatusDialog({
