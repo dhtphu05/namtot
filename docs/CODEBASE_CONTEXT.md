@@ -1569,6 +1569,14 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 - Award Registry roster row correction/revert and admin password reset are committed FE/BE capabilities. Award-specific audit/history remains unavailable to Data Uploader.
 - Phase 1.5 makes no visual redesign or design-system changes.
 
+## Phase S1 — Student Home refresh (2026-09-29)
+
+- Reworked only the V2 student overview. It now presents workspace/year context from authenticated/current-application data, one status hero and primary action, the five existing criterion cards in a responsive 3+2 grid, and a compact attention list only when server data contains relevant eligibility, deadline, supplement, review, or evidence work. Staff screens, route guards, RBAC, APIs, enums, and workflows were not changed.
+- Added the Student-domain `selectStudentHomeAction` selector with priority for final result, supplement request, tracking submitted/review/resolution, eligibility/deadline gates, a concrete criterion action, ready-to-submit, draft continuation, and safe fallback. Existing criteria presentation and student V2 primitives remain the source for names, icons, status colors, and surfaces.
+- Home calls the current-application endpoint without a fixed school year, and starts an application with only `applicationType: individual`; backend year defaults remain authoritative. City eligibility/deadline APIs are queried only for a current individual City application. Assistant narrative and notification feed content were removed from Home; their existing routes remain available.
+- Contract limits: no-application response does not report whether a review season is active, so no season state is inferred. Existing-application `NOT_CONFIGURED` is shown only when returned by the deadline endpoint. The current-application DTO does not provide cancellation/archive timestamps or a canceled status; no canceled state is simulated. S1 therefore does not establish “READY — PROCEED TO S2” until that contract gap is closed.
+- Student Home behavior and contract limits are documented in `docs/UI_GUIDE.md`; dedicated selector and Playwright coverage live in `src/features/student/selectors/__tests__/student-home.test.ts` and `tests/student-home-s1.spec.ts`.
+
 ## Phase 2 UI Foundation Consolidation (2026-09-29)
 
 - The existing Tailwind v4, Radix/shadcn, Lucide, Sonner, document viewers, and Student V2 components remain the UI foundation. `src/components/ui/*` is canonical; `ui-kit.tsx` adapts legacy project APIs. Shared semantic tokens are in `src/styles.css`, and the `student-v2-*` names remain aliases.
