@@ -59,6 +59,8 @@ import { Route as AppCollectiveIdRouteImport } from './routes/app.collective.$id
 import { Route as AppAwardRegistryAwardDecisionIdRouteImport } from './routes/app.award-registry.$awardDecisionId'
 import { Route as AppAdminWorkspacesRouteImport } from './routes/app.admin.workspaces'
 import { Route as AppAdminWorkspaceRouteImport } from './routes/app.admin.workspace'
+import { Route as AppAdminUsersRouteImport } from './routes/app.admin.users'
+import { Route as AppAdminOfficersRouteImport } from './routes/app.admin.officers'
 import { Route as AppManagerResultsApplicationIdRouteImport } from './routes/app.manager.results.$applicationId'
 import { Route as AppAdminWorkspacesWorkspaceIdRouteImport } from './routes/app.admin.workspaces.$workspaceId'
 
@@ -314,6 +316,16 @@ const AppAdminWorkspaceRoute = AppAdminWorkspaceRouteImport.update({
   path: '/admin/workspace',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminOfficersRoute = AppAdminOfficersRouteImport.update({
+  id: '/admin/officers',
+  path: '/admin/officers',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppManagerResultsApplicationIdRoute =
   AppManagerResultsApplicationIdRouteImport.update({
     id: '/$applicationId',
@@ -367,6 +379,8 @@ export interface FileRoutesByFullPath {
   '/app/vnpt': typeof AppVnptRoute
   '/app/wizard': typeof AppWizardRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/officers': typeof AppAdminOfficersRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
   '/app/admin/workspace': typeof AppAdminWorkspaceRoute
   '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
   '/app/award-registry/$awardDecisionId': typeof AppAwardRegistryAwardDecisionIdRoute
@@ -420,6 +434,8 @@ export interface FileRoutesByTo {
   '/app/vnpt': typeof AppVnptRoute
   '/app/wizard': typeof AppWizardRoute
   '/app': typeof AppIndexRoute
+  '/app/admin/officers': typeof AppAdminOfficersRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
   '/app/admin/workspace': typeof AppAdminWorkspaceRoute
   '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
   '/app/award-registry/$awardDecisionId': typeof AppAwardRegistryAwardDecisionIdRoute
@@ -475,6 +491,8 @@ export interface FileRoutesById {
   '/app/vnpt': typeof AppVnptRoute
   '/app/wizard': typeof AppWizardRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/officers': typeof AppAdminOfficersRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
   '/app/admin/workspace': typeof AppAdminWorkspaceRoute
   '/app/admin/workspaces': typeof AppAdminWorkspacesRouteWithChildren
   '/app/award-registry/$awardDecisionId': typeof AppAwardRegistryAwardDecisionIdRoute
@@ -531,6 +549,8 @@ export interface FileRouteTypes {
     | '/app/vnpt'
     | '/app/wizard'
     | '/app/'
+    | '/app/admin/officers'
+    | '/app/admin/users'
     | '/app/admin/workspace'
     | '/app/admin/workspaces'
     | '/app/award-registry/$awardDecisionId'
@@ -584,6 +604,8 @@ export interface FileRouteTypes {
     | '/app/vnpt'
     | '/app/wizard'
     | '/app'
+    | '/app/admin/officers'
+    | '/app/admin/users'
     | '/app/admin/workspace'
     | '/app/admin/workspaces'
     | '/app/award-registry/$awardDecisionId'
@@ -638,6 +660,8 @@ export interface FileRouteTypes {
     | '/app/vnpt'
     | '/app/wizard'
     | '/app/'
+    | '/app/admin/officers'
+    | '/app/admin/users'
     | '/app/admin/workspace'
     | '/app/admin/workspaces'
     | '/app/award-registry/$awardDecisionId'
@@ -1013,6 +1037,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminWorkspaceRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/admin/users': {
+      id: '/app/admin/users'
+      path: '/admin/users'
+      fullPath: '/app/admin/users'
+      preLoaderRoute: typeof AppAdminUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/admin/officers': {
+      id: '/app/admin/officers'
+      path: '/admin/officers'
+      fullPath: '/app/admin/officers'
+      preLoaderRoute: typeof AppAdminOfficersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/manager/results/$applicationId': {
       id: '/app/manager/results/$applicationId'
       path: '/$applicationId'
@@ -1134,6 +1172,8 @@ interface AppRouteChildren {
   AppVnptRoute: typeof AppVnptRoute
   AppWizardRoute: typeof AppWizardRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAdminOfficersRoute: typeof AppAdminOfficersRoute
+  AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppAdminWorkspaceRoute: typeof AppAdminWorkspaceRoute
   AppAdminWorkspacesRoute: typeof AppAdminWorkspacesRouteWithChildren
   AppCommitteeInboxRoute: typeof AppCommitteeInboxRoute
@@ -1178,6 +1218,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppVnptRoute: AppVnptRoute,
   AppWizardRoute: AppWizardRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAdminOfficersRoute: AppAdminOfficersRoute,
+  AppAdminUsersRoute: AppAdminUsersRoute,
   AppAdminWorkspaceRoute: AppAdminWorkspaceRoute,
   AppAdminWorkspacesRoute: AppAdminWorkspacesRouteWithChildren,
   AppCommitteeInboxRoute: AppCommitteeInboxRoute,

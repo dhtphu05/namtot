@@ -53,8 +53,13 @@ type NavGroup = { group: string; items: NavItem[] };
 
 const ADMIN_NAV: NavGroup[] = [
   {
-    group: "QUẢN LÝ ĐƠN VỊ",
-    items: [{ label: "Trường triển khai", to: "/app/admin/workspaces", icon: Building2 }],
+    group: "QUẢN TRỊ VẬN HÀNH",
+    items: [
+      { label: "Mùa xét", to: "/app/analytics", icon: CalendarCheck },
+      { label: "Đơn vị / Trường", to: "/app/admin/workspaces", icon: Building2 },
+      { label: "Người dùng", to: "/app/admin/users", icon: UsersRound },
+      { label: "Chuyên môn City Officer", to: "/app/admin/officers", icon: UserCog },
+    ],
   },
   {
     group: "DỮ LIỆU CHÍNH THỨC",
