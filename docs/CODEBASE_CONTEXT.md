@@ -1544,3 +1544,11 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 - The wider 137-test acceptance run reported 114 passed, 22 failed, and 1 skipped. Its presentation-semantics cases require a live backend and failed against the intentionally unavailable localhost API. Remaining failures were in broad student acceptance fixtures/assertions, including a deep-link upload drawer expectation; the visible normal upload action remains available. These are recorded as P2 follow-ups; no new P0/P1 frontend regression was found in the focused flows.
 - Backend rehearsal also verified the resubmit fix that marks matching supplement requests `resubmitted` in the submit transaction; the UI already refreshes the existing task/application state and requires no contract change.
 - Result: development feature freeze review can proceed. This is not a production-readiness or deployment sign-off.
+
+## Admin Operations Completion (2026-09-29)
+
+- Admin navigation now links to workspace/organization management, user/account management, City Officer specialization configuration, existing Award Registry, and City Review Season administration. Non-admins do not receive the admin configuration navigation or direct access to the admin account routes.
+- Workspace UI supports `SCHOOL`, `UNIVERSITY_SYSTEM`, and `CITY`, parent selection for schools, safe metadata edits, and activation/deactivation. Parent configuration follows server rules; schools with application history cannot be reparented.
+- User screens provide search/role/workspace filters, create/edit/activate/deactivate actions, and a five-checkbox City Officer specialization editor. Account creation takes an initial password; the current backend has no admin password-reset endpoint. Server validation remains authoritative for role/workspace pairings.
+- Season operations reuse `/app/analytics` and the existing season APIs for list/create/update/open/close and safe deletion. Empty seasons can be deleted and recreated; used seasons surface the actionable conflict and preserve applications/history.
+- Focused UI regression lives in `tests/phase4-admin-operations.spec.ts`. Its API route mock must target `http://localhost:8080/api/**`; a broad `**/api/**` pattern also intercepts frontend module URLs such as `/src/features/.../api/...` and returns JSON in place of JavaScript.
