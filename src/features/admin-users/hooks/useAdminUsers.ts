@@ -76,6 +76,19 @@ export function useSetAdminUserActive() {
   });
 }
 
+export function useResetAdminUserPassword() {
+  const invalidate = useInvalidateAdminUsers();
+  return useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) =>
+      (await adminUsersApi.resetPassword(userId, newPassword)).data,
+    onSuccess: async (_result, input) => {
+      await invalidate(input.userId);
+      toast.success("Đã đặt lại mật khẩu.");
+    },
+    onError: (error: Error) => toast.error(error.message || "Không thể đặt lại mật khẩu."),
+  });
+}
+
 export function useSetOfficerSpecializations() {
   const invalidate = useInvalidateAdminUsers();
   return useMutation({

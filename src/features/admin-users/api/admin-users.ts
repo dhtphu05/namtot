@@ -58,6 +58,12 @@ export const adminUsersApi = {
       body: { isActive },
     });
   },
+  resetPassword(userId: string, newPassword: string) {
+    return apiClient<{ userId: string }>(`/api/admin/users/${userId}/reset-password`, {
+      method: "POST",
+      body: { newPassword },
+    });
+  },
   setSpecializations(userId: string, criteria: string[]) {
     return apiClient<AdminUser["officerSpecializations"]>(
       `/api/admin/users/${userId}/specializations`,

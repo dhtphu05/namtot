@@ -363,7 +363,7 @@ test.describe("Award Decision Registry", () => {
     });
     await page.getByRole("button", { name: "Xử lý danh sách" }).click();
     await expect(page.getByText("Sẵn sàng xem trước")).toBeVisible();
-    await expect(page.getByText("0010220001")).toBeVisible();
+    await expect(page.getByText("0010220001", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Xác nhận quyết định" }).click();
     await expect(page.getByRole("alertdialog")).toBeVisible();
     await page.getByRole("button", { name: "Xác nhận và lưu" }).click();
@@ -434,7 +434,7 @@ test.describe("Award Decision Registry", () => {
       },
     });
     await page.goto("/app/award-registry/award-school-1");
-    await expect(page.getByText("Không hợp lệ", { exact: true })).toBeVisible();
+    await expect(page.getByRole("table").getByText("Không hợp lệ", { exact: true })).toBeVisible();
     await expect(page.getByText("Chưa resolve được đơn vị")).toBeVisible();
     await expect(page.getByRole("button", { name: "Xác nhận quyết định" })).toBeDisabled();
     await page.getByLabel("Cột trường (không bắt buộc với School)").selectOption("Trường");
@@ -445,6 +445,123 @@ test.describe("Award Decision Registry", () => {
         (request) => request === "PATCH /api/award-decisions/award-school-1/roster-mapping",
       ),
     ).toBeTruthy();
+  });
+
+  test("reviews OCR rows, saves a server correction, filters corrected rows, and reverts it", async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    let currentPreview = {
+      ...validPreview,
+      items: [
+        {
+          ...validPreview.items[0],
+          fullName: "Nguyễn An OCR",
+          original: {
+            studentCode: "0010220001",
+            fullName: "Nguyễn An OCR",
+            className: "23CNTT1",
+            institutionText: "DUT",
+          },
+          isCorrected: false,
+        },
+      ],
+    };
+    await installMocks(page, "data_uploader", requests, "SCHOOL", {
+      processing: async (route) => await json(route, { status: "preview_ready" }),
+      preview: async (route) =>
+        await json(route, currentPreview, { pagination: currentPreview.pagination }),
+      updateRow: async (route) => {
+        const body = route.request().postDataJSON() as { studentCode?: string; fullName?: string };
+        requests.push(`BODY ${JSON.stringify(body)}`);
+        currentPreview = {
+          ...currentPreview,
+          items: [
+            {
+              ...currentPreview.items[0],
+              studentCode: body.studentCode ?? currentPreview.items[0].studentCode,
+              fullName: body.fullName ?? currentPreview.items[0].fullName,
+              isCorrected: true,
+            },
+          ],
+        };
+        await json(route, {
+          mapping: currentPreview.mapping,
+          validationSummary: currentPreview.validationSummary,
+          items: currentPreview.items,
+          pagination: currentPreview.pagination,
+        });
+      },
+      revertRowCorrection: async (route) => {
+        currentPreview = {
+          ...currentPreview,
+          items: [
+            {
+              ...currentPreview.items[0],
+              studentCode: currentPreview.items[0].original!.studentCode,
+              fullName: currentPreview.items[0].original!.fullName,
+              isCorrected: false,
+            },
+          ],
+        };
+        await json(route, {
+          mapping: currentPreview.mapping,
+          validationSummary: currentPreview.validationSummary,
+          items: currentPreview.items,
+          pagination: currentPreview.pagination,
+        });
+      },
+    });
+
+    await page.goto("/app/award-registry/award-school-1");
+    const previewRow = page.getByRole("row").filter({ hasText: "23CNTT1" });
+    await expect(previewRow).toContainText("Nguyễn An OCR");
+    await page.getByRole("button", { name: "Sửa dòng 2" }).click();
+    await page.getByLabel("MSSV dòng 2").fill("0010220009");
+    await page.getByLabel("Họ tên dòng 2").fill("Nguyễn An đã sửa");
+    await page.getByRole("button", { name: "Lưu chỉnh sửa" }).click();
+
+    await expect(previewRow).toContainText("Nguyễn An đã sửa");
+    await expect(previewRow).toContainText("Đã chỉnh thủ công");
+    expect(requests).toContain('BODY {"studentCode":"0010220009","fullName":"Nguyễn An đã sửa"}');
+
+    await page.getByLabel("Lọc dòng roster").selectOption("corrected");
+    await expect
+      .poll(() => requests.some((request) => request.includes("filter=corrected")))
+      .toBeTruthy();
+    await page.getByRole("button", { name: "Hoàn tác sửa dòng 2" }).click();
+    await expect(previewRow).toContainText("Nguyễn An OCR");
+    await expect(previewRow).not.toContainText("Đã chỉnh thủ công");
+    expect(
+      requests.some(
+        (request) =>
+          request === "DELETE /api/award-decisions/award-school-1/roster-preview/2/correction",
+      ),
+    ).toBeTruthy();
+  });
+
+  test("confirmed decisions keep the roster preview read-only", async ({ page }) => {
+    const requests: string[] = [];
+    await installMocks(page, "data_uploader", requests, "SCHOOL", {
+      decision: async (route) => await json(route, { ...decisionDraft, status: "CONFIRMED" }),
+      processing: async (route) => await json(route, { status: "preview_ready" }),
+      recipients: async (route) =>
+        await json(route, {
+          items: [],
+          pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+        }),
+    });
+    await page.goto("/app/award-registry/award-school-1");
+
+    await expect(page.getByText("Đã xác nhận").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /Sửa dòng/ })).toHaveCount(0);
+    await expect(page.getByLabel("Lọc dòng roster")).toHaveCount(0);
+    expect(
+      requests.some(
+        (request) =>
+          request.startsWith("PATCH /api/award-decisions/") && request.includes("roster-preview"),
+      ),
+    ).toBeFalsy();
   });
 
   test("shows PDF processing and parser failure details with retry", async ({ page }) => {
@@ -671,6 +788,8 @@ type OverrideHandlers = Partial<{
   detail: (route: Route) => Promise<void>;
   recipients: (route: Route) => Promise<void>;
   updateMapping: (route: Route) => Promise<void>;
+  updateRow: (route: Route) => Promise<void>;
+  revertRowCorrection: (route: Route) => Promise<void>;
   archive: (route: Route) => Promise<void>;
   unarchive: (route: Route) => Promise<void>;
 }>;
@@ -722,6 +841,14 @@ async function installMocks(
       return json(route, preview, { pagination: preview.pagination });
     if (path.endsWith("/roster-mapping") && request.method() === "PATCH" && overrides.updateMapping)
       return overrides.updateMapping(route);
+    if (/\/roster-preview\/\d+$/.test(path) && request.method() === "PATCH" && overrides.updateRow)
+      return overrides.updateRow(route);
+    if (
+      /\/roster-preview\/\d+\/correction$/.test(path) &&
+      request.method() === "DELETE" &&
+      overrides.revertRowCorrection
+    )
+      return overrides.revertRowCorrection(route);
     if (path.endsWith("/roster-mapping") && request.method() === "PATCH")
       return json(route, {
         mapping: preview.mapping,

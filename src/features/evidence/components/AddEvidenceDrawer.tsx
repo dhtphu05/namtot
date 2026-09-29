@@ -542,13 +542,19 @@ export function AddEvidenceDrawer({
         </div>
 
         <DialogFooter className="shrink-0 border-t px-5 py-4">
-          <Button type="button" onClick={() => void submit()} disabled={isSubmitting}>
+          <Button
+            type="button"
+            className="min-h-11"
+            onClick={() => void submit()}
+            disabled={isSubmitting}
+          >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {isSubmitting ? "Đang ghi nhận..." : submitLabel}
           </Button>
           <Button
             type="button"
             variant="outline"
+            className="min-h-11"
             disabled={isSubmitting}
             onClick={() => onOpenChange(false)}
           >

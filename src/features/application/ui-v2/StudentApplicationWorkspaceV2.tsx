@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { BookOpenCheck, ChevronRight, Loader2, Plus, Search, Send, Upload } from "lucide-react";
 import {
   useCallback,
@@ -220,6 +220,8 @@ const criterionGuide: Record<CoreCriterion, { main: string[]; source: string }> 
 };
 
 export function StudentApplicationWorkspaceV2() {
+  const navigate = useNavigate({ from: "/app/application" });
+  const routeSearch = useSearch({ from: "/app/application" });
   const userRole = useAuth((state) => state.user?.role);
   const current = useCurrentApplication(SCHOOL_YEAR);
   const startApplication = useStartApplication();
@@ -395,12 +397,12 @@ export function StudentApplicationWorkspaceV2() {
 
   useEffect(() => {
     if (!application || initializedCriterionRef.current) return;
-    const fromQuery = getCriterionFromLocation();
+    const fromQuery = isCriterion(routeSearch.criterion) ? routeSearch.criterion : null;
     const fromAction = nextActions.find((item) => item.criterionKey)?.criterionKey;
     const nextCriterion = fromQuery ?? fromAction ?? coreStudentCriteria[0];
     initializedCriterionRef.current = true;
-    selectCriterion(nextCriterion, setSelectedCriterion);
-  }, [application, nextActions]);
+    setSelectedCriterion(nextCriterion);
+  }, [application, nextActions, routeSearch.criterion]);
 
   const openEvidenceDrawer = useCallback(
     (criterion: Criterion, context?: Omit<EvidenceDrawerContext, "criterion">) => {
@@ -419,13 +421,29 @@ export function StudentApplicationWorkspaceV2() {
 
   useEffect(() => {
     if (!application || handledUploadEvidenceRequestRef.current) return;
-    const requestedCriterion = getUploadEvidenceCriterionFromLocation();
+    if (routeSearch.uploadEvidence !== "1") return;
+    const requestedCriterion = isCriterion(routeSearch.criterion)
+      ? routeSearch.criterion
+      : "academic";
     if (!requestedCriterion) return;
     handledUploadEvidenceRequestRef.current = true;
-    selectCriterion(requestedCriterion, setSelectedCriterion);
-    clearUploadEvidenceRequestFromLocation();
+    setSelectedCriterion(requestedCriterion);
     openEvidenceDrawer(requestedCriterion);
-  }, [application, openEvidenceDrawer]);
+    void navigate({
+      replace: true,
+      search: (previous) => ({
+        ...previous,
+        criterion: requestedCriterion,
+        uploadEvidence: undefined,
+      }),
+    });
+  }, [
+    application,
+    navigate,
+    openEvidenceDrawer,
+    routeSearch.criterion,
+    routeSearch.uploadEvidence,
+  ]);
 
   useEffect(() => {
     if (!application || handledEvidenceConfirmRequestRef.current) return;
@@ -3715,27 +3733,17 @@ function selectCriterion(
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   url.searchParams.set("criterion", criterion);
-  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function getCriterionFromLocation(): Criterion | null {
   if (typeof window === "undefined") return null;
   const raw = new URLSearchParams(window.location.search).get("criterion") as Criterion | null;
-  return raw && coreStudentCriteria.includes(raw) ? raw : null;
+  return isCriterion(raw) ? raw : null;
 }
 
-function getUploadEvidenceCriterionFromLocation(): Criterion | null {
-  if (typeof window === "undefined") return null;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("uploadEvidence") !== "1") return null;
-  return getCriterionFromLocation() ?? "academic";
-}
-
-function clearUploadEvidenceRequestFromLocation() {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  url.searchParams.delete("uploadEvidence");
-  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+function isCriterion(value: unknown): value is Criterion {
+  return typeof value === "string" && coreStudentCriteria.includes(value as Criterion);
 }
 
 function getEvidenceConfirmRequestFromLocation(): string | null {
@@ -3751,7 +3759,11 @@ function clearEvidenceConfirmRequestFromLocation() {
   if (url.searchParams.get("mode") === "confirm") {
     url.searchParams.delete("mode");
     url.searchParams.delete("evidenceId");
-    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
   }
 }
 
@@ -3774,7 +3786,11 @@ function clearSuggestedEventImportRequestFromLocation() {
   if (url.searchParams.get("mode") === "suggested-import") {
     url.searchParams.delete("mode");
     url.searchParams.delete("eventId");
-    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
   }
 }
 

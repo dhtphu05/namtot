@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, Power, Settings2 } from "lucide-react";
+import { KeyRound, Pencil, Plus, Power, Settings2 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useAdminWorkspaces } from "@/features/admin-workspace/hooks/useAdminWorkspaces";
 import {
   useAdminUsers,
+  useResetAdminUserPassword,
   useCreateAdminUser,
   useSetAdminUserActive,
   useSetOfficerSpecializations,
@@ -66,6 +67,7 @@ export function AdminUsersPage({ officersOnly = false }: { officersOnly?: boolea
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [specializationUser, setSpecializationUser] = useState<AdminUser | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<AdminUser | null>(null);
   const filters = useMemo(
     () => ({
       q: search.trim() || undefined,
@@ -222,6 +224,16 @@ export function AdminUsersPage({ officersOnly = false }: { officersOnly?: boolea
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
+                        {!officersOnly ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            aria-label={`Đặt lại mật khẩu ${user.fullName}`}
+                            onClick={() => setResetPasswordUser(user)}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="outline"
@@ -279,7 +291,109 @@ export function AdminUsersPage({ officersOnly = false }: { officersOnly?: boolea
           if (!open) setSpecializationUser(null);
         }}
       />
+      {resetPasswordUser ? (
+        <ResetUserPasswordDialog
+          user={resetPasswordUser}
+          onOpenChange={(open) => {
+            if (!open) setResetPasswordUser(null);
+          }}
+        />
+      ) : null}
     </>
+  );
+}
+
+function ResetUserPasswordDialog({
+  user,
+  onOpenChange,
+}: {
+  user: AdminUser;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const resetPassword = useResetAdminUserPassword();
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      setFormError("Mật khẩu phải có từ 8 đến 128 ký tự.");
+      return;
+    }
+    if (newPassword !== confirmation) {
+      setFormError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+    try {
+      await resetPassword.mutateAsync({ userId: user.id, newPassword });
+      setNewPassword("");
+      setConfirmation("");
+      onOpenChange(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Không thể đặt lại mật khẩu.");
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !resetPassword.isPending && onOpenChange(open)}>
+      <DialogContent>
+        <form onSubmit={(event) => void submit(event)} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Đặt lại mật khẩu</DialogTitle>
+            <DialogDescription>
+              Đặt mật khẩu mới cho {user.fullName}. Mật khẩu dài từ 8 đến 128 ký tự.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="block space-y-1 text-sm font-medium">
+            Mật khẩu mới
+            <Input
+              aria-label="Mật khẩu mới"
+              type="password"
+              autoComplete="new-password"
+              maxLength={128}
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              required
+            />
+          </label>
+          <label className="block space-y-1 text-sm font-medium">
+            Xác nhận mật khẩu
+            <Input
+              aria-label="Xác nhận mật khẩu"
+              type="password"
+              autoComplete="new-password"
+              maxLength={128}
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              required
+            />
+          </label>
+          <p className="text-sm text-amber-800">
+            Các phiên có thể làm mới của tài khoản này sẽ bị thu hồi.
+          </p>
+          {formError ? (
+            <p role="alert" className="text-sm text-rose-700">
+              {formError}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => onOpenChange(false)}
+              disabled={resetPassword.isPending}
+            >
+              Hủy
+            </Button>
+            <Button type="submit" disabled={resetPassword.isPending}>
+              {resetPassword.isPending ? "Đang đặt lại…" : "Xác nhận đặt lại"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

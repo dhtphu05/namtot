@@ -9,7 +9,9 @@ import type {
   AwardRegistryFilters,
   AwardRosterMapping,
   AwardRosterPreview,
+  AwardRosterPreviewFilter,
   AwardRosterProcessing,
+  AwardRosterRowCorrection,
   WorkspaceName,
 } from "@/types/award-registry";
 
@@ -63,15 +65,32 @@ export const awardRegistryApi = {
   getProcessing: (decisionId: string) =>
     apiClient<AwardRosterProcessing>(`/api/award-decisions/${decisionId}/roster-processing`),
 
-  getPreview: (decisionId: string, page = 1, limit = 20) =>
+  getPreview: (
+    decisionId: string,
+    page = 1,
+    limit = 20,
+    filter: AwardRosterPreviewFilter = "all",
+  ) =>
     apiClient<AwardRosterPreview>(
-      `/api/award-decisions/${decisionId}/roster-preview${queryString({ page, limit })}`,
+      `/api/award-decisions/${decisionId}/roster-preview${queryString({ page, limit, filter })}`,
     ),
 
   updateMapping: (decisionId: string, mapping: AwardRosterMapping) =>
     apiClient<Pick<AwardRosterPreview, "mapping" | "validationSummary" | "items" | "pagination">>(
       `/api/award-decisions/${decisionId}/roster-mapping`,
       { method: "PATCH", body: mapping },
+    ),
+
+  updateRosterRow: (decisionId: string, sourceRow: number, correction: AwardRosterRowCorrection) =>
+    apiClient<Pick<AwardRosterPreview, "mapping" | "validationSummary" | "items" | "pagination">>(
+      `/api/award-decisions/${decisionId}/roster-preview/${sourceRow}`,
+      { method: "PATCH", body: correction },
+    ),
+
+  revertRosterRowCorrection: (decisionId: string, sourceRow: number) =>
+    apiClient<Pick<AwardRosterPreview, "mapping" | "validationSummary" | "items" | "pagination">>(
+      `/api/award-decisions/${decisionId}/roster-preview/${sourceRow}/correction`,
+      { method: "DELETE" },
     ),
 
   confirm: (decisionId: string) =>

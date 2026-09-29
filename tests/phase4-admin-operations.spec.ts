@@ -51,6 +51,63 @@ test("admin manages accounts and City Officer specializations", async ({ page })
   });
 });
 
+test("admin can reset a user's password with policy and confirmation validation", async ({
+  page,
+}) => {
+  const writes: Array<{ path: string; method: string; body: unknown }> = [];
+  await installAdminMocks(page, writes);
+  await page.goto("/app/admin/users", { waitUntil: "domcontentloaded" });
+
+  await page.getByRole("button", { name: "Đặt lại mật khẩu Nguyễn An" }).click();
+  const dialog = page.getByRole("dialog", { name: "Đặt lại mật khẩu" });
+  await expect(dialog).toContainText("Các phiên có thể làm mới của tài khoản này sẽ bị thu hồi.");
+  await dialog.getByLabel("Mật khẩu mới").fill("short");
+  await dialog.getByLabel("Xác nhận mật khẩu").fill("short");
+  await dialog.getByRole("button", { name: "Xác nhận đặt lại" }).click();
+  await expect(dialog.getByRole("alert")).toContainText(/8.*128|8 ký tự/i);
+
+  await dialog.getByLabel("Mật khẩu mới").fill("new-password-123");
+  await dialog.getByLabel("Xác nhận mật khẩu").fill("different-password");
+  await dialog.getByRole("button", { name: "Xác nhận đặt lại" }).click();
+  await expect(dialog.getByRole("alert")).toContainText(/không khớp/i);
+  expect(writes.some((item) => item.path.endsWith("/reset-password"))).toBe(false);
+
+  await dialog.getByLabel("Xác nhận mật khẩu").fill("new-password-123");
+  await dialog.getByRole("button", { name: "Xác nhận đặt lại" }).click();
+  await expect.poll(() => writes.some((item) => item.path.endsWith("/reset-password"))).toBe(true);
+  expect(writes.find((item) => item.path.endsWith("/reset-password"))).toMatchObject({
+    path: "/api/admin/users/student-1/reset-password",
+    method: "POST",
+    body: { newPassword: "new-password-123" },
+  });
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText("Đã đặt lại mật khẩu.")).toBeVisible();
+});
+
+test("admin password reset displays backend errors without clearing the form", async ({ page }) => {
+  await installAdminMocks(page, []);
+  await page.route("http://localhost:8080/api/admin/users/*/reset-password", async (route) => {
+    await route.fulfill({
+      status: 422,
+      headers: { ...corsHeadersFor(route), "content-type": "application/json" },
+      body: JSON.stringify({
+        success: false,
+        data: null,
+        error: { message: "Không thể đặt lại mật khẩu." },
+        meta: {},
+      }),
+    });
+  });
+  await page.goto("/app/admin/users", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Đặt lại mật khẩu Nguyễn An" }).click();
+  const dialog = page.getByRole("dialog", { name: "Đặt lại mật khẩu" });
+  await dialog.getByLabel("Mật khẩu mới").fill("new-password-123");
+  await dialog.getByLabel("Xác nhận mật khẩu").fill("new-password-123");
+  await dialog.getByRole("button", { name: "Xác nhận đặt lại" }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("Không thể đặt lại mật khẩu.");
+  await expect(dialog.getByLabel("Mật khẩu mới")).toHaveValue("new-password-123");
+});
+
 test("admin account form offers only compatible workspaces for uploader and City roles", async ({
   page,
 }) => {
@@ -63,6 +120,8 @@ test("admin account form offers only compatible workspaces for uploader and City
   await page.getByLabel("Email", { exact: true }).fill("uploader@example.test");
   await page.getByLabel("Mật khẩu khởi tạo").fill("temporary-pass-123");
   await page.getByLabel("Vai trò tài khoản").selectOption("data_uploader");
+  const createDialog = page.getByRole("dialog", { name: "Tạo tài khoản" });
+  await expect(createDialog).toBeVisible();
   const uploaderWorkspace = page.getByLabel("Đơn vị tài khoản");
   const uploaderOptions = await uploaderWorkspace
     .locator("option")
@@ -80,6 +139,7 @@ test("admin account form offers only compatible workspaces for uploader and City
       ),
     )
     .toBe(true);
+  await expect(createDialog).toBeHidden();
 
   await page.getByRole("button", { name: "Tạo tài khoản" }).click();
   await page.getByLabel("Họ và tên").fill("City Officer mới");
@@ -92,7 +152,8 @@ test("admin account form offers only compatible workspaces for uploader and City
     .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
   expect(cityOptions).toEqual(["", "city-1"]);
   await cityWorkspace.selectOption("city-1");
-  await page.getByRole("button", { name: "Tạo tài khoản", exact: true }).last().click();
+  const cityDialog = page.getByRole("dialog", { name: "Tạo tài khoản" });
+  await cityDialog.getByRole("button", { name: "Tạo tài khoản", exact: true }).click();
   await expect
     .poll(() =>
       writes.some(
@@ -274,6 +335,8 @@ async function installAdminMocks(
       });
     }
     if (path === "/api/admin/users" && method === "POST") return json(route, student, {}, 201);
+    if (path === "/api/admin/users/student-1/reset-password" && method === "POST")
+      return json(route, { userId: "student-1" });
     if (path.endsWith("/specializations") && method === "PUT") return json(route, []);
     if (path === "/api/analytics/city") return json(route, citySummary());
     if (path === "/api/analytics/city/applications")

@@ -76,7 +76,7 @@ test.describe("student application UI V2 acceptance", () => {
 
     for (const criterion of criteria) {
       await loginAndGoto(page, `/app/application?criterion=${criterion}`);
-      await expect(page.getByRole("main")).toContainText(criterionTitle(criterion));
+      await expect(studentContentMain(page)).toContainText(criterionTitle(criterion));
       await expectNoRouteCrash(page, criterion);
       await expectNoLayoutViolations(page, criterion);
     }
@@ -86,9 +86,28 @@ test.describe("student application UI V2 acceptance", () => {
     await loginAndGoto(page, "/app/application?criterion=academic&uploadEvidence=1");
     const dialog = page.getByRole("dialog").filter({ hasText: /minh chứng/i });
     await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("Học tập");
+    await expect(page).toHaveURL(/criterion=academic/);
+    await expect(page).not.toHaveURL(/uploadEvidence=1/);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
+    await expect(page.getByRole("dialog").filter({ hasText: /minh chứng/i })).toHaveCount(0);
     await expectNoLayoutViolations(page, "uploadEvidence");
+  });
+
+  test("browser Back after consuming an upload deep link returns without reopening the drawer", async ({
+    page,
+  }) => {
+    await loginAndGoto(page, "/app/application?criterion=ethics");
+    await page.goto("/app/application?criterion=physical&uploadEvidence=1");
+    const dialog = page.getByRole("dialog").filter({ hasText: /minh chứng/i });
+    await expect(dialog).toBeVisible();
+    await expect(page).not.toHaveURL(/uploadEvidence=1/);
+
+    await page.goBack();
+
+    await expect(page).toHaveURL(/criterion=ethics/);
+    await expect(dialog).toHaveCount(0);
   });
 
   test("criteria guide sheet opens and closes", async ({ page }) => {
@@ -118,7 +137,7 @@ test.describe("student application UI V2 acceptance", () => {
   test("ethics verification is passive for students", async ({ page }) => {
     await loginAndGoto(page, "/app/application?criterion=ethics");
     await expect(
-      page.getByText(/Sinh viên không tự xác minh|chờ nhà trường xác nhận/i),
+      page.locator("p").filter({ hasText: "Sinh viên không tự xác minh mục này" }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: /Xác nhận tình trạng vi phạm/i })).toHaveCount(0);
   });
@@ -572,41 +591,35 @@ test.describe("student application UI V2 acceptance", () => {
     await expect(page.getByText(/chưa đủ điều kiện nộp hồ sơ cấp Thành phố/i)).toBeVisible();
   });
 
-  test("physical path selection requires confirmation before changing dirty input", async ({
-    page,
-  }) => {
-    page.once("dialog", async (dialog) => {
-      expect(dialog.type()).toBe("confirm");
-      await dialog.dismiss();
-    });
+  test("physical path selection reveals the matching input action", async ({ page }) => {
     await loginAndGoto(page, "/app/application?criterion=physical");
-    await page.getByRole("button", { name: /Kết quả học phần thể dục/i }).click();
-    await page
-      .getByLabel(/Điểm|Kết quả/)
-      .first()
-      .fill("8");
-    await page.getByRole("button", { name: /Danh hiệu Sinh viên khỏe/i }).click();
-    await expect(page.getByRole("main")).toContainText(/Kết quả học phần thể dục/);
+    await page.getByRole("radio", { name: /Kết quả học phần thể dục/ }).click();
+    await expect(studentContentMain(page)).toContainText("Hình thức đang chọn");
+    await expect(studentContentMain(page)).toContainText("Kết quả học phần thể dục");
+    await expect(
+      studentContentMain(page).getByRole("button", { name: "Tự khai báo và tải minh chứng" }),
+    ).toBeVisible();
   });
 
   test("volunteer ledger uses backend aggregation values", async ({ page }) => {
     await loginAndGoto(page, "/app/application?criterion=volunteer");
-    await expect(page.getByRole("main")).toContainText(/12/);
-    await expect(page.getByRole("main")).toContainText(/3/);
-    await expect(page.getByRole("main")).toContainText(/15/);
-    await expect(page.getByRole("main")).toContainText(/Ngày hội hiến máu/);
-    await expect(page.getByRole("main")).not.toContainText(/conversionRate|convertVolunteer/i);
+    await expect(studentContentMain(page)).toContainText(/12/);
+    await expect(studentContentMain(page)).toContainText(/3/);
+    await expect(studentContentMain(page)).toContainText(/15/);
+    await expect(studentContentMain(page)).toContainText(/Ngày hội hiến máu/);
+    await expect(studentContentMain(page)).not.toContainText(/conversionRate|convertVolunteer/i);
   });
 
   test("integration path is dynamic and unknown backend keys render safely", async ({ page }) => {
     await loginAndGoto(page, "/app/application?criterion=integration");
-    await expect(page.getByRole("main")).toContainText(/Ngoại ngữ|Kỹ năng|Hình thức khác/);
-    await page.getByRole("button", { name: /Hình thức khác/i }).click();
-    await expect(page.getByRole("main")).toContainText(/Hình thức khác/);
+    await expect(studentContentMain(page)).toContainText(/Ngoại ngữ|Kỹ năng|Hình thức khác/);
+    await page.getByRole("radio", { name: /Hình thức khác/ }).click();
+    await expect(studentContentMain(page)).toContainText("Hình thức đang chọn");
+    await expect(studentContentMain(page)).toContainText("Hình thức khác");
     await expectNoLayoutViolations(page, "integration unknown path");
   });
 
-  test("evidence thumbnails, full preview, official import entry and participant fallback work", async ({
+  test("evidence thumbnails and Event Library reference entry preserve the criterion deep link", async ({
     page,
   }) => {
     await loginAndGoto(page, "/app/application?criterion=academic");
@@ -623,16 +636,41 @@ test.describe("student application UI V2 acceptance", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.keyboard.press("Escape");
 
-    await page.getByRole("button", { name: /Tìm trong kho/ }).click();
-    await expect(page.getByRole("dialog")).toContainText(/Ngày hội Sinh viên 5 tốt/);
-    await page
-      .getByRole("button", { name: /Dùng minh chứng|Nhập vào hồ sơ/ })
-      .first()
-      .click();
-    await expect(page.getByRole("dialog")).toContainText(
-      /không tìm thấy|không có tên|tải minh chứng/i,
+    const createRequests: unknown[] = [];
+    page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/applications/app-1/evidences"
+      ) {
+        createRequests.push(request.postDataJSON());
+      }
+    });
+
+    await page.goto("/app/event-library?criterion=academic");
+    await page.getByRole("button", { name: /Ngày hội Sinh viên 5 tốt/ }).click();
+    const addEvidenceDialog = page.getByRole("dialog", { name: "Thêm minh chứng" });
+    await expect(addEvidenceDialog.getByLabel("Tên minh chứng")).toHaveValue(
+      "Ngày hội Sinh viên 5 tốt",
     );
-    await page.keyboard.press("Escape");
+    await expect(addEvidenceDialog).toContainText("Học tập tốt");
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "evidence.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4 test"),
+    });
+    await addEvidenceDialog.getByRole("button", { name: "Thêm vào hồ sơ" }).click();
+    await expect(page).toHaveURL(/\/app\/application\?criterion=academic.*evidenceId=ev-created/);
+    expect(createRequests).toHaveLength(1);
+    expect(createRequests[0]).toMatchObject({
+      evidenceName: "Ngày hội Sinh viên 5 tốt",
+      criterion: "academic",
+      eventId: "event-1",
+      metadata: {
+        referenceEventId: "event-1",
+        referenceEventTitle: "Ngày hội Sinh viên 5 tốt",
+        referenceSource: "student_reference_library",
+      },
+    });
   });
 
   test("readonly submitted state and supplement-limited editing hide unsafe actions", async ({
@@ -651,26 +689,32 @@ test.describe("student application UI V2 acceptance", () => {
       .getByRole("button", { name: /03 Thể lực tốt|Thể lực tốt/ })
       .first()
       .click();
-    await expect(page.getByRole("button", { name: /Lưu|Thêm|Tự khai báo|Chọn/ })).toHaveCount(0);
+    await expect(
+      studentContentMain(page).getByRole("button", { name: "Tải minh chứng" }),
+    ).toBeDisabled();
+    await expect(studentContentMain(page).getByRole("radio").first()).toBeDisabled();
   });
 
   test("feedback empty/list states and assistant long conversation layout are stable", async ({
     page,
   }) => {
     await loginAndGoto(page, "/app/feedback?state=empty");
-    await expect(page.getByRole("main")).toContainText(/Không có phản hồi|Chưa có phản hồi/);
+    await expect(studentContentMain(page)).toContainText(/Không có phản hồi cần xử lý/);
 
     await loginAndGoto(page, "/app/feedback?state=list");
     await expect(page.getByRole("tablist")).toBeVisible();
-    await expect(page.getByRole("main")).toContainText(/Bổ sung bảng điểm/);
-    await expect(page.getByRole("main")).not.toContainText(/Quay lại hồ sơ/);
+    await expect(studentContentMain(page)).toContainText(/Bổ sung bảng điểm/);
+    await expect(studentContentMain(page)).not.toContainText(/Quay lại hồ sơ/);
 
     await loginAndGoto(page, "/app/assistant");
     await injectAssistantMessages(page);
-    await expect(page.locator("[role='log']")).toBeVisible();
+    const messageList = page.locator("section[aria-labelledby^='student-assistant-'] div.max-h-56");
+    await expect(messageList).toBeVisible();
     await expect(page.getByRole("textbox")).toBeVisible();
     const metrics = await page.evaluate(() => {
-      const log = document.querySelector("[role='log']");
+      const log = document.querySelector(
+        "section[aria-labelledby^='student-assistant-'] div.max-h-56",
+      );
       const form = document.querySelector("form");
       return {
         logScrollable: log ? log.scrollHeight > log.clientHeight : false,
@@ -717,7 +761,7 @@ async function installStudentApiMock(page: Page) {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
-    const state = routeState(url);
+    const state = routeState(new URL(page.url()));
 
     if (request.method() === "OPTIONS") {
       await route.fulfill({ status: 204, headers: mockCorsHeaders, body: "" });
@@ -749,6 +793,9 @@ async function installStudentApiMock(page: Page) {
     if (path.match(/\/api\/applications\/[^/]+\/evidences$/)) {
       if (request.method() === "POST") return json(route, evidenceCreated);
       return json(route, evidencesFor(url.searchParams.get("criterion") as Criterion | null));
+    }
+    if (path.match(/\/api\/evidences\/[^/]+\/(files|start-indexing)$/)) {
+      return json(route, evidenceCreated);
     }
     if (path.endsWith("/academic/gpa/declare")) {
       const body = parseJsonBody(request.postData()) as { value?: number };
@@ -785,6 +832,12 @@ async function installStudentApiMock(page: Page) {
     if (path === "/api/notifications") {
       return json(route, state === "empty" ? [] : notifications);
     }
+    if (
+      path === "/api/student-assistant/context" &&
+      new URL(page.url()).pathname === "/app/assistant"
+    ) {
+      return json(route, studentAssistantContext);
+    }
     if (path.match(/\/api\/notifications\/[^/]+\/read$/)) return json(route, null);
     if (path === "/api/chatbot/message") {
       return json(route, { message: "Bạn có thể kiểm tra từng tiêu chí trong hồ sơ.", cards: [] });
@@ -817,12 +870,16 @@ function parseJsonBody(postData: string | null) {
 async function loginAndGoto(page: Page, route: string) {
   await page.addInitScript(
     (auth) => {
-      window.localStorage.setItem("5tot-auth", JSON.stringify({ state: auth, version: 0 }));
+      if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+        window.localStorage.setItem("5tot-auth", JSON.stringify({ state: auth, version: 0 }));
+      }
     },
     { user: studentUser, accessToken: "test-token", refreshToken: "refresh" },
   );
   await page.goto(route, { waitUntil: "domcontentloaded" });
   await page.locator("body").waitFor({ state: "visible" });
+  await expect(page.getByText("Đang kiểm tra phiên đăng nhập...")).toHaveCount(0);
+  await expect(page.locator("body")).toContainText("Hệ thống Sinh viên 5 tốt");
 }
 
 async function loginAndGotoCityApplication(
@@ -942,7 +999,9 @@ async function expectNoLayoutViolations(page: Page, label: string) {
 
 async function injectAssistantMessages(page: Page) {
   await page.evaluate(() => {
-    const log = document.querySelector("[role='log']");
+    const log = document.querySelector(
+      "section[aria-labelledby^='student-assistant-'] div.max-h-56",
+    );
     if (!log) return;
     for (let i = 0; i < 24; i += 1) {
       const row = document.createElement("div");
@@ -969,6 +1028,10 @@ function routeState(url: URL): AppMode {
     return state;
   }
   return "draft";
+}
+
+function studentContentMain(page: Page) {
+  return page.locator("main").last();
 }
 
 function currentApplication(
@@ -1501,6 +1564,27 @@ const timeline = [
     createdAt: "2026-01-02T08:00:00Z",
   },
 ];
+
+const studentAssistantContext = {
+  contextType: "dashboard",
+  contextId: "app-1",
+  contextVersion: "test-v1",
+  generatedAt: "2026-01-02T08:00:00Z",
+  title: "Trợ lý theo hồ sơ",
+  deterministicSummary: "Trợ lý chỉ giải thích dữ liệu đang có trong hồ sơ của bạn.",
+  facts: [],
+  warnings: [],
+  primaryAction: null,
+  allowedActions: [],
+  suggestedQuestions: ["Tôi cần bổ sung gì?", "Quy định áp dụng ra sao?"],
+  boundaries: {
+    canAnswerAboutCriteria: true,
+    canAnswerAboutEvidence: true,
+    canAnswerAboutEvents: false,
+    canAnswerAboutSupplement: false,
+    requiresOfficerForOfficialDecision: true,
+  },
+};
 
 const notifications = [
   {

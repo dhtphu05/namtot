@@ -4,6 +4,15 @@ export type AwardLevel = "SCHOOL" | "UNIVERSITY_SYSTEM";
 export type AwardDecisionStatus = "DRAFT" | "CONFIRMED" | "ARCHIVED";
 export type AwardRecipientMatchStatus = "MATCHED" | "UNMATCHED" | "CONFLICT";
 export type AwardRosterRowStatus = "VALID" | "INVALID" | "DUPLICATE" | "CONFLICT";
+export type AwardRosterPreviewFilter =
+  | "all"
+  | "attention"
+  | "invalid"
+  | "duplicate"
+  | "conflict"
+  | "unmatched"
+  | "matched"
+  | "corrected";
 export type AwardRosterProcessingStatus = "not_started" | "processing" | "failed" | "preview_ready";
 
 export type AwardRegistryFilters = {
@@ -73,6 +82,13 @@ export type AwardRosterMapping = {
   institution?: string;
 };
 
+export type AwardRosterRowCorrection = Partial<{
+  studentCode: string;
+  fullName: string;
+  className: string | null;
+  institutionText: string | null;
+}>;
+
 export type AwardRosterSummary = {
   total: number;
   valid: number;
@@ -89,6 +105,13 @@ export type AwardRosterPreviewRow = {
   fullName: string | null;
   className: string | null;
   institutionText: string | null;
+  original?: {
+    studentCode: string | null;
+    fullName: string | null;
+    className: string | null;
+    institutionText: string | null;
+  };
+  isCorrected?: boolean;
   institutionWorkspaceId: string | null;
   matchStatus: AwardRecipientMatchStatus;
   status: AwardRosterRowStatus;

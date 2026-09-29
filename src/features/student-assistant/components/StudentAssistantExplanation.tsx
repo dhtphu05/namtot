@@ -216,7 +216,7 @@ export function StudentAssistantSuggestedQuestions({
         <button
           key={question}
           type="button"
-          className="min-h-8 rounded-full border bg-background px-3 text-left text-xs font-medium text-muted-foreground transition hover:bg-muted"
+          className="min-h-11 rounded-full border bg-background px-3 text-left text-xs font-medium text-muted-foreground transition hover:bg-muted"
           onClick={() => onSelect(question)}
         >
           {question}
@@ -254,7 +254,7 @@ export function StudentAssistantComposer({
           value={draft}
           onChange={(event) => onChange(event.target.value)}
           placeholder="Hỏi về mục này..."
-          className="min-h-10 resize-none text-sm"
+          className="min-h-11 resize-none text-sm"
           rows={1}
           maxLength={600}
           disabled={disabled}
@@ -265,17 +265,35 @@ export function StudentAssistantComposer({
           }}
         />
         {disabled ? (
-          <Button type="button" variant="outline" size="icon" onClick={onStop}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="min-h-11 min-w-11"
+            onClick={onStop}
+          >
             <Square className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">Dừng</span>
           </Button>
         ) : status === "error" ? (
-          <Button type="button" variant="outline" size="icon" onClick={onRetry}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="min-h-11 min-w-11"
+            onClick={onRetry}
+          >
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">Thử lại</span>
           </Button>
         ) : (
-          <Button type="button" size="icon" disabled={!canSend} onClick={onSend}>
+          <Button
+            type="button"
+            size="icon"
+            className="min-h-11 min-w-11"
+            disabled={!canSend}
+            onClick={onSend}
+          >
             <Send className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">Gửi</span>
           </Button>

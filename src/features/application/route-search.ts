@@ -22,6 +22,11 @@ export function validateStudentApplicationSearch(
         ? search.mode
         : undefined,
     reviewTaskId: typeof search.reviewTaskId === "string" ? search.reviewTaskId : undefined,
-    uploadEvidence: typeof search.uploadEvidence === "string" ? search.uploadEvidence : undefined,
+    uploadEvidence:
+      typeof search.uploadEvidence === "string"
+        ? search.uploadEvidence
+        : search.uploadEvidence === 1
+          ? "1"
+          : undefined,
   };
 }

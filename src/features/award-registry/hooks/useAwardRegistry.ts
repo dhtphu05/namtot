@@ -7,6 +7,8 @@ import type {
   AwardDecisionUpdateInput,
   AwardRegistryFilters,
   AwardRosterMapping,
+  AwardRosterPreviewFilter,
+  AwardRosterRowCorrection,
 } from "@/types/award-registry";
 
 export const awardRegistryKeys = {
@@ -15,7 +17,9 @@ export const awardRegistryKeys = {
     [...awardRegistryKeys.all, "list", filters] as const,
   detail: (id: string) => [...awardRegistryKeys.all, "detail", id] as const,
   processing: (id: string) => [...awardRegistryKeys.all, "processing", id] as const,
-  preview: (id: string, page = 1) => [...awardRegistryKeys.all, "preview", id, page] as const,
+  previewPrefix: (id: string) => [...awardRegistryKeys.all, "preview", id] as const,
+  preview: (id: string, page = 1, filter: AwardRosterPreviewFilter = "all") =>
+    [...awardRegistryKeys.previewPrefix(id), page, filter] as const,
   recipients: (id: string, page = 1) => [...awardRegistryKeys.all, "recipients", id, page] as const,
   workspaces: () => [...awardRegistryKeys.all, "workspaces"] as const,
 };
@@ -25,7 +29,7 @@ function invalidateDecision(queryClient: ReturnType<typeof useQueryClient>, id?:
   if (!id) return;
   void queryClient.invalidateQueries({ queryKey: awardRegistryKeys.detail(id) });
   void queryClient.invalidateQueries({ queryKey: awardRegistryKeys.processing(id) });
-  void queryClient.invalidateQueries({ queryKey: awardRegistryKeys.preview(id) });
+  void queryClient.invalidateQueries({ queryKey: awardRegistryKeys.previewPrefix(id) });
   void queryClient.invalidateQueries({ queryKey: awardRegistryKeys.recipients(id) });
 }
 
@@ -64,10 +68,15 @@ export function useAwardRosterProcessing(id: string, enabled = true) {
   return query;
 }
 
-export function useAwardRosterPreview(id: string, page: number, enabled: boolean) {
+export function useAwardRosterPreview(
+  id: string,
+  page: number,
+  filter: AwardRosterPreviewFilter,
+  enabled: boolean,
+) {
   return useQuery({
-    queryKey: awardRegistryKeys.preview(id, page),
-    queryFn: async () => requireAwardData(await awardRegistryApi.getPreview(id, page)),
+    queryKey: awardRegistryKeys.preview(id, page, filter),
+    queryFn: async () => requireAwardData(await awardRegistryApi.getPreview(id, page, 20, filter)),
     enabled: Boolean(id) && enabled,
   });
 }
@@ -169,6 +178,34 @@ export function useUpdateAwardRosterMapping(id: string) {
       invalidateDecision(client, id);
       toast.success("Đã cập nhật ánh xạ cột.");
     },
+  });
+}
+
+export function useUpdateAwardRosterRow(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { sourceRow: number; correction: AwardRosterRowCorrection }) =>
+      requireAwardData(
+        await awardRegistryApi.updateRosterRow(id, input.sourceRow, input.correction),
+      ),
+    onSuccess: () => {
+      invalidateDecision(client, id);
+      toast.success("Đã lưu chỉnh sửa dòng roster.");
+    },
+  });
+}
+
+export function useRevertAwardRosterRowCorrection(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (sourceRow: number) =>
+      requireAwardData(await awardRegistryApi.revertRosterRowCorrection(id, sourceRow)),
+    onSuccess: () => {
+      invalidateDecision(client, id);
+      toast.success("Đã hoàn tác chỉnh sửa dòng roster.");
+    },
+    onError: (error: Error) =>
+      toast.error(error.message || "Không thể hoàn tác chỉnh sửa dòng roster."),
   });
 }
 

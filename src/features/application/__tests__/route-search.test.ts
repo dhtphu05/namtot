@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { validateStudentApplicationSearch } from "@/features/application/route-search";
+import { validateStudentApplicationSearch } from "../route-search.ts";
 
 describe("student application route search validation", () => {
   it("keeps accepted deep-link search parameters", () => {
@@ -21,6 +21,13 @@ describe("student application route search validation", () => {
         reviewTaskId: "task-1",
         uploadEvidence: "1",
       },
+    );
+  });
+
+  it("normalizes TanStack's numeric uploadEvidence query value for direct links", () => {
+    assert.equal(
+      validateStudentApplicationSearch({ criterion: "physical", uploadEvidence: 1 }).uploadEvidence,
+      "1",
     );
   });
 

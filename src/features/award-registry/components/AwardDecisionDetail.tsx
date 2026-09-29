@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Archive,
@@ -6,8 +7,10 @@ import {
   ArrowLeft,
   FileCheck2,
   FileUp,
+  PencilLine,
   RefreshCw,
   Save,
+  Undo2,
   Upload,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
@@ -15,6 +18,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +43,9 @@ import type {
   AwardDecisionStatus,
   AwardRecipientMatchStatus,
   AwardRosterMapping,
+  AwardRosterPreviewFilter,
+  AwardRosterPreviewRow,
+  AwardRosterRowCorrection,
   AwardRosterRowStatus,
 } from "@/types/award-registry";
 import {
@@ -45,6 +59,8 @@ import {
   useProcessAwardRoster,
   useUpdateAwardDecision,
   useUpdateAwardRosterMapping,
+  useUpdateAwardRosterRow,
+  useRevertAwardRosterRowCorrection,
   useUnarchiveAwardDecision,
   useUploadAwardFile,
 } from "@/features/award-registry/hooks/useAwardRegistry";
@@ -60,10 +76,12 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
   const isDraft = decision?.status === "DRAFT";
   const processing = useAwardRosterProcessing(decisionId, Boolean(decision?.rosterFile));
   const [previewPage, setPreviewPage] = useState(1);
+  const [previewFilter, setPreviewFilter] = useState<AwardRosterPreviewFilter>("all");
   const [recipientPage, setRecipientPage] = useState(1);
   const preview = useAwardRosterPreview(
     decisionId,
     previewPage,
+    previewFilter,
     Boolean(isDraft && processing.data?.status === "preview_ready"),
   );
   const recipients = useAwardRecipients(
@@ -78,6 +96,8 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
   const upload = useUploadAwardFile(decisionId);
   const startProcessing = useProcessAwardRoster(decisionId);
   const updateMapping = useUpdateAwardRosterMapping(decisionId);
+  const updateRosterRow = useUpdateAwardRosterRow(decisionId);
+  const revertRosterRow = useRevertAwardRosterRowCorrection(decisionId);
   const confirm = useConfirmAwardDecision(decisionId);
   const archive = useArchiveAwardDecision(decisionId);
   const unarchive = useUnarchiveAwardDecision(decisionId);
@@ -439,8 +459,18 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
               mappingError={mappingError}
               page={previewPage}
               onPage={setPreviewPage}
+              filter={previewFilter}
+              onFilter={(filter) => {
+                setPreviewFilter(filter);
+                setPreviewPage(1);
+              }}
               onMappingChange={setMapping}
               onSaveMapping={() => mapping && updateMapping.mutate(mapping)}
+              onUpdateRow={(sourceRow, correction) =>
+                updateRosterRow.mutateAsync({ sourceRow, correction })
+              }
+              onRevertRow={(sourceRow) => revertRosterRow.mutateAsync(sourceRow)}
+              rowMutationPending={updateRosterRow.isPending || revertRosterRow.isPending}
               onRefresh={() => void preview.refetch()}
               institutionNameById={institutionNameById}
             />
@@ -574,8 +604,13 @@ function PreviewPanel({
   mappingError,
   page,
   onPage,
+  filter,
+  onFilter,
   onMappingChange,
   onSaveMapping,
+  onUpdateRow,
+  onRevertRow,
+  rowMutationPending,
   onRefresh,
   institutionNameById,
 }: {
@@ -587,8 +622,13 @@ function PreviewPanel({
   mappingError: string | null;
   page: number;
   onPage: (page: number) => void;
+  filter: AwardRosterPreviewFilter;
+  onFilter: (filter: AwardRosterPreviewFilter) => void;
   onMappingChange: (mapping: AwardRosterMapping) => void;
   onSaveMapping: () => void;
+  onUpdateRow: (sourceRow: number, correction: AwardRosterRowCorrection) => Promise<unknown>;
+  onRevertRow: (sourceRow: number) => Promise<unknown>;
+  rowMutationPending: boolean;
   onRefresh: () => void;
   institutionNameById: Map<string, string>;
 }) {
@@ -679,14 +719,32 @@ function PreviewPanel({
         <SummaryChip label="Trùng" count={preview.validationSummary.duplicate} />
         <SummaryChip label="Xung đột" count={preview.validationSummary.conflict} />
       </div>
+      <label className="mt-4 inline-flex flex-col gap-1 text-xs font-medium text-slate-700">
+        <span>Lọc dòng roster</span>
+        <select
+          aria-label="Lọc dòng roster"
+          className="h-9 min-w-64 rounded-md border border-slate-200 bg-white px-2 text-sm"
+          value={filter}
+          onChange={(event) => onFilter(event.target.value as AwardRosterPreviewFilter)}
+        >
+          <option value="all">Tất cả dòng</option>
+          <option value="attention">Cần kiểm tra</option>
+          <option value="invalid">Không hợp lệ</option>
+          <option value="duplicate">Trùng</option>
+          <option value="conflict">Xung đột</option>
+          <option value="unmatched">Chưa khớp tài khoản</option>
+          <option value="matched">Đã khớp tài khoản</option>
+          <option value="corrected">Đã chỉnh thủ công</option>
+        </select>
+      </label>
       <div className="mt-4 overflow-x-auto rounded-md border border-slate-200">
-        <table className="w-full min-w-[900px] text-left text-[12px]">
+        <table className="w-full min-w-[1180px] text-left text-[12px]">
           <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
             <tr>
               <th className="px-3 py-2">Dòng</th>
-              <th className="px-3 py-2">MSSV</th>
-              <th className="px-3 py-2">Họ tên</th>
-              <th className="px-3 py-2">Lớp</th>
+              <th className="px-3 py-2">MSSV đang dùng / OCR</th>
+              <th className="px-3 py-2">Họ tên đang dùng / OCR</th>
+              <th className="px-3 py-2">Lớp đang dùng / OCR</th>
               <th className="px-3 py-2">Trường nguồn / đã resolve</th>
               <th className="px-3 py-2">Khớp tài khoản</th>
               <th className="px-3 py-2">Kiểm tra</th>
@@ -696,11 +754,29 @@ function PreviewPanel({
             {preview.items.map((row) => (
               <tr key={row.sourceRow} className="border-t border-slate-100 align-top">
                 <td className="px-3 py-2">{row.sourceRow}</td>
-                <td className="px-3 py-2 font-mono">{row.studentCode || "—"}</td>
-                <td className="px-3 py-2">{row.fullName || "—"}</td>
-                <td className="px-3 py-2">{row.className || "—"}</td>
+                <td className="px-3 py-2 font-mono">
+                  <OriginalAndCurrent
+                    value={row.studentCode}
+                    original={row.original?.studentCode ?? row.studentCode}
+                  />
+                </td>
                 <td className="px-3 py-2">
-                  <div>{row.institutionText || "—"}</div>
+                  <OriginalAndCurrent
+                    value={row.fullName}
+                    original={row.original?.fullName ?? row.fullName}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <OriginalAndCurrent
+                    value={row.className}
+                    original={row.original?.className ?? row.className}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <OriginalAndCurrent
+                    value={row.institutionText}
+                    original={row.original?.institutionText ?? row.institutionText}
+                  />
                   {row.institutionWorkspaceId && (
                     <div className="mt-1 text-[11px] text-slate-500">
                       {institutionNameById.get(row.institutionWorkspaceId) ||
@@ -716,6 +792,14 @@ function PreviewPanel({
                 </td>
                 <td className="px-3 py-2">
                   <RowStatus status={row.status} />
+                  <p className="mt-1 text-[11px] text-slate-600">
+                    {rowStatusExplanation(row.status, row.matchStatus)}
+                  </p>
+                  {row.isCorrected && (
+                    <span className="mt-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800">
+                      Đã chỉnh thủ công
+                    </span>
+                  )}
                   {row.errors.length > 0 && (
                     <ul className="mt-1 space-y-0.5 text-[11px] text-red-800">
                       {row.errors.map((issue) => (
@@ -723,6 +807,21 @@ function PreviewPanel({
                       ))}
                     </ul>
                   )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <RosterRowEditor row={row} disabled={rowMutationPending} onSave={onUpdateRow} />
+                    {row.isCorrected && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Hoàn tác sửa dòng ${row.sourceRow}`}
+                        disabled={rowMutationPending}
+                        onClick={() => void onRevertRow(row.sourceRow)}
+                      >
+                        <Undo2 aria-hidden="true" /> Hoàn tác
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -757,6 +856,145 @@ function PreviewPanel({
       </div>
     </Card>
   );
+}
+
+function OriginalAndCurrent({
+  value,
+  original,
+}: {
+  value: string | null;
+  original: string | null;
+}) {
+  const display = (text: string | null) => text || "—";
+  return (
+    <div className="space-y-1">
+      <div>
+        <span className="text-[10px] uppercase tracking-wide text-slate-500">Đang dùng</span>
+        <div>{display(value)}</div>
+      </div>
+      <div className="text-[11px] text-slate-500">OCR ban đầu: {display(original)}</div>
+    </div>
+  );
+}
+
+function RosterRowEditor({
+  row,
+  disabled,
+  onSave,
+}: {
+  row: AwardRosterPreviewRow;
+  disabled: boolean;
+  onSave: (sourceRow: number, correction: AwardRosterRowCorrection) => Promise<unknown>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [studentCode, setStudentCode] = useState(row.studentCode ?? "");
+  const [fullName, setFullName] = useState(row.fullName ?? "");
+  const [className, setClassName] = useState(row.className ?? "");
+  const [institutionText, setInstitutionText] = useState(row.institutionText ?? "");
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const openEditor = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    setSaveError(null);
+    if (nextOpen) {
+      setStudentCode(row.studentCode ?? "");
+      setFullName(row.fullName ?? "");
+      setClassName(row.className ?? "");
+      setInstitutionText(row.institutionText ?? "");
+    }
+  };
+
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const correction: AwardRosterRowCorrection = {};
+    if (studentCode !== (row.studentCode ?? "")) correction.studentCode = studentCode;
+    if (fullName !== (row.fullName ?? "")) correction.fullName = fullName;
+    if (className !== (row.className ?? "")) correction.className = className.trim() || null;
+    if (institutionText !== (row.institutionText ?? "")) {
+      correction.institutionText = institutionText.trim() || null;
+    }
+    if (Object.keys(correction).length === 0) {
+      setOpen(false);
+      return;
+    }
+    try {
+      await onSave(row.sourceRow, correction);
+      setOpen(false);
+    } catch (error) {
+      setSaveError(errorMessage(error));
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={openEditor}>
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label={`Sửa dòng ${row.sourceRow}`}
+          disabled={disabled}
+        >
+          <PencilLine aria-hidden="true" /> Sửa
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Kiểm tra và sửa dòng {row.sourceRow}</DialogTitle>
+          <p className="text-sm text-slate-600">
+            OCR ban đầu được giữ nguyên. Giá trị bạn lưu sẽ được dùng để kiểm tra lại trường, tài
+            khoản và dòng trùng.
+          </p>
+        </DialogHeader>
+        <form className="space-y-3" onSubmit={(event) => void save(event)}>
+          <label className="block space-y-1 text-sm font-medium text-slate-700">
+            <span>MSSV dòng {row.sourceRow}</span>
+            <Input value={studentCode} onChange={(event) => setStudentCode(event.target.value)} />
+          </label>
+          <label className="block space-y-1 text-sm font-medium text-slate-700">
+            <span>Họ tên dòng {row.sourceRow}</span>
+            <Input value={fullName} onChange={(event) => setFullName(event.target.value)} />
+          </label>
+          <label className="block space-y-1 text-sm font-medium text-slate-700">
+            <span>Lớp dòng {row.sourceRow}</span>
+            <Input value={className} onChange={(event) => setClassName(event.target.value)} />
+          </label>
+          <label className="block space-y-1 text-sm font-medium text-slate-700">
+            <span>Trường trong roster dòng {row.sourceRow}</span>
+            <Input
+              value={institutionText}
+              onChange={(event) => setInstitutionText(event.target.value)}
+            />
+          </label>
+          {saveError && (
+            <p role="alert" className="text-sm text-red-700">
+              {saveError}
+            </p>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => openEditor(false)}>
+              Hủy
+            </Button>
+            <Button type="submit" disabled={disabled}>
+              {disabled ? "Đang lưu..." : "Lưu chỉnh sửa"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function rowStatusExplanation(
+  status: AwardRosterRowStatus,
+  matchStatus: AwardRecipientMatchStatus,
+) {
+  if (status === "DUPLICATE") return "Mã sinh viên bị trùng trong cùng phạm vi quyết định.";
+  if (status === "CONFLICT") return "Không xác định được trường từ dữ liệu hiện có.";
+  if (status === "INVALID") return "Thiếu hoặc sai dữ liệu bắt buộc; dòng này chặn xác nhận.";
+  if (matchStatus === "UNMATCHED")
+    return "Chưa gắn với tài khoản; vẫn có thể lưu recipient roster.";
+  return "Dòng đã qua kiểm tra roster.";
 }
 
 function MappingSelect({
