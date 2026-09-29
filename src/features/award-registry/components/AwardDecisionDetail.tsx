@@ -38,8 +38,16 @@ import {
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { AwardNextAction } from "@/features/award-registry/components/AwardNextAction";
+import { AwardConfirmationPanel } from "@/features/award-registry/components/AwardConfirmationPanel";
+import { AwardRosterReviewTable } from "@/features/award-registry/components/AwardRosterReviewTable";
+import { AwardRosterValidationSummary } from "@/features/award-registry/components/AwardRosterValidationSummary";
 import { AwardSourceFilePanel } from "@/features/award-registry/components/AwardSourceFilePanel";
 import { AwardWorkflowProgress } from "@/features/award-registry/components/AwardWorkflowProgress";
+import {
+  awardPreviewFilterOptions,
+  getAwardMatchPresentation,
+  getAwardRowPresentation,
+} from "@/features/award-registry/presentation";
 import type {
   AwardDecisionStatus,
   AwardRecipientMatchStatus,
@@ -471,51 +479,14 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
             />
           )}
           {isDraft && processing.data?.status === "preview_ready" && (
-            <Card className="p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Xác nhận quyết định</h2>
-                  <p className="mt-1 text-xs leading-5 text-slate-600">
-                    Chỉ xác nhận sau khi toàn bộ dòng vượt qua kiểm tra. Award UDN đã xác nhận có
-                    thể ảnh hưởng eligibility nộp hồ sơ Thành phố của sinh viên.
-                  </p>
-                </div>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button type="button" disabled={!canConfirm || confirm.isPending}>
-                      Xác nhận quyết định
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Xác nhận và lưu roster?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Hệ thống sẽ kiểm tra lại toàn bộ danh sách và lưu các recipient. Quyết định
-                        đã xác nhận không thể sửa bằng các thao tác draft hiện có. Với issuer UDN,
-                        dữ liệu có thể tham gia kiểm tra eligibility của sinh viên.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Quay lại kiểm tra</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => confirm.mutate()}>
-                        Xác nhận và lưu
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-              {preview.data?.validationSummary && (blockingRows > 0 || validRows === 0) && (
-                <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-                  Còn {blockingRows} dòng lỗi hoặc xung đột. Hãy sửa mapping/tệp nguồn và xử lý lại;
-                  backend sẽ kiểm tra lại trước khi xác nhận.
-                </p>
-              )}
-              {confirm.isError && (
-                <p role="alert" className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800">
-                  {errorMessage(confirm.error)}
-                </p>
-              )}
-            </Card>
+            <AwardConfirmationPanel
+              canConfirm={canConfirm}
+              validRows={validRows}
+              blockingRows={blockingRows}
+              pending={confirm.isPending}
+              error={confirm.isError ? errorMessage(confirm.error) : null}
+              onConfirm={() => confirm.mutate()}
+            />
           )}
 
           {decision.status === "CONFIRMED" && (
@@ -606,20 +577,21 @@ function PreviewPanel({
     <Card className="p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Xem trước người nhận</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Kiểm tra dữ liệu</h2>
           <p className="mt-1 text-xs text-slate-600">
-            {preview.validationSummary.total} dòng · {preview.validationSummary.valid} hợp lệ ·{" "}
-            {preview.validationSummary.matched} đã khớp tài khoản ·{" "}
-            {preview.validationSummary.unmatched} chưa khớp
+            Tìm và xử lý nhanh những dòng cần xem lại trước khi xác nhận dữ liệu công nhận.
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={onRefresh}>
           <RefreshCw aria-hidden="true" /> Làm mới
         </Button>
       </div>
+      <div className="mt-4">
+        <AwardRosterValidationSummary summary={preview.validationSummary} />
+      </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <MappingSelect
-          label="Cột MSSV"
+          label="Cột mã sinh viên *"
           field="studentCode"
           mapping={mapping}
           columns={preview.columns}
@@ -664,44 +636,24 @@ function PreviewPanel({
           {mappingError}
         </p>
       )}
-      <div className="mt-4 flex flex-wrap gap-2">
-        <SummaryChip label="Lỗi" count={preview.validationSummary.invalid} />
-        <SummaryChip label="Trùng" count={preview.validationSummary.duplicate} />
-        <SummaryChip label="Xung đột" count={preview.validationSummary.conflict} />
-      </div>
       <label className="mt-4 inline-flex flex-col gap-1 text-xs font-medium text-slate-700">
-        <span>Lọc dòng roster</span>
+        <span>Lọc dòng cần xử lý</span>
         <select
-          aria-label="Lọc dòng roster"
+          aria-label="Lọc dòng cần xử lý"
           className="h-9 min-w-64 rounded-md border border-slate-200 bg-white px-2 text-sm"
           value={filter}
           onChange={(event) => onFilter(event.target.value as AwardRosterPreviewFilter)}
         >
-          <option value="all">Tất cả dòng</option>
-          <option value="attention">Cần kiểm tra</option>
-          <option value="invalid">Không hợp lệ</option>
-          <option value="duplicate">Trùng</option>
-          <option value="conflict">Xung đột</option>
-          <option value="unmatched">Chưa khớp tài khoản</option>
-          <option value="matched">Đã khớp tài khoản</option>
-          <option value="corrected">Đã chỉnh thủ công</option>
+          {awardPreviewFilterOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </label>
-      <div className="mt-4 overflow-x-auto rounded-md border border-slate-200">
-        <table className="w-full min-w-[1180px] text-left text-[12px]">
-          <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
-            <tr>
-              <th className="px-3 py-2">Dòng</th>
-              <th className="px-3 py-2">MSSV đang dùng / OCR</th>
-              <th className="px-3 py-2">Họ tên đang dùng / OCR</th>
-              <th className="px-3 py-2">Lớp đang dùng / OCR</th>
-              <th className="px-3 py-2">Trường nguồn / đã resolve</th>
-              <th className="px-3 py-2">Khớp tài khoản</th>
-              <th className="px-3 py-2">Kiểm tra</th>
-            </tr>
-          </thead>
-          <tbody>
-            {preview.items.map((row) => (
+      <AwardRosterReviewTable
+        rows={preview.items}
+        renderRow={(row) => (
               <tr key={row.sourceRow} className="border-t border-slate-100 align-top">
                 <td className="px-3 py-2">{row.sourceRow}</td>
                 <td className="px-3 py-2 font-mono">
@@ -741,7 +693,7 @@ function PreviewPanel({
                   <MatchBadge status={row.matchStatus} />
                 </td>
                 <td className="px-3 py-2">
-                  <RowStatus status={row.status} />
+                  <RowStatus status={row.status} matchStatus={row.matchStatus} errors={row.errors} />
                   <p className="mt-1 text-[11px] text-slate-600">
                     {rowStatusExplanation(row.status, row.matchStatus)}
                   </p>
@@ -774,10 +726,8 @@ function PreviewPanel({
                   </div>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        )}
+      />
       <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-600">
         <span>
           Trang {preview.pagination.page} / {Math.max(1, preview.pagination.totalPages)} ·{" "}
@@ -822,7 +772,7 @@ function OriginalAndCurrent({
         <span className="text-[10px] uppercase tracking-wide text-slate-500">Đang dùng</span>
         <div>{display(value)}</div>
       </div>
-      <div className="text-[11px] text-slate-500">OCR ban đầu: {display(original)}</div>
+      <div className="text-[11px] text-slate-500">Giá trị từ tài liệu gốc: {display(original)}</div>
     </div>
   );
 }
@@ -892,8 +842,8 @@ function RosterRowEditor({
         <DialogHeader>
           <DialogTitle>Kiểm tra và sửa dòng {row.sourceRow}</DialogTitle>
           <p className="text-sm text-slate-600">
-            OCR ban đầu được giữ nguyên. Giá trị bạn lưu sẽ được dùng để kiểm tra lại trường, tài
-            khoản và dòng trùng.
+            Giá trị từ tài liệu gốc được giữ nguyên. Giá trị bạn lưu sẽ được máy chủ dùng để kiểm tra
+            lại đơn vị, sinh viên và dòng trùng.
           </p>
         </DialogHeader>
         <form className="space-y-3" onSubmit={(event) => void save(event)}>
@@ -939,12 +889,7 @@ function rowStatusExplanation(
   status: AwardRosterRowStatus,
   matchStatus: AwardRecipientMatchStatus,
 ) {
-  if (status === "DUPLICATE") return "Mã sinh viên bị trùng trong cùng phạm vi quyết định.";
-  if (status === "CONFLICT") return "Không xác định được trường từ dữ liệu hiện có.";
-  if (status === "INVALID") return "Thiếu hoặc sai dữ liệu bắt buộc; dòng này chặn xác nhận.";
-  if (matchStatus === "UNMATCHED")
-    return "Chưa gắn với tài khoản; vẫn có thể lưu recipient roster.";
-  return "Dòng đã qua kiểm tra roster.";
+  return getAwardRowPresentation({ status, matchStatus, errors: [] }).description;
 }
 
 function MappingSelect({
@@ -1124,37 +1069,40 @@ function ProcessingBadge({
 }
 
 function MatchBadge({ status }: { status: AwardRecipientMatchStatus }) {
-  const content = {
-    MATCHED: ["Đã khớp tài khoản", "border-emerald-200 bg-emerald-50 text-emerald-800"],
-    UNMATCHED: ["Chưa khớp tài khoản", "border-slate-200 bg-slate-100 text-slate-700"],
-    CONFLICT: ["Xung đột dữ liệu", "border-amber-200 bg-amber-50 text-amber-900"],
-  }[status];
+  const presentation = getAwardMatchPresentation(status);
+  const className =
+    presentation.tone === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : presentation.tone === "danger"
+        ? "border-red-200 bg-red-50 text-red-800"
+        : "border-amber-200 bg-amber-50 text-amber-900";
   return (
-    <Badge variant="outline" className={content[1]}>
-      {content[0]}
+    <Badge variant="outline" className={className} title={presentation.description}>
+      {presentation.label}
     </Badge>
   );
 }
 
-function RowStatus({ status }: { status: AwardRosterRowStatus }) {
-  const content = {
-    VALID: ["Hợp lệ", "border-emerald-200 bg-emerald-50 text-emerald-800"],
-    INVALID: ["Không hợp lệ", "border-red-200 bg-red-50 text-red-800"],
-    DUPLICATE: ["Trùng dòng", "border-amber-200 bg-amber-50 text-amber-900"],
-    CONFLICT: ["Xung đột", "border-amber-200 bg-amber-50 text-amber-900"],
-  }[status];
+function RowStatus({
+  status,
+  matchStatus,
+  errors,
+}: {
+  status: AwardRosterRowStatus;
+  matchStatus: AwardRecipientMatchStatus;
+  errors: string[];
+}) {
+  const presentation = getAwardRowPresentation({ status, matchStatus, errors });
+  const className =
+    presentation.tone === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : presentation.tone === "danger"
+        ? "border-red-200 bg-red-50 text-red-800"
+        : "border-amber-200 bg-amber-50 text-amber-900";
   return (
-    <Badge variant="outline" className={content[1]}>
-      {content[0]}
+    <Badge variant="outline" className={className} title={presentation.description}>
+      {presentation.label}
     </Badge>
-  );
-}
-
-function SummaryChip({ label, count }: { label: string; count: number }) {
-  return (
-    <span className="inline-flex min-h-7 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700">
-      {label}: <strong>{count}</strong>
-    </span>
   );
 }
 

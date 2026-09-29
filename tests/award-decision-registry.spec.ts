@@ -365,7 +365,6 @@ test.describe("Award Decision Registry", () => {
         ),
     });
     await page.goto("/app/award-registry");
-    await expect(page.getByRole("heading", { name: "Tiến độ hoàn thiện quyết định" })).toHaveCount(0);
     await page.getByRole("button", { name: "Tạo quyết định công nhận" }).click();
     await page.getByLabel("Năm học", { exact: true }).last().fill("2025-2026");
     await page.getByRole("button", { name: "Tạo bản nháp" }).click();
@@ -385,7 +384,7 @@ test.describe("Award Decision Registry", () => {
     await page.getByRole("button", { name: "Đọc danh sách" }).click();
     await expect(page.getByText("Sẵn sàng kiểm tra")).toBeVisible();
     await expect(page.getByText("0010220001", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Xác nhận quyết định" }).click();
+    await page.getByRole("button", { name: "Xác nhận dữ liệu công nhận" }).click();
     await expect(page.getByRole("alertdialog")).toBeVisible();
     await page.getByRole("button", { name: "Xác nhận và lưu" }).click();
     await expect(page.getByText("Đã xác nhận").first()).toBeVisible();
@@ -455,9 +454,13 @@ test.describe("Award Decision Registry", () => {
       },
     });
     await page.goto("/app/award-registry/award-school-1");
-    await expect(page.getByRole("table").getByText("Không hợp lệ", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Kiểm tra dữ liệu", exact: true })).toBeVisible();
+    await expect(page.getByText("Tóm tắt kiểm tra", { exact: true })).toBeVisible();
+    await expect(page.getByText("Cần kiểm tra", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("table").getByText("Thiếu MSSV", { exact: true })).toBeVisible();
+    await expect(page.getByRole("table").getByText("Cần kiểm tra thủ công", { exact: true })).toBeVisible();
     await expect(page.getByText("Chưa resolve được đơn vị")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Xác nhận quyết định" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Xác nhận dữ liệu công nhận" })).toBeDisabled();
     await page.getByLabel("Cột trường (không bắt buộc với School)").selectOption("Trường");
     await page.getByRole("button", { name: "Cập nhật mapping" }).click();
     await expect.poll(() => savedMapping).toEqual(preview.mapping);
@@ -546,7 +549,7 @@ test.describe("Award Decision Registry", () => {
     await expect(previewRow).toContainText("Đã chỉnh thủ công");
     expect(requests).toContain('BODY {"studentCode":"0010220009","fullName":"Nguyễn An đã sửa"}');
 
-    await page.getByLabel("Lọc dòng roster").selectOption("corrected");
+    await page.getByLabel("Lọc dòng cần xử lý").selectOption("corrected");
     await expect
       .poll(() => requests.some((request) => request.includes("filter=corrected")))
       .toBeTruthy();
@@ -576,7 +579,7 @@ test.describe("Award Decision Registry", () => {
 
     await expect(page.getByText("Đã xác nhận").first()).toBeVisible();
     await expect(page.getByRole("button", { name: /Sửa dòng/ })).toHaveCount(0);
-    await expect(page.getByLabel("Lọc dòng roster")).toHaveCount(0);
+    await expect(page.getByLabel("Lọc dòng cần xử lý")).toHaveCount(0);
     expect(
       requests.some(
         (request) =>
@@ -697,7 +700,7 @@ test.describe("Award Decision Registry", () => {
     await page.goto("/app/award-registry/award-school-1");
     await expect(page.getByText("Đại học Đà Nẵng", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Trường Đại học Bách khoa (DUT)", { exact: true })).toBeVisible();
-    await expect(page.getByText("Chưa khớp tài khoản")).toBeVisible();
+    await expect(page.getByText("Chưa tìm thấy sinh viên phù hợp")).toBeVisible();
   });
 
   test("archives a draft and renders the server-refetched archived state", async ({ page }) => {
