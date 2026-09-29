@@ -36,7 +36,12 @@ function DataUploaderHome() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.42fr)]">
+      <div className="flex flex-col">
+      <div
+        className={`grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.42fr)] ${
+          rows.length > 0 ? "order-2" : "order-1"
+        }`}
+      >
         <Card className="border-slate-200 bg-white p-5">
           <div className="flex items-start gap-4">
             <div className="rounded-xl bg-sky-50 p-3 text-sky-700">
@@ -71,7 +76,10 @@ function DataUploaderHome() {
         </Card>
       </div>
 
-      <section className="mt-5" aria-labelledby="current-work-title">
+      <section
+        className={`mt-5 ${rows.length > 0 ? "order-1" : "order-2"}`}
+        aria-labelledby="current-work-title"
+      >
         <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Công việc hiện tại</p>
@@ -140,6 +148,7 @@ function DataUploaderHome() {
           </div>
         )}
       </section>
+      </div>
     </>
   );
 }

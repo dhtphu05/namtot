@@ -143,6 +143,14 @@ test.describe("Award Decision Registry", () => {
     ).toBeVisible();
     await expect(page.getByText("Đơn vị quản lý dữ liệu", { exact: true })).toBeVisible();
     await expect(page.getByText("Không gian làm việc", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("05/QĐ-ĐTN", { exact: true })).toBeVisible();
+    const currentWorkTop = await page
+      .getByRole("heading", { name: "Những quyết định cần tiếp tục" })
+      .evaluate((element) => element.getBoundingClientRect().top);
+    const processTop = await page
+      .getByRole("heading", { name: "Lộ trình xử lý" })
+      .evaluate((element) => element.getBoundingClientRect().top);
+    expect(currentWorkTop).toBeLessThan(processTop);
     await expect(
       page.getByRole("link", { name: "Tạo quyết định công nhận", exact: true }),
     ).toBeVisible();
@@ -589,6 +597,7 @@ test.describe("Award Decision Registry", () => {
     await page.goto("/app/award-registry/award-school-1");
 
     await expect(page.getByText("Đã xác nhận").first()).toBeVisible();
+    await expect(page.getByTestId("award-workspace-main")).toContainText("Người nhận đã lưu");
     await expect(page.getByRole("button", { name: /Sửa dòng/ })).toHaveCount(0);
     await expect(page.getByLabel("Lọc dòng cần xử lý")).toHaveCount(0);
     expect(
@@ -674,6 +683,8 @@ test.describe("Award Decision Registry", () => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/app/award-registry/award-school-1");
     await expect(page.getByRole("heading", { name: "Kiểm tra dữ liệu", exact: true })).toBeVisible();
+    await expect(page.getByTestId("award-workspace-main")).toContainText("Kiểm tra dữ liệu");
+    await expect(page.getByTestId("award-workspace-rail")).toContainText("Thông tin quyết định");
 
     for (const viewport of [
       { width: 1280, height: 720 },

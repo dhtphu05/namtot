@@ -159,6 +159,8 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
   const canConfirm = Boolean(
     isDraft && validRows > 0 && blockingRows === 0 && processing.data?.status === "preview_ready",
   );
+  const reviewReady = isDraft && processing.data?.status === "preview_ready";
+  const primaryWorkReady = reviewReady || decision.status === "CONFIRMED";
   const metadataDirty =
     schoolYear.trim() !== decision.schoolYear ||
     decisionNumber.trim() !== (decision.decisionNumber ?? "") ||
@@ -214,8 +216,11 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
 
       <AwardWorkflowProgress decision={decision} processing={processing.data} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
-        <section className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+        <section
+          data-testid={primaryWorkReady ? "award-workspace-rail" : "award-workspace-main"}
+          className={`min-w-0 space-y-4 ${primaryWorkReady ? "order-2" : "order-1"}`}
+        >
           <Card className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -228,7 +233,7 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
                 {decision.status === "ARCHIVED" ? (
                   <AlertDialog key="unarchive">
                     <AlertDialogTrigger asChild>
-                      <Button type="button" variant="outline" disabled={unarchive.isPending}>
+                        <Button type="button" variant="ghost" size="sm" disabled={unarchive.isPending}>
                         <ArchiveRestore aria-hidden="true" /> Khôi phục
                       </Button>
                     </AlertDialogTrigger>
@@ -251,7 +256,7 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
                 ) : (
                   <AlertDialog key="archive">
                     <AlertDialogTrigger asChild>
-                      <Button type="button" variant="outline" disabled={archive.isPending}>
+                      <Button type="button" variant="ghost" size="sm" disabled={archive.isPending}>
                         <Archive aria-hidden="true" /> Lưu trữ
                       </Button>
                     </AlertDialogTrigger>
@@ -350,6 +355,7 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
           <AwardSourceFilePanel
             decisionFile={decision.decisionFile}
             rosterFile={decision.rosterFile}
+            layout={primaryWorkReady ? "stacked" : "split"}
             disabled={!isDraft || upload.isPending}
             uploadPending={upload.isPending}
             error={upload.isError ? errorMessage(upload.error) : mappingError}
@@ -456,8 +462,11 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
           </Card>
         </section>
 
-        <section className="space-y-4">
-          {isDraft && processing.data?.status === "preview_ready" && (
+        <section
+          data-testid={primaryWorkReady ? "award-workspace-main" : "award-workspace-rail"}
+          className={`min-w-0 space-y-4 ${primaryWorkReady ? "order-1" : "order-2"}`}
+        >
+          {reviewReady && (
             <PreviewPanel
               preview={preview.data}
               loading={preview.isLoading}

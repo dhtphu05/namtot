@@ -6,6 +6,7 @@ import type { AwardDecisionFile } from "@/types/award-registry";
 export function AwardSourceFilePanel({
   decisionFile,
   rosterFile,
+  layout = "stacked",
   disabled,
   uploadPending,
   error,
@@ -13,6 +14,7 @@ export function AwardSourceFilePanel({
 }: {
   decisionFile: AwardDecisionFile | null;
   rosterFile: AwardDecisionFile | null;
+  layout?: "stacked" | "split";
   disabled: boolean;
   uploadPending: boolean;
   error: string | null;
@@ -28,24 +30,26 @@ export function AwardSourceFilePanel({
           đối chiếu.
         </p>
       </div>
-      <UploadField
-        label="Văn bản quyết định"
-        hint="Căn cứ chính thức của đơn vị"
-        kind="decision"
-        fileName={decisionFile?.originalName}
-        disabled={disabled}
-        accept=".pdf,.jpg,.jpeg,.png,.webp"
-        onSelect={onSelect}
-      />
-      <UploadField
-        label="Danh sách sinh viên được công nhận"
-        hint="Danh sách để hệ thống đọc và kiểm tra"
-        kind="roster"
-        fileName={rosterFile?.originalName}
-        disabled={disabled}
-        accept=".csv,.xlsx,.pdf"
-        onSelect={onSelect}
-      />
+      <div className={layout === "split" ? "grid gap-3 lg:grid-cols-2" : "space-y-4"}>
+        <UploadField
+          label="Văn bản quyết định"
+          hint="Căn cứ chính thức của đơn vị"
+          kind="decision"
+          fileName={decisionFile?.originalName}
+          disabled={disabled}
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
+          onSelect={onSelect}
+        />
+        <UploadField
+          label="Danh sách sinh viên được công nhận"
+          hint="Danh sách để hệ thống đọc và kiểm tra"
+          kind="roster"
+          fileName={rosterFile?.originalName}
+          disabled={disabled}
+          accept=".csv,.xlsx,.pdf"
+          onSelect={onSelect}
+        />
+      </div>
       {uploadPending && (
         <p role="status" className="text-sm text-slate-600">
           Đang tải tài liệu lên...
