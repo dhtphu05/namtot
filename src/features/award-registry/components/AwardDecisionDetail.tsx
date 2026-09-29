@@ -203,7 +203,7 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
     <>
       <TopBar
         title={getAwardDecisionTitle(decision.decisionNumber)}
-        subtitle={`${decision.issuerWorkspace.name} · ${decision.awardLevel === "SCHOOL" ? "Cấp trường" : "Cấp Đại học Đà Nẵng"} · Năm học ${decision.schoolYear.replace("-", "–")}`}
+        subtitle={`${decision.awardLevel === "SCHOOL" ? `${decision.issuerWorkspace.name} · Cấp trường` : decision.issuerWorkspace.name} · Năm học ${decision.schoolYear.replace("-", "–")}`}
         action={
           <Link
             to="/app/award-registry"
@@ -405,7 +405,7 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
                 !decision.rosterFile
                   ? "Tải tệp CSV, XLSX hoặc PDF để bắt đầu."
                   : processing.data?.status === "processing"
-                    ? "Trạng thái lấy từ máy chủ; không hiển thị phần trăm ước tính."
+                    ? "Hệ thống đang đọc danh sách; kết quả sẽ xuất hiện sau khi hoàn tất."
                     : processing.data?.status === "failed"
                       ? "Kiểm tra lại tệp hoặc thử lại thao tác đọc danh sách."
                       : processing.data?.status === "preview_ready"
@@ -519,8 +519,7 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
               <h2 className="text-sm font-semibold text-slate-900">Quyết định đã lưu trữ</h2>
               <p className="mt-1 text-sm text-slate-600">
                 Dữ liệu quyết định và danh sách sinh viên vẫn được giữ lại. Quyết định chưa có hiệu
-                lực eligibility cho đến khi được khôi phục; trạng thái khôi phục do máy chủ xác
-                định.
+                lực eligibility cho đến khi được khôi phục.
               </p>
             </Card>
           )}
@@ -696,7 +695,7 @@ function PreviewPanel({
                   {row.institutionWorkspaceId && (
                     <div className="mt-1 text-[11px] text-slate-500">
                       {institutionNameById.get(row.institutionWorkspaceId) ||
-                        `Workspace ${row.institutionWorkspaceId}`}
+                        "Đã đối chiếu đơn vị"}
                     </div>
                   )}
                   {row.status === "CONFLICT" && (
@@ -856,8 +855,8 @@ function RosterRowEditor({
         <DialogHeader>
           <DialogTitle>Kiểm tra và sửa dòng {row.sourceRow}</DialogTitle>
           <p className="text-sm text-slate-600">
-            Giá trị từ tài liệu gốc được giữ nguyên. Giá trị bạn lưu sẽ được máy chủ dùng để kiểm tra
-            lại đơn vị, sinh viên và dòng trùng.
+            Giá trị từ tài liệu gốc được giữ nguyên. Giá trị bạn lưu sẽ được kiểm tra lại về đơn vị,
+            sinh viên và dòng trùng.
           </p>
         </DialogHeader>
         <form className="space-y-3" onSubmit={(event) => void save(event)}>

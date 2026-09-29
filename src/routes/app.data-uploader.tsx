@@ -138,7 +138,7 @@ function DataUploaderHome() {
                       {status.label}
                     </span>
                   </div>
-                  <p className="mt-4 text-xs leading-5 text-slate-600">Mở workspace để tải tài liệu và kiểm tra dữ liệu.</p>
+                  <p className="mt-4 text-xs leading-5 text-slate-600">Mở quyết định để tải tài liệu và kiểm tra dữ liệu.</p>
                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-sky-700 group-hover:underline">
                     Tiếp tục <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </span>

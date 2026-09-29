@@ -47,7 +47,7 @@ function getAwardWorkflowSteps(
       description: isConfirmed
         ? "Dữ liệu đã trở thành chính thức"
         : isArchived
-          ? "Đang lưu trữ; trạng thái do máy chủ quản lý"
+          ? "Đang lưu trữ; dữ liệu không còn hiệu lực sử dụng"
           : "Xác nhận sau khi xử lý hết các vấn đề",
       state: isConfirmed || isArchived ? "complete" : hasPreview ? "current" : "upcoming",
     },

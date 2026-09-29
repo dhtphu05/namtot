@@ -390,6 +390,7 @@ test.describe("Award Decision Registry", () => {
       page.getByText("Danh sách sinh viên được công nhận", { exact: true }).first(),
     ).toBeVisible();
     await expect(page.getByText("Không có phần trăm xử lý giả", { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/máy chủ|workspace|Workflow|suy ra từ dữ liệu máy chủ/i)).toHaveCount(0);
 
     await page.getByLabel("Tệp danh sách").setInputFiles({
       name: "roster.csv",
@@ -399,6 +400,7 @@ test.describe("Award Decision Registry", () => {
     await page.getByRole("button", { name: "Đọc danh sách" }).click();
     await expect(page.getByText("Sẵn sàng kiểm tra")).toBeVisible();
     await expect(page.getByText("0010220001", { exact: true })).toBeVisible();
+    await expect(page.getByText(/máy chủ|workspace|Workflow|suy ra từ dữ liệu máy chủ/i)).toHaveCount(0);
     await page.getByRole("button", { name: "Xác nhận dữ liệu công nhận" }).click();
     await expect(page.getByRole("alertdialog")).toBeVisible();
     await page.getByRole("button", { name: "Xác nhận và lưu" }).click();
@@ -766,6 +768,9 @@ test.describe("Award Decision Registry", () => {
     });
     await page.goto("/app/award-registry/award-school-1");
     await expect(page.getByText("Đại học Đà Nẵng", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByText("Đại học Đà Nẵng · Cấp Đại học Đà Nẵng · Năm học 2025–2026", { exact: true }),
+    ).toHaveCount(0);
     await expect(page.getByText("Trường Đại học Bách khoa (DUT)", { exact: true })).toBeVisible();
     await expect(page.getByText("Chưa tìm thấy sinh viên phù hợp")).toBeVisible();
   });
@@ -788,6 +793,7 @@ test.describe("Award Decision Registry", () => {
     );
     await page.getByRole("button", { name: "Xác nhận lưu trữ" }).click();
     await expect(page.getByText("Đã lưu trữ").first()).toBeVisible();
+    await expect(page.getByText(/máy chủ/i)).toHaveCount(0);
     expect(
       requests.some((request) => request === "POST /api/award-decisions/award-school-1/archive"),
     ).toBeTruthy();

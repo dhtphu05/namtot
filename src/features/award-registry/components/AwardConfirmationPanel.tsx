@@ -34,7 +34,7 @@ export function AwardConfirmationPanel({
           <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Điểm xác nhận</p>
           <h2 className="mt-1 text-base font-semibold text-slate-950">Xác nhận dữ liệu công nhận</h2>
           <p className="mt-1 text-xs leading-5 text-slate-600">
-            Máy chủ sẽ kiểm tra lại toàn bộ danh sách và lưu các sinh viên được công nhận. Đây là
+            Hệ thống sẽ kiểm tra lại toàn bộ danh sách và lưu các sinh viên được công nhận. Đây là
             bước đưa dữ liệu thành nguồn chính thức.
           </p>
         </div>
@@ -65,8 +65,8 @@ export function AwardConfirmationPanel({
       </div>
       {blockingRows > 0 || validRows === 0 ? (
         <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-          Hãy xử lý các dòng có lỗi hoặc xung đột trước khi xác nhận. Máy chủ vẫn là nơi quyết định
-          cuối cùng và có thể trả về lý do mới nếu dữ liệu đã thay đổi.
+          Hãy xử lý các dòng có lỗi hoặc xung đột trước khi xác nhận. Dữ liệu sẽ được kiểm tra lại
+          trước khi ghi nhận chính thức.
         </p>
       ) : null}
       {error && <p role="alert" className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p>}
