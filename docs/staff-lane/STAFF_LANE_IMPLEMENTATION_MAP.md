@@ -19,7 +19,57 @@
 - P0/P1/P2 đã ghi rõ.
 - Không runtime code changed.
 
-## S1 — Foundation, route guard, navigation, contract adapters
+## Canonical sequence and post-S2 ownership — 2026-09-30
+
+Đây là sequence chính thức sau khi hoàn tất S2:
+
+- **S0 Staff Audit — DONE**
+- **S1 Staff Contract Alignment — DONE**
+- **S2 Data Uploader / Award Registry — DONE**
+
+### Parallel implementation lanes
+
+#### Review Lane
+
+Review Lane owns:
+
+- `/app/queue`
+- `/app/review/:id`
+- City Officer review UX
+- claim và review decisions
+- Officer-side supplement request
+- Officer-side escalation trigger
+
+#### Operations Lane
+
+Operations Lane owns:
+
+- Admin operations
+- City Manager operations
+- season/readiness
+- assignment/workload
+- application oversight
+- results/export
+- existing finalization presentation
+
+#### Deferred/shared integration
+
+The following remain shared or deferred:
+
+- Supplement end-to-end
+- Resolution workflow
+- City Committee Decision Desk
+- cross-role supplement completion
+- changes to finalization semantics
+- global role/workspace/criterion model
+
+Neither parallel lane may independently redesign Resolution core.
+
+The phase notes below preserve historical planning context. The canonical
+sequence above supersedes any older label that called the City Officer
+review lane “S2”.
+
+## S1 — Foundation, route guard, navigation, contract adapters — DONE (historical implementation notes)
 
 ### Reuse
 
@@ -28,7 +78,7 @@
 - `src/lib/role-navigation.ts`.
 - `src/components/feedback/*`, `src/components/status/*`.
 
-### Scope to implement after approval
+### Historical scope
 
 - Chốt canonical paths cho Audit, Committee Inbox, Knowledge Base và legacy import.
 - Làm role×route×endpoint matrix thành acceptance contract.
@@ -40,7 +90,7 @@
 - Quyết định P1-01 → P1-06 trong audit.
 - Không tự mở City role cho endpoint khi chưa có scope rule.
 
-## S2 — City Officer review lane
+## Historical planning note — City Officer review lane (now Review Lane)
 
 ### Reuse
 
@@ -173,15 +223,11 @@
 
 ```text
 S0 audit
-  └─ contract decisions / approval
-       ├─ S1 foundation + canonical routes
-       ├─ S2 City Officer review
-       ├─ S3 City Manager coordination
-       ├─ S4 City Committee resolution-first
-       └─ S5 Admin control plane
-            └─ S6 contract/security/concurrency tests
-                 └─ S7 docs + legacy containment
-                      └─ S8 release/cutover
+  └─ S1 Staff Contract Alignment
+       └─ S2 Data Uploader / Award Registry
+            ├─ Review Lane
+            ├─ Operations Lane
+            └─ Deferred/shared integration
 ```
 
 ## S1 completed implementation map — 2026-09-30
@@ -232,6 +278,19 @@ S2 hoàn thành trên FE branch `feat/staff-lane`; BE Award Registry giữ nguy�
 - Actors remain `data_uploader` and `admin`. Lifecycle remains `DRAFT`, `CONFIRMED`, `ARCHIVED`; recipient matching remains `MATCHED`, `UNMATCHED`, `CONFLICT`; backend preview row status remains `VALID`, `INVALID`, `DUPLICATE`, `CONFLICT`.
 - No dashboard, history, analytics, recipient-editing, migration, permission, City role, or API alias was added. Data Uploader has no Award-specific audit/history endpoint.
 - Legacy Decision Import and Event Registry remain separate domains and were not redesigned by S2.
+
+### Roster state vocabulary
+
+The backend response states and FE review groupings are intentionally
+different layers:
+
+- Raw/backend preview row status remains `VALID`, `INVALID`, `DUPLICATE`, or `CONFLICT`.
+- Raw/backend recipient matching remains `MATCHED`, `UNMATCHED`, or `CONFLICT`.
+- FE presentation grouping derives staff-facing filters from those values:
+  `valid`, `warning`, `invalid`, `duplicate`, `missing_student_code`, and
+  `needs_manual_review`.
+- The FE grouping is presentation/review guidance only. It does not create
+  lifecycle states or replace server validation/matching semantics.
 
 ### S2 verification map
 
