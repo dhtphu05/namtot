@@ -109,6 +109,14 @@ Avoid:
 - Use Vietnamese user-facing text where the surrounding screen uses Vietnamese.
 - Shared page headers should preserve readable titles at narrow widths. Keep notification and user/logout controls in `AppHeader`; do not repeat them in page headers. The header hides season context unless a real season value is available.
 
+## Public Entry Pages (E1)
+
+- The public entry routes are `/`, `/login`, and `/signup`. Landing copy identifies **5TOT Đà Nẵng**, the City-level Student 5-good system, and Hội Sinh viên Việt Nam TP. Đà Nẵng. Keep it concise and institutional; do not add tourism imagery, unverified school-year context, marketing metrics, or a role directory.
+- Landing presents exactly the shared five core criteria from `src/lib/criteria-presentation.ts` and the City application path: prepare a dossier, add evidence, precheck, submit to the City, follow review and supplement if requested, then receive the result. Do not present School and University System as review levels.
+- Login accepts only the backend's email and password, never prepopulates a credential, and maps authentication failures to safe Vietnamese copy. Preserve session hydration and `getDefaultAppPathForRole` for current and legacy roles. Do not expose password recovery or email verification unless the corresponding public flow exists.
+- Public signup is Student-only. It posts the existing registration DTO, uses the public `registration=true` workspace list, keeps class/faculty/phone optional, and follows the register response's existing token/session redirect behavior. The school chooser must not contain a client-authored institution list or offer a role selector.
+- Auth forms need associated labels, browser autocomplete, visible focus, keyboard-operable school search and password controls, linked inline errors, and duplicate-submit prevention. Use backend-specific messages only for verified auth error codes; never surface a raw API error.
+
 ## Verification For UI Tasks
 
 Before finishing a UI change:

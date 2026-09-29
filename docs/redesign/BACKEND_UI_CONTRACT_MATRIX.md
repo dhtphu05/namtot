@@ -16,6 +16,14 @@
 | Tenant boundary | City review scope permits City workspace resources and active School records for review; Admin global; legacy staff stay within their workspace. This is not universal cross-school access for unrelated modules. | `src/shared/utils/review-workspace-scope.ts:reviewWorkspaceFilterFor/assertReviewWorkspaceAccess`; module-specific guards |
 | Source integrity | AI, OCR, and rules are advisory/processing outputs. Eligibility and final decisions are server results; human finalization is a distinct action. | applications/review/manager services and tests |
 
+## Public auth contracts (2026-09-30)
+
+| Capability | Verified contract | Frontend behavior | Gap |
+|---|---|---|---|
+| Login | `POST /api/auth/login` accepts `{ email, password }`. The password validator requires 8 characters; unknown email and wrong password share `INVALID_CREDENTIALS`. Successful login returns the user and session tokens. | Keep the email/password form, preserve session hydration and `getDefaultAppPathForRole`, and map invalid credentials to one generic message. | No public password-recovery or email-verification route exists. Admin password reset is not a student self-service recovery capability. |
+| Student signup | `POST /api/auth/register` accepts `fullName`, `email`, `password`, `workspaceId`, and `studentCode`; `className`, `faculty`, and `phone` are optional. Password length is 8–128. The repository assigns the `student` role, returns session tokens, and does not require email verification. | Send only this DTO without a role; on success save the returned session and redirect using the role map. | None for the basic registration/token flow. |
+| Registration schools | Public `GET /api/workspaces?registration=true` filters active and registration-enabled workspaces and returns only `{id,code,name,shortName}`. Admin workspace operations reject registration-enabled non-`SCHOOL` workspaces; this route does not expose workspace type. | Load the public list, provide searchable selection, and never use a client-authored school list or the admin endpoint. | **`BLOCKED_BY_BACKEND` for strict school-only integrity:** `/api/auth/register` checks active/registration-enabled but does not independently check `type === SCHOOL`. Minimal closure: add the `SCHOOL` predicate to the public registration list and reject non-`SCHOOL` workspaces in registration service. The public response does not need to expose workspace type. |
+
 ## Screen/action contracts
 
 ## Deadline contract
