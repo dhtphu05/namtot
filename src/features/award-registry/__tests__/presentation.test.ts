@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  getAwardDecisionTitle,
   getAwardDecisionStatusPresentation,
   getAwardMatchPresentation,
   getAwardPreviewSummary,
@@ -8,6 +9,13 @@ import {
 } from "../presentation.ts";
 
 describe("Award Registry presentation", () => {
+  it("uses a meaningful business title with a safe fallback", () => {
+    assert.equal(getAwardDecisionTitle("10"), "Quyết định công nhận số 10");
+    assert.equal(getAwardDecisionTitle("  05/QĐ-ĐTN  "), "Quyết định công nhận số 05/QĐ-ĐTN");
+    assert.equal(getAwardDecisionTitle(null), "Quyết định công nhận");
+    assert.equal(getAwardDecisionTitle(""), "Quyết định công nhận");
+  });
+
   it("keeps the exact lifecycle states while showing Vietnamese business labels", () => {
     assert.deepEqual(getAwardDecisionStatusPresentation("DRAFT"), {
       label: "Bản nháp",

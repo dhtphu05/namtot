@@ -64,21 +64,20 @@ export function AwardWorkflowProgress({
   const steps = getAwardWorkflowSteps(decision, processing);
 
   return (
-    <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="award-workflow-title">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <section className="mb-4 rounded-xl border border-slate-200 bg-white p-3" aria-labelledby="award-workflow-title">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Workflow</p>
           <h2 id="award-workflow-title" className="mt-1 text-base font-semibold text-slate-950">
             Tiến độ hoàn thiện quyết định
           </h2>
         </div>
-        <p className="text-xs text-slate-500">Tiến độ này được suy ra từ dữ liệu máy chủ.</p>
+        <p className="text-xs text-slate-500">Theo dõi phần đã hoàn tất và việc cần làm tiếp theo.</p>
       </div>
-      <ol className="mt-4 grid gap-2 md:grid-cols-5">
+      <ol className="mt-3 grid gap-2 md:grid-cols-5">
         {steps.map((step, index) => (
           <li
             key={step.label}
-            className={`rounded-lg border p-3 ${
+            className={`rounded-lg border p-2.5 ${
               step.state === "complete"
                 ? "border-emerald-200 bg-emerald-50/60"
                 : step.state === "current"

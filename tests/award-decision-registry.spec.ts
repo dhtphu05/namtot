@@ -141,6 +141,8 @@ test.describe("Award Decision Registry", () => {
         "Đưa quyết định và danh sách sinh viên đã được đơn vị công nhận vào hệ thống để phục vụ kiểm tra điều kiện hồ sơ cấp Thành phố.",
       ),
     ).toBeVisible();
+    await expect(page.getByText("Đơn vị quản lý dữ liệu", { exact: true })).toBeVisible();
+    await expect(page.getByText("Không gian làm việc", { exact: true })).toHaveCount(0);
     await expect(
       page.getByRole("link", { name: "Tạo quyết định công nhận", exact: true }),
     ).toBeVisible();
@@ -369,7 +371,12 @@ test.describe("Award Decision Registry", () => {
     await page.getByLabel("Năm học", { exact: true }).last().fill("2025-2026");
     await page.getByRole("button", { name: "Tạo bản nháp" }).click();
     await expect(page).toHaveURL(/\/app\/award-registry\/award-school-1$/);
+    await expect(
+      page.getByRole("heading", { name: "Quyết định công nhận số 05/QĐ-ĐTN" }),
+    ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Tiến độ hoàn thiện quyết định" })).toBeVisible();
+    await expect(page.getByText("Workflow", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Tiến độ này được suy ra từ dữ liệu máy chủ.", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Văn bản quyết định", { exact: true }).first()).toBeVisible();
     await expect(
       page.getByText("Danh sách sinh viên được công nhận", { exact: true }).first(),
@@ -455,6 +462,10 @@ test.describe("Award Decision Registry", () => {
     });
     await page.goto("/app/award-registry/award-school-1");
     await expect(page.getByRole("heading", { name: "Kiểm tra dữ liệu", exact: true })).toBeVisible();
+    await expect(page.getByText("Số sinh viên", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Lưu thông tin" })).toBeDisabled();
+    await page.getByLabel("Số quyết định").fill("06/QĐ-ĐTN");
+    await expect(page.getByRole("button", { name: "Lưu thông tin" })).toBeEnabled();
     await expect(page.getByText("Tóm tắt kiểm tra", { exact: true })).toBeVisible();
     await expect(page.getByText("Cần kiểm tra", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("table").getByText("Thiếu MSSV", { exact: true })).toBeVisible();

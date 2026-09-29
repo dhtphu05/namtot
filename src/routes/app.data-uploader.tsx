@@ -44,7 +44,7 @@ function DataUploaderHome() {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">
-                Không gian làm việc
+                Đơn vị quản lý dữ liệu
               </p>
               <h2 className="mt-1 text-lg font-semibold text-slate-950">{workspaceName}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">

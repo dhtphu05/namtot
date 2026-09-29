@@ -45,6 +45,7 @@ import { AwardSourceFilePanel } from "@/features/award-registry/components/Award
 import { AwardWorkflowProgress } from "@/features/award-registry/components/AwardWorkflowProgress";
 import {
   awardPreviewFilterOptions,
+  getAwardDecisionTitle,
   getAwardMatchPresentation,
   getAwardRowPresentation,
 } from "@/features/award-registry/presentation";
@@ -158,6 +159,10 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
   const canConfirm = Boolean(
     isDraft && validRows > 0 && blockingRows === 0 && processing.data?.status === "preview_ready",
   );
+  const metadataDirty =
+    schoolYear.trim() !== decision.schoolYear ||
+    decisionNumber.trim() !== (decision.decisionNumber ?? "") ||
+    decisionDate !== (decision.decisionDate?.slice(0, 10) ?? "");
 
   const saveMetadata = () => {
     const payload = {
@@ -195,7 +200,7 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
   return (
     <>
       <TopBar
-        title={decision.decisionNumber || "Chi tiết quyết định"}
+        title={getAwardDecisionTitle(decision.decisionNumber)}
         subtitle={`${decision.issuerWorkspace.name} · ${decision.awardLevel === "SCHOOL" ? "Cấp trường" : "Cấp Đại học Đà Nẵng"} · Năm học ${decision.schoolYear.replace("-", "–")}`}
         action={
           <Link
@@ -312,7 +317,7 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
                 />
               </label>
               <div className="space-y-1 text-xs font-medium text-slate-700">
-                <span>Số dòng người nhận</span>
+                <span>Số sinh viên</span>
                 <p className="flex h-9 items-center rounded-md bg-slate-50 px-3 text-sm text-slate-800">
                   {decision.recipientCount}
                 </p>
@@ -324,7 +329,7 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
                 className="mt-3"
                 variant="outline"
                 onClick={saveMetadata}
-                disabled={update.isPending || !schoolYear.trim()}
+                disabled={update.isPending || !metadataDirty || !schoolYear.trim()}
               >
                 <Save aria-hidden="true" />
                 {update.isPending ? "Đang lưu..." : "Lưu thông tin"}

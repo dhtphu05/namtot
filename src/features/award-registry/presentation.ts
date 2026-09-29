@@ -99,6 +99,11 @@ const rowPresentation: Record<AwardRowPresentation["key"], AwardRowPresentation>
   },
 };
 
+export function getAwardDecisionTitle(decisionNumber: string | null | undefined) {
+  const normalized = decisionNumber?.trim();
+  return normalized ? `Quyết định công nhận số ${normalized}` : "Quyết định công nhận";
+}
+
 export const awardPreviewFilterOptions = [
   { value: "all", label: "Tất cả dòng" },
   { value: "attention", label: "Cần kiểm tra" },
