@@ -115,13 +115,10 @@ const navByRole: Record<NavigationRole, NavigationGroup[]> = {
       items: [
         { label: "Theo dõi tiến độ", to: "/app/analytics", icon: "dashboard" },
         { label: "Hồ sơ và kết quả", to: "/app/manager/results", icon: "results" },
-        { label: "Phân công cán bộ", to: "/app/assignment", icon: "assignment" },
         { label: "Resolution Hub", to: "/app/resolution", icon: "resolution" },
         { label: "Báo cáo & export", to: "/app/export", icon: "export" },
         { label: "Audit log", to: "/app/audit", icon: "audit" },
-        { label: "Cấu hình tiêu chí", to: "/app/settings", icon: "criteria" },
         { label: "Sự kiện đã xác nhận", to: "/app/event-registry", icon: "events" },
-        { label: "Import quyết định", to: "/app/decision-imports", icon: "import" },
         { label: "Hồ sơ tập thể", to: "/app/manager/collective", icon: "collective" },
       ],
     },
