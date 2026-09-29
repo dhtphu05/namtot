@@ -52,7 +52,7 @@ export function AppHeader() {
       <Link
         to="/app"
         aria-label="Về trang chính 5TOT Đà Nẵng"
-        className="flex min-w-0 items-center gap-2.5 rounded-[var(--radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
+        className="flex min-h-11 min-w-0 items-center gap-2.5 rounded-[var(--radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
       >
         <img
           src={hsvvnEmblemUrl}
@@ -75,7 +75,7 @@ export function AppHeader() {
           asChild
           variant="ghost"
           size="icon"
-          className="relative text-[var(--brand-primary)]"
+          className="relative min-h-11 min-w-11 text-[var(--brand-primary)]"
         >
           <Link
             to={role === "student" ? "/app/feedback" : "/app/notifications"}
@@ -94,7 +94,7 @@ export function AppHeader() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-10 min-w-0 gap-2 px-2 text-[var(--text-primary)]"
+              className="min-h-11 min-w-0 gap-2 px-2 text-[var(--text-primary)]"
               aria-label="Menu tài khoản"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-primary-soft)] text-xs font-bold text-[var(--brand-primary)]">

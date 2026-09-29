@@ -233,7 +233,7 @@ describe("student application UI V2 visual contract", () => {
     );
 
     assert.match(html, /Hoàn thành/);
-    assert.match(html, /aria-current="step"/);
+    assert.match(html, /aria-pressed="true"/);
     assert.doesNotMatch(html, /ethics|academic|physical|volunteer|integration/);
   });
 
@@ -538,9 +538,10 @@ describe("student application UI V2 visual contract", () => {
       "utf8",
     );
 
-    assert.match(overviewSource, /Trợ lý theo hồ sơ/);
-    assert.match(overviewSource, /Gợi ý theo tiến độ/);
-    assert.match(overviewSource, /AI có thể đọc minh chứng/);
+    assert.doesNotMatch(
+      overviewSource,
+      /Trợ lý theo hồ sơ|Gợi ý theo tiến độ|AI có thể đọc minh chứng/,
+    );
     assert.match(supportSource, /StudentAssistantExplanation/);
     assert.doesNotMatch(supportSource, /SmartbotPanel/);
     assert.match(evidenceCardSource, /AI tiền kiểm minh chứng/);

@@ -351,7 +351,7 @@ export function CriteriaNavigationRowV2({
   onClick,
   className,
 }: {
-  number: string;
+  number?: string;
   title: string;
   status: StudentApplicationV2ProgressStatus;
   detail?: string;
@@ -364,11 +364,13 @@ export function CriteriaNavigationRowV2({
       type="button"
       onClick={onClick}
       className={criteriaNavigationRowV2ClassName({ active, className })}
-      aria-current={active ? "step" : undefined}
+      aria-pressed={active}
     >
-      <span className="mt-0.5 w-9 shrink-0 text-[20px] font-bold leading-7 text-[var(--student-v2-institutional-navy)]">
-        {number}
-      </span>
+      {number ? (
+        <span className="mt-0.5 w-9 shrink-0 text-[20px] font-bold leading-7 text-[var(--student-v2-institutional-navy)]">
+          {number}
+        </span>
+      ) : null}
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)]">
           {title}

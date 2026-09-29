@@ -102,7 +102,6 @@ import type {
   Criterion,
   CriterionCompletionItem,
   EvidenceResponse,
-  Level,
   MetricType,
   PrecheckResult,
   RequirementGroup,
@@ -110,6 +109,9 @@ import type {
   RequirementResponse,
 } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
+import { AppIcon } from "@/components/AppIcon";
+import { StatusBadge } from "@/components/status/StatusBadge";
+import { getCoreCriterionPresentation } from "@/lib/criteria-presentation";
 import {
   Sheet,
   SheetContent,
@@ -117,8 +119,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-
-const SCHOOL_YEAR = "2025-2026";
 
 type ApplicationWithWorkspaceData = ApplicationState & {
   summary?: {
@@ -154,9 +154,20 @@ type EvidenceDrawerContext = {
 
 type AssistantSearch = {
   source: "criterion";
-  applicationId?: string;
-  criterionKey?: string;
-  criterionLabel?: string;
+  applicationId: string | undefined;
+  status: string | undefined;
+  criterionKey: string | undefined;
+  criterionLabel: string | undefined;
+  feedbackId: string | undefined;
+  message: string | undefined;
+  nextActions: string | undefined;
+  contextType:
+    "dashboard" | "evidence_card" | "precheck" | "event_registry" | "supplement" | undefined;
+  contextId: string | undefined;
+  criterion: string | undefined;
+  evidenceId: string | undefined;
+  eventId: string | undefined;
+  reviewTaskId: string | undefined;
 };
 
 const editableStatuses = [
@@ -174,56 +185,12 @@ const readonlyStatuses = [
   "rejected",
 ];
 
-const levelLabels: Record<Level, string> = {
-  school: "Cấp Trường",
-  university: "Cấp Đại học Đà Nẵng",
-  city: "Cấp Thành phố",
-  central: "Cấp Trung ương",
-};
-
-const criterionGuide: Record<CoreCriterion, { main: string[]; source: string }> = {
-  ethics: {
-    main: [
-      "Điểm rèn luyện đạt yêu cầu của cấp đăng ký.",
-      "Không có vi phạm pháp luật, quy chế hoặc kỷ luật trong năm học xét.",
-    ],
-    source: "Quy định tiêu chí Đạo đức tốt",
-  },
-  academic: {
-    main: [
-      "GPA hoặc kết quả học tập đạt ngưỡng theo cấp đăng ký.",
-      "Dữ liệu học tập thuộc đúng năm học xét hoặc có xác nhận hợp lệ.",
-    ],
-    source: "Quy định tiêu chí Học tập tốt",
-  },
-  physical: {
-    main: [
-      "Có dữ liệu thể lực, danh hiệu sinh viên khỏe hoặc hoạt động thể thao phù hợp.",
-      "Minh chứng thể hiện rõ thời gian, đơn vị tổ chức và kết quả.",
-    ],
-    source: "Quy định tiêu chí Thể lực tốt",
-  },
-  volunteer: {
-    main: [
-      "Hoạt động tình nguyện hợp lệ theo số ngày, số buổi hoặc số hoạt động quy định.",
-      "Minh chứng cần thể hiện vai trò, đơn vị tổ chức và thời gian tham gia.",
-    ],
-    source: "Quy định tiêu chí Tình nguyện tốt",
-  },
-  integration: {
-    main: [
-      "Có ngoại ngữ, kỹ năng, hoạt động hội nhập hoặc thành tích Hội phù hợp.",
-      "Minh chứng còn hiệu lực và đúng phạm vi cấp xét.",
-    ],
-    source: "Quy định tiêu chí Hội nhập tốt",
-  },
-};
-
 export function StudentApplicationWorkspaceV2() {
   const navigate = useNavigate({ from: "/app/application" });
   const routeSearch = useSearch({ from: "/app/application" });
-  const userRole = useAuth((state) => state.user?.role);
-  const current = useCurrentApplication(SCHOOL_YEAR);
+  const user = useAuth((state) => state.user);
+  const userRole = user?.role;
+  const current = useCurrentApplication();
   const startApplication = useStartApplication();
   const runPrecheck = usePrecheck();
   const submitApplication = useSubmitApplication();
@@ -244,6 +211,9 @@ export function StudentApplicationWorkspaceV2() {
   const [selectedCriterion, setSelectedCriterion] = useState<Criterion>(
     () => getCriterionFromLocation() ?? "ethics",
   );
+  const [workspaceOpen, setWorkspaceOpen] = useState(() => Boolean(getCriterionFromLocation()));
+  const criterionHeadingRef = useRef<HTMLHeadingElement>(null);
+  const focusCriterionHeadingRef = useRef(false);
   const [evidenceDrawerContext, setEvidenceDrawerContext] = useState<EvidenceDrawerContext | null>(
     null,
   );
@@ -254,7 +224,6 @@ export function StudentApplicationWorkspaceV2() {
   const [optimisticEvidences, setOptimisticEvidences] = useState<EvidenceResponse[]>([]);
   const [metricDrafts, setMetricDrafts] = useState<Partial<Record<MetricType, string>>>({});
   const [gpaScale, setGpaScale] = useState<4 | 10>(4);
-  const initializedCriterionRef = useRef(false);
   const handledUploadEvidenceRequestRef = useRef(false);
   const handledEvidenceConfirmRequestRef = useRef(false);
   const handledSuggestedImportRequestRef = useRef(false);
@@ -385,10 +354,30 @@ export function StudentApplicationWorkspaceV2() {
     () => ({
       source: "criterion",
       applicationId: application?.id,
+      status: undefined,
       criterionKey: selectedCriterion,
       criterionLabel: criterionLabels[selectedCriterion],
+      feedbackId: undefined,
+      message: undefined,
+      nextActions: undefined,
+      contextType: undefined,
+      contextId: undefined,
+      criterion: undefined,
+      evidenceId: undefined,
+      eventId: undefined,
+      reviewTaskId: undefined,
     }),
     [application?.id, selectedCriterion],
+  );
+  const overviewEvidenceCounts = useMemo(
+    () =>
+      getOverviewEvidenceCounts({
+        criteriaStates,
+        completionItems,
+        evidences,
+        evidenceDataAvailable: evidencesQuery.data !== undefined,
+      }),
+    [criteriaStates, completionItems, evidences, evidencesQuery.data],
   );
 
   useEffect(() => {
@@ -396,13 +385,50 @@ export function StudentApplicationWorkspaceV2() {
   }, [applicationId]);
 
   useEffect(() => {
-    if (!application || initializedCriterionRef.current) return;
-    const fromQuery = isCriterion(routeSearch.criterion) ? routeSearch.criterion : null;
-    const fromAction = nextActions.find((item) => item.criterionKey)?.criterionKey;
-    const nextCriterion = fromQuery ?? fromAction ?? coreStudentCriteria[0];
-    initializedCriterionRef.current = true;
-    setSelectedCriterion(nextCriterion);
-  }, [application, nextActions, routeSearch.criterion]);
+    if (isCriterion(routeSearch.criterion)) {
+      setSelectedCriterion(routeSearch.criterion);
+      setWorkspaceOpen(true);
+      return;
+    }
+    if (!routeSearch.uploadEvidence) setWorkspaceOpen(false);
+  }, [routeSearch.criterion, routeSearch.uploadEvidence]);
+
+  const openCriterion = useCallback(
+    (criterion: Criterion) => {
+      if (!coreStudentCriteria.includes(criterion)) return;
+      if (
+        criterion !== selectedCriterion &&
+        hasOpenCriterionForm() &&
+        !confirmUnsavedCriterionChange()
+      ) {
+        return;
+      }
+      setSelectedCriterion(criterion);
+      setWorkspaceOpen(true);
+      focusCriterionHeadingRef.current = true;
+      void navigate({
+        replace: true,
+        search: (previous) => ({ ...previous, criterion }),
+      });
+    },
+    [navigate, selectedCriterion],
+  );
+
+  useEffect(() => {
+    if (!workspaceOpen || !focusCriterionHeadingRef.current) return;
+    focusCriterionHeadingRef.current = false;
+    const frame = window.requestAnimationFrame(() => criterionHeadingRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedCriterion, workspaceOpen]);
+
+  const showApplicationOverview = useCallback(() => {
+    if (hasOpenCriterionForm() && !confirmUnsavedCriterionChange()) return;
+    setWorkspaceOpen(false);
+    void navigate({
+      replace: true,
+      search: (previous) => ({ ...previous, criterion: undefined }),
+    });
+  }, [navigate]);
 
   const openEvidenceDrawer = useCallback(
     (criterion: Criterion, context?: Omit<EvidenceDrawerContext, "criterion">) => {
@@ -427,7 +453,7 @@ export function StudentApplicationWorkspaceV2() {
       : "academic";
     if (!requestedCriterion) return;
     handledUploadEvidenceRequestRef.current = true;
-    setSelectedCriterion(requestedCriterion);
+    openCriterion(requestedCriterion);
     openEvidenceDrawer(requestedCriterion);
     void navigate({
       replace: true,
@@ -440,6 +466,7 @@ export function StudentApplicationWorkspaceV2() {
   }, [
     application,
     navigate,
+    openCriterion,
     openEvidenceDrawer,
     routeSearch.criterion,
     routeSearch.uploadEvidence,
@@ -452,18 +479,18 @@ export function StudentApplicationWorkspaceV2() {
     const evidence = evidences.find((item) => item.id === evidenceId);
     if (!evidence) return;
     handledEvidenceConfirmRequestRef.current = true;
-    selectCriterion(evidence.criterion, setSelectedCriterion);
+    openCriterion(evidence.criterion);
     setSelectedEvidence(evidence);
-  }, [application, evidences]);
+  }, [application, evidences, openCriterion]);
 
   useEffect(() => {
     if (!application || handledSuggestedImportRequestRef.current) return;
     const request = getSuggestedEventImportRequestFromLocation();
     if (!request) return;
     handledSuggestedImportRequestRef.current = true;
-    selectCriterion(request.criterion, setSelectedCriterion);
+    openCriterion(request.criterion);
     openEvidenceDrawer(request.criterion, { suggestedEventId: request.eventId });
-  }, [application, openEvidenceDrawer]);
+  }, [application, openCriterion, openEvidenceDrawer]);
 
   const openOfficialEventLibrary = () => {
     if (!selectedSupportsOfficialEventImport) {
@@ -600,14 +627,14 @@ export function StudentApplicationWorkspaceV2() {
   };
 
   if (current.isLoading) {
-    return <WorkspaceSkeletonV2 />;
+    return <WorkspaceSkeletonV2 workspaceOpen={workspaceOpen} />;
   }
 
   if (current.isError) {
     return (
       <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6">
         <WorkspaceContextBarShell
-          title="Hồ sơ & minh chứng"
+          title="Hồ sơ của tôi"
           helper="Hoàn thiện từng tiêu chí bằng dữ liệu và minh chứng phù hợp."
         />
         <InlineErrorStateV2
@@ -623,22 +650,23 @@ export function StudentApplicationWorkspaceV2() {
     return (
       <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6">
         <WorkspaceContextBarShell
-          title="Hồ sơ & minh chứng"
-          helper="Tạo hồ sơ để bắt đầu chọn cấp đăng ký, thêm minh chứng và kiểm tra trước khi nộp."
+          title="Hồ sơ của tôi"
+          helper="Không gian chuẩn bị hồ sơ Sinh viên 5 tốt tại Đà Nẵng theo năm học do hệ thống ghi nhận."
         />
+        {startApplication.isError ? (
+          <InlineStateMessage
+            tone="warning"
+            title="Chưa tạo được hồ sơ"
+            description="Hệ thống chưa thể tạo hồ sơ lúc này. Hãy thử lại sau ít phút."
+          />
+        ) : null}
         <CompactEmptyStateV2
-          title={`Chưa có hồ sơ Sinh viên 5 tốt năm học ${SCHOOL_YEAR}`}
-          description="Sau khi tạo hồ sơ, bạn có thể hoàn thiện từng tiêu chí theo dữ liệu hiện có."
+          title="Bạn chưa có hồ sơ đang làm"
+          description="Bắt đầu tạo hồ sơ để xem và hoàn thiện lần lượt năm tiêu chí bằng thông tin, minh chứng hiện có."
           action={
             <ButtonV2
               type="button"
-              onClick={() =>
-                startApplication.mutate({
-                  schoolYear: SCHOOL_YEAR,
-                  applicationType: "individual",
-                  targetLevel: "school",
-                })
-              }
+              onClick={() => startApplication.mutate({ applicationType: "individual" })}
               disabled={startApplication.isPending}
             >
               {startApplication.isPending ? (
@@ -646,7 +674,7 @@ export function StudentApplicationWorkspaceV2() {
               ) : (
                 <Plus aria-hidden="true" />
               )}
-              Bắt đầu hồ sơ
+              {startApplication.isPending ? "Đang tạo hồ sơ" : "Bắt đầu hồ sơ"}
             </ButtonV2>
           }
         />
@@ -658,14 +686,19 @@ export function StudentApplicationWorkspaceV2() {
     <>
       <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6">
         <ApplicationWorkspaceContextBar
-          title="Hồ sơ & minh chứng"
-          helper="Hoàn thiện hồ sơ Sinh viên 5 tốt theo từng tiêu chí và kiểm tra trước khi nộp."
+          title="Hồ sơ của tôi"
+          helper={
+            application.targetLevel === "city"
+              ? "Hồ sơ Sinh viên 5 tốt cấp Thành phố. Hội Sinh viên Việt Nam TP. Đà Nẵng tiếp nhận và xét hồ sơ sau khi bạn gửi."
+              : "Hoàn thiện hồ sơ Sinh viên 5 tốt tại Đà Nẵng theo năm học hiện tại."
+          }
           schoolYear={application.schoolYear}
-          targetLevel={application.targetLevel}
+          schoolName={user?.workspace?.name ?? undefined}
           statusLabel={getStudentApplicationStatus(application.status).label}
+          onBack={workspaceOpen ? showApplicationOverview : undefined}
           onPrecheck={precheckNow}
           isPrechecking={runPrecheck.isPending}
-          showPrecheck={showCompletionGuidance}
+          showPrecheck={showCompletionGuidance && workspaceOpen}
         />
 
         {criteriaCompletion.isLoading ? (
@@ -700,207 +733,249 @@ export function StudentApplicationWorkspaceV2() {
           />
         ) : null}
 
-        <section className="grid min-w-0 items-start gap-6 lg:grid-cols-[232px_minmax(0,1fr)]">
-          <CriteriaNavigationV2
-            criteriaStates={criteriaStates}
-            activeCriterion={selectedCriterion}
-            onSelect={(criterion) => selectCriterion(criterion, setSelectedCriterion)}
+        {isReadonlyStatus ? (
+          <InlineStateMessage
+            tone="info"
+            title={
+              ["submitted", "under_review", "resolution_needed"].includes(application.status)
+                ? "Hồ sơ đang được xử lý ở chế độ chỉ xem"
+                : "Hồ sơ đã có kết quả cuối"
+            }
+            description={
+              ["submitted", "under_review", "resolution_needed"].includes(application.status)
+                ? "Bạn có thể xem thông tin và minh chứng. Chỉ cập nhật khi có yêu cầu bổ sung từ cán bộ."
+                : "Thông tin và minh chứng được giữ để bạn xem lại cùng kết quả đã công bố."
+            }
           />
+        ) : null}
 
-          <main className="min-w-0">
-            <div className="flex min-w-0 flex-col gap-6 pb-6">
-              <CriterionHeaderV2
-                state={selectedState}
-                onOpenGuide={() => setGuideOpen(true)}
-                showGuide={showCompletionGuidance}
-              />
+        {!workspaceOpen ? (
+          <ApplicationOverviewV2
+            criteriaStates={criteriaStates}
+            evidenceCounts={overviewEvidenceCounts}
+            status={application.status}
+            nextCriterion={nextActions[0]?.criterionKey}
+            hasSubmitCta={hasSubmitCta}
+            canEdit={canEditApplication}
+            supplementMode={isSupplementMode}
+            supplementCriteria={supplementCriteria}
+            canRunPrecheck={showCompletionGuidance}
+            isPrechecking={runPrecheck.isPending}
+            isSubmitDisabled={
+              submitApplication.isPending ||
+              cityEligibilityBlocksFirstSubmit ||
+              cityDeadlineBlocksFirstSubmit
+            }
+            onOpenCriterion={openCriterion}
+            onPrecheck={precheckNow}
+            onSubmit={submitNow}
+          />
+        ) : (
+          <section
+            data-criterion-workspace
+            className="grid min-w-0 items-start gap-6 lg:grid-cols-[232px_minmax(0,1fr)]"
+          >
+            <CriteriaNavigationV2
+              criteriaStates={criteriaStates}
+              evidenceCounts={overviewEvidenceCounts}
+              activeCriterion={selectedCriterion}
+              onSelect={openCriterion}
+            />
 
-              {isSelectedLocked ? (
-                <InlineStateMessage
-                  tone="warning"
-                  title="Tiêu chí này không nằm trong yêu cầu bổ sung hiện tại."
-                  description="Bạn có thể xem dữ liệu, nhưng chỉ bổ sung các tiêu chí được cán bộ yêu cầu."
+            <main className="min-w-0">
+              <div className="flex min-w-0 flex-col gap-6 pb-6">
+                <CriterionHeaderV2
+                  state={selectedState}
+                  headingRef={criterionHeadingRef}
+                  onOpenGuide={() => setGuideOpen(true)}
+                  showGuide={showCompletionGuidance}
                 />
-              ) : null}
 
-              {selectedSupplementRequest ? (
-                <SupplementCoachWorkspace
-                  applicationId={application.id}
-                  reviewTaskId={selectedSupplementRequest.id}
+                {isSelectedLocked ? (
+                  <InlineStateMessage
+                    tone="warning"
+                    title="Tiêu chí này không nằm trong yêu cầu bổ sung hiện tại."
+                    description="Bạn có thể xem dữ liệu, nhưng chỉ bổ sung các tiêu chí được cán bộ yêu cầu."
+                  />
+                ) : null}
+
+                {selectedSupplementRequest ? (
+                  <SupplementCoachWorkspace
+                    applicationId={application.id}
+                    reviewTaskId={selectedSupplementRequest.id}
+                    criterion={selectedCriterion}
+                    officialMessage={selectedSupplementRequest.reason}
+                    deadline={selectedSupplementRequest.deadline}
+                    requestedFields={selectedSupplementRequest.requestedFields}
+                  />
+                ) : null}
+
+                <CriterionDataSection
+                  completion={selectedCompletion}
                   criterion={selectedCriterion}
-                  officialMessage={selectedSupplementRequest.reason}
-                  deadline={selectedSupplementRequest.deadline}
-                  requestedFields={selectedSupplementRequest.requestedFields}
-                />
-              ) : null}
-
-              {showCompletionGuidance ? (
-                <CriterionActionRow
-                  assistantSearch={assistantSearch}
                   canEdit={canEditSelectedCriterion}
-                  canFindOfficialEvent={
-                    canEditSelectedCriterion &&
-                    selectedSupportsOfficialEventImport &&
-                    selectedCriterion !== "physical" &&
-                    selectedCriterion !== "integration"
+                  metrics={metrics}
+                  metricValue={metricDrafts[selectedMetric?.metricType ?? "gpa"] ?? ""}
+                  selectedMetric={selectedMetric}
+                  schoolYear={application.schoolYear}
+                  gpaScale={gpaScale}
+                  onGpaScaleChange={setGpaScale}
+                  onMetricChange={(value) =>
+                    selectedMetric
+                      ? setMetricDrafts((current) => ({
+                          ...current,
+                          [selectedMetric.metricType]: value,
+                        }))
+                      : undefined
+                  }
+                  onSaveMetric={saveMetric}
+                  savingMetric={
+                    upsertMetric.isPending ||
+                    declareEthicsConductScore.isPending ||
+                    declareAcademicGpa.isPending
+                  }
+                  savingPhysical={declarePhysicalCourseResult.isPending}
+                  onDeclarePhysicalCourseResult={(input) =>
+                    declarePhysicalCourseResult.mutateAsync({
+                      id: application.id,
+                      ...input,
+                    })
+                  }
+                  savingVolunteerActivity={addVolunteerActivity.isPending}
+                  onAddVolunteerActivity={(input) =>
+                    addVolunteerActivity.mutateAsync({
+                      id: application.id,
+                      ...input,
+                    })
+                  }
+                  savingIntegrationPath={addIntegrationPathResponse.isPending}
+                  onAddIntegrationPath={(input) =>
+                    addIntegrationPathResponse.mutateAsync({
+                      id: application.id,
+                      ...input,
+                    })
                   }
                   onFindOfficialEvent={openOfficialEventLibrary}
-                  onManualUpload={() =>
+                  onRequirementAction={(requirement) =>
                     openEvidenceDrawer(selectedCriterion, {
-                      requirementLabel: selectedState.label,
+                      requirementKey: requirement.key,
+                      requirementLabel: getRequirementPresentation(requirement).label,
                     })
                   }
                 />
-              ) : null}
 
-              {precheck ? (
-                <StudentAssistantExplanation
-                  params={{
-                    contextType: "precheck",
-                    contextId: application.id,
-                    applicationId: application.id,
-                    criterion: selectedCriterion,
-                    schoolYear: application.schoolYear,
+                <EvidenceGallerySection
+                  applicationId={application.id}
+                  canEdit={canEditSelectedCriterion}
+                  cityInitialSubmission={showCityEligibility && application.submittedAt == null}
+                  evidences={selectedEvidences}
+                  isLoading={evidencesQuery.isLoading}
+                  isError={evidencesQuery.isError}
+                  onAddEvidence={() => openEvidenceDrawer(selectedCriterion)}
+                  onViewEvidence={setSelectedEvidence}
+                  onDeleteEvidence={(evidence) => {
+                    if (!canEditSelectedCriterion) {
+                      toast.error("Tiêu chí này đang ở chế độ chỉ xem.");
+                      return;
+                    }
+                    setOptimisticEvidences((current) =>
+                      current.filter((item) => item.id !== evidence.id),
+                    );
+                    deleteEvidence.mutate({ id: evidence.id, applicationId: application.id });
                   }}
-                  title="Giải thích tiền kiểm"
-                  compact
                 />
-              ) : null}
 
-              <CriterionDataSection
-                completion={selectedCompletion}
-                criterion={selectedCriterion}
-                canEdit={canEditSelectedCriterion}
-                metrics={metrics}
-                metricValue={metricDrafts[selectedMetric?.metricType ?? "gpa"] ?? ""}
-                selectedMetric={selectedMetric}
-                schoolYear={application.schoolYear}
-                gpaScale={gpaScale}
-                onGpaScaleChange={setGpaScale}
-                onMetricChange={(value) =>
-                  selectedMetric
-                    ? setMetricDrafts((current) => ({
-                        ...current,
-                        [selectedMetric.metricType]: value,
-                      }))
-                    : undefined
-                }
-                onSaveMetric={saveMetric}
-                savingMetric={
-                  upsertMetric.isPending ||
-                  declareEthicsConductScore.isPending ||
-                  declareAcademicGpa.isPending
-                }
-                savingPhysical={declarePhysicalCourseResult.isPending}
-                onDeclarePhysicalCourseResult={(input) =>
-                  declarePhysicalCourseResult.mutateAsync({
-                    id: application.id,
-                    ...input,
-                  })
-                }
-                savingVolunteerActivity={addVolunteerActivity.isPending}
-                onAddVolunteerActivity={(input) =>
-                  addVolunteerActivity.mutateAsync({
-                    id: application.id,
-                    ...input,
-                  })
-                }
-                savingIntegrationPath={addIntegrationPathResponse.isPending}
-                onAddIntegrationPath={(input) =>
-                  addIntegrationPathResponse.mutateAsync({
-                    id: application.id,
-                    ...input,
-                  })
-                }
-                onFindOfficialEvent={openOfficialEventLibrary}
-                onRequirementAction={(requirement) =>
-                  openEvidenceDrawer(selectedCriterion, {
-                    requirementKey: requirement.key,
-                    requirementLabel: getRequirementPresentation(requirement).label,
-                  })
-                }
-              />
+                {showCompletionGuidance ? (
+                  <CriterionActionRow
+                    assistantSearch={assistantSearch}
+                    canEdit={canEditSelectedCriterion}
+                    canFindOfficialEvent={
+                      canEditSelectedCriterion &&
+                      selectedSupportsOfficialEventImport &&
+                      selectedCriterion !== "physical" &&
+                      selectedCriterion !== "integration"
+                    }
+                    onFindOfficialEvent={openOfficialEventLibrary}
+                    onManualUpload={() =>
+                      openEvidenceDrawer(selectedCriterion, {
+                        requirementLabel: selectedState.label,
+                      })
+                    }
+                  />
+                ) : null}
 
-              <EvidenceGallerySection
-                applicationId={application.id}
-                canEdit={canEditSelectedCriterion}
-                cityInitialSubmission={showCityEligibility && application.submittedAt == null}
-                evidences={selectedEvidences}
-                isLoading={evidencesQuery.isLoading}
-                isError={evidencesQuery.isError}
-                onAddEvidence={() => openEvidenceDrawer(selectedCriterion)}
-                onViewEvidence={setSelectedEvidence}
-                onDeleteEvidence={(evidence) => {
-                  if (!canEditSelectedCriterion) {
-                    toast.error("Tiêu chí này đang ở chế độ chỉ xem.");
-                    return;
+                {precheck ? (
+                  <StudentAssistantExplanation
+                    params={{
+                      contextType: "precheck",
+                      contextId: application.id,
+                      applicationId: application.id,
+                      criterion: selectedCriterion,
+                      schoolYear: application.schoolYear,
+                    }}
+                    title="Giải thích tiền kiểm"
+                    compact
+                  />
+                ) : null}
+              </div>
+
+              {showCompletionGuidance ? (
+                <StickyNextActionBarV2
+                  className="static rounded-[8px] border border-[var(--student-v2-divider)] px-4 sm:px-6"
+                  title={hasSubmitCta ? "Sẵn sàng gửi hồ sơ" : getBottomActionTitle(nextActions)}
+                  description={
+                    hasSubmitCta
+                      ? "Kiểm tra lần cuối trước khi gửi hồ sơ cho cán bộ xét duyệt."
+                      : getBottomActionDescription(nextActions)
                   }
-                  setOptimisticEvidences((current) =>
-                    current.filter((item) => item.id !== evidence.id),
-                  );
-                  deleteEvidence.mutate({ id: evidence.id, applicationId: application.id });
-                }}
-              />
-            </div>
-
-            {showCompletionGuidance ? (
-              <StickyNextActionBarV2
-                className="static rounded-[8px] border border-[var(--student-v2-divider)] px-4 sm:px-6"
-                title={hasSubmitCta ? "Sẵn sàng gửi hồ sơ" : getBottomActionTitle(nextActions)}
-                description={
-                  hasSubmitCta
-                    ? "Kiểm tra lần cuối trước khi gửi hồ sơ cho cán bộ xét duyệt."
-                    : getBottomActionDescription(nextActions)
-                }
-                secondaryAction={
-                  <ButtonV2
-                    type="button"
-                    variant="secondary"
-                    onClick={precheckNow}
-                    disabled={runPrecheck.isPending}
-                  >
-                    {runPrecheck.isPending ? (
-                      <Loader2 className="animate-spin" aria-hidden="true" />
-                    ) : (
-                      <BookOpenCheck aria-hidden="true" />
-                    )}
-                    Kiểm tra hồ sơ
-                  </ButtonV2>
-                }
-                primaryAction={
-                  hasSubmitCta ? (
+                  secondaryAction={
                     <ButtonV2
                       type="button"
-                      onClick={submitNow}
-                      disabled={
-                        submitApplication.isPending ||
-                        cityEligibilityBlocksFirstSubmit ||
-                        cityDeadlineBlocksFirstSubmit
-                      }
+                      variant="secondary"
+                      onClick={precheckNow}
+                      disabled={runPrecheck.isPending}
                     >
-                      {submitApplication.isPending ? (
+                      {runPrecheck.isPending ? (
                         <Loader2 className="animate-spin" aria-hidden="true" />
                       ) : (
-                        <Send aria-hidden="true" />
+                        <BookOpenCheck aria-hidden="true" />
                       )}
-                      Nộp hồ sơ
+                      Kiểm tra hồ sơ
                     </ButtonV2>
-                  ) : nextActions[0]?.criterionKey ? (
-                    <ButtonV2
-                      type="button"
-                      onClick={() =>
-                        selectCriterion(nextActions[0].criterionKey!, setSelectedCriterion)
-                      }
-                    >
-                      {nextActions[0].actionLabel}
-                      <ChevronRight aria-hidden="true" />
-                    </ButtonV2>
-                  ) : null
-                }
-              />
-            ) : null}
-          </main>
-        </section>
+                  }
+                  primaryAction={
+                    hasSubmitCta ? (
+                      <ButtonV2
+                        type="button"
+                        onClick={submitNow}
+                        disabled={
+                          submitApplication.isPending ||
+                          cityEligibilityBlocksFirstSubmit ||
+                          cityDeadlineBlocksFirstSubmit
+                        }
+                      >
+                        {submitApplication.isPending ? (
+                          <Loader2 className="animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Send aria-hidden="true" />
+                        )}
+                        Nộp hồ sơ
+                      </ButtonV2>
+                    ) : nextActions[0]?.criterionKey ? (
+                      <ButtonV2
+                        type="button"
+                        onClick={() => openCriterion(nextActions[0].criterionKey!)}
+                      >
+                        {nextActions[0].actionLabel}
+                        <ChevronRight aria-hidden="true" />
+                      </ButtonV2>
+                    ) : null
+                  }
+                />
+              ) : null}
+            </main>
+          </section>
+        )}
       </div>
 
       <GuideSheet
@@ -920,7 +995,7 @@ export function StudentApplicationWorkspaceV2() {
           onOpenChange={setEventLibraryOpen}
           onManualUpload={(criterion) => openEvidenceDrawer(criterion)}
           onImported={(evidence, item) => {
-            selectCriterion(item.criterion, setSelectedCriterion);
+            if (isCriterion(item.criterion)) openCriterion(item.criterion);
             if (evidence) {
               const nextEvidence = normalizeOptimisticEvidence(evidence, application.id);
               setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
@@ -950,7 +1025,7 @@ export function StudentApplicationWorkspaceV2() {
             const nextEvidence = normalizeOptimisticEvidence(created, application.id);
             setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
             setEvidenceDrawerContext(null);
-            selectCriterion(nextEvidence.criterion, setSelectedCriterion);
+            openCriterion(nextEvidence.criterion);
           }}
         />
       ) : null}
@@ -1001,6 +1076,186 @@ function WorkspaceContextBarShell({ title, helper }: { title: string; helper: st
   );
 }
 
+function ApplicationOverviewV2({
+  criteriaStates,
+  evidenceCounts,
+  status,
+  nextCriterion,
+  hasSubmitCta,
+  canEdit,
+  supplementMode,
+  supplementCriteria,
+  canRunPrecheck,
+  isPrechecking,
+  isSubmitDisabled,
+  onOpenCriterion,
+  onPrecheck,
+  onSubmit,
+}: {
+  criteriaStates: CriteriaState[];
+  evidenceCounts: Partial<Record<Criterion, number>>;
+  status: string;
+  nextCriterion?: Criterion;
+  hasSubmitCta: boolean;
+  canEdit: boolean;
+  supplementMode: boolean;
+  supplementCriteria: Set<Criterion>;
+  canRunPrecheck: boolean;
+  isPrechecking: boolean;
+  isSubmitDisabled: boolean;
+  onOpenCriterion: (criterion: Criterion) => void;
+  onPrecheck: () => void;
+  onSubmit: () => void;
+}) {
+  const primaryCriterion = isCriterion(nextCriterion) ? nextCriterion : "ethics";
+
+  return (
+    <div className="flex min-w-0 flex-col gap-6">
+      <section className="flex min-w-0 flex-col gap-4 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="min-w-0">
+          <p className="m-0 text-[13px] font-medium leading-5 text-[var(--student-v2-text-secondary)]">
+            Trạng thái hồ sơ
+          </p>
+          <StatusBadge status={status} domain="application" />
+          <p className="mt-2 max-w-2xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+            Chọn bất kỳ tiêu chí nào để xem thông tin, yêu cầu và minh chứng liên quan.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {canRunPrecheck ? (
+            <ButtonV2
+              type="button"
+              variant="secondary"
+              onClick={onPrecheck}
+              disabled={isPrechecking}
+            >
+              {isPrechecking ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <BookOpenCheck aria-hidden="true" />
+              )}
+              Kiểm tra hồ sơ
+            </ButtonV2>
+          ) : null}
+          <ButtonV2
+            type="button"
+            onClick={() => (hasSubmitCta ? onSubmit() : onOpenCriterion(primaryCriterion))}
+            disabled={hasSubmitCta && isSubmitDisabled}
+          >
+            {hasSubmitCta ? <Send aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+            {hasSubmitCta ? "Nộp hồ sơ" : canEdit ? "Tiếp tục hoàn thiện" : "Xem tiêu chí"}
+          </ButtonV2>
+        </div>
+      </section>
+
+      <section className="min-w-0">
+        <SectionHeading
+          title="Năm tiêu chí Sinh viên 5 tốt"
+          description="Trạng thái từng tiêu chí và số minh chứng được hiển thị từ dữ liệu hồ sơ hiện có. Số minh chứng không đồng nghĩa với kết quả xét."
+          className="mb-4"
+        />
+        <ul className="grid min-w-0 list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          {criteriaStates.map((state) => (
+            <li key={state.key} className="min-w-0">
+              <ApplicationCriterionOverviewCard
+                state={state}
+                evidenceCount={evidenceCounts[state.key]}
+                canEdit={
+                  canEdit &&
+                  (!supplementMode ||
+                    supplementCriteria.size === 0 ||
+                    supplementCriteria.has(state.key))
+                }
+                onClick={() => onOpenCriterion(state.key)}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+function ApplicationCriterionOverviewCard({
+  state,
+  evidenceCount,
+  canEdit,
+  onClick,
+}: {
+  state: CriteriaState;
+  evidenceCount?: number;
+  canEdit: boolean;
+  onClick: () => void;
+}) {
+  const presentation = getCoreCriterionPresentation(state.key);
+
+  return (
+    <button
+      type="button"
+      data-testid="criterion-overview-card"
+      aria-label={`${canEdit ? "Xem và hoàn thiện" : "Xem tiêu chí"} ${state.label}. Trạng thái: ${state.displayLabel}${evidenceCount !== undefined ? `. ${evidenceCount} minh chứng` : ""}`}
+      onClick={onClick}
+      className="flex min-h-[184px] w-full min-w-0 flex-col items-stretch justify-between gap-4 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-4 text-left transition-colors duration-[120ms] hover:border-[var(--student-v2-institutional-blue)] hover:bg-[var(--student-v2-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2 sm:p-5"
+    >
+      <span className="flex min-w-0 items-start gap-3">
+        <AppIcon
+          name={presentation?.icon ?? "criteria"}
+          size={20}
+          tone="muted"
+          className="mt-0.5 shrink-0"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-semibold leading-6 text-[var(--student-v2-text-primary)]">
+            {state.label}
+          </span>
+          <span className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <StatusPillV2 status={state.progressStatus} label={state.displayLabel} />
+            {evidenceCount !== undefined ? (
+              <span className="text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
+                {evidenceCount} minh chứng
+              </span>
+            ) : null}
+          </span>
+        </span>
+        <ChevronRight
+          className="mt-1 h-4 w-4 shrink-0 text-[var(--student-v2-text-muted)]"
+          aria-hidden="true"
+        />
+      </span>
+      <span className="line-clamp-2 min-h-10 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
+        {state.displayDescription}
+      </span>
+      <span className="inline-flex min-h-11 items-center gap-1 text-[14px] font-semibold text-[var(--student-v2-institutional-blue)]">
+        {canEdit ? "Xem và hoàn thiện" : "Xem tiêu chí"}
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </span>
+    </button>
+  );
+}
+
+function getOverviewEvidenceCounts({
+  criteriaStates,
+  completionItems,
+  evidences,
+  evidenceDataAvailable,
+}: {
+  criteriaStates: CriteriaState[];
+  completionItems: CriterionCompletionItem[];
+  evidences: EvidenceResponse[];
+  evidenceDataAvailable: boolean;
+}): Partial<Record<Criterion, number>> {
+  const counts: Partial<Record<Criterion, number>> = {};
+  for (const state of criteriaStates) {
+    const completion = completionItems.find((item) => item.criterion === state.key);
+    if (completion && Number.isFinite(completion.evidenceCount)) {
+      counts[state.key] = completion.evidenceCount;
+    } else if (evidenceDataAvailable) {
+      counts[state.key] = evidences.filter((item) => item.criterion === state.key).length;
+    }
+  }
+  return counts;
+}
+
 function getEligibilitySubmitMessage(status: "NOT_ELIGIBLE" | "NEEDS_VERIFICATION") {
   return status === "NOT_ELIGIBLE"
     ? "Hồ sơ hiện chưa đủ điều kiện nộp cấp Thành phố. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ và minh chứng."
@@ -1020,8 +1275,9 @@ function ApplicationWorkspaceContextBar({
   title,
   helper,
   schoolYear,
-  targetLevel,
+  schoolName,
   statusLabel,
+  onBack,
   isPrechecking,
   onPrecheck,
   showPrecheck,
@@ -1029,8 +1285,9 @@ function ApplicationWorkspaceContextBar({
   title: string;
   helper: string;
   schoolYear: string;
-  targetLevel: Level;
+  schoolName?: string;
   statusLabel: string;
+  onBack?: () => void;
   isPrechecking: boolean;
   onPrecheck: () => void;
   showPrecheck: boolean;
@@ -1052,30 +1309,39 @@ function ApplicationWorkspaceContextBar({
         </p>
         <div className="mt-2 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
           <span>Năm học {schoolYear}</span>
-          <span>Cấp đăng ký: {levelLabels[targetLevel]}</span>
+          {schoolName ? <span className="min-w-0 break-words">Trường {schoolName}</span> : null}
           <span>Trạng thái: {statusLabel}</span>
         </div>
       </div>
-      {showPrecheck ? (
-        <ButtonV2 type="button" variant="secondary" onClick={onPrecheck} disabled={isPrechecking}>
-          {isPrechecking ? (
-            <Loader2 className="animate-spin" aria-hidden="true" />
-          ) : (
-            <BookOpenCheck aria-hidden="true" />
-          )}
-          Kiểm tra hồ sơ
-        </ButtonV2>
-      ) : null}
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {onBack ? (
+          <ButtonV2 type="button" variant="tertiary" onClick={onBack}>
+            Tổng quan hồ sơ
+          </ButtonV2>
+        ) : null}
+        {showPrecheck ? (
+          <ButtonV2 type="button" variant="secondary" onClick={onPrecheck} disabled={isPrechecking}>
+            {isPrechecking ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : (
+              <BookOpenCheck aria-hidden="true" />
+            )}
+            Kiểm tra hồ sơ
+          </ButtonV2>
+        ) : null}
+      </div>
     </section>
   );
 }
 
 function CriteriaNavigationV2({
   criteriaStates,
+  evidenceCounts,
   activeCriterion,
   onSelect,
 }: {
   criteriaStates: CriteriaState[];
+  evidenceCounts: Partial<Record<Criterion, number>>;
   activeCriterion: Criterion;
   onSelect: (criterion: Criterion) => void;
 }) {
@@ -1096,10 +1362,14 @@ function CriteriaNavigationV2({
             )}
           >
             <CriteriaNavigationRowV2
-              number={String(index + 1).padStart(2, "0")}
               title={state.label}
               status={state.progressStatus}
-              detail={state.completionText ?? `${state.evidenceCount} minh chứng`}
+              detail={
+                state.completionText ??
+                (evidenceCounts[state.key] !== undefined
+                  ? `${evidenceCounts[state.key]} minh chứng`
+                  : undefined)
+              }
               active={state.key === activeCriterion}
               onClick={() => onSelect(state.key)}
               className="min-h-[68px] px-3 py-3 lg:px-4"
@@ -1113,10 +1383,12 @@ function CriteriaNavigationV2({
 
 function CriterionHeaderV2({
   state,
+  headingRef,
   onOpenGuide,
   showGuide,
 }: {
   state: CriteriaState;
+  headingRef: { current: HTMLHeadingElement | null };
   onOpenGuide: () => void;
   showGuide: boolean;
 }) {
@@ -1124,7 +1396,11 @@ function CriterionHeaderV2({
     <section className="flex min-w-0 flex-col gap-3 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-5 sm:px-6">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="m-0 text-[22px] font-bold leading-7 text-[var(--student-v2-text-primary)]">
+          <h2
+            ref={headingRef}
+            tabIndex={-1}
+            className="m-0 text-[22px] font-bold leading-7 text-[var(--student-v2-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]"
+          >
             {state.label}
           </h2>
           <p className="mt-2 max-w-3xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
@@ -1295,7 +1571,7 @@ function CriterionDataSection({
     content = (
       <PhysicalDataSectionV2
         completion={completion}
-        schoolYear={schoolYear || SCHOOL_YEAR}
+        schoolYear={schoolYear ?? ""}
         canEdit={canEdit}
         saving={savingPhysical}
         onDeclareCourseResult={onDeclarePhysicalCourseResult}
@@ -3066,7 +3342,7 @@ function GuideSheet({
   criterion: CoreCriterion;
   completion?: CriterionCompletionItem;
 }) {
-  const guide = criterionGuide[criterion];
+  const requirementGroups = completion?.requirementGroups ?? [];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -3076,62 +3352,81 @@ function GuideSheet({
       >
         <SheetHeader>
           <SheetTitle>Điều kiện {criterionLabels[criterion]}</SheetTitle>
-          <SheetDescription>Tóm tắt yêu cầu đang áp dụng cho tiêu chí này.</SheetDescription>
+          <SheetDescription>
+            Mô tả và điều kiện theo dữ liệu cấu hình của hồ sơ hiện tại.
+          </SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-5">
-          <section>
-            <h3 className="text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)]">
-              Yêu cầu chính
-            </h3>
-            <ul className="mt-3 space-y-2 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-              {guide.main.map((item) => (
-                <li key={item} className="flex gap-2">
-                  <span aria-hidden="true">-</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-          {completion?.requirementGroups?.length ? (
+          {completion?.description ? (
+            <p className="text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+              {completion.description}
+            </p>
+          ) : null}
+          {requirementGroups.length ? (
             <section>
               <h3 className="text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)]">
-                Nhóm điều kiện
+                Điều kiện hiện có
               </h3>
               <div className="mt-3 divide-y divide-[var(--student-v2-divider)] border-y border-[var(--student-v2-divider)]">
-                {completion.requirementGroups.map((group) => (
+                {requirementGroups.map((group) => (
                   <div key={group.key} className="py-3">
                     <div className="text-[14px] font-semibold leading-[22px] text-[var(--student-v2-text-primary)]">
                       {group.title}
                     </div>
-                    <div className="mt-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
-                      {group.requirements.length} điều kiện
-                    </div>
+                    <ul className="mt-2 space-y-1 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
+                      {group.requirements.map((requirement) => (
+                        <li key={requirement.key}>
+                          {getRequirementPresentation(requirement).label}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 ))}
               </div>
             </section>
-          ) : null}
-        </div>
-        <div className="mt-8 border-t border-[var(--student-v2-divider)] pt-4 text-[13px] leading-[18px] text-[var(--student-v2-text-muted)]">
-          Nguồn: {guide.source}
+          ) : (
+            <InlineStateMessage
+              tone="info"
+              title="Chưa có mô tả điều kiện từ hệ thống"
+              description="Hãy dùng thông tin hiển thị trong hồ sơ và liên hệ bộ phận hỗ trợ nếu cần làm rõ."
+            />
+          )}
         </div>
       </SheetContent>
     </Sheet>
   );
 }
 
-function WorkspaceSkeletonV2() {
+function WorkspaceSkeletonV2({ workspaceOpen }: { workspaceOpen: boolean }) {
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6">
+    <div
+      className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6"
+      aria-busy="true"
+      aria-label="Đang tải hồ sơ"
+    >
       <div className="h-24 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[232px_minmax(0,1fr)]">
-        <div className="h-[340px] rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
-        <div className="space-y-6">
-          <div className="h-36 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
-          <div className="h-56 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
-          <div className="h-72 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
+      {workspaceOpen ? (
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[232px_minmax(0,1fr)]">
+          <div className="h-[340px] rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
+          <div className="space-y-6">
+            <div className="h-36 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
+            <div className="h-56 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
+            <div className="h-72 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="h-32 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]" />
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {coreStudentCriteria.map((criterion) => (
+              <div
+                key={criterion}
+                className="h-[184px] rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]"
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -3194,7 +3489,7 @@ function buildDefinitionRows({
   onSaveMetric: () => Promise<boolean>;
   onRequirementAction: (requirement: RequirementItem) => void;
 }): DefinitionTableV2Row[] {
-  const rows = requirements.slice(0, 8).map((requirement) => ({
+  const rows: DefinitionTableV2Row[] = requirements.slice(0, 8).map((requirement) => ({
     label: getRequirementPresentation(requirement).label,
     value: getRequirementValue(requirement),
     source: formatSourceList(requirement.acceptedSources),
@@ -3724,16 +4019,16 @@ function countEvidencesByCriterion(evidences: EvidenceResponse[]) {
   }, {});
 }
 
-function selectCriterion(
-  criterion: Criterion,
-  setSelectedCriterion: (criterion: Criterion) => void,
-) {
-  if (!coreStudentCriteria.includes(criterion)) return;
-  setSelectedCriterion(criterion);
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  url.searchParams.set("criterion", criterion);
-  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+function hasOpenCriterionForm() {
+  if (typeof document === "undefined") return false;
+  return Boolean(document.querySelector("[data-criterion-workspace] form"));
+}
+
+function confirmUnsavedCriterionChange() {
+  if (typeof window === "undefined") return true;
+  return window.confirm(
+    "Biểu mẫu đang mở có thể chứa thay đổi chưa lưu. Bạn muốn rời tiêu chí này?",
+  );
 }
 
 function getCriterionFromLocation(): Criterion | null {

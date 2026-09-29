@@ -384,7 +384,7 @@ export function AddEvidenceDrawer({
                 value={evidenceName}
                 onChange={(event) => handleEvidenceNameChange(event.target.value)}
                 placeholder="Ví dụ: Giấy chứng nhận Mùa hè xanh"
-                className="min-h-11 pl-10"
+                className="min-h-[44px] pl-10"
                 disabled={isSubmitting}
                 autoComplete="off"
               />
@@ -443,7 +443,7 @@ export function AddEvidenceDrawer({
           <div className="space-y-2">
             <button
               type="button"
-              className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm font-semibold text-foreground"
+              className="flex min-h-[44px] w-full items-center justify-between gap-3 text-left text-sm font-semibold text-foreground"
               onClick={() => setNoteOpen((current) => !current)}
             >
               Ghi chú cho cán bộ
@@ -524,7 +524,7 @@ export function AddEvidenceDrawer({
               <button
                 type="button"
                 disabled={isSubmitting}
-                className="flex min-h-11 w-full items-center justify-center gap-3 rounded-md border border-dashed bg-muted/30 px-4 py-6 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex min-h-[44px] w-full items-center justify-center gap-3 rounded-md border border-dashed bg-muted/30 px-4 py-6 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <FileUp className="h-5 w-5 text-primary" />
@@ -544,7 +544,7 @@ export function AddEvidenceDrawer({
         <DialogFooter className="shrink-0 border-t px-5 py-4">
           <Button
             type="button"
-            className="min-h-11"
+            className="min-h-[44px]"
             onClick={() => void submit()}
             disabled={isSubmitting}
           >
@@ -554,7 +554,7 @@ export function AddEvidenceDrawer({
           <Button
             type="button"
             variant="outline"
-            className="min-h-11"
+            className="min-h-[44px]"
             disabled={isSubmitting}
             onClick={() => onOpenChange(false)}
           >
@@ -629,7 +629,7 @@ function ReferenceSuggestions({
         <button
           key={item.eventId}
           type="button"
-          className="flex min-h-11 w-full min-w-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+          className="flex min-h-[44px] w-full min-w-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
           onClick={() => onSelect(item)}
         >
           <span className="min-w-0">
