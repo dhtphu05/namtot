@@ -137,6 +137,18 @@ test.describe("student application UI V2 acceptance", () => {
     }
   });
 
+  test("student compatibility route keeps the legacy URL without a target-level selector", async ({
+    page,
+  }) => {
+    await loginAndGoto(page, "/app/wizard");
+    await expect(
+      page.getByRole("heading", { name: /Còn \d\/5 tiêu chí cần bổ sung/ }),
+    ).toBeVisible();
+
+    await expect(page.getByRole("heading", { name: "Khả năng đạt cấp xét" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Chọn cấp này" })).toHaveCount(0);
+  });
+
   test("overview opens a criterion workspace and returns without losing the URL contract", async ({
     page,
   }) => {

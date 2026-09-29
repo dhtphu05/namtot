@@ -109,16 +109,7 @@ export function DraftWorkspace() {
         <p className="text-muted-foreground mt-2 mb-6 max-w-md">
           Bắt đầu tạo hồ sơ Sinh viên 5 tốt ngay bây giờ để được hướng dẫn chi tiết từng bước.
         </p>
-        <Button
-          onClick={() =>
-            startMutation.mutate({
-              schoolYear: "2025-2026",
-              targetLevel: "school",
-              applicationType: "individual",
-            })
-          }
-          disabled={startMutation.isPending}
-        >
+        <Button onClick={() => startMutation.mutate({})} disabled={startMutation.isPending}>
           {startMutation.isPending ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : (

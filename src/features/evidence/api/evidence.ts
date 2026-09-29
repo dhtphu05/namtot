@@ -15,6 +15,7 @@ import type {
 } from "@/types/evidence";
 
 export interface EvidenceResponse extends Evidence {
+  indexingStatus: IndexingStatus;
   fileId?: string;
   jobId?: string;
   studentStatus?: EvidenceStudentStatus | null;

@@ -16,6 +16,7 @@ export type JobResponse = {
   status: JobStatus;
   progress?: number | null;
   progressPercent?: number | null;
+  retryable?: boolean;
   uxStatus?: UxStatus | null;
   result?: unknown;
   error?: {

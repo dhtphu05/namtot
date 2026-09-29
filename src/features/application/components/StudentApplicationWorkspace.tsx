@@ -23,7 +23,6 @@ import {
   usePrecheck,
   useStartApplication,
   useSubmitApplication,
-  useUpdateTargetLevel,
   useUpsertMetric,
 } from "@/features/application/hooks/useApplication";
 import { StudentFlowStepper } from "@/features/application/components/StudentFlowStepper";
@@ -96,10 +95,8 @@ type EvidenceUploadForm = {
 
 type EvidenceSort = "newest" | "oldest" | "name" | "criterion" | "status" | "review";
 
-const SCHOOL_YEAR = "2025-2026";
-
 const tabLabels: Record<WorkspaceTab, string> = {
-  info: "Thông tin & cấp xét",
+  info: "Thông tin hồ sơ",
   criteria: "5 tiêu chí",
   precheck: "Kiểm tra hồ sơ",
   tracking: "Theo dõi sau khi nộp",
@@ -112,11 +109,6 @@ const levelLabel: Record<Level, string> = {
   central: "Cấp Trung ương",
 };
 
-const levels = Object.values(criteriaLevelSummaries).map((level) => ({
-  ...level,
-  key: level.level,
-  desc: level.description,
-}));
 const criteria = coreCriteria;
 export function StudentApplicationWorkspace({
   initialTab = "info",
@@ -147,7 +139,6 @@ export function StudentApplicationWorkspace({
   const [activeCriterion, setActiveCriterion] = useState<Criterion>("ethics");
   const [nextActionsOpen, setNextActionsOpen] = useState(false);
   const [optimisticEvidences, setOptimisticEvidences] = useState<EvidenceResponse[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState<Level>("school");
   const [evidenceSort, setEvidenceSort] = useState<EvidenceSort>("newest");
   const [criterionDrafts, setCriterionDrafts] = useState<Record<Criterion, Record<string, string>>>(
     {
@@ -162,9 +153,8 @@ export function StudentApplicationWorkspace({
   );
   const lastAutoCheckKeyRef = useRef<string>("");
 
-  const current = useCurrentApplication(SCHOOL_YEAR);
+  const current = useCurrentApplication();
   const startApplication = useStartApplication();
-  const updateTargetLevel = useUpdateTargetLevel();
   const upsertMetric = useUpsertMetric();
   const createEvidence = useCreateEvidence();
   const uploadAndIndex = useUploadAndIndex();
@@ -227,10 +217,6 @@ export function StudentApplicationWorkspace({
     "Bạn có thể kiểm tra lại hồ sơ sau khi cập nhật thông tin hoặc thêm minh chứng.",
   );
   const firstName = user?.fullName?.trim().split(/\s+/).slice(-1)[0] ?? "bạn";
-
-  useEffect(() => {
-    if (application?.targetLevel) setSelectedLevel(application.targetLevel);
-  }, [application?.targetLevel]);
 
   useEffect(() => {
     setOptimisticEvidences([]);
@@ -321,13 +307,8 @@ export function StudentApplicationWorkspace({
     );
   }, [evidences]);
 
-  const selectedLevelSuitability = useMemo(
-    () => evaluateLevelAgainstMatrix(selectedLevel, { metrics, evidences }),
-    [selectedLevel, metrics, evidences],
-  );
-
   const targetLevelSuitability = useMemo(
-    () => evaluateLevelAgainstMatrix(application?.targetLevel ?? "school", { metrics, evidences }),
+    () => evaluateLevelAgainstMatrix(application?.targetLevel ?? "city", { metrics, evidences }),
     [application?.targetLevel, metrics, evidences],
   );
 
@@ -378,7 +359,7 @@ export function StudentApplicationWorkspace({
         <Card className="text-center">
           <FileText className="mx-auto h-12 w-12 text-[#0057C2]" />
           <h2 className="mt-4 text-2xl font-bold text-brand-deep">
-            Chưa có hồ sơ Sinh viên 5 tốt năm học {SCHOOL_YEAR}
+            Chưa có hồ sơ Sinh viên 5 tốt trong năm học hiện tại
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
             Đây là trạng thái đúng cho sinh viên mới. Bấm tạo hồ sơ để bắt đầu nhập dữ liệu thật.
@@ -386,9 +367,7 @@ export function StudentApplicationWorkspace({
           <Button
             className="mt-6"
             disabled={startApplication.isPending}
-            onClick={() =>
-              startApplication.mutate({ schoolYear: SCHOOL_YEAR, targetLevel: "school" })
-            }
+            onClick={() => startApplication.mutate({})}
           >
             {startApplication.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -937,38 +916,40 @@ export function StudentApplicationWorkspace({
                       <Target className="h-4 w-4" /> Hoàn thiện 5 tiêu chí
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Đang xem điều kiện {levelLabel[selectedLevel]}. Chọn từng tiêu chí để nhập dữ
-                      liệu và tải minh chứng.
+                      Điều kiện theo hồ sơ hiện tại ({levelLabel[application.targetLevel]}). Hoàn
+                      thiện từng tiêu chí bằng dữ liệu và tải minh chứng.
                     </p>
                   </div>
                   <Chip
                     tone={
-                      selectedLevelSuitability.status === "met"
+                      targetLevelSuitability.status === "met"
                         ? "success"
-                        : selectedLevelSuitability.status === "not_suitable"
+                        : targetLevelSuitability.status === "not_suitable"
                           ? "error"
                           : "warning"
                     }
                   >
-                    {selectedLevelSuitability.statusLabel}
+                    {targetLevelSuitability.statusLabel}
                   </Chip>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {criteriaLevelSummaries[selectedLevel].overallRequirements.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full bg-[#F1F7FD] px-3 py-1 text-xs font-semibold text-brand-deep"
-                    >
-                      {item}
-                    </span>
-                  ))}
+                  {criteriaLevelSummaries[application.targetLevel].overallRequirements.map(
+                    (item) => (
+                      <span
+                        key={item}
+                        className="rounded-full bg-[#F1F7FD] px-3 py-1 text-xs font-semibold text-brand-deep"
+                      >
+                        {item}
+                      </span>
+                    ),
+                  )}
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  {getLevelCriteria(selectedLevel).map((item, index) => {
+                  {getLevelCriteria(application.targetLevel).map((item, index) => {
                     const criterion = criteria.find((entry) => entry.key === item.criterion);
-                    const assessment = selectedLevelSuitability.criteria.find(
+                    const assessment = targetLevelSuitability.criteria.find(
                       (entry) => entry.criterion === item.criterion,
                     );
                     const evidenceCount = evidenceByCriterion[item.criterion]?.length ?? 0;
@@ -1035,80 +1016,10 @@ export function StudentApplicationWorkspace({
               </Card>
 
               <aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">
-                <Card className="bg-white/90">
-                  <h3 className="flex items-center gap-2 font-bold text-brand-deep">
-                    <Target className="h-4 w-4" /> Khả năng đạt cấp xét
-                  </h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Xem hồ sơ hiện tại đang phù hợp với cấp nào, sau đó xác nhận nếu muốn đổi cấp
-                    đăng ký.
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {levels.map((level) => {
-                      const active = level.key === application.targetLevel;
-                      const selected = level.key === selectedLevel;
-                      const assessment = evaluateLevelAgainstMatrix(level.key, {
-                        metrics,
-                        evidences,
-                      });
-                      return (
-                        <button
-                          key={level.key}
-                          className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                            selected
-                              ? "border-[#0057C2] bg-[#F1F7FD]"
-                              : "border-[#E3ECF6] bg-white hover:bg-[#F6F9FC]"
-                          }`}
-                          onClick={() => setSelectedLevel(level.key)}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="font-bold text-brand-deep">{level.label}</div>
-                            <Chip
-                              tone={
-                                assessment.status === "met"
-                                  ? "success"
-                                  : assessment.status === "not_suitable"
-                                    ? "error"
-                                    : "warning"
-                              }
-                            >
-                              {assessment.statusLabel}
-                            </Chip>
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">{level.desc}</div>
-                          {active ? (
-                            <div className="mt-1 text-xs font-bold text-[#0057C2]">
-                              Đang chọn trong hồ sơ
-                            </div>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {canEditApplication ? (
-                    <Button
-                      className="mt-3 w-full"
-                      disabled={
-                        selectedLevel === application.targetLevel || updateTargetLevel.isPending
-                      }
-                      onClick={() =>
-                        updateTargetLevel.mutate({ id: application.id, targetLevel: selectedLevel })
-                      }
-                    >
-                      {updateTargetLevel.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Target className="h-4 w-4" />
-                      )}
-                      Chọn cấp này
-                    </Button>
-                  ) : null}
-                </Card>
-
                 <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-                  <div className="font-semibold">So với hồ sơ hiện tại</div>
+                  <div className="font-semibold">Điều kiện theo hồ sơ hiện tại</div>
                   <div className="mt-1">
-                    {getMissingSummaryForLevel(selectedLevel, selectedLevelSuitability)}
+                    {getMissingSummaryForLevel(application.targetLevel, targetLevelSuitability)}
                   </div>
                 </div>
 

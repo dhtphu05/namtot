@@ -168,8 +168,10 @@ test.describe("Student Home S1", () => {
     });
 
     await page.getByRole("button", { name: "Bắt đầu hồ sơ" }).click();
-    await expect.poll(() => startBody).toEqual({ applicationType: "individual" });
+    await expect.poll(() => startBody).toEqual({});
     expect(startBody).not.toHaveProperty("schoolYear");
+    await page.goto("/app/application");
+    await expect(page.locator("main").last()).toContainText("Hồ sơ Sinh viên 5 tốt cấp Thành phố");
   });
 
   test("fits the five-criterion grid at desktop widths and 125% effective zoom", async ({
@@ -200,6 +202,7 @@ test.describe("Student Home S1", () => {
 });
 
 async function installHomeMock(page: Page, scenario: string, onCurrentUrl?: (url: string) => void) {
+  let started = false;
   await page.route(apiPattern, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -217,9 +220,10 @@ async function installHomeMock(page: Page, scenario: string, onCurrentUrl?: (url
       if (activeScenario === "loading") await new Promise((resolve) => setTimeout(resolve, 700));
       if (activeScenario === "error")
         return route.fulfill({ status: 503, body: "service unavailable" });
-      return json(route, currentResponse(activeScenario));
+      return json(route, currentResponse(started ? "draft" : activeScenario));
     }
     if (path === "/api/applications/current/start") {
+      started = true;
       return json(route, currentResponse("draft"));
     }
     if (/\/api\/applications\/app-1\/eligibility$/.test(path)) {

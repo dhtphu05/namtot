@@ -1,16 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  CalendarDays,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  FileUp,
-  Loader2,
-  Search,
-  X,
-} from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, FileUp, Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CriterionIcon } from "@/components/AppIcon";
 import type { EvidenceEventSuggestion } from "@/features/event/api/events";
 import {
   useEvidenceEventSuggestions,
@@ -32,7 +24,6 @@ import {
 } from "@/features/event/hooks/useApprovedEvidenceSearch";
 import { useCheckEventParticipant } from "@/features/event/hooks/useEvents";
 import { getCriterionDisplayLabel } from "@/features/application/presentation";
-import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Criterion, EventParticipantCheck, EvidenceResponse } from "@/lib/api/types";
 import {
@@ -41,11 +32,17 @@ import {
   useUploadEvidenceFile,
 } from "@/features/evidence/hooks/useEvidence";
 import { studentEvidenceCriteria } from "./evidence-card-utils";
+import {
+  EVIDENCE_UPLOAD_ACCEPT,
+  EVIDENCE_UPLOAD_LIMIT_MB,
+  validateEvidenceUploadFile,
+} from "../utils/evidenceLibrary";
 
 type AddEvidenceDrawerProps = {
   applicationId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  criterionMode?: "context" | "select";
   initialCriterion?: Criterion;
   initialEvidenceName?: string;
   initialRequirementKey?: string;
@@ -61,14 +58,12 @@ type AddEvidenceDrawerProps = {
   onCreated: (evidence: EvidenceResponse) => void;
 };
 
-const maxFileSize = 10 * 1024 * 1024;
-const acceptedTypes = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
-
 export function AddEvidenceDrawer({
   applicationId,
   open,
   onOpenChange,
-  initialCriterion = "academic",
+  initialCriterion,
+  criterionMode = "context",
   initialEvidenceName = "",
   initialRequirementKey,
   initialRequirementLabel,
@@ -80,16 +75,21 @@ export function AddEvidenceDrawer({
   const navigate = useNavigate();
   const reducedMotion = usePrefersReducedMotion();
   const [evidenceName, setEvidenceName] = useState("");
-  const [criterion, setCriterion] = useState<Criterion>(initialCriterion);
+  const [criterion, setCriterion] = useState<Criterion | null>(
+    criterionMode === "select" ? (initialCriterion ?? null) : (initialCriterion ?? "academic"),
+  );
   const [note, setNote] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [selectedReferenceEvent, setSelectedReferenceEvent] = useState<NonNullable<
     AddEvidenceDrawerProps["referenceEvent"]
   > | null>(referenceEvent ?? null);
   const [nameError, setNameError] = useState("");
+  const [criterionError, setCriterionError] = useState("");
   const [fileError, setFileError] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [eventSuggestionsExpanded, setEventSuggestionsExpanded] = useState(false);
   const [dismissedEventSuggestionKey, setDismissedEventSuggestionKey] = useState("");
   const [participantChecks, setParticipantChecks] = useState<Record<string, EventParticipantCheck>>(
@@ -99,9 +99,9 @@ export function AddEvidenceDrawer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const createEvidence = useCreateEvidence(applicationId);
-  const uploadFile = useUploadEvidenceFile(applicationId);
-  const startIndexing = useStartEvidenceIndexing(applicationId);
+  const createEvidence = useCreateEvidence(applicationId, { silent: true });
+  const uploadFile = useUploadEvidenceFile(applicationId, { silent: true });
+  const startIndexing = useStartEvidenceIndexing(applicationId, { silent: true });
   const checkParticipant = useCheckEventParticipant();
   const importOfficialEvent = useImportOfficialEvent(applicationId);
   const isSubmitting = createEvidence.isPending || uploadFile.isPending || startIndexing.isPending;
@@ -111,15 +111,16 @@ export function AddEvidenceDrawer({
   const referenceEventTitle = referenceEvent?.title;
   const referenceEventCriterion = referenceEvent?.criterion;
   const referenceEventApprovedUsageCount = referenceEvent?.approvedUsageCount;
+  const activeCriterion = criterion ?? "academic";
   const debouncedEvidenceName = useDebouncedValue(evidenceName, 300);
   const normalizedEventSuggestionQuery = normalizeSuggestionQuery(debouncedEvidenceName);
   const shouldSearchReferenceEvents =
-    open && !hasReferenceEvent && debouncedEvidenceName.trim().length >= 2;
+    open && criterion !== null && !hasReferenceEvent && debouncedEvidenceName.trim().length >= 2;
   const referenceSearch = useOfficialEventLibrary(
     {
       applicationId,
       search: debouncedEvidenceName,
-      criterion,
+      criterion: activeCriterion,
       projection: "reference",
       page: 1,
       limit: 6,
@@ -129,6 +130,7 @@ export function AddEvidenceDrawer({
   const suggestions = referenceSearch.data?.items ?? [];
   const shouldSearchEventSuggestions =
     open &&
+    criterion !== null &&
     !hasReferenceEvent &&
     (Boolean(preselectedEventId) || normalizedEventSuggestionQuery.length >= 3) &&
     dismissedEventSuggestionKey !==
@@ -137,7 +139,7 @@ export function AddEvidenceDrawer({
     {
       applicationId,
       query: preselectedEventId ? undefined : debouncedEvidenceName,
-      criterion,
+      criterion: activeCriterion,
       eventId: preselectedEventId,
       limit: eventSuggestionsExpanded ? 5 : 3,
       excludeImported: true,
@@ -146,11 +148,11 @@ export function AddEvidenceDrawer({
   );
   const eventSuggestions = eventSuggestionQuery.data?.suggestions ?? [];
   const requirementContextLabel = hasRequirementContext
-    ? `${getCriterionDisplayLabel(criterion)} - ${initialRequirementLabel}`
+    ? `${getCriterionDisplayLabel(activeCriterion)} - ${initialRequirementLabel}`
     : "";
 
   const fileLabel = useMemo(() => {
-    if (!file) return "Chọn file PDF/JPG/PNG";
+    if (!file) return "Chọn tài liệu PDF, JPG, PNG hoặc WEBP";
     return `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`;
   }, [file]);
 
@@ -167,7 +169,11 @@ export function AddEvidenceDrawer({
 
   useEffect(() => {
     if (!open) return;
-    setCriterion(initialCriterion);
+    setCriterion(
+      initialCriterion ??
+        referenceEventCriterion ??
+        (criterionMode === "select" ? null : "academic"),
+    );
     setEvidenceName(referenceEventTitle ?? initialEvidenceName);
     setSelectedReferenceEvent(
       referenceEventId && referenceEventTitle
@@ -182,7 +188,9 @@ export function AddEvidenceDrawer({
     setNoteOpen(false);
     setNote("");
     setNameError("");
+    setCriterionError("");
     setFileError("");
+    setSubmitError("");
     setEventSuggestionsExpanded(false);
     setDismissedEventSuggestionKey("");
     setParticipantChecks({});
@@ -192,6 +200,7 @@ export function AddEvidenceDrawer({
     });
   }, [
     initialCriterion,
+    criterionMode,
     initialEvidenceName,
     open,
     referenceEventApprovedUsageCount,
@@ -213,22 +222,19 @@ export function AddEvidenceDrawer({
   const handleFileChange = (selectedFile?: File) => {
     if (!selectedFile) {
       setFile(null);
+      setFileError("");
       return;
     }
 
-    const extension = `.${selectedFile.name.split(".").pop()?.toLowerCase() ?? ""}`;
-    if (!acceptedTypes.includes(extension)) {
-      toast.error("Định dạng file không được hỗ trợ. Chỉ chấp nhận PDF, JPG, JPEG, PNG, WEBP.");
-      return;
-    }
-
-    if (selectedFile.size > maxFileSize) {
-      toast.error("Dung lượng file vượt quá giới hạn 10MB.");
+    const validationError = validateEvidenceUploadFile(selectedFile);
+    if (validationError) {
+      setFileError(validationError);
       return;
     }
 
     setFile(selectedFile);
     setFileError("");
+    setSubmitError("");
   };
 
   const handleParticipantCheck = async (suggestion: EvidenceEventSuggestion) => {
@@ -292,9 +298,15 @@ export function AddEvidenceDrawer({
     setEvidenceName(item.title);
     if (item.criterion) setCriterion(item.criterion);
     setNameError("");
+    setCriterionError("");
   };
 
   const submit = async () => {
+    if (!criterion) {
+      setCriterionError("Chọn tiêu chí phù hợp với tài liệu.");
+      return;
+    }
+
     const trimmedName = evidenceName.trim();
     if (!trimmedName) {
       setNameError("Tên minh chứng là bắt buộc.");
@@ -307,7 +319,9 @@ export function AddEvidenceDrawer({
     }
 
     setNameError("");
+    setCriterionError("");
     setFileError("");
+    setSubmitError("");
 
     try {
       const created = await createEvidence.mutateAsync({
@@ -344,19 +358,19 @@ export function AddEvidenceDrawer({
         latest = indexed ?? latest;
       }
 
-      toast.success("Đã ghi nhận minh chứng. Hệ thống đang đọc nhanh file để tạo bản tóm tắt.");
+      toast.success("Đã thêm minh chứng. Hệ thống đang đọc tài liệu.");
       resetForm();
       onOpenChange(false);
       onCreated(latest);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể thêm minh chứng.");
+      setSubmitError(getEvidenceSubmitError(error));
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="grid max-h-[85dvh] w-[min(760px,calc(100vw-32px))] max-w-[760px] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0"
+        className="grid max-h-[85dvh] w-[min(760px,calc(100vw-32px))] max-w-[760px] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 [&>button:last-child]:min-h-12 [&>button:last-child]:min-w-12"
         onEscapeKeyDown={(event) => {
           if (!eventSuggestionsExpanded) return;
           event.preventDefault();
@@ -370,11 +384,49 @@ export function AddEvidenceDrawer({
               ? "Tên sự kiện đã được điền sẵn. Bạn vẫn cần tải file minh chứng của mình để cán bộ kiểm tra."
               : hasRequirementContext
                 ? requirementContextLabel
-                : "AI sẽ đọc file và tạo Thẻ minh chứng để bạn kiểm tra trước khi dùng cho tiền kiểm."}
+                : "Chọn tiêu chí, thêm tài liệu và kiểm tra lại trước khi gửi. Đóng cửa sổ khi chưa gửi sẽ bỏ thông tin đang nhập."}
           </DialogDescription>
         </DialogHeader>
 
         <div ref={contentRef} className="min-h-0 space-y-4 overflow-y-auto px-5 py-4">
+          <StepHeading number="1" title="Chọn tiêu chí" />
+          {criterionMode === "select" ? (
+            <div
+              role="group"
+              aria-label="Chọn tiêu chí cho minh chứng"
+              className="grid gap-2 sm:grid-cols-2"
+            >
+              {studentEvidenceCriteria.map((item) => (
+                <Button
+                  key={item.key}
+                  type="button"
+                  variant={criterion === item.key ? "secondary" : "outline"}
+                  aria-pressed={criterion === item.key}
+                  className="min-h-12 justify-start gap-2"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    setCriterion(item.key);
+                    setCriterionError("");
+                  }}
+                >
+                  <CriterionIcon criterion={item.key} size={18} />
+                  {item.label}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-11 items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm font-medium text-foreground">
+              <CriterionIcon criterion={activeCriterion} size={18} />
+              {studentEvidenceCriteria.find((item) => item.key === activeCriterion)?.label}
+            </div>
+          )}
+          {criterionError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {criterionError}
+            </p>
+          ) : null}
+
+          <StepHeading number="2" title="Thêm tài liệu hoặc thông tin" />
           <div className="space-y-2">
             <Label htmlFor="evidence-name">Tên minh chứng</Label>
             <div className="relative">
@@ -384,7 +436,7 @@ export function AddEvidenceDrawer({
                 value={evidenceName}
                 onChange={(event) => handleEvidenceNameChange(event.target.value)}
                 placeholder="Ví dụ: Giấy chứng nhận Mùa hè xanh"
-                className="min-h-[44px] pl-10"
+                className="min-h-12 pl-10"
                 disabled={isSubmitting}
                 autoComplete="off"
               />
@@ -393,7 +445,7 @@ export function AddEvidenceDrawer({
             {selectedReferenceEvent ? (
               <ReferenceSummary
                 title={selectedReferenceEvent.title}
-                criterion={selectedReferenceEvent.criterion ?? criterion}
+                criterion={selectedReferenceEvent.criterion ?? activeCriterion}
                 approvedUsageCount={selectedReferenceEvent.approvedUsageCount ?? 0}
               />
             ) : shouldSearchReferenceEvents ? (
@@ -406,7 +458,7 @@ export function AddEvidenceDrawer({
             ) : null}
             <InlineEventSuggestions
               applicationId={applicationId}
-              criterion={criterion}
+              criterion={activeCriterion}
               dismissedKey={getEventSuggestionDismissKey(
                 preselectedEventId,
                 normalizedEventSuggestionQuery,
@@ -434,16 +486,9 @@ export function AddEvidenceDrawer({
           </div>
 
           <div className="space-y-2">
-            <Label>Tiêu chí</Label>
-            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm font-medium text-foreground">
-              {studentEvidenceCriteria.find((item) => item.key === criterion)?.label}
-            </div>
-          </div>
-
-          <div className="space-y-2">
             <button
               type="button"
-              className="flex min-h-[44px] w-full items-center justify-between gap-3 text-left text-sm font-semibold text-foreground"
+              className="flex min-h-12 w-full items-center justify-between gap-3 text-left text-sm font-semibold text-foreground"
               onClick={() => setNoteOpen((current) => !current)}
             >
               Ghi chú cho cán bộ
@@ -464,12 +509,14 @@ export function AddEvidenceDrawer({
           </div>
 
           <div className="space-y-2">
-            <Label>File minh chứng</Label>
+            <Label htmlFor="evidence-upload">Tài liệu minh chứng</Label>
             <input
+              id="evidence-upload"
               ref={fileInputRef}
               type="file"
               className="hidden"
-              accept={acceptedTypes.join(",")}
+              accept={EVIDENCE_UPLOAD_ACCEPT}
+              aria-describedby="evidence-upload-help evidence-file-error"
               disabled={isSubmitting}
               onChange={(event) => handleFileChange(event.target.files?.[0])}
             />
@@ -502,6 +549,7 @@ export function AddEvidenceDrawer({
                       <Button
                         type="button"
                         variant="outline"
+                        className="min-h-12"
                         disabled={isSubmitting}
                         onClick={() => fileInputRef.current?.click()}
                       >
@@ -510,6 +558,7 @@ export function AddEvidenceDrawer({
                       <Button
                         type="button"
                         variant="ghost"
+                        className="min-h-12"
                         disabled={isSubmitting}
                         onClick={() => handleFileChange(undefined)}
                       >
@@ -524,29 +573,65 @@ export function AddEvidenceDrawer({
               <button
                 type="button"
                 disabled={isSubmitting}
-                className="flex min-h-[44px] w-full items-center justify-center gap-3 rounded-md border border-dashed bg-muted/30 px-4 py-6 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60"
+                className={`flex min-h-[72px] w-full items-center justify-center gap-3 rounded-md border border-dashed px-4 py-6 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60 ${isDraggingFile ? "border-primary bg-primary/5" : "bg-muted/30 hover:bg-muted"}`}
                 onClick={() => fileInputRef.current?.click()}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDraggingFile(true);
+                }}
+                onDragLeave={() => setIsDraggingFile(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDraggingFile(false);
+                  handleFileChange(event.dataTransfer.files?.[0]);
+                }}
               >
                 <FileUp className="h-5 w-5 text-primary" />
-                <span>{fileLabel}</span>
+                <span>Kéo thả tài liệu vào đây hoặc {fileLabel.toLocaleLowerCase("vi")}</span>
               </button>
             )}
-            <p className="text-xs text-muted-foreground">
-              Hỗ trợ PDF, JPG, JPEG, PNG, WEBP. AI sẽ đọc file, tạo Thẻ minh chứng và báo các thông
-              tin cần kiểm tra. Tối đa 10MB.
+            <p id="evidence-upload-help" className="text-xs text-muted-foreground">
+              Hỗ trợ PDF, JPG, PNG, WEBP. Tối đa {EVIDENCE_UPLOAD_LIMIT_MB} MB. Tài liệu sẽ được sử
+              dụng khi kiểm tra hồ sơ cấp Thành phố.
             </p>
-            {fileError ? <p className="text-sm text-destructive">{fileError}</p> : null}
+            {fileError ? (
+              <p id="evidence-file-error" role="alert" className="text-sm text-destructive">
+                {fileError}
+              </p>
+            ) : null}
           </div>
 
-          {isSubmitting ? <UploadProgress /> : null}
+          <StepHeading number="3" title="Kiểm tra và gửi xử lý" />
+          <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+            <p>
+              Tiêu chí:{" "}
+              <span className="font-medium text-foreground">
+                {criterion
+                  ? studentEvidenceCriteria.find((item) => item.key === criterion)?.label
+                  : "Chưa chọn"}
+              </span>
+            </p>
+            <p className="truncate">{file ? `Tài liệu: ${file.name}` : "Chưa chọn tài liệu"}</p>
+          </div>
+          {isSubmitting ? (
+            <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Đang thêm tài liệu và gửi xử lý.
+            </p>
+          ) : null}
+          {submitError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {submitError}
+            </p>
+          ) : null}
         </div>
 
         <DialogFooter className="shrink-0 border-t px-5 py-4">
           <Button
             type="button"
-            className="min-h-[44px]"
+            className="min-h-12"
             onClick={() => void submit()}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !criterion}
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {isSubmitting ? "Đang ghi nhận..." : submitLabel}
@@ -554,7 +639,7 @@ export function AddEvidenceDrawer({
           <Button
             type="button"
             variant="outline"
-            className="min-h-[44px]"
+            className="min-h-12"
             disabled={isSubmitting}
             onClick={() => onOpenChange(false)}
           >
@@ -629,7 +714,7 @@ function ReferenceSuggestions({
         <button
           key={item.eventId}
           type="button"
-          className="flex min-h-[44px] w-full min-w-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+          className="flex min-h-12 w-full min-w-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
           onClick={() => onSelect(item)}
         >
           <span className="min-w-0">
@@ -741,12 +826,20 @@ function InlineEventSuggestions({
       >
         <div className="flex items-center justify-between gap-3 border-b border-sky-100 px-3 py-2">
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-sky-950">Gợi ý từ sự kiện chính thức</div>
+            <div className="text-sm font-semibold text-sky-950">
+              Dùng hoạt động đã được ghi nhận
+            </div>
             <div className="text-xs text-sky-800">
               Hệ thống sẽ kiểm tra bạn có trong danh sách tham gia trước khi import.
             </div>
           </div>
-          <Button type="button" variant="ghost" size="sm" onClick={() => onDismiss(dismissedKey)}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-12"
+            onClick={() => onDismiss(dismissedKey)}
+          >
             Ẩn
           </Button>
         </div>
@@ -766,25 +859,13 @@ function InlineEventSuggestions({
         {suggestions.length > 1 ? (
           <button
             type="button"
-            className="flex min-h-10 w-full items-center justify-center gap-2 px-3 text-sm font-semibold text-sky-800 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+            className="flex min-h-12 w-full items-center justify-center gap-2 px-3 text-sm font-semibold text-sky-800 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
             onClick={onToggleExpanded}
           >
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             {expanded ? "Thu gọn" : "Xem thêm"}
           </button>
         ) : null}
-        <StudentAssistantExplanation
-          params={{
-            contextType: "event_registry",
-            contextId: visibleSuggestions[0]?.eventId ?? applicationId,
-            applicationId,
-            criterion,
-            eventId: visibleSuggestions[0]?.eventId,
-          }}
-          title="Vì sao có gợi ý này?"
-          compact
-          className="m-3 border-sky-100 bg-white"
-        />
       </motion.div>
     </AnimatePresence>
   );
@@ -843,6 +924,7 @@ function InlineEventSuggestionRow({
               type="button"
               size="sm"
               variant="outline"
+              className="min-h-12"
               disabled={isChecking}
               onClick={() => onCheckParticipant(suggestion)}
             >
@@ -853,6 +935,7 @@ function InlineEventSuggestionRow({
             <Button
               type="button"
               size="sm"
+              className="min-h-12"
               disabled={!canImport || isImporting}
               onClick={() => onImport(suggestion)}
             >
@@ -872,32 +955,20 @@ function getSuggestionMatchLabel(level: EvidenceEventSuggestion["match"]["level"
   return "có thể phù hợp";
 }
 
-function UploadProgress() {
-  const steps = [
-    "Đã tải file",
-    "AI đang đọc nội dung",
-    "Đang tạo Thẻ minh chứng",
-    "Đang tiền kiểm thông tin",
-    "Chờ bạn xác nhận",
-  ];
-
+function StepHeading({ number, title }: { number: string; title: string }) {
   return (
-    <div className="rounded-md border bg-muted/20 p-3">
-      <div className="text-sm font-semibold text-foreground">Đã ghi nhận minh chứng</div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        {steps.map((step, index) => (
-          <div key={step} className="flex items-center gap-2 text-sm text-muted-foreground">
-            {index === 1 ? (
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            )}
-            {step}
-          </div>
-        ))}
-      </div>
-    </div>
+    <h3 className="flex items-center gap-2 border-t pt-4 text-sm font-semibold text-foreground">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs text-muted-foreground">
+        {number}
+      </span>
+      {title}
+    </h3>
   );
+}
+
+function getEvidenceSubmitError(error: unknown) {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return "Chưa thêm được minh chứng. Vui lòng kiểm tra lại thông tin và thử lại.";
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
