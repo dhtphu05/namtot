@@ -92,6 +92,10 @@ test("maps processing and confirmation states to student-friendly labels", () =>
     "Không thể đọc tài liệu",
   );
   assert.equal(
+    getEvidenceLibraryStatus(evidence({ indexingStatus: "failed" })).message,
+    "Mở minh chứng để xem tình trạng đọc tài liệu và hướng xử lý.",
+  );
+  assert.equal(
     getEvidenceLibraryStatus(evidence({ indexingStatus: "unfamiliar_backend_value" })).label,
     "Đã ghi nhận",
   );

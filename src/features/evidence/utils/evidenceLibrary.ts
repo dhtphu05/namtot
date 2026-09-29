@@ -66,7 +66,7 @@ const statusPresentation: Record<EvidenceLibraryStatusKey, EvidenceLibraryStatus
   error: {
     key: "error",
     label: "Không thể đọc tài liệu",
-    message: "Thay tài liệu bằng bản rõ hơn hoặc mở minh chứng để thử lại.",
+    message: "Mở minh chứng để xem tình trạng đọc tài liệu và hướng xử lý.",
     tone: "error",
   },
   recorded: {
