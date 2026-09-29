@@ -131,14 +131,28 @@ const validPreview = {
 };
 
 test.describe("Award Decision Registry", () => {
+  test("Data Uploader home explains the job and exposes one primary next action", async ({ page }) => {
+    await installMocks(page, "data_uploader");
+    await page.goto("/app/data-uploader");
+
+    await expect(page.getByRole("heading", { name: "Tổng quan dữ liệu công nhận" })).toBeVisible();
+    await expect(
+      page.getByText(
+        "Đưa quyết định và danh sách sinh viên đã được đơn vị công nhận vào hệ thống để phục vụ kiểm tra điều kiện hồ sơ cấp Thành phố.",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Tạo quyết định công nhận", exact: true }),
+    ).toBeVisible();
+  });
+
   test("School uploader opens Registry and sees the backend list response", async ({ page }) => {
     const requests: string[] = [];
     await installMocks(page, "data_uploader", requests);
-    await page.goto("/app/data-uploader");
-    await page.getByRole("link", { name: "Award Registry", exact: true }).click();
+    await page.goto("/app/award-registry");
 
     await expect(page).toHaveURL(/\/app\/award-registry$/);
-    await expect(page.getByRole("heading", { name: "Award Decision Registry" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Quyết định công nhận" })).toBeVisible();
     await expect(page.getByText("05/QĐ-ĐTN")).toBeVisible();
     await expect(page.getByText("2025–2026")).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Ngày quyết định" })).toBeVisible();
@@ -200,8 +214,8 @@ test.describe("Award Decision Registry", () => {
   test("admin can use the backend-supported global registry route", async ({ page }) => {
     await installMocks(page, "admin");
     await page.goto("/app/award-registry");
-    await expect(page.getByRole("heading", { name: "Award Decision Registry" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Award Registry" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Quyết định công nhận" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Tạo quyết định công nhận" })).toBeVisible();
   });
 
   test("filters are sent to the server and retain pagination metadata", async ({ page }) => {
