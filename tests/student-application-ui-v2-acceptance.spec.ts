@@ -82,6 +82,97 @@ test.describe("student application UI V2 acceptance", () => {
     }
   });
 
+  test("application opens on an overview of exactly five canonical criteria", async ({ page }) => {
+    await loginAndGoto(page, "/app/application");
+
+    await expect(page.getByRole("heading", { name: "Hồ sơ của tôi", level: 1 })).toBeVisible();
+    const cards = page.getByTestId("criterion-overview-card");
+    await expect(cards).toHaveCount(5);
+    await expect(cards).toHaveText([
+      /Đạo đức tốt/,
+      /Học tập tốt/,
+      /Thể lực tốt/,
+      /Tình nguyện tốt/,
+      /Hội nhập tốt/,
+    ]);
+    await expect(page.getByText("priority", { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/Cấp Trường|Cấp ĐHĐN|Cấp Trung ương/)).toHaveCount(0);
+    const dimensions = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.content - dimensions.viewport).toBeLessThanOrEqual(1);
+  });
+
+  test("application overview fits the required desktop widths and 125% equivalent viewport", async ({
+    page,
+  }, testInfo) => {
+    const viewports = [
+      { width: 1280, height: 720 },
+      { width: 1366, height: 768 },
+      { width: 1440, height: 900 },
+      { width: 1600, height: 900 },
+      { width: 1920, height: 1080 },
+      { width: 1093, height: 614 },
+    ];
+    await page.setViewportSize(viewports[0]);
+    await loginAndGoto(page, "/app/application");
+
+    for (const [index, viewport] of viewports.entries()) {
+      await page.setViewportSize(viewport);
+      await page.goto("/app/application");
+      await expect(page.getByTestId("criterion-overview-card")).toHaveCount(5);
+      const dimensions = await page.evaluate(() => ({
+        viewport: document.documentElement.clientWidth,
+        content: document.documentElement.scrollWidth,
+      }));
+      expect(
+        dimensions.content - dimensions.viewport,
+        `${viewport.width}x${viewport.height}`,
+      ).toBeLessThanOrEqual(1);
+      await page.screenshot({
+        path: testInfo.outputPath(`application-overview-${index + 1}.png`),
+        fullPage: true,
+      });
+    }
+  });
+
+  test("overview opens a criterion workspace and returns without losing the URL contract", async ({
+    page,
+  }) => {
+    await loginAndGoto(page, "/app/application");
+    await page.getByRole("button", { name: /^Xem và hoàn thiện Học tập tốt/ }).click();
+
+    await expect(page).toHaveURL(/criterion=academic/);
+    await expect(
+      studentContentMain(page).getByRole("heading", { name: "Học tập tốt" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Tổng quan hồ sơ" }).click();
+
+    await expect(page.getByTestId("criterion-overview-card")).toHaveCount(5);
+    await expect(page).not.toHaveURL(/criterion=/);
+  });
+
+  test("switching away from an open criterion form asks before discarding its draft", async ({
+    page,
+  }) => {
+    await loginAndGoto(page, "/app/application?criterion=academic");
+    await page.getByRole("button", { name: /Chỉnh kết quả|Tự khai báo kết quả/ }).click();
+    const gpaInput = page.getByLabel(/GPA|ĐTB/);
+    await gpaInput.fill("3.4");
+
+    page.once("dialog", (dialog) => void dialog.dismiss());
+    await page
+      .getByRole("button", { name: /Đạo đức tốt/ })
+      .first()
+      .click();
+
+    await expect(gpaInput).toHaveValue("3.4");
+    await expect(
+      studentContentMain(page).getByRole("heading", { name: "Học tập tốt" }),
+    ).toBeVisible();
+  });
+
   test("upload evidence deep link opens and closes the drawer", async ({ page }) => {
     await loginAndGoto(page, "/app/application?criterion=academic&uploadEvidence=1");
     const dialog = page.getByRole("dialog").filter({ hasText: /minh chứng/i });
@@ -115,7 +206,8 @@ test.describe("student application UI V2 acceptance", () => {
     await page.getByRole("button", { name: /Xem điều kiện/ }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText(/Nguồn:/);
+    await expect(dialog).toContainText("Dữ liệu nền");
+    await expect(dialog).toContainText("Hoàn thiện dữ liệu cho Đạo đức tốt.");
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
   });
@@ -170,6 +262,7 @@ test.describe("student application UI V2 acceptance", () => {
 
     await expect(page.getByRole("button", { name: /Kiểm tra hồ sơ/ }).first()).toBeEnabled();
     await expect(page.getByRole("button", { name: /Nộp hồ sơ/ }).first()).toBeDisabled();
+    await page.getByTestId("criterion-overview-card").first().click();
     await expect(page.getByRole("button", { name: /Tải minh chứng/ }).first()).toBeEnabled();
   });
 
@@ -264,7 +357,7 @@ test.describe("student application UI V2 acceptance", () => {
       });
     });
     await loginAndGoto(page, "/app/application");
-    await expect(page.getByRole("heading", { name: "Hồ sơ & minh chứng" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hồ sơ của tôi" })).toBeVisible();
     await page
       .getByRole("button", { name: /Nộp hồ sơ/ })
       .first()
@@ -336,7 +429,7 @@ test.describe("student application UI V2 acceptance", () => {
 
     await mockCityApplication(page, "supplement");
     await loginAndGoto(page, "/app/application");
-    await expect(page.getByRole("heading", { name: "Hồ sơ & minh chứng" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hồ sơ của tôi" })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: /Điều kiện nộp hồ sơ cấp Thành phố/i }),
     ).toHaveCount(0);
@@ -492,9 +585,12 @@ test.describe("student application UI V2 acceptance", () => {
   });
 
   test("non-City individual application does not request City deadlines", async ({ page }) => {
-    await page.route("http://localhost:8080/api/applications/current?*", async (route) => {
-      await json(route, currentApplication("noTasks", "school"));
-    });
+    await page.route(
+      /^http:\/\/localhost:8080\/api\/applications\/current(?:\?.*)?$/,
+      async (route) => {
+        await json(route, currentApplication("noTasks", "school"));
+      },
+    );
     let deadlineRequests = 0;
     await page.route(
       "http://localhost:8080/api/applications/app-1/submission-deadline",
@@ -543,9 +639,12 @@ test.describe("student application UI V2 acceptance", () => {
     applicationResponse.application.metrics.push(
       metric("metric-volunteer-days", "volunteer_days", 15, 20, "pending"),
     );
-    await page.route("http://localhost:8080/api/applications/current*", async (route) => {
-      await json(route, applicationResponse);
-    });
+    await page.route(
+      /^http:\/\/localhost:8080\/api\/applications\/current(?:\?.*)?$/,
+      async (route) => {
+        await json(route, applicationResponse);
+      },
+    );
     await page.route("http://localhost:8080/api/applications/app-1/evidences*", async (route) => {
       const allEvidence = [
         ...evidencesFor(null),
@@ -898,13 +997,16 @@ async function loginAndGotoCityApplication(
     });
   });
   await loginAndGoto(page, "/app/application");
-  await expect(page.getByRole("heading", { name: "Hồ sơ & minh chứng" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hồ sơ của tôi" })).toBeVisible();
 }
 
 async function mockCityApplication(page: Page, state: AppMode, submittedAt?: string | null) {
-  await page.route("http://localhost:8080/api/applications/current?*", async (route) => {
-    await json(route, currentApplication(state, "city", submittedAt));
-  });
+  await page.route(
+    /^http:\/\/localhost:8080\/api\/applications\/current(?:\?.*)?$/,
+    async (route) => {
+      await json(route, currentApplication(state, "city", submittedAt));
+    },
+  );
   await page.route(
     "http://localhost:8080/api/applications/app-1/submission-deadline",
     async (route) =>
