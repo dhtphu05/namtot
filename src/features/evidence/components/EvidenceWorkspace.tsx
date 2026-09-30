@@ -136,17 +136,6 @@ function EvidenceWorkspace() {
       }),
     [criterionFilter, evidenceList, search, statusFilter],
   );
-  const processingCount = evidenceList.filter(
-    (item) =>
-      getEvidenceLibraryStatus(item, (item as EvidenceResponse & { card?: EvidenceCard }).card)
-        .key === "processing",
-  ).length;
-  const attentionCount = evidenceList.filter(
-    (item) =>
-      getEvidenceLibraryStatus(item, (item as EvidenceResponse & { card?: EvidenceCard }).card)
-        .key === "attention",
-  ).length;
-
   const openUpload = (criterion?: CoreCriterionKey) => {
     setDrawerCriterion(criterion);
     setDrawerOpen(true);
@@ -224,10 +213,7 @@ function EvidenceWorkspace() {
   if (currentApplication.isLoading) {
     return (
       <>
-        <TopBar
-          title="Minh chứng"
-          subtitle="Các tài liệu dành cho hồ sơ Sinh viên 5 tốt cấp Thành phố."
-        />
+        <TopBar title="Minh chứng" subtitle="Tài liệu trong hồ sơ của bạn." />
         <LoadingState label="Đang tải hồ sơ hiện tại..." />
       </>
     );
@@ -236,10 +222,7 @@ function EvidenceWorkspace() {
   if (currentApplication.isError) {
     return (
       <>
-        <TopBar
-          title="Minh chứng"
-          subtitle="Các tài liệu dành cho hồ sơ Sinh viên 5 tốt cấp Thành phố."
-        />
+        <TopBar title="Minh chứng" subtitle="Tài liệu trong hồ sơ của bạn." />
         <ErrorState
           title="Không thể tải hồ sơ"
           message={
@@ -256,13 +239,10 @@ function EvidenceWorkspace() {
   if (!application) {
     return (
       <>
-        <TopBar
-          title="Minh chứng"
-          subtitle="Các tài liệu bạn cung cấp cho hồ sơ Sinh viên 5 tốt cấp Thành phố."
-        />
+        <TopBar title="Minh chứng" subtitle="Tài liệu trong hồ sơ của bạn." />
         <EmptyState
           title="Bạn chưa có hồ sơ"
-          description="Tạo hồ sơ trước, sau đó bạn có thể thêm tài liệu cho từng tiêu chí."
+          description="Tạo hồ sơ để thêm minh chứng."
           action={
             <Button asChild>
               <Link to="/app/application">Tạo hồ sơ</Link>
@@ -284,7 +264,7 @@ function EvidenceWorkspace() {
     <>
       <TopBar
         title="Minh chứng"
-        subtitle="Các tài liệu và thông tin bạn đã cung cấp cho hồ sơ Sinh viên 5 tốt cấp Thành phố."
+        subtitle="Tài liệu trong hồ sơ của bạn."
         action={
           isEditable ? (
             <Button className="min-h-11" onClick={() => openUpload(activeCriterion)}>
@@ -325,21 +305,9 @@ function EvidenceWorkspace() {
             <strong className="font-semibold text-foreground">{evidenceList.length}</strong> tài
             liệu
           </span>
-          {attentionCount ? (
-            <span>
-              <strong className="font-semibold text-foreground">{attentionCount}</strong> cần bạn
-              kiểm tra
-            </span>
-          ) : null}
-          {processingCount ? (
-            <span>
-              <strong className="font-semibold text-foreground">{processingCount}</strong> đang được
-              xử lý
-            </span>
-          ) : null}
         </section>
 
-        <section aria-label="Lọc minh chứng" className="space-y-4 rounded-xl border bg-white p-4">
+        <section aria-label="Lọc minh chứng" className="space-y-3 rounded-xl border bg-white p-3">
           <div role="group" aria-label="Lọc theo tiêu chí" className="flex flex-wrap gap-2">
             <CriterionFilterButton
               active={criterionFilter === "all"}
@@ -432,23 +400,29 @@ function EvidenceWorkspace() {
           />
         ) : noEvidenceForCriterion ? (
           <EmptyState
-            title={`Chưa có minh chứng cho ${studentEvidenceCriteria.find((item) => item.key === criterionFilter)?.label}.`}
-            description="Thêm tài liệu để hoàn thiện tiêu chí trong hồ sơ của bạn."
+            title={`Chưa có minh chứng · ${studentEvidenceCriteria.find((item) => item.key === criterionFilter)?.label}.`}
             action={
               isEditable ? (
-                <Button onClick={() => openUpload(criterionFilter)}>
-                  Thêm minh chứng cho tiêu chí này
+                <Button onClick={() => openUpload(criterionFilter)} size="sm">
+                  <FilePlus2 className="h-4 w-4" />
+                  Thêm
                 </Button>
               ) : undefined
             }
+            className="p-3 text-left"
           />
         ) : noEvidence ? (
           <EmptyState
-            title="Bạn chưa thêm minh chứng nào."
-            description="Thêm tài liệu để hoàn thiện các tiêu chí trong hồ sơ của bạn."
+            title="Chưa có minh chứng."
             action={
-              isEditable ? <Button onClick={() => openUpload()}>Thêm minh chứng</Button> : undefined
+              isEditable ? (
+                <Button onClick={() => openUpload()} size="sm">
+                  <FilePlus2 className="h-4 w-4" />
+                  Thêm
+                </Button>
+              ) : undefined
             }
+            className="p-3 text-left"
           />
         ) : (
           <section

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Info, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
 import { LoadingState } from "@/components/feedback/LoadingState";
@@ -173,7 +173,7 @@ export function StudentPrecheckReviewPage() {
       <PageFrame>
         <PageTitleV2
           title="Kiểm tra hồ sơ"
-          description="Bạn có thể rà soát lại thông tin trước khi gửi hồ sơ Sinh viên 5 tốt cấp Thành phố."
+          description="Rà soát 5 tiêu chí và điều kiện gửi hồ sơ."
         />
         <LoadingState label="Đang tải hồ sơ của bạn…" />
       </PageFrame>
@@ -185,7 +185,7 @@ export function StudentPrecheckReviewPage() {
       <PageFrame>
         <PageTitleV2
           title="Kiểm tra hồ sơ"
-          description="Bạn có thể rà soát lại thông tin trước khi gửi hồ sơ Sinh viên 5 tốt cấp Thành phố."
+          description="Rà soát 5 tiêu chí và điều kiện gửi hồ sơ."
         />
         <InlineStateMessage
           tone="critical"
@@ -209,7 +209,7 @@ export function StudentPrecheckReviewPage() {
       <PageFrame>
         <PageTitleV2
           title="Kiểm tra hồ sơ"
-          description="Bạn có thể rà soát lại thông tin trước khi gửi hồ sơ Sinh viên 5 tốt cấp Thành phố."
+          description="Rà soát 5 tiêu chí và điều kiện gửi hồ sơ."
         />
         <ApplicationContextBar
           workspaceName={user?.workspace?.name}
@@ -253,57 +253,44 @@ export function StudentPrecheckReviewPage() {
     <PageFrame>
       <PageTitleV2
         title="Kiểm tra hồ sơ"
-        description="Bạn có thể rà soát lại thông tin trước khi gửi hồ sơ Sinh viên 5 tốt cấp Thành phố."
-      />
-      <ApplicationContextBar
-        workspaceName={user?.workspace?.name}
-        workspaceShortName={user?.workspace?.shortName}
-        schoolYear={application.schoolYear}
-        links={[]}
+        description="Rà soát 5 tiêu chí và điều kiện gửi hồ sơ."
       />
 
       <section
         aria-labelledby="s5-application-summary-title"
-        className="min-w-0 rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-4 sm:p-5"
+        className="min-w-0 rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-3 sm:p-4"
       >
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2
               id="s5-application-summary-title"
-              className="text-base font-semibold text-[var(--student-v2-text-primary)]"
+              className="text-sm font-semibold text-[var(--student-v2-text-primary)]"
             >
-              Hồ sơ Sinh viên 5 tốt cấp Thành phố
+              Sinh viên 5 tốt
             </h2>
+            <p className="mt-1 text-[12px] leading-4 text-[var(--student-v2-text-secondary)]">
+              {[
+                user?.workspace?.shortName || user?.workspace?.name,
+                `Năm học ${application.schoolYear}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
           </div>
           <span className="inline-flex min-h-7 items-center rounded-full bg-[var(--student-v2-surface-secondary)] px-3 py-1 text-sm font-medium text-[var(--student-v2-text-primary)]">
             {finalStatus?.label ?? applicationStatus.label}
           </span>
         </div>
-        {finalResult ? (
-          <InlineStateMessage
-            tone={finalStatus?.tone === "success" ? "success" : "info"}
-            title="Hồ sơ đã có kết quả cuối"
-            description={application.finalNote || finalStatus?.label}
-            className="mt-4"
-          />
-        ) : hasBeenSent ? (
-          <InlineStateMessage
-            tone="info"
-            title="Hồ sơ đã được tiếp nhận"
-            description={
-              application.status === "submitted" || application.status === "under_review"
-                ? "Hồ sơ đang chờ cán bộ xét. Bạn có thể theo dõi cập nhật trong hồ sơ của mình."
-                : "Trạng thái hồ sơ đã được cập nhật. Mở hồ sơ để xem thông tin mới nhất."
-            }
-            className="mt-4"
-          />
+        {finalResult && application.finalNote ? (
+          <p className="mt-2 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
+            {application.finalNote}
+          </p>
         ) : null}
       </section>
 
-      <section aria-labelledby="s5-criteria-title" className="min-w-0">
+      <section aria-label="5 tiêu chí" className="min-w-0">
         <SectionHeading
-          title="Năm tiêu chí"
-          description="Xem thông tin và minh chứng đang có. Đây chưa phải kết quả xét của cán bộ."
+          title="5 tiêu chí"
           action={
             !hasBeenSent ? (
               <ButtonV2
@@ -318,9 +305,6 @@ export function StudentPrecheckReviewPage() {
             ) : undefined
           }
         />
-        <h2 id="s5-criteria-title" className="sr-only">
-          Năm tiêu chí
-        </h2>
 
         {completionQuery.isError || evidenceQuery.isError ? (
           <InlineStateMessage
@@ -364,12 +348,9 @@ export function StudentPrecheckReviewPage() {
       </section>
 
       <section aria-labelledby="s5-recommendations-title" className="min-w-0">
-        <SectionHeading
-          title="Điểm nên kiểm tra"
-          description="Các gợi ý giúp bạn rà soát hồ sơ; quyết định cuối cùng thuộc về cán bộ xét."
-        />
+        <SectionHeading title="Gợi ý kiểm tra" description="Gợi ý tự động chỉ để tham khảo." />
         <h2 id="s5-recommendations-title" className="sr-only">
-          Điểm nên kiểm tra
+          Gợi ý kiểm tra
         </h2>
         {precheckQuery.isLoading ? (
           <LoadingState label="Đang tải gợi ý kiểm tra…" className="mt-3" />
@@ -390,55 +371,42 @@ export function StudentPrecheckReviewPage() {
             }
           />
         ) : recommendations.length ? (
-          <div className="mt-3 rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-secondary)] p-4 sm:p-5">
-            <div className="flex items-start gap-3">
-              <Info
-                className="mt-0.5 h-5 w-5 shrink-0 text-[var(--student-v2-institutional-blue)]"
-                aria-hidden="true"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-[var(--student-v2-text-primary)]">
-                  Có {recommendations.length} gợi ý bạn có thể kiểm tra thêm
-                </p>
-                <p className="mt-1 text-sm text-[var(--student-v2-text-secondary)]">
-                  Đây là thông tin tham khảo, không thay cho kết quả xét. Bạn vẫn có thể gửi hồ sơ.
-                </p>
-                <ul className="mt-3 divide-y divide-[var(--student-v2-divider)]">
-                  {recommendations.map((item) => (
-                    <li
-                      key={item.criterion ?? item.label}
-                      className="flex min-w-0 flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between"
+          <div className="mt-2 border-t border-[var(--student-v2-divider)]">
+            <p className="py-2 text-[13px] font-semibold leading-5 text-[var(--student-v2-text-primary)]">
+              {recommendations.length} gợi ý nên xem lại
+            </p>
+            <ul className="divide-y divide-[var(--student-v2-divider)]">
+              {recommendations.map((item) => (
+                <li
+                  key={item.criterion ?? item.label}
+                  className="flex min-w-0 flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    {item.criterion ? (
+                      <p className="font-medium text-[var(--student-v2-text-primary)]">
+                        {item.label}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
+                      {item.description}
+                    </p>
+                  </div>
+                  {item.href && !hasBeenSent ? (
+                    <a
+                      className="inline-flex min-h-11 shrink-0 items-center font-semibold text-[var(--student-v2-institutional-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]"
+                      href={item.href}
                     >
-                      <div className="min-w-0">
-                        {item.criterion ? (
-                          <p className="font-medium text-[var(--student-v2-text-primary)]">
-                            {item.label}
-                          </p>
-                        ) : null}
-                        <p className="mt-1 text-sm leading-5 text-[var(--student-v2-text-secondary)]">
-                          {item.description}
-                        </p>
-                      </div>
-                      {item.href && !hasBeenSent ? (
-                        <a
-                          className="inline-flex min-h-11 shrink-0 items-center font-semibold text-[var(--student-v2-institutional-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]"
-                          href={item.href}
-                        >
-                          Xem {item.label}
-                        </a>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+                      Xem {item.label}
+                    </a>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
           </div>
         ) : (
-          <InlineStateMessage
-            title="Chưa có gợi ý cần xem thêm"
-            description="Bạn có thể tiếp tục rà soát thông tin trong năm tiêu chí."
-            className="mt-3"
-          />
+          <p className="mt-2 text-[13px] text-[var(--student-v2-text-secondary)]">
+            Không có gợi ý cần chú ý.
+          </p>
         )}
       </section>
 
@@ -476,11 +444,9 @@ export function StudentPrecheckReviewPage() {
           </ButtonV2>
         </div>
       ) : !precheckQuery.data ? (
-        <InlineStateMessage
-          title="Bạn chưa cập nhật gợi ý kiểm tra"
-          description="Cập nhật gợi ý để xem các điểm hệ thống khuyến nghị rà soát."
-          className="mt-3"
-        />
+        <p className="text-[13px] text-[var(--student-v2-text-secondary)]">
+          Cập nhật gợi ý để xem nội dung cần rà soát.
+        </p>
       ) : (
         <section
           aria-labelledby="s5-submit-title"
@@ -491,16 +457,15 @@ export function StudentPrecheckReviewPage() {
               id="s5-submit-title"
               className="font-semibold text-[var(--student-v2-text-primary)]"
             >
-              Gửi hồ sơ lên cấp Thành phố
+              Gửi hồ sơ
             </h2>
-            <p className="mt-1 text-sm text-[var(--student-v2-text-secondary)]">
-              Gợi ý kiểm tra không ngăn bạn gửi hồ sơ. Điều kiện và thời gian nhận hồ sơ được xác
-              nhận từ hệ thống.
+            <p className="mt-1 text-[13px] text-[var(--student-v2-text-secondary)]">
+              Gợi ý không ngăn việc gửi hồ sơ.
             </p>
             {!gate.allowed && submitMessage ? (
               <p
                 id="s5-submit-gate-message"
-                className="mt-2 text-sm text-[var(--student-v2-text-secondary)]"
+                className="mt-2 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]"
               >
                 {submitMessage.title}. {submitMessage.description}
               </p>

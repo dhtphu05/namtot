@@ -175,6 +175,14 @@ The student application V2 rollout uses additive aliases and primitives under `s
 - The confirmation explains that submission enters City review and limits draft editing; pending state prevents repeat actions. After a successful response, refetch the current application and show its submitted/review state as read-only. The five criteria are not the final result.
 - If there is no current application, provide the existing application-start path and do not display a season or inferred deadline. Show school and school year only from authenticated/server data.
 
+### Student workspace lean presentation S5.1
+
+- Keep the student journey ordered as application context, current work, evidence, checks, and official result. Prefer short headings and remove repeated descriptions, duplicate counts, and repeated explanations while preserving all server-backed status, requirement, deadline, and action details.
+- The application overview and criterion workspace should make the five existing criteria easy to scan; show evidence names as the primary document label and criterion/status as supporting context. Keep canonical evidence naming, search across evidence name and file name, preview, edit/replace, delete, and upload interactions intact.
+- Keep precheck suggestions advisory and visually distinct from eligibility/deadline gates. Do not change which conditions block submission, confirmation copy about the effect of submit, pending/error feedback, or server refresh behavior.
+- Before a final decision, the result route should show the current application status and a concise explanation that a result is not yet available. Show official result fields and criterion decisions only when the existing finalized response supplies them; do not render placeholder result metrics or empty summary panels.
+- Compact presentation must retain accessible names, focus visibility, keyboard operation, responsive layouts, loading/error/empty states, and the existing document viewer and dialogs. S5.1 is a presentation-only change; it does not create new APIs, routes, DTOs, statuses, or workflow transitions.
+
 ## Phase 2 UI Foundation Consolidation
 
 - Keep Tailwind v4, Radix/shadcn primitives, Lucide, Sonner, document viewers, and Student V2. Do not add a second component system or dependencies.

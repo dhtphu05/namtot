@@ -16,7 +16,7 @@ export function CityDeadlineStatusCard({
   isSupplement: boolean;
   onRetry: () => void;
 }) {
-  const title = isSupplement ? "Thời hạn bổ sung hồ sơ" : "Thời hạn nộp hồ sơ cấp Thành phố";
+  const title = isSupplement ? "Thời hạn bổ sung" : "Thời hạn nộp hồ sơ";
   const titleId = isSupplement
     ? "city-supplement-deadline-title"
     : "city-submission-deadline-title";
@@ -25,13 +25,13 @@ export function CityDeadlineStatusCard({
 
   return (
     <section
-      className="rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-4 py-4 sm:px-5"
+      className="rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 py-3 sm:px-4"
       aria-labelledby={titleId}
       aria-busy={isLoading}
     >
       <div className="flex min-w-0 items-start gap-3">
         <span
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--student-v2-surface-secondary)] text-[var(--student-v2-text-primary)]"
+          className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--student-v2-surface-secondary)] text-[var(--student-v2-text-primary)]"
           aria-hidden="true"
         >
           <Icon className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
@@ -49,7 +49,7 @@ export function CityDeadlineStatusCard({
             </span>
           </div>
           <p
-            className="mt-1 text-sm leading-5 text-[var(--student-v2-text-secondary)]"
+            className="mt-1 line-clamp-1 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]"
             role="status"
           >
             {isLoading

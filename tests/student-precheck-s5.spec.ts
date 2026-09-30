@@ -17,7 +17,7 @@ test.describe("Student precheck S5", () => {
     await login(page);
 
     await expect(page.getByRole("heading", { name: "Kiểm tra hồ sơ" })).toBeVisible();
-    await expect(page.getByText("Có 2 gợi ý bạn có thể kiểm tra thêm")).toBeVisible();
+    await expect(page.getByText("2 gợi ý nên xem lại")).toBeVisible();
     const criteriaCards = page.locator('[aria-label="Năm tiêu chí Sinh viên 5 tốt"]');
     await expect(criteriaCards.locator("a")).toHaveCount(5);
     for (const [criterion] of criteria) {
@@ -100,7 +100,7 @@ test.describe("Student precheck S5", () => {
     await expect.poll(() => submitCount).toBe(1);
     await expect.poll(() => submittedBody).toMatchObject({ allowSubmitWithWarnings: true });
     expect(submittedBody).not.toHaveProperty("targetLevel");
-    await expect(page.getByText("Hồ sơ đã được tiếp nhận")).toBeVisible();
+    await expect(page.getByText("Đang được xét duyệt")).toBeVisible();
     await expect(page.getByRole("button", { name: "Gửi hồ sơ" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Theo dõi hồ sơ" })).toBeVisible();
   });
@@ -142,7 +142,9 @@ test.describe("Student precheck S5", () => {
 
     for (const { width, height } of [
       { width: 1280, height: 720 },
+      { width: 1422, height: 800 }, // 1280×720 effective viewport at 90% zoom.
       { width: 1366, height: 768 },
+      { width: 1164, height: 655 }, // 1280×720 effective viewport at 110% zoom.
       { width: 1440, height: 900 },
       { width: 1600, height: 900 },
       { width: 1920, height: 1080 },

@@ -28,7 +28,7 @@ const criterionIcons = {
 
 export function PageFrame({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex min-w-0 flex-col gap-5 py-5 sm:gap-6 sm:py-6">{children}</main>
+    <main className="mx-auto flex min-w-0 flex-col gap-4 py-5 sm:gap-5 sm:py-6">{children}</main>
   );
 }
 
@@ -48,14 +48,14 @@ export function CriterionReviewCard({
   const Icon = criterionIcons[criterion];
   const content = (
     <>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--student-v2-surface-secondary)] text-[var(--student-v2-institutional-blue)]">
-        <Icon className="h-5 w-5" aria-hidden="true" />
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--student-v2-surface-secondary)] text-[var(--student-v2-institutional-blue)]">
+        <Icon className="h-4 w-4" aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block font-semibold leading-5 text-[var(--student-v2-text-primary)]">
           {title}
         </span>
-        <span className="mt-1 block text-sm text-[var(--student-v2-text-secondary)]">
+        <span className="mt-1 block text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
           {informationLabel}
           {evidenceCount !== null &&
           !(evidenceCount === 0 && informationLabel === "Chưa thêm minh chứng")
@@ -71,7 +71,7 @@ export function CriterionReviewCard({
     </>
   );
   const className =
-    "flex min-w-0 items-center gap-3 rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]";
+    "flex min-h-[72px] min-w-0 items-center gap-3 rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]";
 
   return href ? (
     <a
@@ -135,17 +135,12 @@ export function EligibilityPanel({
       <p
         role="status"
         aria-live="polite"
-        className="text-sm leading-5 text-[var(--student-v2-text-secondary)]"
+        className="text-[12px] leading-4 text-[var(--student-v2-text-secondary)]"
       >
         {isLoading ? "Đang kiểm tra điều kiện nộp hồ sơ của bạn." : description}
       </p>
       {!isLoading && isError ? (
         <RetryButton onClick={onRetry} label="Tải lại điều kiện nộp hồ sơ" />
-      ) : null}
-      {!isLoading && !isError && data?.status === "ELIGIBLE" ? (
-        <p className="mt-2 text-xs text-[var(--student-v2-text-muted)]">
-          Đây là điều kiện gửi hồ sơ, chưa phải kết quả xét danh hiệu.
-        </p>
       ) : null}
     </GatePanel>
   );
@@ -202,7 +197,7 @@ export function SubmissionWindowPanel({
       <p
         role="status"
         aria-live="polite"
-        className="text-sm leading-5 text-[var(--student-v2-text-secondary)]"
+        className="text-[12px] leading-4 text-[var(--student-v2-text-secondary)]"
       >
         {description}
       </p>
@@ -254,12 +249,14 @@ function GatePanel({
     critical: "text-[var(--student-v2-critical-text)]",
   }[tone];
   return (
-    <section className="min-w-0 rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-4 sm:p-5">
-      <div className="flex min-w-0 items-start gap-3">
-        <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${toneClass}`} aria-hidden="true" />
+    <section className="min-w-0 rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-3">
+      <div className="flex min-w-0 items-start gap-2.5">
+        <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${toneClass}`} aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-[var(--student-v2-text-primary)]">{title}</h2>
-          <div className="mt-2">{children}</div>
+          <h2 className="text-[13px] font-semibold leading-5 text-[var(--student-v2-text-primary)]">
+            {title}
+          </h2>
+          <div className="mt-1">{children}</div>
         </div>
       </div>
     </section>

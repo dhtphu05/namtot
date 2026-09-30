@@ -10,7 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
-import { AppButton, InlineAlert, StatusBadge } from "@/features/student/components/primitives";
+import { AppButton, StatusBadge } from "@/features/student/components/primitives";
 import { getEvidenceDisplayModel } from "@/features/application/presentation";
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import { useUpdateEvidence, useUploadEvidenceFile } from "@/features/evidence/hooks/useEvidence";
@@ -18,13 +18,11 @@ import { getEvidenceStudentStatus } from "@/features/student/selectors/student-u
 import { PRESENTATION_SEMANTICS_V2 } from "@/lib/presentation-semantics";
 import type { EvidenceResponse } from "@/lib/api/types";
 import {
-  formatStudentDate,
   getEvidenceFiles,
   getFileName,
   getPrimaryFile,
   isImageFile,
   isPdfFile,
-  sourceTypeLabel,
   studentCriterionLabel,
 } from "./student-evidence-utils";
 import type { EvidenceLibraryStatus } from "../utils/evidenceLibrary";
@@ -141,7 +139,7 @@ export function StudentEvidenceCard({
         <div
           role="button"
           tabIndex={isBusy ? -1 : 0}
-          className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-[#F8FBFE] text-[#0057C2] md:w-40"
+          className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-[#F8FBFE] text-[#0057C2] md:w-32"
           onClick={() => {
             if (!isBusy) onViewDetails(evidence);
           }}
@@ -182,6 +180,7 @@ export function StudentEvidenceCard({
               {renaming ? (
                 <div className="flex min-w-0 gap-2">
                   <input
+                    aria-label="Tên minh chứng"
                     className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#0057C2]"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
@@ -193,17 +192,14 @@ export function StudentEvidenceCard({
                   </AppButton>
                 </div>
               ) : (
-                <h3 className="line-clamp-2 text-sm font-bold leading-5 text-[var(--text-primary)]">
+                <h3 className="break-words text-sm font-bold leading-5 text-[var(--text-primary)] [overflow-wrap:anywhere]">
                   {PRESENTATION_SEMANTICS_V2
                     ? display.title
                     : evidence.evidenceName || "Minh chứng chưa đặt tên"}
                 </h3>
               )}
               <p className="mt-1 line-clamp-1 text-xs font-medium text-[var(--text-secondary)]">
-                {studentCriterionLabel[evidence.criterion]} ·{" "}
-                {PRESENTATION_SEMANTICS_V2
-                  ? display.sourceLabel
-                  : (sourceTypeLabel[evidence.sourceType] ?? "Nguồn khác")}
+                {studentCriterionLabel[evidence.criterion]}
               </p>
             </div>
             <div>
@@ -218,35 +214,30 @@ export function StudentEvidenceCard({
           </div>
 
           {statusOverride?.message ? (
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">{statusOverride.message}</p>
+            <p className="mt-1 line-clamp-1 text-xs leading-4 text-muted-foreground">
+              {statusOverride.message}
+            </p>
           ) : null}
 
           {extractedSummary || !primaryFile ? (
-            <p className="mt-2 line-clamp-2 text-sm leading-5 text-[var(--text-secondary)]">
+            <p className="mt-1 line-clamp-1 text-xs leading-4 text-[var(--text-secondary)]">
               {extractedSummary ||
                 "Chưa có tệp đính kèm. Bạn có thể bổ sung tệp để cán bộ có căn cứ xét."}
             </p>
           ) : null}
 
           {warnings.length ? (
-            <div className="mt-3">
-              <InlineAlert
-                type="warning"
-                title={warnings[0]}
-                description={warnings.slice(1, 2).join(" ")}
-              />
-            </div>
+            <p className="mt-1 line-clamp-1 text-xs leading-4 text-amber-700">{warnings[0]}</p>
           ) : null}
 
-          <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-secondary)]">
-            <span className="line-clamp-1">
-              {primaryFile ? getFileName(primaryFile) : "Chưa có file"}
+          <div className="mt-2 flex min-w-0 items-center gap-2 text-xs text-[var(--text-secondary)]">
+            <span className="min-w-0 flex-1 truncate">
+              {primaryFile ? getFileName(primaryFile) : "Chưa có tệp"}
             </span>
-            <span>{files.length} tệp</span>
-            <span>Cập nhật {formatStudentDate(evidence.updatedAt ?? evidence.createdAt)}</span>
+            <span className="shrink-0">{files.length} tệp</span>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             <AppButton size="sm" variant="secondary" onClick={() => onViewDetails(evidence)}>
               <FileText className="h-4 w-4" />
               {viewLabel}
