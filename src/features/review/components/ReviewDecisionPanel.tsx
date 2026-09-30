@@ -135,8 +135,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const canEscalateResolution = task.permissions?.availableActions
     ? task.permissions.availableActions.includes("escalate_resolution")
     : canDecide;
-  const canSearchPrecedents =
-    role === "officer" || role === "manager" || role === "committee" || role === "admin";
+  const canSearchPrecedents = ["officer", "manager", "committee", "admin"].includes(role ?? "");
   const evidenceOptions = useMemo(() => task.evidences ?? [], [task.evidences]);
   const visibleDecisionOptions = useMemo(
     () =>

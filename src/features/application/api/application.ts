@@ -223,11 +223,7 @@ export const applicationApi = {
     return { ...res, data: normalizeCurrentApplication(res.data) };
   },
 
-  startCurrentApplication: async (data: {
-    schoolYear?: string;
-    applicationType?: "individual" | "collective";
-    targetLevel?: Level;
-  }) => {
+  startCurrentApplication: async (data: { schoolYear?: string }) => {
     const res = await apiClient<CurrentApplicationPayload>("/api/applications/current/start", {
       method: "POST",
       body: data,
@@ -235,8 +231,8 @@ export const applicationApi = {
     return { ...res, data: normalizeCurrentApplication(res.data) };
   },
 
-  startApplication: async (data: { schoolYear?: string; targetLevel?: Level }) => {
-    return applicationApi.startCurrentApplication({ ...data, applicationType: "individual" });
+  startApplication: async (data: { schoolYear?: string }) => {
+    return applicationApi.startCurrentApplication(data);
   },
 
   updateTargetLevel: async (applicationId: string, targetLevel: Level) => {

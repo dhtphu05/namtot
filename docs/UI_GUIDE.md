@@ -109,6 +109,14 @@ Avoid:
 - Use Vietnamese user-facing text where the surrounding screen uses Vietnamese.
 - Shared page headers should preserve readable titles at narrow widths. Keep notification and user/logout controls in `AppHeader`; do not repeat them in page headers. The header hides season context unless a real season value is available.
 
+## Public Entry Pages (E1)
+
+- The public entry routes are `/`, `/login`, and `/signup`. Landing copy identifies **5TOT Đà Nẵng**, the City-level Student 5-good system, and Hội Sinh viên Việt Nam TP. Đà Nẵng. Keep it concise and institutional; do not add tourism imagery, unverified school-year context, marketing metrics, or a role directory.
+- Landing presents exactly the shared five core criteria from `src/lib/criteria-presentation.ts` and the City application path: prepare a dossier, add evidence, precheck, submit to the City, follow review and supplement if requested, then receive the result. Do not present School and University System as review levels.
+- Login accepts only the backend's email and password, never prepopulates a credential, and maps authentication failures to safe Vietnamese copy. Preserve session hydration and `getDefaultAppPathForRole` for current and legacy roles. Do not expose password recovery or email verification unless the corresponding public flow exists.
+- Public signup is Student-only. It posts the existing registration DTO, uses the public `registration=true` workspace list, keeps class/faculty/phone optional, and follows the register response's existing token/session redirect behavior. The school chooser must not contain a client-authored institution list or offer a role selector.
+- Auth forms need associated labels, browser autocomplete, visible focus, keyboard-operable school search and password controls, linked inline errors, and duplicate-submit prevention. Use backend-specific messages only for verified auth error codes; never surface a raw API error.
+
 ## Verification For UI Tasks
 
 Before finishing a UI change:
@@ -151,7 +159,7 @@ The student application V2 rollout uses additive aliases and primitives under `s
 - The criterion workspace shows one selected detail beside an accessible criterion navigator. It reuses current requirement data sections, explicit-save forms, evidence gallery, dialogs, and links. It does not require a sequence and does not show target-level/cascade choices.
 - The detail order is criterion context, server-provided requirement/data, evidence, then supporting checks/actions. The condition sheet uses the current completion response and must not add hardcoded thresholds or historical rules.
 - Application editability remains status-derived: draft/prechecked/ready states keep supported edits; submitted, under-review, Resolution, and final states are read-only. Existing supplement scope remains enforced by current UI/API behavior; S2 does not add a new supplement editor. If a criterion form is open, changing criterion or returning to overview asks before discarding the unsaved form state.
-- The current/start request does not pin a school year or add a target-level selector. The API currently defaults a newly created application's legacy `targetLevel` to `school`; the frontend must not claim the application is a City-level submission unless the current application response says `city`. This contract mismatch remains a backend/product gap.
+- The current/start request does not pin a school year or send a target level. Backend creation assigns `city` to new Student individual applications; eligibility routes (`DIRECT_CITY` and `UDN_PREREQUISITE`) remain prerequisite paths, not review levels. Existing applications retain their stored legacy level when read, with no historical rewrite. Student target-level writes through PATCH and draft autosave are denied.
 - Loading uses an overview or detail skeleton matching the route. Current-application errors have retry; partial criteria/evidence failures remain scoped to their sections. Cancellation/archive remains unrepresentable on the student DTO and is not simulated.
 - Phase 3 workspace layout: the V2 application workspace must use one context bar and a two-column grid of `232px minmax(0, 1fr)` on desktop. Do not add a fixed guide column or a third operational column.
 - Phase 3 workspace content: each criterion renders exactly one data component before the evidence gallery: `DefinitionTableV2`, `PathSelectorListV2`, `ActivityLedgerV2`, or one dynamic disclosure. Keep evidence as a gallery, not mixed row/card layouts.

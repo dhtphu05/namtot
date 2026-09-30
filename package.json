@@ -1,5 +1,6 @@
 {
   "name": "tanstack_start_ts",
+  "packageManager": "pnpm@10.11.0",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -10,11 +11,6 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
-  },
-  "pnpm": {
-    "overrides": {
-      "nf3": "0.3.22"
-    }
   },
   "overrides": {
     "nf3": "0.3.22"

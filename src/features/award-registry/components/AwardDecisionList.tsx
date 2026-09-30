@@ -24,6 +24,7 @@ import {
   useAwardWorkspaceNames,
   useCreateAwardDecision,
 } from "@/features/award-registry/hooks/useAwardRegistry";
+import { getAwardDecisionStatusPresentation } from "@/features/award-registry/presentation";
 import { errorMessage } from "@/features/award-registry/utils/errors";
 
 const PAGE_LIMIT = 20;
@@ -56,6 +57,12 @@ export function AwardDecisionList() {
   const createDecision = useCreateAwardDecision();
   const rows = decisions.data?.items ?? [];
   const pagination = decisions.data?.pagination;
+  const hasActiveFilters = Boolean(
+    filters.q ||
+      filters.schoolYear ||
+      filters.status !== "all" ||
+      filters.archive !== "exclude",
+  );
 
   const applyFilters = () => {
     setFilters({
@@ -70,11 +77,11 @@ export function AwardDecisionList() {
   return (
     <>
       <TopBar
-        title="Award Decision Registry"
-        subtitle="Quản lý dữ liệu công nhận chính thức của trường hoặc Đại học Đà Nẵng để phục vụ điều kiện xét cấp Thành phố."
+        title="Quyết định công nhận"
+        subtitle="Quản lý quyết định và danh sách sinh viên được đơn vị công nhận để phục vụ kiểm tra điều kiện hồ sơ cấp Thành phố."
         action={
           <Button type="button" onClick={() => setCreateOpen(true)}>
-            <Plus aria-hidden="true" /> Tạo quyết định
+            <Plus aria-hidden="true" /> Tạo quyết định công nhận
           </Button>
         }
       />
@@ -172,8 +179,29 @@ export function AwardDecisionList() {
           />
         ) : rows.length === 0 ? (
           <EmptyState
-            title="Chưa có quyết định phù hợp."
-            description="Tạo bản nháp để bắt đầu thêm văn bản quyết định và danh sách người nhận."
+            title={hasActiveFilters ? "Không tìm thấy quyết định phù hợp" : "Chưa có quyết định công nhận"}
+            description={
+              hasActiveFilters
+                ? "Thử thay đổi từ khóa hoặc bộ lọc để tìm quyết định khác."
+                : "Award Registry là nơi lưu dữ liệu công nhận chính thức của đơn vị. Tạo bản nháp đầu tiên bằng nút ở đầu trang."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setQInput("");
+                    setSchoolYearInput("");
+                    setStatusInput("all");
+                    setArchiveInput("exclude");
+                    setFilters({ page: 1, q: "", schoolYear: "", status: "all", archive: "exclude" });
+                  }}
+                >
+                  Xóa bộ lọc
+                </Button>
+              ) : undefined
+            }
           />
         ) : (
           <Card>
@@ -309,17 +337,16 @@ function DecisionRow({ decision }: { decision: AwardDecision }) {
 }
 
 function DecisionStatus({ status }: { status: AwardDecisionStatus }) {
-  const style = {
-    DRAFT: { label: "Bản nháp", className: "border-amber-200 bg-amber-50 text-amber-800" },
-    CONFIRMED: {
-      label: "Đã xác nhận",
-      className: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    },
-    ARCHIVED: { label: "Đã lưu trữ", className: "border-slate-200 bg-slate-100 text-slate-700" },
-  }[status];
+  const presentation = getAwardDecisionStatusPresentation(status);
+  const className =
+    presentation.tone === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : presentation.tone === "warning"
+        ? "border-amber-200 bg-amber-50 text-amber-800"
+        : "border-slate-200 bg-slate-100 text-slate-700";
   return (
-    <Badge variant="outline" className={style.className}>
-      {style.label}
+    <Badge variant="outline" className={className} title={presentation.description}>
+      {presentation.label}
     </Badge>
   );
 }
@@ -370,7 +397,7 @@ function CreateAwardDecisionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Tạo Award Decision</DialogTitle>
+          <DialogTitle>Tạo quyết định công nhận</DialogTitle>
           <DialogDescription>
             Tạo bản nháp trước, sau đó tải tệp và xử lý danh sách ở trang chi tiết.
           </DialogDescription>

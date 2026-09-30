@@ -90,8 +90,8 @@ test.describe("institution registry signup contract", () => {
     await installApiRoutes(page, pageRouteHandler({ workspaces: institutions }));
     await page.goto("/login");
 
-    await expect(page.getByPlaceholder("name@example.com")).toBeVisible();
-    await expect(page.getByPlaceholder("Password@123")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Mật khẩu" })).toBeVisible();
     await expect(page.getByRole("combobox")).toHaveCount(0);
     await expect(page.getByText(/chọn trường/i)).toHaveCount(0);
   });

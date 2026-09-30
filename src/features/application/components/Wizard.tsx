@@ -124,11 +124,7 @@ export function Wizard() {
 
   const handleStart = () => {
     startMutation.mutate(
-      {
-        schoolYear: "2025-2026",
-        applicationType: "individual",
-        targetLevel: "school",
-      },
+      {},
       {
         onSuccess: () => {
           toast.success("Khởi tạo hồ sơ thành công!");

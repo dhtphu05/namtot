@@ -139,6 +139,9 @@ export async function requireAuthenticatedAppRoute(pathname: string, queryClient
 export function canAccessPath(role: Role, pathname: string): boolean {
   if (pathname === "/app" || pathname === "/app/") return true;
   if (matchesAny(pathname, sharedAuthenticatedRoutes)) return true;
+  if (pathname === "/app/committee/inbox") {
+    return ["manager", "committee", "city_manager", "city_committee", "admin"].includes(role);
+  }
   if (pathname === "/app/analytics") {
     return ["city_manager", "manager", "committee", "admin"].includes(role);
   }
