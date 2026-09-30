@@ -165,6 +165,24 @@ The student application V2 rollout uses additive aliases and primitives under `s
 - Phase 3 workspace content: each criterion renders exactly one data component before the evidence gallery: `DefinitionTableV2`, `PathSelectorListV2`, `ActivityLedgerV2`, or one dynamic disclosure. Keep evidence as a gallery, not mixed row/card layouts.
 - Phase 3 workspace sidebar: use the verified/provided Hội Sinh viên emblem asset in the student V2 sidebar and other existing institutional entry points that previously used the mock `5T` mark. Keep the emblem, profile rows, and active left nav marker; account/logout actions live in the shared `AppHeader`.
 
+### Student precheck and City submission S5
+
+- `/app/ai-precheck` renders the Student review page for an individual City application. Keep the existing class-representative `AiPrecheck` fallback (and existing route guard for City Officer) plus the legacy Student workspace for non-City or supplement/resolution states.
+- Show exactly the five canonical criteria from `src/lib/criteria-presentation.ts`. Criterion completion and evidence counts describe recorded information only; never label them pass/fail or as a final award decision. Do not show readiness scores, raw rules, `priority`, target-level controls, or fabricated season/year data.
+- Precheck missing items, rules findings, OCR/evidence suggestions, and warnings are advisory. Their presence, severity, count, or criterion completion must not disable initial submit. Use neutral copy, deep-link a known criterion to `/app/application?criterion=<key>`, and state that the student may continue despite suggestions.
+- Initial City submit availability comes only from the application lifecycle and the resolved server eligibility and submission-window responses. Fail closed while either gate is loading, unavailable, unknown, not eligible/under verification, not configured, not yet open, or closed. `EXCEPTION_ACTIVE` is allowed only when returned by the backend.
+- Refresh eligibility and deadline before opening the confirm dialog and again on confirm. Use the existing `useSubmitApplication` mutation with `allowSubmitWithWarnings: true`; keep server errors localized and map them to eligibility/window guidance. Do not change the endpoint, role checks, workflow, or API types.
+- The confirmation explains that submission enters City review and limits draft editing; pending state prevents repeat actions. After a successful response, refetch the current application and show its submitted/review state as read-only. The five criteria are not the final result.
+- If there is no current application, provide the existing application-start path and do not display a season or inferred deadline. Show school and school year only from authenticated/server data.
+
+### Student workspace lean presentation S5.1
+
+- Keep the student journey ordered as application context, current work, evidence, checks, and official result. Prefer short headings and remove repeated descriptions, duplicate counts, and repeated explanations while preserving all server-backed status, requirement, deadline, and action details.
+- The application overview and criterion workspace should make the five existing criteria easy to scan; show evidence names as the primary document label and criterion/status as supporting context. Keep canonical evidence naming, search across evidence name and file name, preview, edit/replace, delete, and upload interactions intact.
+- Keep precheck suggestions advisory and visually distinct from eligibility/deadline gates. Do not change which conditions block submission, confirmation copy about the effect of submit, pending/error feedback, or server refresh behavior.
+- Before a final decision, the result route should show the current application status and a concise explanation that a result is not yet available. Show official result fields and criterion decisions only when the existing finalized response supplies them; do not render placeholder result metrics or empty summary panels.
+- Compact presentation must retain accessible names, focus visibility, keyboard operation, responsive layouts, loading/error/empty states, and the existing document viewer and dialogs. S5.1 is a presentation-only change; it does not create new APIs, routes, DTOs, statuses, or workflow transitions.
+
 ## Phase 2 UI Foundation Consolidation
 
 - Keep Tailwind v4, Radix/shadcn primitives, Lucide, Sonner, document viewers, and Student V2. Do not add a second component system or dependencies.

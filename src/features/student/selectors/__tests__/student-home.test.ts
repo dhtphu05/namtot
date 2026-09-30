@@ -76,6 +76,7 @@ test("server eligibility blocks the initial submit action", () => {
     });
     assert.equal(action.kind, "eligibility", status);
     assert.equal(action.label, "Xem điều kiện nộp hồ sơ");
+    assert.equal(action.href, "/app/ai-precheck");
   }
 });
 
@@ -99,6 +100,7 @@ test("a missing or closed submission window never offers the submit action", () 
     });
     assert.equal(action.kind, "deadline", status);
     assert.notEqual(action.label, "Kiểm tra và gửi hồ sơ");
+    assert.equal(action.href, "/app/ai-precheck");
   }
 });
 
@@ -113,6 +115,7 @@ test("eligibility and deadline must both resolve before ready-to-submit is prese
 
   assert.equal(action.kind, "check-submit");
   assert.equal(action.label, "Kiểm tra hồ sơ");
+  assert.equal(action.href, "/app/ai-precheck");
 });
 
 test("the ready action appears only when backend eligibility and window allow initial submit", () => {
@@ -126,6 +129,7 @@ test("the ready action appears only when backend eligibility and window allow in
 
   assert.equal(action.kind, "ready");
   assert.equal(action.label, "Kiểm tra và gửi hồ sơ");
+  assert.equal(action.href, "/app/ai-precheck");
 });
 
 test("non-City applications do not wait on City-only eligibility and deadline gates", () => {

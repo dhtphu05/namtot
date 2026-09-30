@@ -255,6 +255,9 @@ export function StudentApplicationWorkspaceV2() {
   const isSupplementMode =
     application?.status === "supplement_required" ||
     String(application?.status) === "draft_supplement";
+  const isBlockedNonCityApplication = Boolean(
+    userRole === "student" && application && application.targetLevel !== "city",
+  );
   const showCityEligibility = Boolean(
     userRole === "student" &&
     application?.applicationType === "individual" &&
@@ -288,6 +291,7 @@ export function StudentApplicationWorkspaceV2() {
   );
   const canSubmitApplication = Boolean(
     application &&
+    !isBlockedNonCityApplication &&
     !["submitted", "under_review", "completed", "rejected", "resolution_needed"].includes(
       application.status,
     ),
@@ -325,10 +329,11 @@ export function StudentApplicationWorkspaceV2() {
   const selectedMetric = getPrimaryMetricInput(selectedCriterion);
   const completedCriteria = criteriaStates.filter((item) => item.status === "ok").length;
   const hasSubmitCta =
-    application?.status === "ready_to_submit" ||
-    (canSubmitApplication && completedCriteria === coreStudentCriteria.length) ||
-    isSupplementMode ||
-    (showCityEligibility && canSubmitApplication);
+    !isBlockedNonCityApplication &&
+    (application?.status === "ready_to_submit" ||
+      (canSubmitApplication && completedCriteria === coreStudentCriteria.length) ||
+      isSupplementMode ||
+      (showCityEligibility && canSubmitApplication));
   const summary = getStudentApplicationSummary(
     application ? { ...application, evidences } : null,
     precheck,
@@ -558,6 +563,12 @@ export function StudentApplicationWorkspaceV2() {
 
   const submitNow = () => {
     if (!application) return;
+    if (isBlockedNonCityApplication) {
+      toast.error(
+        "Hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố. Hồ sơ cấp khác cần được cán bộ hướng dẫn xử lý.",
+      );
+      return;
+    }
     if (!hasSubmitCta) {
       toast.error("Bạn cần kiểm tra và hoàn thiện hồ sơ trước khi nộp.");
       return;
@@ -567,6 +578,13 @@ export function StudentApplicationWorkspaceV2() {
 
   const confirmSubmit = async () => {
     if (!application) return;
+    if (isBlockedNonCityApplication) {
+      setConfirmSubmitOpen(false);
+      toast.error(
+        "Hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố. Hồ sơ cấp khác cần được cán bộ hướng dẫn xử lý.",
+      );
+      return;
+    }
     if (showCityEligibility) {
       const refreshed = await cityEligibility.refetch();
       if (refreshed.isError || !refreshed.data) {
@@ -633,10 +651,7 @@ export function StudentApplicationWorkspaceV2() {
   if (current.isError) {
     return (
       <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6">
-        <WorkspaceContextBarShell
-          title="Hồ sơ của tôi"
-          helper="Hoàn thiện từng tiêu chí bằng dữ liệu và minh chứng phù hợp."
-        />
+        <WorkspaceContextBarShell title="Hồ sơ của tôi" helper="Sinh viên 5 tốt" />
         <InlineErrorStateV2
           title="Chưa tải được hồ sơ"
           description="Dữ liệu có thể đang mất kết nối tạm thời. Vui lòng thử lại."
@@ -649,10 +664,7 @@ export function StudentApplicationWorkspaceV2() {
   if (!application) {
     return (
       <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6">
-        <WorkspaceContextBarShell
-          title="Hồ sơ của tôi"
-          helper="Không gian chuẩn bị hồ sơ Sinh viên 5 tốt tại Đà Nẵng theo năm học do hệ thống ghi nhận."
-        />
+        <WorkspaceContextBarShell title="Hồ sơ của tôi" helper="Sinh viên 5 tốt" />
         {startApplication.isError ? (
           <InlineStateMessage
             tone="warning"
@@ -687,19 +699,23 @@ export function StudentApplicationWorkspaceV2() {
       <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-6">
         <ApplicationWorkspaceContextBar
           title="Hồ sơ của tôi"
-          helper={
-            application.targetLevel === "city"
-              ? "Hồ sơ Sinh viên 5 tốt cấp Thành phố. Hội Sinh viên Việt Nam TP. Đà Nẵng tiếp nhận và xét hồ sơ sau khi bạn gửi."
-              : "Hoàn thiện hồ sơ Sinh viên 5 tốt tại Đà Nẵng theo năm học hiện tại."
-          }
           schoolYear={application.schoolYear}
           schoolName={user?.workspace?.name ?? undefined}
           statusLabel={getStudentApplicationStatus(application.status).label}
+          readOnly={isReadonlyStatus}
           onBack={workspaceOpen ? showApplicationOverview : undefined}
           onPrecheck={precheckNow}
           isPrechecking={runPrecheck.isPending}
           showPrecheck={showCompletionGuidance && workspaceOpen}
         />
+
+        {isBlockedNonCityApplication ? (
+          <InlineStateMessage
+            tone="warning"
+            title="Hồ sơ này không ở cấp Thành phố"
+            description="Hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố. Hồ sơ này không thể nộp hoặc gửi bổ sung; vui lòng liên hệ cán bộ quản lý để được hướng dẫn xử lý hồ sơ cũ."
+          />
+        ) : null}
 
         {criteriaCompletion.isLoading ? (
           <InlineStateMessage
@@ -711,41 +727,6 @@ export function StudentApplicationWorkspaceV2() {
             tone="warning"
             title="Chưa tải được trạng thái điều kiện"
             description="Màn hình đang tạm dùng dữ liệu minh chứng và tiền kiểm hiện có."
-          />
-        ) : null}
-
-        {showCityEligibility ? (
-          <CitySubmissionEligibilityCard
-            data={cityEligibility.data ?? undefined}
-            isLoading={cityEligibility.isLoading || cityEligibility.isFetching}
-            isError={cityEligibility.isError}
-            onRetry={() => void cityEligibility.refetch()}
-          />
-        ) : null}
-
-        {showCityDeadline ? (
-          <CityDeadlineStatusCard
-            data={cityDeadline.data ?? undefined}
-            isLoading={cityDeadline.isLoading || cityDeadline.isFetching}
-            isError={cityDeadline.isError}
-            isSupplement={isSupplementResubmission}
-            onRetry={() => void cityDeadline.refetch()}
-          />
-        ) : null}
-
-        {isReadonlyStatus ? (
-          <InlineStateMessage
-            tone="info"
-            title={
-              ["submitted", "under_review", "resolution_needed"].includes(application.status)
-                ? "Hồ sơ đang được xử lý ở chế độ chỉ xem"
-                : "Hồ sơ đã có kết quả cuối"
-            }
-            description={
-              ["submitted", "under_review", "resolution_needed"].includes(application.status)
-                ? "Bạn có thể xem thông tin và minh chứng. Chỉ cập nhật khi có yêu cầu bổ sung từ cán bộ."
-                : "Thông tin và minh chứng được giữ để bạn xem lại cùng kết quả đã công bố."
-            }
           />
         ) : null}
 
@@ -777,7 +758,6 @@ export function StudentApplicationWorkspaceV2() {
           >
             <CriteriaNavigationV2
               criteriaStates={criteriaStates}
-              evidenceCounts={overviewEvidenceCounts}
               activeCriterion={selectedCriterion}
               onSelect={openCriterion}
             />
@@ -976,6 +956,25 @@ export function StudentApplicationWorkspaceV2() {
             </main>
           </section>
         )}
+
+        {showCityEligibility ? (
+          <CitySubmissionEligibilityCard
+            data={cityEligibility.data ?? undefined}
+            isLoading={cityEligibility.isLoading || cityEligibility.isFetching}
+            isError={cityEligibility.isError}
+            onRetry={() => void cityEligibility.refetch()}
+          />
+        ) : null}
+
+        {showCityDeadline ? (
+          <CityDeadlineStatusCard
+            data={cityDeadline.data ?? undefined}
+            isLoading={cityDeadline.isLoading || cityDeadline.isFetching}
+            isError={cityDeadline.isError}
+            isSupplement={isSupplementResubmission}
+            onRetry={() => void cityDeadline.refetch()}
+          />
+        ) : null}
       </div>
 
       <GuideSheet
@@ -1061,16 +1060,18 @@ export function StudentApplicationWorkspaceV2() {
   );
 }
 
-function WorkspaceContextBarShell({ title, helper }: { title: string; helper: string }) {
+function WorkspaceContextBarShell({ title, helper }: { title: string; helper?: string }) {
   return (
     <section className="flex min-h-20 min-w-0 items-center rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-4 sm:px-6">
       <div className="min-w-0">
         <h1 className="m-0 text-[24px] font-bold leading-8 text-[var(--student-v2-text-primary)]">
           {title}
         </h1>
-        <p className="mt-1 line-clamp-2 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-          {helper}
-        </p>
+        {helper ? (
+          <p className="mt-1 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
+            {helper}
+          </p>
+        ) : null}
       </div>
     </section>
   );
@@ -1117,9 +1118,6 @@ function ApplicationOverviewV2({
             Trạng thái hồ sơ
           </p>
           <StatusBadge status={status} domain="application" />
-          <p className="mt-2 max-w-2xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-            Chọn bất kỳ tiêu chí nào để xem thông tin, yêu cầu và minh chứng liên quan.
-          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {canRunPrecheck ? (
@@ -1149,11 +1147,7 @@ function ApplicationOverviewV2({
       </section>
 
       <section className="min-w-0">
-        <SectionHeading
-          title="Năm tiêu chí Sinh viên 5 tốt"
-          description="Trạng thái từng tiêu chí và số minh chứng được hiển thị từ dữ liệu hồ sơ hiện có. Số minh chứng không đồng nghĩa với kết quả xét."
-          className="mb-4"
-        />
+        <SectionHeading title="5 tiêu chí" className="mb-3" />
         <ul className="grid min-w-0 list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3">
           {criteriaStates.map((state) => (
             <li key={state.key} className="min-w-0">
@@ -1195,9 +1189,9 @@ function ApplicationCriterionOverviewCard({
       data-testid="criterion-overview-card"
       aria-label={`${canEdit ? "Xem và hoàn thiện" : "Xem tiêu chí"} ${state.label}. Trạng thái: ${state.displayLabel}${evidenceCount !== undefined ? `. ${evidenceCount} minh chứng` : ""}`}
       onClick={onClick}
-      className="flex min-h-[184px] w-full min-w-0 flex-col items-stretch justify-between gap-4 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-4 text-left transition-colors duration-[120ms] hover:border-[var(--student-v2-institutional-blue)] hover:bg-[var(--student-v2-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2 sm:p-5"
+      className="flex min-h-[78px] w-full min-w-0 items-center gap-3 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-3 text-left transition-colors duration-[120ms] hover:border-[var(--student-v2-institutional-blue)] hover:bg-[var(--student-v2-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2"
     >
-      <span className="flex min-w-0 items-start gap-3">
+      <span className="flex min-w-0 flex-1 items-center gap-2.5">
         <AppIcon
           name={presentation?.icon ?? "criteria"}
           size={20}
@@ -1208,26 +1202,14 @@ function ApplicationCriterionOverviewCard({
           <span className="block text-[16px] font-semibold leading-6 text-[var(--student-v2-text-primary)]">
             {state.label}
           </span>
-          <span className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <StatusPillV2 status={state.progressStatus} label={state.displayLabel} />
-            {evidenceCount !== undefined ? (
-              <span className="text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
-                {evidenceCount} minh chứng
-              </span>
-            ) : null}
           </span>
         </span>
-        <ChevronRight
-          className="mt-1 h-4 w-4 shrink-0 text-[var(--student-v2-text-muted)]"
-          aria-hidden="true"
-        />
       </span>
-      <span className="line-clamp-2 min-h-10 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
-        {state.displayDescription}
-      </span>
-      <span className="inline-flex min-h-11 items-center gap-1 text-[14px] font-semibold text-[var(--student-v2-institutional-blue)]">
-        {canEdit ? "Xem và hoàn thiện" : "Xem tiêu chí"}
-        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      <span className="flex shrink-0 items-center gap-2 text-[12px] text-[var(--student-v2-text-muted)]">
+        {evidenceCount !== undefined ? `${evidenceCount} minh chứng` : null}
+        <ChevronRight className="h-4 w-4 text-[var(--student-v2-text-muted)]" aria-hidden="true" />
       </span>
     </button>
   );
@@ -1277,16 +1259,18 @@ function ApplicationWorkspaceContextBar({
   schoolYear,
   schoolName,
   statusLabel,
+  readOnly,
   onBack,
   isPrechecking,
   onPrecheck,
   showPrecheck,
 }: {
   title: string;
-  helper: string;
+  helper?: string;
   schoolYear: string;
   schoolName?: string;
   statusLabel: string;
+  readOnly: boolean;
   onBack?: () => void;
   isPrechecking: boolean;
   onPrecheck: () => void;
@@ -1304,13 +1288,16 @@ function ApplicationWorkspaceContextBar({
         >
           {title}
         </h1>
-        <p className="mt-1 line-clamp-1 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-          {helper}
-        </p>
-        <div className="mt-2 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
+        {helper ? (
+          <p className="mt-1 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
+            {helper}
+          </p>
+        ) : null}
+        <div className="mt-1 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
           <span>Năm học {schoolYear}</span>
           {schoolName ? <span className="min-w-0 break-words">Trường {schoolName}</span> : null}
           <span>Trạng thái: {statusLabel}</span>
+          {readOnly ? <span>Chỉ xem</span> : null}
         </div>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -1336,12 +1323,10 @@ function ApplicationWorkspaceContextBar({
 
 function CriteriaNavigationV2({
   criteriaStates,
-  evidenceCounts,
   activeCriterion,
   onSelect,
 }: {
   criteriaStates: CriteriaState[];
-  evidenceCounts: Partial<Record<Criterion, number>>;
   activeCriterion: Criterion;
   onSelect: (criterion: Criterion) => void;
 }) {
@@ -1364,15 +1349,9 @@ function CriteriaNavigationV2({
             <CriteriaNavigationRowV2
               title={state.label}
               status={state.progressStatus}
-              detail={
-                state.completionText ??
-                (evidenceCounts[state.key] !== undefined
-                  ? `${evidenceCounts[state.key]} minh chứng`
-                  : undefined)
-              }
               active={state.key === activeCriterion}
               onClick={() => onSelect(state.key)}
-              className="min-h-[68px] px-3 py-3 lg:px-4"
+              className="min-h-[56px] px-3 py-2 lg:px-4"
             />
           </div>
         ))}
@@ -1393,7 +1372,7 @@ function CriterionHeaderV2({
   showGuide: boolean;
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-3 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-5 sm:px-6">
+    <section className="flex min-w-0 flex-col gap-2 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-4 py-3 sm:px-5">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2
@@ -1403,9 +1382,6 @@ function CriterionHeaderV2({
           >
             {state.label}
           </h2>
-          <p className="mt-2 max-w-3xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-            {state.displayDescription}
-          </p>
         </div>
         {showGuide ? (
           <GuideSheetTriggerV2
@@ -1839,7 +1815,7 @@ function AcademicDataSectionV2({
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const gpa = findRequirement(completion, "academic_gpa");
+  const gpa = findAcademicGpaRequirement(completion);
   const noFGrade = findRequirement(completion, "no_f_grade");
   const period = findRequirement(completion, "academic_period_valid");
   const gpaMetric = getApplicationMetric(metrics, "gpa");
@@ -1930,28 +1906,36 @@ function AcademicDataSectionV2({
         />
       ),
     },
-    {
-      label: "Tình trạng điểm F",
-      value: noFGradeStatusCopy(noFGrade),
-      source: getDisplayRequirementSourceLabel(noFGrade),
-      status: (
-        <StatusPillV2
-          status={mapRequirementStatus(noFGrade?.status ?? "needs_verification")}
-          label={getRequirementStatusLabel(noFGrade?.status ?? "needs_verification")}
-        />
-      ),
-    },
-    {
-      label: "Xác minh năm học",
-      value: academicPeriodLabel(period),
-      source: getDisplayRequirementSourceLabel(period),
-      status: (
-        <StatusPillV2
-          status={mapRequirementStatus(period?.status ?? "needs_verification")}
-          label={getRequirementStatusLabel(period?.status ?? "needs_verification")}
-        />
-      ),
-    },
+    ...(noFGrade
+      ? [
+          {
+            label: "Tình trạng điểm F",
+            value: noFGradeStatusCopy(noFGrade),
+            source: getDisplayRequirementSourceLabel(noFGrade),
+            status: (
+              <StatusPillV2
+                status={mapRequirementStatus(noFGrade?.status ?? "needs_verification")}
+                label={getRequirementStatusLabel(noFGrade?.status ?? "needs_verification")}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(period
+      ? [
+          {
+            label: "Xác minh năm học",
+            value: academicPeriodLabel(period),
+            source: getDisplayRequirementSourceLabel(period),
+            status: (
+              <StatusPillV2
+                status={mapRequirementStatus(period?.status ?? "needs_verification")}
+                label={getRequirementStatusLabel(period?.status ?? "needs_verification")}
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -3232,12 +3216,12 @@ function EvidenceGallerySection({
         </EvidenceGallery>
       ) : (
         <CompactEmptyStateV2
-          title="Chưa có minh chứng"
-          description="Thêm dữ liệu chính thức hoặc tải minh chứng thủ công cho tiêu chí này."
+          title="Chưa có minh chứng."
+          description="Thêm tài liệu hoặc chọn dữ liệu đã có."
           action={
             <ButtonV2 type="button" variant="secondary" onClick={onAddEvidence} disabled={!canEdit}>
-              <Upload aria-hidden="true" />
-              Tải minh chứng
+              <Plus aria-hidden="true" />
+              Thêm
             </ButtonV2>
           }
         />
@@ -3576,6 +3560,24 @@ function findRequirement(completion: CriterionCompletionItem, requirementKey: st
   return (completion.requirementGroups ?? [])
     .flatMap((group) => group.requirements ?? [])
     .find((requirement) => requirement.key === requirementKey);
+}
+
+function findAcademicGpaRequirement(completion: CriterionCompletionItem) {
+  const gpaRequirements = (completion.requirementGroups ?? [])
+    .flatMap((group) => group.requirements ?? [])
+    .filter(
+      (requirement) => requirement.type === "metric" && requirement.config?.metricType === "gpa",
+    );
+
+  return (
+    gpaRequirements.find((requirement) => requirement.key === "academic_gpa") ??
+    gpaRequirements.find((requirement) => requirement.status === "verified") ??
+    gpaRequirements.find(
+      (requirement) =>
+        requirement.status === "declared" || requirement.status === "needs_verification",
+    ) ??
+    gpaRequirements[0]
+  );
 }
 
 function findRequirementGroup(completion: CriterionCompletionItem, groupKey: string) {

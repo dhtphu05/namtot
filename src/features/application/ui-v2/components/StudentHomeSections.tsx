@@ -56,9 +56,6 @@ export function StudentHomeHero({
       aria-labelledby="student-home-hero-title"
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <span className="text-[12px] font-semibold uppercase leading-[17px] tracking-[0.04em] text-[var(--student-v2-text-muted)]">
-          Hồ sơ của bạn
-        </span>
         <StatusBadge tone={status.tone}>
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -75,7 +72,7 @@ export function StudentHomeHero({
           >
             {action.title}
           </h2>
-          <p className="mt-1 max-w-3xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+          <p className="mt-1 line-clamp-1 max-w-3xl text-[13px] leading-5 text-[var(--student-v2-text-secondary)]">
             {action.description}
           </p>
         </div>
@@ -120,11 +117,7 @@ export function StudentCriteriaOverview({
 }) {
   return (
     <section aria-label="Tổng quan 5 tiêu chí" aria-busy={isLoading}>
-      <SectionHeading
-        title="5 tiêu chí"
-        description="Tình trạng được cập nhật từ thông tin và minh chứng trong hồ sơ."
-        className="gap-1"
-      />
+      <SectionHeading title="5 tiêu chí" className="gap-1" />
       <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
         {coreStudentCriteria.map((criterion, index) => {
           const presentation = getCoreCriterionPresentation(criterion);
@@ -132,13 +125,8 @@ export function StudentCriteriaOverview({
           const completion = completionItems.find((item) => item.criterion === criterion);
           const evidenceCount = evidenceCounts[criterion];
           const statusLabel = display?.label ?? (applicationId ? "Đang cập nhật" : "Chưa bắt đầu");
-          const warning =
-            display &&
-            ["supplement_required", "rejected", "needs_verification"].includes(display.status)
-              ? display.description
-              : undefined;
           const cardClassName = cn(
-            "group min-h-[112px] min-w-0 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-3.5 text-left transition-colors duration-[120ms] hover:border-[var(--student-v2-institutional-blue)] hover:bg-[var(--student-v2-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2 motion-reduce:transition-none xl:col-span-2",
+            "group min-h-[78px] min-w-0 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-3 text-left transition-colors duration-[120ms] hover:border-[var(--student-v2-institutional-blue)] hover:bg-[var(--student-v2-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2 motion-reduce:transition-none xl:col-span-2",
             index === 3 && "xl:col-start-2",
             index === 4 && "xl:col-start-4",
           );
@@ -163,11 +151,6 @@ export function StudentCriteriaOverview({
                   </span>
                 ) : null}
               </div>
-              {warning ? (
-                <p className="mt-2 line-clamp-2 text-[12px] leading-[18px] text-[var(--student-v2-text-secondary)]">
-                  {warning}
-                </p>
-              ) : null}
               {isLoading ? (
                 <Skeleton className="mt-2 h-3 w-2/3 motion-reduce:animate-none" />
               ) : null}
@@ -263,7 +246,7 @@ export function StudentAttentionPanel({ items }: { items: StudentHomeAttentionIt
                 <h3 className="m-0 text-[13px] font-semibold leading-5 text-[var(--student-v2-text-primary)]">
                   {item.title}
                 </h3>
-                <p className="mt-0.5 whitespace-pre-line text-[12px] leading-[18px] text-[var(--student-v2-text-secondary)]">
+                <p className="mt-0.5 line-clamp-1 whitespace-pre-line text-[12px] leading-[18px] text-[var(--student-v2-text-secondary)]">
                   {item.description}
                 </p>
               </div>
@@ -300,11 +283,9 @@ export function StudentHomeSkeleton({ firstName }: { firstName: string }) {
         </h1>
         <Skeleton className="mt-2 h-4 w-72 max-w-full motion-reduce:animate-none" />
       </header>
-      <section className="rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-5">
-        <Skeleton className="h-5 w-44 motion-reduce:animate-none" />
-        <Skeleton className="mt-4 h-7 w-2/3 max-w-full motion-reduce:animate-none" />
-        <Skeleton className="mt-2 h-4 w-1/2 max-w-full motion-reduce:animate-none" />
-        <Skeleton className="mt-5 h-11 w-40 motion-reduce:animate-none" />
+      <section className="rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] p-4 sm:p-5">
+        <Skeleton className="h-6 w-2/3 max-w-full motion-reduce:animate-none" />
+        <Skeleton className="mt-3 h-11 w-40 motion-reduce:animate-none" />
       </section>
       <section aria-label="Đang tải 5 tiêu chí">
         <Skeleton className="h-5 w-28 motion-reduce:animate-none" />
@@ -313,7 +294,7 @@ export function StudentHomeSkeleton({ firstName }: { firstName: string }) {
             <Skeleton
               key={criterion}
               className={cn(
-                "h-28 motion-reduce:animate-none xl:col-span-2",
+                "h-20 motion-reduce:animate-none xl:col-span-2",
                 index === 3 && "xl:col-start-2",
                 index === 4 && "xl:col-start-4",
               )}

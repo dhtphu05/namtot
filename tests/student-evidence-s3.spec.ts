@@ -143,7 +143,7 @@ test.describe("Student evidence workspace S3 + S4", () => {
   test("distinguishes empty and no-results states", async ({ page }) => {
     await installEvidenceApi(page);
     await openStudentPage(page, "/app/upload");
-    await expect(page.getByText("Bạn chưa thêm minh chứng nào.")).toBeVisible();
+    await expect(page.getByText("Chưa có minh chứng.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Thêm minh chứng" }).first()).toBeVisible();
 
     await installEvidenceApi(page, {
@@ -405,7 +405,9 @@ test.describe("Student evidence workspace S3 + S4", () => {
 
     for (const viewport of [
       { width: 1280, height: 720 },
+      { width: 1422, height: 800 }, // 1280×720 effective viewport at 90% zoom.
       { width: 1366, height: 768 },
+      { width: 1164, height: 655 }, // 1280×720 effective viewport at 110% zoom.
       { width: 1440, height: 900 },
       { width: 1600, height: 900 },
       { width: 1920, height: 1080 },
@@ -449,7 +451,9 @@ test.describe("Student evidence workspace S3 + S4", () => {
 
     for (const viewport of [
       { width: 1280, height: 720 },
+      { width: 1422, height: 800 }, // 1280×720 effective viewport at 90% zoom.
       { width: 1366, height: 768 },
+      { width: 1164, height: 655 }, // 1280×720 effective viewport at 110% zoom.
       { width: 1440, height: 900 },
       { width: 1600, height: 900 },
       { width: 1920, height: 1080 },

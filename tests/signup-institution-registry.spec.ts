@@ -1,6 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-const apiBaseUrl = process.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const apiUrlPattern = /^https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/api(?:\/|\?)/;
 const institutions = [
   {
     id: "school-dut",
@@ -46,7 +46,7 @@ test.describe("institution registry signup contract", () => {
   }) => {
     let listingCalls = 0;
     let registrationCalls = 0;
-    await page.route(`${apiBaseUrl}/api/**`, async (route) => {
+    await page.route(apiUrlPattern, async (route) => {
       const request = route.request();
       if (new URL(request.url()).pathname === "/api/workspaces") {
         listingCalls += 1;
@@ -108,7 +108,7 @@ function pageRouteHandler(input: { workspaces: typeof institutions }) {
 }
 
 async function installApiRoutes(page: Page, handler: (route: Route) => Promise<void>) {
-  await page.route(`${apiBaseUrl}/api/**`, async (route) => {
+  await page.route(apiUrlPattern, async (route) => {
     if (route.request().method() === "OPTIONS") {
       await route.fulfill({ status: 204, headers: corsHeaders, body: "" });
       return;

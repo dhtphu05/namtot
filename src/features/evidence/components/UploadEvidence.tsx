@@ -40,7 +40,7 @@ export function UploadEvidence() {
   const nav = useNavigate();
   const { trackClick, trackAction } = useSmartUXTracking();
 
-  const { data: appRes } = useCurrentApplication("2025-2026");
+  const { data: appRes } = useCurrentApplication();
   const appId = appRes?.application?.id;
 
   const { data: filesData, isLoading: isLoadingList } = useEvidences(appId);

@@ -18,13 +18,13 @@ export function CitySubmissionEligibilityCard({
 
   return (
     <section
-      className="rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-4 py-4 sm:px-5"
+      className="rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 py-3 sm:px-4"
       aria-labelledby="city-submission-eligibility-title"
       aria-busy={isLoading}
     >
       <div className="flex min-w-0 items-start gap-3">
         <span
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--student-v2-surface-secondary)] text-[var(--student-v2-text-primary)]"
+          className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--student-v2-surface-secondary)] text-[var(--student-v2-text-primary)]"
           aria-hidden="true"
         >
           <Icon className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
@@ -42,7 +42,7 @@ export function CitySubmissionEligibilityCard({
             </span>
           </div>
           <p
-            className="mt-1 text-sm leading-5 text-[var(--student-v2-text-secondary)]"
+            className="mt-1 line-clamp-2 text-[13px] leading-5 text-[var(--student-v2-text-secondary)]"
             role="status"
             aria-atomic="true"
           >
@@ -61,14 +61,8 @@ export function CitySubmissionEligibilityCard({
             </ul>
           ) : null}
           {!isLoading && !isError && data?.status !== "ELIGIBLE" ? (
-            <p className="mt-2 text-xs leading-5 text-[var(--student-v2-text-muted)]">
-              Bạn vẫn có thể hoàn thiện hồ sơ, tải minh chứng và kiểm tra các tiêu chí. Trạng thái
-              này chỉ liên quan đến lần nộp đầu tiên.
-            </p>
-          ) : null}
-          {!isLoading && !isError && data?.status === "ELIGIBLE" ? (
-            <p className="mt-2 text-xs leading-5 text-[var(--student-v2-text-muted)]">
-              Đây là điều kiện nộp hồ sơ, chưa phải kết quả xét danh hiệu.
+            <p className="mt-1 text-xs leading-4 text-[var(--student-v2-text-muted)]">
+              Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ. Điều kiện này áp dụng cho lần nộp đầu.
             </p>
           ) : null}
           {isError ? (
