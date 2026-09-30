@@ -165,6 +165,16 @@ The student application V2 rollout uses additive aliases and primitives under `s
 - Phase 3 workspace content: each criterion renders exactly one data component before the evidence gallery: `DefinitionTableV2`, `PathSelectorListV2`, `ActivityLedgerV2`, or one dynamic disclosure. Keep evidence as a gallery, not mixed row/card layouts.
 - Phase 3 workspace sidebar: use the verified/provided Hội Sinh viên emblem asset in the student V2 sidebar and other existing institutional entry points that previously used the mock `5T` mark. Keep the emblem, profile rows, and active left nav marker; account/logout actions live in the shared `AppHeader`.
 
+### Student precheck and City submission S5
+
+- `/app/ai-precheck` renders the Student review page for an individual City application. Keep the existing class-representative `AiPrecheck` fallback (and existing route guard for City Officer) plus the legacy Student workspace for non-City or supplement/resolution states.
+- Show exactly the five canonical criteria from `src/lib/criteria-presentation.ts`. Criterion completion and evidence counts describe recorded information only; never label them pass/fail or as a final award decision. Do not show readiness scores, raw rules, `priority`, target-level controls, or fabricated season/year data.
+- Precheck missing items, rules findings, OCR/evidence suggestions, and warnings are advisory. Their presence, severity, count, or criterion completion must not disable initial submit. Use neutral copy, deep-link a known criterion to `/app/application?criterion=<key>`, and state that the student may continue despite suggestions.
+- Initial City submit availability comes only from the application lifecycle and the resolved server eligibility and submission-window responses. Fail closed while either gate is loading, unavailable, unknown, not eligible/under verification, not configured, not yet open, or closed. `EXCEPTION_ACTIVE` is allowed only when returned by the backend.
+- Refresh eligibility and deadline before opening the confirm dialog and again on confirm. Use the existing `useSubmitApplication` mutation with `allowSubmitWithWarnings: true`; keep server errors localized and map them to eligibility/window guidance. Do not change the endpoint, role checks, workflow, or API types.
+- The confirmation explains that submission enters City review and limits draft editing; pending state prevents repeat actions. After a successful response, refetch the current application and show its submitted/review state as read-only. The five criteria are not the final result.
+- If there is no current application, provide the existing application-start path and do not display a season or inferred deadline. Show school and school year only from authenticated/server data.
+
 ## Phase 2 UI Foundation Consolidation
 
 - Keep Tailwind v4, Radix/shadcn primitives, Lucide, Sonner, document viewers, and Student V2. Do not add a second component system or dependencies.

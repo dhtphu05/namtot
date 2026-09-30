@@ -43,7 +43,7 @@ export type StudentHomeAction = {
   title: string;
   description: string;
   label: string;
-  href: "/app/application" | "/app/result";
+  href: "/app/application" | "/app/ai-precheck" | "/app/result";
   criterion?: Extract<Criterion, "ethics" | "academic" | "physical" | "volunteer" | "integration">;
 };
 
@@ -135,6 +135,7 @@ export function selectStudentHomeAction({
           ? "Thông tin điều kiện cần được cán bộ xác minh trước khi gửi hồ sơ."
           : "Bạn vẫn có thể xem và tiếp tục hoàn thiện hồ sơ.",
         "Xem điều kiện nộp hồ sơ",
+        "/app/ai-precheck",
       );
     }
 
@@ -165,7 +166,7 @@ export function selectStudentHomeAction({
         title: "Chưa xác định thời hạn gửi hồ sơ",
         description: "Mở hồ sơ để kiểm tra thông tin thời hạn mới nhất.",
       };
-      return action("deadline", copy.title, copy.description, "Xem hồ sơ");
+      return action("deadline", copy.title, copy.description, "Xem hồ sơ", "/app/ai-precheck");
     }
 
     if (
@@ -177,6 +178,7 @@ export function selectStudentHomeAction({
         "Kiểm tra điều kiện nộp hồ sơ",
         "Mở hồ sơ để kiểm tra điều kiện và thời hạn trước khi gửi.",
         "Kiểm tra hồ sơ",
+        "/app/ai-precheck",
       );
     }
 
@@ -185,6 +187,7 @@ export function selectStudentHomeAction({
       "Hồ sơ đã sẵn sàng",
       "Kiểm tra lại hồ sơ trước khi gửi đến Hội Sinh viên Thành phố.",
       "Kiểm tra và gửi hồ sơ",
+      "/app/ai-precheck",
     );
   }
 
