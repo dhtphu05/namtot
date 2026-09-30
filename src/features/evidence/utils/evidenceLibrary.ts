@@ -31,7 +31,7 @@ export type StudentEvidenceListItem = Pick<
   files?: Array<{ fileName?: string | null; originalName?: string | null }>;
 };
 
-export const EVIDENCE_UPLOAD_LIMIT_MB = 10;
+export const EVIDENCE_UPLOAD_LIMIT_MB = 20;
 export const EVIDENCE_UPLOAD_LIMIT_BYTES = EVIDENCE_UPLOAD_LIMIT_MB * 1024 * 1024;
 export const EVIDENCE_UPLOAD_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp";
 

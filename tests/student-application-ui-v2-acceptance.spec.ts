@@ -82,6 +82,19 @@ test.describe("student application UI V2 acceptance", () => {
     }
   });
 
+  test("assistant context does not pin an earlier School year", async ({ page }) => {
+    const assistantContextRequests: URL[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/student-assistant/context") assistantContextRequests.push(url);
+    });
+
+    await loginAndGoto(page, "/app/assistant");
+    await expect.poll(() => assistantContextRequests.length > 0).toBe(true);
+
+    expect(assistantContextRequests.every((url) => !url.searchParams.has("schoolYear"))).toBe(true);
+  });
+
   test("application opens on an overview of exactly five canonical criteria", async ({ page }) => {
     await loginAndGoto(page, "/app/application");
 
@@ -109,7 +122,9 @@ test.describe("student application UI V2 acceptance", () => {
   }, testInfo) => {
     const viewports = [
       { width: 1280, height: 720 },
+      { width: 1422, height: 800 }, // 1280×720 effective viewport at 90% zoom.
       { width: 1366, height: 768 },
+      { width: 1164, height: 655 }, // 1280×720 effective viewport at 110% zoom.
       { width: 1440, height: 900 },
       { width: 1600, height: 900 },
       { width: 1920, height: 1080 },
@@ -147,6 +162,36 @@ test.describe("student application UI V2 acceptance", () => {
 
     await expect(page.getByRole("heading", { name: "Khả năng đạt cấp xét" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Chọn cấp này" })).toHaveCount(0);
+  });
+
+  test("legacy school-level applications cannot be submitted from either student workspace", async ({
+    page,
+  }) => {
+    await loginAndGoto(page, "/app/application");
+    await expect(page.getByText(/hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố/i)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Nộp hồ sơ|Gửi hồ sơ|Gửi lại hồ sơ/ }),
+    ).toHaveCount(0);
+
+    await page.goto("/app/wizard");
+    await expect(page.getByText(/hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố/i)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Nộp hồ sơ|Gửi hồ sơ|Gửi lại hồ sơ/ }),
+    ).toHaveCount(0);
+  });
+
+  test("legacy school-level supplement cannot be resubmitted", async ({ page }) => {
+    await loginAndGoto(page, "/app/application?state=supplement");
+    await expect(page.getByText(/hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố/i)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Nộp hồ sơ|Gửi hồ sơ|Gửi lại hồ sơ/ }),
+    ).toHaveCount(0);
+
+    await page.goto("/app/wizard?state=supplement");
+    await expect(page.getByText(/hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố/i)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Nộp hồ sơ|Gửi hồ sơ|Gửi lại hồ sơ/ }),
+    ).toHaveCount(0);
   });
 
   test("overview opens a criterion workspace and returns without losing the URL contract", async ({
@@ -238,6 +283,65 @@ test.describe("student application UI V2 acceptance", () => {
     await expect(page.getByLabel(/GPA|ĐTB/)).toBeHidden();
   });
 
+  test("City academic workspace follows configured GPA track and omits School-only checks", async ({
+    page,
+  }) => {
+    await mockCityApplication(page, "draft");
+    await page.route(/\/api\/applications\/app-1\/criteria-completion/, async (route) => {
+      const payload = criteriaCompletion("draft");
+      payload.targetLevel = "city";
+      const academic = payload.items.find((item) => item.criterion === "academic");
+      if (academic) {
+        academic.requirementGroups = [
+          {
+            key: "academic_foundation",
+            title: "GPA theo hệ đào tạo",
+            operator: "one_of",
+            optional: false,
+            requirements: [
+              requirement(
+                "gpa_university",
+                "GPA đại học",
+                "metric",
+                "rejected",
+                ["manual_metric"],
+                {
+                  config: { metricType: "gpa", threshold: 3.2 },
+                  payloadJson: { value: 3, scale: 4, schoolYear: "2025-2026" },
+                },
+              ),
+              requirement(
+                "gpa_college",
+                "GPA cao đẳng",
+                "metric",
+                "needs_verification",
+                ["manual_metric"],
+                {
+                  config: { metricType: "gpa", threshold: 3 },
+                  payloadJson: { value: 3, scale: 4, schoolYear: "2025-2026" },
+                },
+              ),
+            ],
+          },
+        ] as typeof academic.requirementGroups;
+      }
+      return json(route, payload);
+    });
+
+    await loginAndGoto(page, "/app/application?criterion=academic");
+
+    await expect(studentContentMain(page).getByText("Cần xác minh").first()).toBeVisible();
+    await expect(
+      studentContentMain(page).getByText("Tình trạng điểm F", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      studentContentMain(page).getByText("Xác minh năm học", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      studentContentMain(page).getByRole("button", { name: /Chỉnh kết quả|Tự khai báo kết quả/ }),
+    ).toBeVisible();
+  });
+
   test("ethics verification is passive for students", async ({ page }) => {
     await loginAndGoto(page, "/app/application?criterion=ethics");
     await expect(
@@ -283,7 +387,11 @@ test.describe("student application UI V2 acceptance", () => {
   }) => {
     let submitCount = 0;
     await mockCityApplication(page, "draft");
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/eligibility", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/eligibility"), async (route) => {
+>>>>>>> origin/main
       await json(route, {
         applicationId: "app-1",
         schoolYear: "2025-2026",
@@ -326,7 +434,11 @@ test.describe("student application UI V2 acceptance", () => {
 
   test("City OCR failure keeps the original file and asks staff to check it", async ({ page }) => {
     await mockCityApplication(page, "draft");
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/evidences**", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/evidences**"), async (route) => {
+>>>>>>> origin/main
       await json(route, [
         evidence(
           "ev-city-ocr-failed",
@@ -358,7 +470,11 @@ test.describe("student application UI V2 acceptance", () => {
       if (path.endsWith("/submit")) submitCount += 1;
     });
     await mockCityApplication(page, "noTasks");
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/eligibility", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/eligibility"), async (route) => {
+>>>>>>> origin/main
       eligibilityReadCount += 1;
       await json(route, {
         applicationId: "app-1",
@@ -391,7 +507,11 @@ test.describe("student application UI V2 acceptance", () => {
   }) => {
     let eligibilityReadCount = 0;
     await mockCityApplication(page, "noTasks");
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/eligibility", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/eligibility"), async (route) => {
+>>>>>>> origin/main
       eligibilityReadCount += 1;
       await json(route, {
         applicationId: "app-1",
@@ -401,7 +521,11 @@ test.describe("student application UI V2 acceptance", () => {
         reasons: eligibilityReadCount > 2 ? ["IDENTITY_MATCH_REQUIRES_VERIFICATION"] : [],
       });
     });
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/submit", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/submit"), async (route) => {
+>>>>>>> origin/main
       await jsonErrorWithCode(
         route,
         409,
@@ -460,7 +584,11 @@ test.describe("student application UI V2 acceptance", () => {
   }) => {
     await mockCityApplication(page, "noTasks");
     let deadlineRequests = 0;
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/eligibility", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/eligibility"), async (route) => {
+>>>>>>> origin/main
       await json(route, {
         applicationId: "app-1",
         schoolYear: "2025-2026",
@@ -469,6 +597,7 @@ test.describe("student application UI V2 acceptance", () => {
         reasons: ["IDENTITY_MATCH_REQUIRES_VERIFICATION"],
       });
     });
+<<<<<<< HEAD
     await page.route(
       "**/api/applications/app-1/submission-deadline",
       async (route) => {
@@ -490,6 +619,26 @@ test.describe("student application UI V2 acceptance", () => {
         });
       },
     );
+=======
+    await page.route(apiUrl("/api/applications/app-1/submission-deadline"), async (route) => {
+      deadlineRequests += 1;
+      await json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        submission: {
+          status: "EXCEPTION_ACTIVE",
+          opensAt: "2026-02-01T08:00:00.000Z",
+          closesAt: "2026-02-01T14:00:00.000Z",
+          effectiveClosesAt: "2026-02-02T15:00:00.000Z",
+          exceptionActive: true,
+          exceptionValidUntil: "2026-02-02T15:00:00.000Z",
+        },
+        review: { deadlineAt: null, status: "NOT_CONFIGURED" },
+        supplement: { deadlineAt: null, status: "NOT_CONFIGURED" },
+        finalization: { deadlineAt: null, status: "NOT_CONFIGURED" },
+      });
+    });
+>>>>>>> origin/main
 
     await loginAndGoto(page, "/app/application");
 
@@ -507,7 +656,11 @@ test.describe("student application UI V2 acceptance", () => {
     page,
   }) => {
     await mockCityApplication(page, "noTasks");
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/eligibility", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/eligibility"), async (route) => {
+>>>>>>> origin/main
       await json(route, {
         applicationId: "app-1",
         schoolYear: "2025-2026",
@@ -516,6 +669,7 @@ test.describe("student application UI V2 acceptance", () => {
         reasons: [],
       });
     });
+<<<<<<< HEAD
     await page.route(
       "**/api/applications/app-1/submission-deadline",
       async (route) =>
@@ -534,6 +688,24 @@ test.describe("student application UI V2 acceptance", () => {
           supplement: { deadlineAt: null, status: "NOT_CONFIGURED" },
           finalization: { deadlineAt: null, status: "NOT_CONFIGURED" },
         }),
+=======
+    await page.route(apiUrl("/api/applications/app-1/submission-deadline"), async (route) =>
+      json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        submission: {
+          status: "CLOSED",
+          opensAt: "2026-01-01T00:00:00.000Z",
+          closesAt: "2026-02-01T00:00:00.000Z",
+          effectiveClosesAt: "2026-02-01T00:00:00.000Z",
+          exceptionActive: false,
+          exceptionValidUntil: null,
+        },
+        review: { deadlineAt: null, status: "NOT_CONFIGURED" },
+        supplement: { deadlineAt: null, status: "NOT_CONFIGURED" },
+        finalization: { deadlineAt: null, status: "NOT_CONFIGURED" },
+      }),
+>>>>>>> origin/main
     );
 
     await loginAndGoto(page, "/app/application");
@@ -551,7 +723,11 @@ test.describe("student application UI V2 acceptance", () => {
     await mockCityApplication(page, "supplement");
     let eligibilityRequests = 0;
     let deadlineRequests = 0;
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/eligibility", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/eligibility"), async (route) => {
+>>>>>>> origin/main
       eligibilityRequests += 1;
       await json(route, {
         applicationId: "app-1",
@@ -561,6 +737,7 @@ test.describe("student application UI V2 acceptance", () => {
         reasons: ["MISSING_UNIVERSITY_SYSTEM_AWARD"],
       });
     });
+<<<<<<< HEAD
     await page.route(
       "**/api/applications/app-1/submission-deadline",
       async (route) => {
@@ -582,6 +759,26 @@ test.describe("student application UI V2 acceptance", () => {
         });
       },
     );
+=======
+    await page.route(apiUrl("/api/applications/app-1/submission-deadline"), async (route) => {
+      deadlineRequests += 1;
+      await json(route, {
+        applicationId: "app-1",
+        schoolYear: "2025-2026",
+        submission: {
+          status: "CLOSED",
+          opensAt: "2026-01-01T00:00:00.000Z",
+          closesAt: "2026-02-01T00:00:00.000Z",
+          effectiveClosesAt: "2026-02-01T00:00:00.000Z",
+          exceptionActive: false,
+          exceptionValidUntil: null,
+        },
+        review: { deadlineAt: "2026-02-03T17:00:00.000Z", status: "ON_TRACK" },
+        supplement: { deadlineAt: "2026-02-05T17:00:00.000Z", status: "OVERDUE" },
+        finalization: { deadlineAt: null, status: "NOT_CONFIGURED" },
+      });
+    });
+>>>>>>> origin/main
 
     await loginAndGoto(page, "/app/application");
 
@@ -598,12 +795,17 @@ test.describe("student application UI V2 acceptance", () => {
 
   test("non-City individual application does not request City deadlines", async ({ page }) => {
     await page.route(
+<<<<<<< HEAD
       /\/api\/applications\/current(?:\?.*)?$/,
+=======
+      /^https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\/applications\/current(?:\?.*)?$/,
+>>>>>>> origin/main
       async (route) => {
         await json(route, currentApplication("noTasks", "school"));
       },
     );
     let deadlineRequests = 0;
+<<<<<<< HEAD
     await page.route(
       "**/api/applications/app-1/submission-deadline",
       async (route) => {
@@ -611,6 +813,12 @@ test.describe("student application UI V2 acceptance", () => {
         await json(route, null);
       },
     );
+=======
+    await page.route(apiUrl("/api/applications/app-1/submission-deadline"), async (route) => {
+      deadlineRequests += 1;
+      await json(route, null);
+    });
+>>>>>>> origin/main
 
     await loginAndGoto(page, "/app/application");
 
@@ -625,7 +833,11 @@ test.describe("student application UI V2 acceptance", () => {
   }) => {
     let eligibilityReadCount = 0;
     await mockCityApplication(page, "supplement", null);
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/eligibility", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/eligibility"), async (route) => {
+>>>>>>> origin/main
       eligibilityReadCount += 1;
       await json(route, {
         applicationId: "app-1",
@@ -652,12 +864,20 @@ test.describe("student application UI V2 acceptance", () => {
       metric("metric-volunteer-days", "volunteer_days", 15, 20, "pending"),
     );
     await page.route(
+<<<<<<< HEAD
       /\/api\/applications\/current(?:\?.*)?$/,
+=======
+      /^https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\/applications\/current(?:\?.*)?$/,
+>>>>>>> origin/main
       async (route) => {
         await json(route, applicationResponse);
       },
     );
+<<<<<<< HEAD
     await page.route("**/api/applications/app-1/evidences*", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/evidences*"), async (route) => {
+>>>>>>> origin/main
       const allEvidence = [
         ...evidencesFor(null),
         evidence(
@@ -677,6 +897,7 @@ test.describe("student application UI V2 acceptance", () => {
         criterion ? allEvidence.filter((item) => item.criterion === criterion) : allEvidence,
       );
     });
+<<<<<<< HEAD
     await page.route(
       "**/api/applications/app-1/precheck/latest",
       async (route) => {
@@ -684,6 +905,12 @@ test.describe("student application UI V2 acceptance", () => {
       },
     );
     await page.route("**/api/applications/app-1/submit", async (route) => {
+=======
+    await page.route(apiUrl("/api/applications/app-1/precheck/latest"), async (route) => {
+      await json(route, { ...latestPrecheck("noTasks"), readinessScore: 100 });
+    });
+    await page.route(apiUrl("/api/applications/app-1/submit"), async (route) => {
+>>>>>>> origin/main
       await jsonErrorWithCode(
         route,
         409,
@@ -867,8 +1094,18 @@ test.describe("student legacy flag smoke", () => {
   });
 });
 
+function apiUrl(pathPattern: string) {
+  return new RegExp(
+    `^https?:\\/\\/(?:localhost|127\\.0\\.0\\.1):\\d+${pathPattern.replaceAll("*", ".*")}$`,
+  );
+}
+
 async function installStudentApiMock(page: Page) {
+<<<<<<< HEAD
   await page.route(/\/api\//, async (route) => {
+=======
+  await page.route(/^https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/api(?:\/|\?)/, async (route) => {
+>>>>>>> origin/main
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
@@ -1006,7 +1243,11 @@ async function loginAndGotoCityApplication(
   eligibilityRoute: "DIRECT_CITY" | "UDN_PREREQUISITE",
 ) {
   await mockCityApplication(page, "noTasks");
+<<<<<<< HEAD
   await page.route("**/api/applications/app-1/eligibility", async (route) => {
+=======
+  await page.route(apiUrl("/api/applications/app-1/eligibility"), async (route) => {
+>>>>>>> origin/main
     await json(route, {
       applicationId: "app-1",
       schoolYear: "2025-2026",
@@ -1021,11 +1262,16 @@ async function loginAndGotoCityApplication(
 
 async function mockCityApplication(page: Page, state: AppMode, submittedAt?: string | null) {
   await page.route(
+<<<<<<< HEAD
     /\/api\/applications\/current(?:\?.*)?$/,
+=======
+    /^https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\/applications\/current(?:\?.*)?$/,
+>>>>>>> origin/main
     async (route) => {
       await json(route, currentApplication(state, "city", submittedAt));
     },
   );
+<<<<<<< HEAD
   await page.route(
     "**/api/applications/app-1/submission-deadline",
     async (route) =>
@@ -1044,6 +1290,24 @@ async function mockCityApplication(page: Page, state: AppMode, submittedAt?: str
         supplement: { deadlineAt: "2026-02-05T17:00:00.000Z", status: "ON_TRACK" },
         finalization: { deadlineAt: "2026-02-10T17:00:00.000Z", status: "ON_TRACK" },
       }),
+=======
+  await page.route(apiUrl("/api/applications/app-1/submission-deadline"), async (route) =>
+    json(route, {
+      applicationId: "app-1",
+      schoolYear: "2025-2026",
+      submission: {
+        status: "OPEN",
+        opensAt: "2026-01-01T00:00:00.000Z",
+        closesAt: "2026-02-01T00:00:00.000Z",
+        effectiveClosesAt: "2026-02-01T00:00:00.000Z",
+        exceptionActive: false,
+        exceptionValidUntil: null,
+      },
+      review: { deadlineAt: "2026-02-03T17:00:00.000Z", status: "ON_TRACK" },
+      supplement: { deadlineAt: "2026-02-05T17:00:00.000Z", status: "ON_TRACK" },
+      finalization: { deadlineAt: "2026-02-10T17:00:00.000Z", status: "ON_TRACK" },
+    }),
+>>>>>>> origin/main
   );
 }
 

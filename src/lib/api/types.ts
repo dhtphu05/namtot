@@ -278,6 +278,9 @@ export interface RequirementItem {
   optional: boolean;
   acceptedSources: RequirementSourceType[];
   formSchema?: unknown;
+  config?: {
+    metricType?: MetricType;
+  };
   currentResponses: RequirementResponse[];
   aggregation?: RequirementAggregation;
   responsibility?: RequirementResponsibility;

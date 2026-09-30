@@ -28,6 +28,11 @@ import type { Criterion, EvidenceResponse } from "@/lib/api/types";
 import { EvidenceDetailModal } from "@/features/evidence/components/EvidenceDetailModal";
 import { StudentEvidenceCard } from "@/features/evidence/components/StudentEvidenceCard";
 import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
+import {
+  EVIDENCE_UPLOAD_ACCEPT,
+  EVIDENCE_UPLOAD_LIMIT_MB,
+  validateEvidenceUploadFile,
+} from "../utils/evidenceLibrary";
 
 export function UploadEvidence() {
   const [activeCat, setActiveCat] = useState<Criterion>("academic");
@@ -35,7 +40,7 @@ export function UploadEvidence() {
   const nav = useNavigate();
   const { trackClick, trackAction } = useSmartUXTracking();
 
-  const { data: appRes } = useCurrentApplication("2025-2026");
+  const { data: appRes } = useCurrentApplication();
   const appId = appRes?.application?.id;
 
   const { data: filesData, isLoading: isLoadingList } = useEvidences(appId);
@@ -59,6 +64,12 @@ export function UploadEvidence() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files.length) return;
     const file = e.target.files[0];
+    const validationError = validateEvidenceUploadFile(file);
+    if (validationError) {
+      toast.error(validationError);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     const fileType = getSmartUXFileType(file);
     if (!appId) {
       trackAction("student_upload_evidence_failed", {
@@ -206,7 +217,7 @@ export function UploadEvidence() {
               type="file"
               ref={fileInputRef}
               className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              accept={EVIDENCE_UPLOAD_ACCEPT}
               onChange={handleFileChange}
               disabled={createEvidence.isPending || uploadAndIndex.isPending}
             />
@@ -227,7 +238,7 @@ export function UploadEvidence() {
                 : "Kéo thả file hoặc bấm để chọn"}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              PDF, JPG, PNG — tối đa 10MB / file
+              PDF, JPG, PNG, WEBP — tối đa {EVIDENCE_UPLOAD_LIMIT_MB} MB / file
             </div>
             <div className="mt-4">
               <Button

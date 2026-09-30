@@ -132,6 +132,6 @@ test("validates the evidence upload formats and configured size limit", () => {
       type: "application/pdf",
       size: EVIDENCE_UPLOAD_LIMIT_BYTES + 1,
     }),
-    /10 MB/,
+    /20 MB/,
   );
 });

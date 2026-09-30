@@ -96,8 +96,6 @@ import type {
   RequirementResponse,
 } from "@/lib/api/types";
 
-const SCHOOL_YEAR = "2025-2026";
-
 type ApplicationWithWorkspaceData = ApplicationState & {
   summary?: {
     deadline?: string | null;
@@ -213,7 +211,7 @@ export function StudentApplicationActionWorkspace() {
   const navigate = useNavigate({ from: "/app/application" });
   const routeSearch = useSearch({ from: "/app/application" });
   const user = useAuth((state) => state.user);
-  const current = useCurrentApplication(SCHOOL_YEAR);
+  const current = useCurrentApplication();
   const startApplication = useStartApplication();
   const updateTargetLevel = useUpdateTargetLevel();
   const upsertMetric = useUpsertMetric();
@@ -544,7 +542,7 @@ export function StudentApplicationActionWorkspace() {
           description="Hoàn thiện từng tiêu chí bằng cách thêm minh chứng phù hợp."
         />
         <EmptyState
-          title={`Chưa có hồ sơ Sinh viên 5 tốt năm học ${SCHOOL_YEAR}`}
+          title="Chưa có hồ sơ Sinh viên 5 tốt cho năm học hiện tại"
           description="Tạo hồ sơ để bắt đầu chọn cấp đăng ký, thêm minh chứng và kiểm tra trước khi nộp."
           primaryAction={
             <AppButton

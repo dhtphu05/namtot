@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { AlertCircle, CheckCircle2, Clock, FileText, Trophy } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileText, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCurrentApplication } from "@/features/application/hooks/useApplication";
 import {
@@ -58,7 +58,7 @@ export function StudentFinalResult() {
   if (!application) {
     return (
       <section className="rounded-[8px] border border-slate-200 bg-white p-5">
-        <h1 className="text-[26px] font-bold text-slate-950">Kết quả hồ sơ</h1>
+        <h1 className="text-[26px] font-bold text-slate-950">Kết quả</h1>
         <p className="mt-2 text-[15px] leading-6 text-slate-600">
           Bạn chưa có hồ sơ để xem kết quả.
         </p>
@@ -76,21 +76,37 @@ export function StudentFinalResult() {
     Boolean(task.criterion && criterionLabel[task.criterion]),
   );
 
+  if (!isFinalized) {
+    return (
+      <div className="mx-auto w-full max-w-[1040px]">
+        <section className="rounded-[8px] border border-slate-200 bg-white p-4 sm:p-5">
+          <h1 className="text-[24px] font-bold leading-8 text-slate-950">Kết quả</h1>
+          <p className="mt-1 text-sm font-medium text-slate-700">
+            {getStudentApplicationStatusLabel(application.status)}
+          </p>
+          <p className="mt-3 text-sm leading-5 text-slate-600">
+            Kết quả sẽ hiển thị sau khi hồ sơ được xét và chốt.
+          </p>
+          <Link
+            to="/app/application"
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-[8px] bg-[#EAF3FF] px-4 text-sm font-semibold text-[#0057C2]"
+          >
+            <FileText className="h-4 w-4" aria-hidden="true" />
+            Quay lại hồ sơ
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-[1040px] flex-col gap-5">
       <section className="rounded-[8px] border border-slate-200 bg-white p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-[26px] font-bold leading-tight text-slate-950">Kết quả hồ sơ</h1>
-            <p className="mt-2 text-[15px] leading-6 text-slate-600">
-              Kết quả chính thức chỉ hiển thị sau khi hồ sơ được cấp có thẩm quyền chốt.
-            </p>
+            <h1 className="text-[26px] font-bold leading-tight text-slate-950">Kết quả</h1>
           </div>
-          <StatusBadge tone={finalTone}>
-            {isFinalized
-              ? getFinalStatusLabel(application.finalStatus)
-              : getStudentApplicationStatusLabel(application.status)}
-          </StatusBadge>
+          <StatusBadge tone={finalTone}>{getFinalStatusLabel(application.finalStatus)}</StatusBadge>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -115,38 +131,21 @@ export function StudentFinalResult() {
             <p className="mt-1 text-[15px] leading-6 text-slate-800">{application.finalNote}</p>
           </div>
         ) : null}
-
-        {!isFinalized ? (
-          <div className="mt-5 flex items-start gap-3 rounded-[8px] border border-blue-200 bg-blue-50 p-4 text-blue-800">
-            <Clock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            <p className="text-[15px] leading-6">
-              Hồ sơ của bạn đang ở trạng thái{" "}
-              <span className="font-semibold">
-                {getStudentApplicationStatusLabel(application.status)}
-              </span>
-              . Khi có kết quả cuối cùng, thông tin sẽ xuất hiện tại trang này.
-            </p>
-          </div>
-        ) : null}
       </section>
 
-      <section className="rounded-[8px] border border-slate-200 bg-white p-5 sm:p-6">
-        <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-[#0057C2]" aria-hidden="true" />
-          <h2 className="text-[20px] font-bold text-slate-950">Tóm tắt tiêu chí</h2>
-        </div>
-        {reviewTasks.length ? (
+      {reviewTasks.length ? (
+        <section className="rounded-[8px] border border-slate-200 bg-white p-5 sm:p-6">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-[#0057C2]" aria-hidden="true" />
+            <h2 className="text-[20px] font-bold text-slate-950">Tóm tắt tiêu chí</h2>
+          </div>
           <div className="mt-4 divide-y divide-slate-200 border-y border-slate-200">
             {reviewTasks.map((task) => (
               <CriterionResultRow key={task.id} task={task} />
             ))}
           </div>
-        ) : (
-          <div className="mt-4 rounded-[8px] border border-slate-200 bg-slate-50 p-4 text-[15px] leading-6 text-slate-600">
-            Chưa có kết luận tiêu chí để hiển thị.
-          </div>
-        )}
-      </section>
+        </section>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
         <Link
@@ -154,7 +153,7 @@ export function StudentFinalResult() {
           className="inline-flex min-h-11 items-center gap-2 rounded-[8px] bg-[#EAF3FF] px-4 text-[15px] font-semibold text-[#0057C2]"
         >
           <FileText className="h-4 w-4" aria-hidden="true" />
-          Xem hồ sơ đã nộp
+          Xem hồ sơ
         </Link>
         <Link
           to="/app/feedback"

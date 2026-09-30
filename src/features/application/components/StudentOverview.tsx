@@ -62,8 +62,6 @@ import type {
   PrecheckResult,
 } from "@/lib/api/types";
 
-const SCHOOL_YEAR = "2025-2026";
-
 type ApplicationWithDashboardData = ApplicationState & {
   deadline?: string | null;
   submitDeadline?: string | null;
@@ -94,13 +92,13 @@ const criterionIcons: Partial<Record<Criterion, LucideIcon>> = {
 
 export function StudentOverview() {
   const user = useAuth((state) => state.user);
-  const current = useCurrentApplication(SCHOOL_YEAR);
+  const current = useCurrentApplication();
   const application = current.data?.application as ApplicationWithDashboardData | null | undefined;
   const applicationId = application?.id;
   const latestPrecheck = useLatestPrecheck(applicationId);
   const criteriaCompletion = useCriteriaCompletion(applicationId);
   const evidencesQuery = useEvidences(applicationId, { limit: 100 });
-  const assistantContext = useStudentAssistantContext(SCHOOL_YEAR);
+  const assistantContext = useStudentAssistantContext(application?.schoolYear);
   const notifications = useNotifications({ page: 1, limit: 20 });
   const startApplication = useStartApplication();
   const { trackClick } = useSmartUXTracking();
@@ -154,7 +152,7 @@ export function StudentOverview() {
       ? buildDashboardAssistantFallback({
           application,
           firstName,
-          schoolYear: SCHOOL_YEAR,
+          schoolYear: application?.schoolYear ?? "năm học hiện tại",
         })
       : null);
   const assistantPrimaryAction = assistantDisplayContext?.nextBestAction ?? null;

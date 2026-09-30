@@ -16,12 +16,7 @@ export type AwardStatusPresentation = {
 
 export type AwardRowPresentation = AwardStatusPresentation & {
   key:
-    | "valid"
-    | "warning"
-    | "invalid"
-    | "duplicate"
-    | "missing_student_code"
-    | "needs_manual_review";
+    "valid" | "warning" | "invalid" | "duplicate" | "missing_student_code" | "needs_manual_review";
 };
 
 const decisionStatusPresentation: Record<AwardDecisionStatus, AwardStatusPresentation> = {
@@ -133,7 +128,11 @@ export function getAwardRowPresentation(
   if (row.status === "DUPLICATE") return rowPresentation.duplicate;
   if (row.status === "CONFLICT") return rowPresentation.needs_manual_review;
   if (row.status === "INVALID") {
-    if (row.errors.some((error) => error === "STUDENT_CODE_REQUIRED" || error === "STUDENT_CODE_MUST_BE_TEXT")) {
+    if (
+      row.errors.some(
+        (error) => error === "STUDENT_CODE_REQUIRED" || error === "STUDENT_CODE_MUST_BE_TEXT",
+      )
+    ) {
       return rowPresentation.missing_student_code;
     }
     return rowPresentation.invalid;

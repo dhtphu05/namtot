@@ -8,6 +8,7 @@ import {
 } from "@/features/application/api/student-assistant";
 import type { Level, MetricInput, MetricType, VerificationStatus } from "@/lib/api/types";
 import { notificationKeys } from "@/features/notifications/hooks/useNotifications";
+import { getStudentSubmitErrorCopy } from "@/features/application/s5/precheck-review";
 
 export const applicationKeys = {
   all: ["applications"] as const,
@@ -132,11 +133,13 @@ export function useSubmitApplication() {
     mutationFn: async ({
       id,
       allowSubmitWithWarnings,
+      studentFacingError,
       studentNote,
       successMessage,
     }: {
       id: string;
       allowSubmitWithWarnings?: boolean;
+      studentFacingError?: boolean;
       studentNote?: string;
       successMessage?: string;
     }) => {
@@ -167,7 +170,11 @@ export function useSubmitApplication() {
         variables.successMessage ?? "Đã nộp hồ sơ thành công. Hồ sơ đang chờ cán bộ xét duyệt.",
       );
     },
-    onError: (err: Error) => {
+    onError: (err: Error, variables) => {
+      if (variables.studentFacingError) {
+        toast.error(getStudentSubmitErrorCopy(err));
+        return;
+      }
       const code = "code" in err ? String(err.code) : "";
       if (code === "CITY_SUBMISSION_NOT_ELIGIBLE") {
         toast.error(

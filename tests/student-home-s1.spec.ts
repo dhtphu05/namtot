@@ -171,7 +171,29 @@ test.describe("Student Home S1", () => {
     await expect.poll(() => startBody).toEqual({});
     expect(startBody).not.toHaveProperty("schoolYear");
     await page.goto("/app/application");
-    await expect(page.locator("main").last()).toContainText("Hồ sơ Sinh viên 5 tốt cấp Thành phố");
+    await expect(page.locator("main").last()).toContainText("Hồ sơ của tôi");
+  });
+
+  test("keeps the result page minimal until a final result exists", async ({ page }) => {
+    await installHomeMock(page, "draft");
+    await login(page, "draft");
+    await page.goto("/app/result");
+
+    await expect(page.getByRole("heading", { name: "Kết quả", level: 1 })).toBeVisible();
+    await expect(
+      page.getByText("Kết quả sẽ hiển thị sau khi hồ sơ được xét và chốt."),
+    ).toBeVisible();
+    await expect(page.getByText("Chưa chốt")).toHaveCount(0);
+    await expect(page.getByText("Thời gian chốt")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Quay lại hồ sơ" })).toBeVisible();
+
+    await installHomeMock(page, "final");
+    await login(page, "final");
+    await page.goto("/app/result");
+
+    await expect(page.getByText("Kết quả cuối")).toBeVisible();
+    await expect(page.getByText("Thời gian chốt")).toBeVisible();
+    await expect(page.getByText("Chưa có kết luận tiêu chí để hiển thị.")).toHaveCount(0);
   });
 
   test("fits the five-criterion grid at desktop widths and 125% effective zoom", async ({
@@ -182,7 +204,9 @@ test.describe("Student Home S1", () => {
 
     for (const { width, height } of [
       { width: 1280, height: 720 },
+      { width: 1422, height: 800 }, // 1280×720 effective viewport at 90% zoom.
       { width: 1366, height: 768 },
+      { width: 1164, height: 655 }, // 1280×720 effective viewport at 110% zoom.
       { width: 1440, height: 900 },
       { width: 1600, height: 900 },
       { width: 1920, height: 1080 },
@@ -294,6 +318,8 @@ function currentResponse(scenario: string) {
       status,
       finalStatus: scenario === "final" ? "passed" : null,
       finalNote: null,
+      finalizedAt: scenario === "final" ? "2026-01-04T00:00:00.000Z" : null,
+      finalLevel: scenario === "final" ? "city" : null,
       submittedAt: ["supplement", "submitted", "under-review", "final"].includes(scenario)
         ? "2026-01-03T00:00:00.000Z"
         : null,

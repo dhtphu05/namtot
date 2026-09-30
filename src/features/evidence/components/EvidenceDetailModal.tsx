@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { FilePlus2, Loader2, RefreshCw, X } from "lucide-react";
+import { FilePlus2, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,11 +12,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
+import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
 import { useEvidenceCardPolling } from "@/hooks/useEvidenceCardPolling";
 import { useJobPolling } from "@/hooks/useJobPolling";
 import type { EvidenceResponse } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/client";
-import { getSourcePresentation } from "@/features/application/presentation";
 import {
   useEvidenceCard,
   useEvidenceDetail,
@@ -35,7 +35,6 @@ import {
 import { EvidenceCardPanel } from "./EvidenceCardPanel";
 import { EvidenceFilePreview } from "./EvidenceFilePreview";
 import { formatStudentDate, studentCriterionLabel } from "./student-evidence-utils";
-import { getStudentEvidenceStatus } from "../utils/studentEvidenceStatus";
 
 type EvidenceDetailModalProps = {
   evidence: EvidenceResponse | null;
@@ -46,8 +45,6 @@ type EvidenceDetailModalProps = {
   onChanged?: () => void;
 };
 
-type DetailTab = "card" | "files";
-
 export function EvidenceDetailModal({
   evidence,
   applicationId,
@@ -56,8 +53,8 @@ export function EvidenceDetailModal({
   onClose,
   onChanged,
 }: EvidenceDetailModalProps) {
-  const [tab, setTab] = useState<DetailTab>("card");
   const [hasUnsavedCardChanges, setHasUnsavedCardChanges] = useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailQuery = useEvidenceDetail(evidence?.id);
   const detail = (detailQuery.data ?? evidence) as EvidenceResponse | null;
@@ -95,6 +92,12 @@ export function EvidenceDetailModal({
   const card = useMemo(() => normalizeEvidenceCard(cardQuery.data), [cardQuery.data]);
   const polledEvidence = (card as { evidence?: EvidenceResponse | null } | null)?.evidence;
   const renderedEvidence = polledEvidence ?? activeEvidence;
+  const canMutateCard = Boolean(
+    canMutateEvidence &&
+    renderedEvidence &&
+    !isEventImport &&
+    !["accepted", "rejected", "resolution_needed"].includes(renderedEvidence.status),
+  );
   const jobId = activeEvidence?.jobId;
   const jobQuery = useJobPolling(jobId, {
     enabled: Boolean(
@@ -160,14 +163,17 @@ export function EvidenceDetailModal({
     onChanged?.();
   };
 
-  const close = () => {
-    if (
-      hasUnsavedCardChanges &&
-      !window.confirm("Bạn có chỉnh sửa chưa lưu. Đóng cửa sổ sẽ bỏ các thay đổi này.")
-    ) {
+  const requestClose = () => {
+    if (hasUnsavedCardChanges) {
+      setConfirmCloseOpen(true);
       return;
     }
+    closeWithoutSaving();
+  };
+
+  const closeWithoutSaving = () => {
     setHasUnsavedCardChanges(false);
+    setConfirmCloseOpen(false);
     onClose();
   };
 
@@ -196,80 +202,51 @@ export function EvidenceDetailModal({
   };
 
   return (
-    <Dialog open={Boolean(evidence)} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto p-0">
-        <DialogHeader className="border-b px-5 py-4">
+    <Dialog open={Boolean(evidence)} onOpenChange={(open) => !open && requestClose()}>
+      <DialogContent className="flex h-[92dvh] max-h-[92dvh] w-[calc(100vw-2rem)] max-w-[1440px] flex-col overflow-hidden p-0 [&>button:last-child]:hidden">
+        <DialogHeader className="shrink-0 border-b px-4 py-4 md:px-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Minh chứng hồ sơ Sinh viên 5 tốt cấp Thành phố
+              </p>
               <div className="mb-2 flex flex-wrap gap-2">
                 {activeEvidence ? (
                   <>
                     <Badge variant="outline">
-                      {studentCriterionLabel[activeEvidence.criterion]}
+                      {studentCriterionLabel[activeEvidence.criterion] ?? "Chưa rõ tiêu chí"}
                     </Badge>
                     <Badge variant="outline">
-                      {sourceTypeCopy[activeEvidence.sourceType] ??
-                        getSourcePresentation(activeEvidence.sourceType)}
-                    </Badge>
-                    <Badge variant="outline">
-                      {getStudentEvidenceStatus(activeEvidence, card).label}
+                      {sourceTypeCopy[activeEvidence.sourceType] ?? "Nguồn minh chứng"}
                     </Badge>
                   </>
                 ) : null}
               </div>
-              <DialogTitle className="truncate text-xl">
+              <DialogTitle className="break-words text-xl leading-tight">
                 {activeEvidence?.evidenceName ?? "Minh chứng"}
               </DialogTitle>
-              <DialogDescription>Thông tin minh chứng trong hồ sơ của bạn.</DialogDescription>
+              <DialogDescription>
+                Đối chiếu tài liệu với thông tin nhận diện được trước khi xác nhận.
+              </DialogDescription>
             </div>
             <button
               type="button"
               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]"
               aria-label="Đóng"
-              onClick={close}
+              onClick={requestClose}
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant={tab === "card" ? "default" : "outline"}
-              size="sm"
-              className="min-h-11"
-              onClick={() => setTab("card")}
-            >
-              Minh chứng
-            </Button>
-            <Button
-              type="button"
-              variant={tab === "files" ? "default" : "outline"}
-              size="sm"
-              className="min-h-11"
-              onClick={() => setTab("files")}
-            >
-              File
-            </Button>
-            {retryable ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-11"
-                onClick={() => void retry()}
-                disabled={retryJob.isPending}
-              >
-                <RefreshCw className="h-4 w-4" />
-                Thử xử lý lại
-              </Button>
-            ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {canUploadMore ? (
               <>
                 <input
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
+                  aria-label="Chọn file bổ sung"
                   accept=".pdf,.jpg,.jpeg,.png,.webp"
                   onChange={(event) => void uploadMore(event.target.files?.[0])}
                 />
@@ -293,74 +270,86 @@ export function EvidenceDetailModal({
           </div>
         </DialogHeader>
 
-        <div className="grid gap-0 lg:grid-cols-[1.25fr_0.95fr]">
-          <aside className="space-y-3 border-b p-5 lg:border-b-0 lg:border-r">
-            {detailQuery.isLoading ? (
-              <LoadingState label="Đang tải minh chứng..." />
-            ) : detailQuery.isError ? (
-              <ErrorState
-                title="Không thể tải minh chứng"
-                message={
-                  detailQuery.error instanceof Error
-                    ? detailQuery.error.message
-                    : "Vui lòng thử lại."
-                }
-                onRetry={() => void detailQuery.refetch()}
-              />
-            ) : activeEvidence ? (
-              <>
-                <Info label="Cập nhật" value={formatStudentDate(activeEvidence.updatedAt)} />
-                <Info label="Tạo lúc" value={formatStudentDate(activeEvidence.createdAt)} />
-                <div className="hidden lg:block">
-                  <EvidenceFilePreview
-                    evidence={activeEvidence}
-                    onUploadMore={canUploadMore ? () => fileInputRef.current?.click() : undefined}
-                  />
-                </div>
-              </>
-            ) : null}
-          </aside>
-
-          <main className="p-5">
-            {tab === "files" && activeEvidence ? (
-              <EvidenceFilePreview
-                evidence={activeEvidence}
-                onUploadMore={canUploadMore ? () => fileInputRef.current?.click() : undefined}
-              />
-            ) : null}
-
-            {tab === "card" && activeEvidence ? (
-              cardQuery.isLoading && !card ? (
-                <LoadingState label="Đang tải minh chứng..." />
-              ) : cardQuery.isError ? (
+        <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.9fr)] lg:overflow-hidden">
+          <section className="min-w-0 border-b p-4 md:p-6 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <h2 className="font-semibold text-foreground">Tài liệu đã tải</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Cập nhật {formatStudentDate(activeEvidence?.updatedAt)}
+                </p>
+              </div>
+              {detailQuery.isFetching ? (
+                <span className="text-xs text-muted-foreground">Đang làm mới…</span>
+              ) : null}
+            </div>
+            {detailQuery.isError ? (
+              <div className="mb-4">
                 <ErrorState
-                  title="Không thể tải minh chứng"
-                  message={cardError?.message ?? "Vui lòng thử lại sau."}
+                  title="Không thể làm mới thông tin minh chứng"
+                  message="Đang hiển thị thông tin đã có. Bạn có thể thử tải lại."
+                  onRetry={() => void detailQuery.refetch()}
+                />
+              </div>
+            ) : null}
+            {activeEvidence ? (
+              <EvidenceFilePreview evidence={activeEvidence} />
+            ) : detailQuery.isLoading ? (
+              <LoadingState label="Đang tải minh chứng…" />
+            ) : null}
+            {activeEvidence ? (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <Info label="Ngày tải lên" value={formatStudentDate(activeEvidence.createdAt)} />
+                <Info
+                  label="Cập nhật gần nhất"
+                  value={formatStudentDate(activeEvidence.updatedAt)}
+                />
+              </div>
+            ) : null}
+          </section>
+
+          <main
+            aria-label="Thông tin minh chứng"
+            className="min-w-0 p-4 md:p-6 lg:min-h-0 lg:overflow-y-auto"
+          >
+            {cardQuery.isError ? (
+              <div className="mb-4">
+                <ErrorState
+                  title="Không thể tải thông tin nhận diện"
+                  message="Bạn vẫn có thể xem tài liệu. Hãy thử tải lại phần thông tin."
                   requestId={cardError?.meta?.requestId}
                   onRetry={() => void cardQuery.refetch()}
                 />
-              ) : (
-                <EvidenceCardPanel
-                  evidence={renderedEvidence ?? activeEvidence}
-                  card={card}
-                  job={activeEvidence?.indexingStatus === "failed" ? null : jobQuery.data}
-                  requestId={cardError?.meta?.requestId}
-                  onRetry={retryable ? () => void retry() : undefined}
-                  retrying={retryJob.isPending}
-                  onUploadMore={canUploadMore ? () => fileInputRef.current?.click() : undefined}
-                  uploading={uploadFile.isPending || startIndexing.isPending}
-                  confirmationMode={initialMode === "confirm"}
-                  onSaveCorrections={saveCardCorrections}
-                  savingCorrections={saveCorrections.isPending}
-                  onConfirm={confirmEvidenceCard}
-                  confirming={confirmCard.isPending}
-                  onDirtyChange={setHasUnsavedCardChanges}
-                />
-              )
+              </div>
+            ) : null}
+            {activeEvidence ? (
+              <EvidenceCardPanel
+                evidence={renderedEvidence ?? activeEvidence}
+                card={card}
+                loadingCard={cardQuery.isLoading && !card}
+                onRetry={retryable ? () => void retry() : undefined}
+                retrying={retryJob.isPending}
+                confirmationMode={initialMode === "confirm"}
+                onSaveCorrections={canMutateCard ? saveCardCorrections : undefined}
+                savingCorrections={saveCorrections.isPending}
+                onConfirm={canMutateCard ? confirmEvidenceCard : undefined}
+                confirming={confirmCard.isPending}
+                onDirtyChange={setHasUnsavedCardChanges}
+              />
             ) : null}
           </main>
         </div>
       </DialogContent>
+      <ConfirmDialog
+        open={confirmCloseOpen}
+        onOpenChange={setConfirmCloseOpen}
+        title="Bỏ thay đổi chưa lưu?"
+        description="Các chỉnh sửa bạn vừa nhập sẽ không được lưu nếu đóng cửa sổ này."
+        impact="Bạn có thể tiếp tục chỉnh sửa hoặc xác nhận bỏ các thay đổi."
+        confirmLabel="Bỏ thay đổi"
+        destructive
+        onConfirm={closeWithoutSaving}
+      />
     </Dialog>
   );
 }
@@ -377,9 +366,11 @@ function isTerminalStudentStatus(status?: string | null) {
 
 function Info({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="rounded-md border bg-background p-3 text-sm">
-      <div className="text-xs font-medium uppercase text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words font-semibold text-foreground">{value || "--"}</div>
+    <div className="rounded-lg border bg-background px-3 py-2 text-sm">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="mt-1 break-words font-medium text-foreground">
+        {value || "Chưa có dữ liệu"}
+      </div>
     </div>
   );
 }

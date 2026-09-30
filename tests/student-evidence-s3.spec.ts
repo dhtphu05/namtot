@@ -2,7 +2,7 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 
 const apiBase = "http://localhost:8080";
 
-test.describe("Student evidence workspace S3", () => {
+test.describe("Student evidence workspace S3 + S4", () => {
   test("shows the evidence library with exactly five criteria and friendly status copy", async ({
     page,
   }) => {
@@ -127,14 +127,14 @@ test.describe("Student evidence workspace S3", () => {
     await expect(dialog.getByRole("alert")).toContainText("Định dạng chưa được hỗ trợ");
     await fileInput.evaluate((element) => {
       const oversized = new File(["fixture"], "qua-lon.pdf", { type: "application/pdf" });
-      Object.defineProperty(oversized, "size", { value: 10 * 1024 * 1024 + 1 });
+      Object.defineProperty(oversized, "size", { value: 20 * 1024 * 1024 + 1 });
       const transfer = new DataTransfer();
       transfer.items.add(oversized);
       const input = element as HTMLInputElement;
       input.files = transfer.files;
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await expect(dialog.getByRole("alert")).toContainText("vượt quá giới hạn 10 MB");
+    await expect(dialog.getByRole("alert")).toContainText("vượt quá giới hạn 20 MB");
     await page.screenshot({ path: "/tmp/student-evidence-upload-validation-1280x720.png" });
     await dialog.getByRole("button", { name: "Thêm vào hồ sơ" }).click();
     await expect.poll(() => createCount).toBe(0);
@@ -143,7 +143,7 @@ test.describe("Student evidence workspace S3", () => {
   test("distinguishes empty and no-results states", async ({ page }) => {
     await installEvidenceApi(page);
     await openStudentPage(page, "/app/upload");
-    await expect(page.getByText("Bạn chưa thêm minh chứng nào.")).toBeVisible();
+    await expect(page.getByText("Chưa có minh chứng.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Thêm minh chứng" }).first()).toBeVisible();
 
     await installEvidenceApi(page, {
@@ -252,6 +252,187 @@ test.describe("Student evidence workspace S3", () => {
     await expect(nonRetryableDialog.getByRole("button", { name: "Thử xử lý lại" })).toHaveCount(0);
   });
 
+  test("S4 detail keeps the document beside recognized fields and preserves correction/confirmation contracts", async ({
+    page,
+  }) => {
+    let correctionBody: Record<string, unknown> | undefined;
+    let confirmationBody: Record<string, unknown> | undefined;
+    await installEvidenceApi(page, {
+      evidences: [
+        evidence("ev-confirm", "Giấy xác nhận hoạt động", "volunteer", "indexed", {
+          card: editableCard(),
+        }),
+      ],
+      onCorrection: (body) => {
+        correctionBody = body;
+      },
+      onConfirmCard: (body) => {
+        confirmationBody = body;
+      },
+    });
+    await openStudentPage(page, "/app/upload?evidenceId=ev-confirm&mode=confirm");
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Tài liệu đã tải" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Thông tin nhận diện" })).toBeVisible();
+    await expect(dialog.locator("iframe[title='Bản xem trước: ev-confirm.pdf']")).toBeVisible();
+    await expect(dialog.getByText("Ngày hội tình nguyện mùa xuân")).toBeVisible();
+    await expect(
+      dialog.getByText("Giá trị nhận diện ban đầu: Ngày hội tình nguyện mùa xuân"),
+    ).toHaveCount(0);
+    await expect(
+      dialog.getByText(/0\.98|98%|Độ tin cậy|AI|OCR|extraction|pending_indexing/i),
+    ).toHaveCount(0);
+
+    await dialog.getByRole("button", { name: "Chỉnh sửa" }).click();
+    await dialog.getByLabel("Tên hoạt động").fill("Ngày hội tình nguyện mùa xuân 2026");
+    await dialog.getByRole("button", { name: "Lưu thay đổi" }).click();
+    await expect(page.getByText("Đã lưu thông tin đã chỉnh.")).toBeVisible();
+    await expect(
+      dialog.getByText("Giá trị nhận diện ban đầu: Ngày hội tình nguyện mùa xuân"),
+    ).toBeVisible();
+    await expect(dialog.getByText("Ngày hội tình nguyện mùa xuân 2026")).toBeVisible();
+    await expect
+      .poll(() => correctionBody)
+      .toEqual({
+        fields: { event_name: "Ngày hội tình nguyện mùa xuân 2026" },
+        expectedUpdatedAt: "2026-01-02T00:00:00.000Z",
+      });
+
+    await dialog.getByRole("button", { name: "Xác nhận thông tin" }).click();
+    await expect(page.getByText("Đã xác nhận thông tin minh chứng.")).toBeVisible();
+    await expect
+      .poll(() => confirmationBody)
+      .toEqual({
+        expectedUpdatedAt: "2026-01-03T00:00:00.000Z",
+      });
+  });
+
+  test("S4 hides correction and confirmation controls for submitted or decision-locked evidence", async ({
+    page,
+  }) => {
+    await installEvidenceApi(page, {
+      applicationStatus: "submitted",
+      evidences: [
+        evidence("ev-submitted-card", "Minh chứng đã gửi", "academic", "indexed", {
+          card: editableCard(),
+        }),
+      ],
+    });
+    await openStudentPage(page, "/app/upload?evidenceId=ev-submitted-card&mode=confirm");
+    const submittedDialog = page.getByRole("dialog");
+    await expect(submittedDialog.getByText("Thông tin nhận diện").first()).toBeVisible();
+    await expect(submittedDialog.getByRole("button", { name: "Chỉnh sửa" })).toHaveCount(0);
+    await expect(submittedDialog.getByRole("button", { name: "Xác nhận thông tin" })).toHaveCount(
+      0,
+    );
+
+    await installEvidenceApi(page, {
+      evidences: [
+        evidence("ev-locked-card", "Minh chứng đã được xác nhận", "academic", "indexed", {
+          status: "accepted",
+          card: editableCard(),
+        }),
+      ],
+    });
+    await page.goto("/app/upload?evidenceId=ev-locked-card&mode=confirm", {
+      waitUntil: "domcontentloaded",
+    });
+    const lockedDialog = page.getByRole("dialog");
+    await expect(
+      lockedDialog.getByRole("heading", { name: "Minh chứng đã được xác nhận" }),
+    ).toBeVisible();
+    await expect(lockedDialog.getByRole("button", { name: "Chỉnh sửa" })).toHaveCount(0);
+    await expect(lockedDialog.getByRole("button", { name: "Xác nhận thông tin" })).toHaveCount(0);
+    await expect(lockedDialog.getByText(/chế độ chỉ xem/i)).toBeVisible();
+  });
+
+  test("S4 presents signed-url errors inline and supports unsupported document originals", async ({
+    page,
+  }) => {
+    await installEvidenceApi(page, {
+      evidences: [evidence("ev-preview-error", "Tài liệu mất liên kết xem", "ethics", "indexed")],
+      failSignedUrl: true,
+    });
+    await openStudentPage(page, "/app/upload?evidenceId=ev-preview-error");
+    const errorDialog = page.getByRole("dialog");
+    await expect(errorDialog.getByRole("alert")).toContainText("Không thể tải bản xem trước");
+    await expect(errorDialog.getByRole("button", { name: "Thử lại" })).toBeVisible();
+    await expect(errorDialog.getByRole("link", { name: "Mở bản gốc" })).toHaveCount(0);
+
+    await installEvidenceApi(page, {
+      evidences: [
+        evidence("ev-unsupported", "Tài liệu cần ứng dụng khác", "ethics", "indexed", {
+          files: [
+            {
+              id: "file-unsupported",
+              fileName: "tai-lieu.docx",
+              mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            },
+          ],
+        }),
+      ],
+    });
+    await page.goto("/app/upload?evidenceId=ev-unsupported", { waitUntil: "domcontentloaded" });
+    const unsupportedDialog = page.getByRole("dialog");
+    await expect(unsupportedDialog.getByText("Không thể hiển thị bản xem trước.")).toBeVisible();
+    await expect(unsupportedDialog.getByRole("link", { name: "Mở bản gốc" })).toBeVisible();
+  });
+
+  test("S4 dialog remains usable across desktop widths and 125% effective viewport", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await installEvidenceApi(page, {
+      evidences: [
+        evidence(
+          "ev-long-detail",
+          "Giấy xác nhận thành tích hoạt động và nghiên cứu cấp Thành phố năm học 2025–2026",
+          "integration",
+          "indexed",
+          {
+            fileName: "giay-xac-nhan-thanh-tich-hoat-dong-nghien-cuu-2025-2026.pdf",
+            card: editableCard(),
+          },
+        ),
+      ],
+    });
+    await openStudentPage(page, "/app/upload?evidenceId=ev-long-detail&mode=confirm");
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", { name: "Đóng" }).focus();
+    await page.keyboard.press("Tab");
+    expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+
+    for (const viewport of [
+      { width: 1280, height: 720 },
+      { width: 1422, height: 800 }, // 1280×720 effective viewport at 90% zoom.
+      { width: 1366, height: 768 },
+      { width: 1164, height: 655 }, // 1280×720 effective viewport at 110% zoom.
+      { width: 1440, height: 900 },
+      { width: 1600, height: 900 },
+      { width: 1920, height: 1080 },
+      { width: 1024, height: 576 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect(dialog.getByRole("heading", { name: "Tài liệu đã tải" })).toBeVisible();
+      await page.screenshot({
+        path: `/tmp/student-evidence-detail-${viewport.width}x${viewport.height}.png`,
+      });
+      await expect
+        .poll(async () => (await dialog.boundingBox())?.x ?? -1)
+        .toBeGreaterThanOrEqual(0);
+      const bounds = await dialog.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
+      expect(bounds!.y).toBeGreaterThanOrEqual(0);
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        viewport.width,
+      );
+    }
+  });
+
   test("library and upload dialog fit required desktop widths without horizontal overflow", async ({
     page,
   }) => {
@@ -270,7 +451,9 @@ test.describe("Student evidence workspace S3", () => {
 
     for (const viewport of [
       { width: 1280, height: 720 },
+      { width: 1422, height: 800 }, // 1280×720 effective viewport at 90% zoom.
       { width: 1366, height: 768 },
+      { width: 1164, height: 655 }, // 1280×720 effective viewport at 110% zoom.
       { width: 1440, height: 900 },
       { width: 1600, height: 900 },
       { width: 1920, height: 1080 },
@@ -321,6 +504,9 @@ async function installEvidenceApi(
     evidences?: EvidenceFixture[];
     onCreate?: (body: Record<string, unknown>) => void;
     onRetry?: () => void;
+    onCorrection?: (body: Record<string, unknown>) => void;
+    onConfirmCard?: (body: Record<string, unknown>) => void;
+    failSignedUrl?: boolean;
   } = {},
 ) {
   const rows = [...(options.evidences ?? [])];
@@ -391,6 +577,53 @@ async function installEvidenceApi(
         uxStatus: { step: row?.indexingStatus ?? "queued" },
       });
     }
+    const evidenceCorrectionMatch = path.match(/^\/api\/evidences\/([^/]+)\/card\/corrections$/);
+    if (evidenceCorrectionMatch && request.method() === "PATCH") {
+      const body = (request.postDataJSON() ?? {}) as Record<string, unknown>;
+      options.onCorrection?.(body);
+      const row = rows.find((item) => item.id === evidenceCorrectionMatch[1]);
+      const fields = (body.fields ?? {}) as Record<string, unknown>;
+      if (row?.card) {
+        const correctedFields = {
+          ...(row.card.confirmedFields as Record<string, unknown>),
+          ...fields,
+        };
+        row.card = {
+          ...row.card,
+          updatedAt: "2026-01-03T00:00:00.000Z",
+          confirmationStatus: "correction_required",
+          confirmedFields: correctedFields,
+          fieldDetails: ((row.card.fieldDetails ?? []) as Array<Record<string, unknown>>).map(
+            (field) =>
+              Object.prototype.hasOwnProperty.call(fields, field.key)
+                ? {
+                    ...field,
+                    correctedValue: fields[String(field.key)],
+                    effectiveValue: fields[String(field.key)],
+                  }
+                : field,
+          ),
+        };
+      }
+      return json(route, { card: row?.card ?? {} });
+    }
+    const evidenceConfirmMatch = path.match(/^\/api\/evidences\/([^/]+)\/card\/confirm$/);
+    if (evidenceConfirmMatch && request.method() === "POST") {
+      const body = (request.postDataJSON() ?? {}) as Record<string, unknown>;
+      options.onConfirmCard?.(body);
+      const row = rows.find((item) => item.id === evidenceConfirmMatch[1]);
+      if (row?.card) {
+        row.card = {
+          ...row.card,
+          updatedAt: "2026-01-04T00:00:00.000Z",
+          confirmationStatus: "confirmed",
+          requiresHumanConfirmation: false,
+          canConfirm: false,
+          confirmedAt: "2026-01-04T00:00:00.000Z",
+        };
+      }
+      return json(route, { card: row?.card ?? {} });
+    }
     if (path.match(/^\/api\/evidences\/[^/]+\/audit$/)) return json(route, { items: [] });
     const retryJobMatch = path.match(/^\/api\/jobs\/([^/]+)\/retry$/);
     if (retryJobMatch && request.method() === "POST") {
@@ -411,6 +644,18 @@ async function installEvidenceApi(
       return json(route, rows.find((item) => item.id === id) ?? rows[0] ?? null);
     }
     if (path.match(/^\/api\/files\/[^/]+\/signed-url$/)) {
+      if (options.failSignedUrl) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: false,
+            data: null,
+            error: { code: "UNAVAILABLE", message: "Signed URL service unavailable" },
+          }),
+        });
+        return;
+      }
       return json(route, { url: "data:application/pdf;base64,JVBERi0xLjQ=" });
     }
     if (path === "/api/evidence-matching/library") return json(route, { items: [], total: 0 });
@@ -479,6 +724,45 @@ function evidence(
     fileName: `${id}.pdf`,
     files: [{ id: `file-${id}`, fileName: `${id}.pdf`, mimeType: "application/pdf" }],
     ...extra,
+  };
+}
+
+function editableCard(): Record<string, unknown> {
+  return {
+    id: "card-1",
+    evidenceId: "ev-confirm",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+    confirmationStatus: "pending",
+    requiresHumanConfirmation: true,
+    canEdit: true,
+    canConfirm: true,
+    fieldDetails: [
+      {
+        key: "event_name",
+        label: "Tên hoạt động",
+        extractedValue: "Ngày hội tình nguyện mùa xuân",
+        correctedValue: null,
+        effectiveValue: "Ngày hội tình nguyện mùa xuân",
+        editable: true,
+        confidence: 0.98,
+        warningCodes: ["provider_debug_only"],
+      },
+      {
+        key: "student_code",
+        label: "MSSV",
+        extractedValue: "102220001",
+        correctedValue: null,
+        effectiveValue: "102220001",
+        editable: false,
+        confidence: 0.99,
+      },
+    ],
+    evidencePrecheck: {
+      status: "ready_for_confirmation",
+      completeness: { score: 0.98, missingImportantFields: [] },
+      quality: { level: "clear" },
+      identityCheck: { status: "matched" },
+    },
   };
 }
 
