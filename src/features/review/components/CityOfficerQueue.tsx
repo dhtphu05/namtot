@@ -14,6 +14,7 @@ import type {
   Criterion,
   ReviewTaskListItem,
   ReviewTaskListParams,
+  ReviewTaskOwnership,
   ReviewTaskStatus,
 } from "../types";
 import { getErrorMessage } from "../utils/errors";
@@ -61,6 +62,7 @@ export function CityOfficerQueue() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<CityQueueTab["key"]>("waiting");
   const [criterion, setCriterion] = useState<Criterion | "all">("all");
+  const [ownership, setOwnership] = useState<ReviewTaskOwnership>("visible_scope");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null);
@@ -86,6 +88,7 @@ export function CityOfficerQueue() {
       limit: PAGE_SIZE,
       q: search.trim() || undefined,
       criterion: criterion === "all" ? undefined : criterion,
+      ownership: ownership === "visible_scope" ? undefined : ownership,
     };
 
     if ("statuses" in selectedTab) {
@@ -95,7 +98,7 @@ export function CityOfficerQueue() {
     }
 
     return params;
-  }, [criterion, page, search, selectedTab]);
+  }, [criterion, ownership, page, search, selectedTab]);
 
   const { data, error, isError, isFetching, isLoading, refetch } = useReviewTasks(queryParams);
   const claimTask = useClaimReviewTask();
@@ -195,7 +198,7 @@ export function CityOfficerQueue() {
           ))}
         </div>
 
-        <div className="grid gap-2 md:grid-cols-[minmax(260px,1fr)_minmax(180px,220px)]">
+        <div className="grid gap-2 md:grid-cols-[minmax(260px,1fr)_minmax(180px,220px)_minmax(180px,220px)]">
           <label className="relative block">
             <span className="sr-only">Tìm sinh viên hoặc MSSV</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -229,6 +232,22 @@ export function CityOfficerQueue() {
               ))}
             </select>
           </label>
+          <label className="text-sm">
+            <span className="sr-only">Lọc phạm vi xử lý</span>
+            <select
+              aria-label="Lọc phạm vi xử lý"
+              className="h-9 w-full rounded-[var(--radius-control)] border border-[var(--border-control)] bg-[var(--surface-primary)] px-3 text-sm"
+              value={ownership}
+              onChange={(event) => {
+                setOwnership(event.target.value as ReviewTaskOwnership);
+                setPage(1);
+              }}
+            >
+              <option value="visible_scope">Tất cả trong phạm vi</option>
+              <option value="my_tasks">Được giao cho tôi</option>
+              <option value="claimable">Có thể nhận xử lý</option>
+            </select>
+          </label>
         </div>
 
         {isError ? (
@@ -252,7 +271,9 @@ export function CityOfficerQueue() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Sinh viên</TableHead>
+                  <TableHead>Trường / đơn vị</TableHead>
                   <TableHead>Tiêu chí</TableHead>
+                  <TableHead>Minh chứng</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Phân công</TableHead>
                   <TableHead>Mốc xử lý</TableHead>
@@ -360,8 +381,14 @@ function CityQueueRow({
         </div>
       </TableCell>
       <TableCell>
+        <div className="max-w-[220px] break-words text-sm">
+          {item.institutionName || "Chưa có dữ liệu trường"}
+        </div>
+      </TableCell>
+      <TableCell>
         <Badge variant="outline">{getCriterionLabel(item.criterion)}</Badge>
       </TableCell>
+      <TableCell className="whitespace-nowrap text-sm">{item.evidenceCount} minh chứng</TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1.5">
           <Badge variant={item.status === "rejected" ? "destructive" : "secondary"}>

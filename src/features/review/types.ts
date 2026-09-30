@@ -75,10 +75,13 @@ export type ReviewTaskListParams = {
   supplementRequired?: boolean;
   resolutionNeeded?: boolean;
   assignedToMe?: boolean;
+  ownership?: ReviewTaskOwnership;
   page?: number;
   limit?: number;
   q?: string;
 };
+
+export type ReviewTaskOwnership = "my_tasks" | "claimable" | "visible_scope";
 
 export type ReviewTaskPermissionReason =
   | "manager_full_access"
@@ -147,6 +150,7 @@ export type ReviewTaskListItem = {
   studentId: string;
   studentName: string;
   studentCode: string;
+  institutionName?: string | null;
   faculty?: string | null;
   className?: string | null;
   schoolYear: string;

@@ -115,6 +115,7 @@ function normalizeListItem(item: RawRecord): ReviewTaskListItem {
         "",
     ),
     studentCode: asString(item.studentCode ?? student?.studentCode),
+    institutionName: item.institutionName ?? asRecord(item.workspace)?.name ?? null,
     faculty: item.faculty ?? student?.faculty ?? representative?.faculty ?? null,
     className: item.className ?? student?.className ?? collectiveProfile?.className ?? null,
     schoolYear: asString(

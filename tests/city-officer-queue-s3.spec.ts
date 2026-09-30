@@ -14,6 +14,7 @@ const task = (overrides: Record<string, unknown> = {}) => ({
   studentCode: "00123456",
   faculty: "Công nghệ thông tin",
   className: "22T1",
+  institutionName: "Trường Đại học Bách khoa - Đại học Đà Nẵng",
   schoolYear: "2025-2026",
   targetLevel: "city",
   applicationStatus: "submitted",
@@ -110,7 +111,15 @@ test.describe("S3 City Officer queue", () => {
       timeout: 60_000,
     });
     await expect(page.getByText("Nhận xử lý", { exact: true })).toBeVisible();
-    await expect(page.getByText("Có thể nhận xử lý", { exact: true })).toBeVisible();
+    await expect(
+      page.getByTestId("city-queue-row-task-city-academic").getByText("Có thể nhận xử lý", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Trường Đại học Bách khoa - Đại học Đà Nẵng", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("2 minh chứng", { exact: true })).toBeVisible();
     await expect(page.getByText("Đạo đức tốt", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Cấp xét" })).toHaveCount(0);
     await expect(page.getByText(/Ưu tiên|Tập thể|Trường học/)).toHaveCount(0);
@@ -128,6 +137,14 @@ test.describe("S3 City Officer queue", () => {
     await expect
       .poll(() => new URL(taskRequests.at(-1) ?? "http://localhost").searchParams.get("criterion"))
       .toBe("academic");
+    await page.getByLabel("Lọc phạm vi xử lý").selectOption("claimable");
+    await expect
+      .poll(() => new URL(taskRequests.at(-1) ?? "http://localhost").searchParams.get("ownership"))
+      .toBe("claimable");
+    await page.getByLabel("Lọc phạm vi xử lý").selectOption("my_tasks");
+    await expect
+      .poll(() => new URL(taskRequests.at(-1) ?? "http://localhost").searchParams.get("ownership"))
+      .toBe("my_tasks");
     await page.getByRole("button", { name: "Trang sau" }).click();
     await expect
       .poll(() => new URL(taskRequests.at(-1) ?? "http://localhost").searchParams.get("page"))
@@ -319,6 +336,10 @@ test.describe("S3 City Officer queue", () => {
 
         const overflow = await page.evaluate(() => {
           const boxes = Array.from(document.querySelectorAll<HTMLElement>("body *"))
+            .filter((element) => {
+              const scrollContainer = element.closest<HTMLElement>(".overflow-x-auto");
+              return !scrollContainer || scrollContainer === element;
+            })
             .map((element) => element.getBoundingClientRect())
             .filter((box) => box.width > 0 && box.height > 0);
 
