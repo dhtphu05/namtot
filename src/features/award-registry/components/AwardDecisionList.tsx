@@ -58,10 +58,7 @@ export function AwardDecisionList() {
   const rows = decisions.data?.items ?? [];
   const pagination = decisions.data?.pagination;
   const hasActiveFilters = Boolean(
-    filters.q ||
-      filters.schoolYear ||
-      filters.status !== "all" ||
-      filters.archive !== "exclude",
+    filters.q || filters.schoolYear || filters.status !== "all" || filters.archive !== "exclude",
   );
 
   const applyFilters = () => {
@@ -179,7 +176,11 @@ export function AwardDecisionList() {
           />
         ) : rows.length === 0 ? (
           <EmptyState
-            title={hasActiveFilters ? "Không tìm thấy quyết định phù hợp" : "Chưa có quyết định công nhận"}
+            title={
+              hasActiveFilters
+                ? "Không tìm thấy quyết định phù hợp"
+                : "Chưa có quyết định công nhận"
+            }
             description={
               hasActiveFilters
                 ? "Thử thay đổi từ khóa hoặc bộ lọc để tìm quyết định khác."
@@ -195,7 +196,13 @@ export function AwardDecisionList() {
                     setSchoolYearInput("");
                     setStatusInput("all");
                     setArchiveInput("exclude");
-                    setFilters({ page: 1, q: "", schoolYear: "", status: "all", archive: "exclude" });
+                    setFilters({
+                      page: 1,
+                      q: "",
+                      schoolYear: "",
+                      status: "all",
+                      archive: "exclude",
+                    });
                   }}
                 >
                   Xóa bộ lọc

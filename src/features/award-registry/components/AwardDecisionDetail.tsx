@@ -233,7 +233,12 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
                 {decision.status === "ARCHIVED" ? (
                   <AlertDialog key="unarchive">
                     <AlertDialogTrigger asChild>
-                        <Button type="button" variant="ghost" size="sm" disabled={unarchive.isPending}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={unarchive.isPending}
+                      >
                         <ArchiveRestore aria-hidden="true" /> Khôi phục
                       </Button>
                     </AlertDialogTrigger>
@@ -385,8 +390,8 @@ export function AwardDecisionDetail({ decisionId }: { decisionId: string }) {
             )}
             {processing.data?.status === "processing" && (
               <p role="status" className="mt-3 text-sm text-blue-800">
-                Đang đọc danh sách sinh viên. Hệ thống tự làm mới trong tối đa 2 phút; nếu chưa xong,
-                bạn có thể kiểm tra lại thủ công.
+                Đang đọc danh sách sinh viên. Hệ thống tự làm mới trong tối đa 2 phút; nếu chưa
+                xong, bạn có thể kiểm tra lại thủ công.
               </p>
             )}
             <AwardNextAction
@@ -667,78 +672,77 @@ function PreviewPanel({
       <AwardRosterReviewTable
         rows={preview.items}
         renderRow={(row) => (
-              <tr key={row.sourceRow} className="border-t border-slate-100 align-top">
-                <td className="px-3 py-2">{row.sourceRow}</td>
-                <td className="px-3 py-2 font-mono">
-                  <OriginalAndCurrent
-                    value={row.studentCode}
-                    original={row.original?.studentCode ?? row.studentCode}
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <OriginalAndCurrent
-                    value={row.fullName}
-                    original={row.original?.fullName ?? row.fullName}
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <OriginalAndCurrent
-                    value={row.className}
-                    original={row.original?.className ?? row.className}
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <OriginalAndCurrent
-                    value={row.institutionText}
-                    original={row.original?.institutionText ?? row.institutionText}
-                  />
-                  {row.institutionWorkspaceId && (
-                    <div className="mt-1 text-[11px] text-slate-500">
-                      {institutionNameById.get(row.institutionWorkspaceId) ||
-                        "Đã đối chiếu đơn vị"}
-                    </div>
-                  )}
-                  {row.status === "CONFLICT" && (
-                    <div className="mt-1 text-[11px] text-amber-800">Chưa resolve được đơn vị</div>
-                  )}
-                </td>
-                <td className="px-3 py-2">
-                  <MatchBadge status={row.matchStatus} />
-                </td>
-                <td className="px-3 py-2">
-                  <RowStatus status={row.status} matchStatus={row.matchStatus} errors={row.errors} />
-                  <p className="mt-1 text-[11px] text-slate-600">
-                    {rowStatusExplanation(row.status, row.matchStatus)}
-                  </p>
-                  {row.isCorrected && (
-                    <span className="mt-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800">
-                      Đã chỉnh thủ công
-                    </span>
-                  )}
-                  {row.errors.length > 0 && (
-                    <ul className="mt-1 space-y-0.5 text-[11px] text-red-800">
-                      {row.errors.map((issue) => (
-                        <li key={issue}>{rowErrorLabel(issue)}</li>
-                      ))}
-                    </ul>
-                  )}
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <RosterRowEditor row={row} disabled={rowMutationPending} onSave={onUpdateRow} />
-                    {row.isCorrected && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Hoàn tác sửa dòng ${row.sourceRow}`}
-                        disabled={rowMutationPending}
-                        onClick={() => void onRevertRow(row.sourceRow)}
-                      >
-                        <Undo2 aria-hidden="true" /> Hoàn tác
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
+          <tr key={row.sourceRow} className="border-t border-slate-100 align-top">
+            <td className="px-3 py-2">{row.sourceRow}</td>
+            <td className="px-3 py-2 font-mono">
+              <OriginalAndCurrent
+                value={row.studentCode}
+                original={row.original?.studentCode ?? row.studentCode}
+              />
+            </td>
+            <td className="px-3 py-2">
+              <OriginalAndCurrent
+                value={row.fullName}
+                original={row.original?.fullName ?? row.fullName}
+              />
+            </td>
+            <td className="px-3 py-2">
+              <OriginalAndCurrent
+                value={row.className}
+                original={row.original?.className ?? row.className}
+              />
+            </td>
+            <td className="px-3 py-2">
+              <OriginalAndCurrent
+                value={row.institutionText}
+                original={row.original?.institutionText ?? row.institutionText}
+              />
+              {row.institutionWorkspaceId && (
+                <div className="mt-1 text-[11px] text-slate-500">
+                  {institutionNameById.get(row.institutionWorkspaceId) || "Đã đối chiếu đơn vị"}
+                </div>
+              )}
+              {row.status === "CONFLICT" && (
+                <div className="mt-1 text-[11px] text-amber-800">Chưa resolve được đơn vị</div>
+              )}
+            </td>
+            <td className="px-3 py-2">
+              <MatchBadge status={row.matchStatus} />
+            </td>
+            <td className="px-3 py-2">
+              <RowStatus status={row.status} matchStatus={row.matchStatus} errors={row.errors} />
+              <p className="mt-1 text-[11px] text-slate-600">
+                {rowStatusExplanation(row.status, row.matchStatus)}
+              </p>
+              {row.isCorrected && (
+                <span className="mt-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800">
+                  Đã chỉnh thủ công
+                </span>
+              )}
+              {row.errors.length > 0 && (
+                <ul className="mt-1 space-y-0.5 text-[11px] text-red-800">
+                  {row.errors.map((issue) => (
+                    <li key={issue}>{rowErrorLabel(issue)}</li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                <RosterRowEditor row={row} disabled={rowMutationPending} onSave={onUpdateRow} />
+                {row.isCorrected && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-label={`Hoàn tác sửa dòng ${row.sourceRow}`}
+                    disabled={rowMutationPending}
+                    onClick={() => void onRevertRow(row.sourceRow)}
+                  >
+                    <Undo2 aria-hidden="true" /> Hoàn tác
+                  </Button>
+                )}
+              </div>
+            </td>
+          </tr>
         )}
       />
       <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-600">

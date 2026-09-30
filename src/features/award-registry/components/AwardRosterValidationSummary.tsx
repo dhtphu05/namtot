@@ -25,8 +25,8 @@ export function AwardRosterValidationSummary({ summary }: { summary: AwardRoster
       </div>
       {values.unmatched > 0 && (
         <p className="mt-3 text-xs leading-5 text-slate-600">
-          {values.unmatched} dòng chưa tìm thấy sinh viên phù hợp. Đây là trạng thái đối chiếu riêng,
-          không phải trạng thái xác nhận quyết định.
+          {values.unmatched} dòng chưa tìm thấy sinh viên phù hợp. Đây là trạng thái đối chiếu
+          riêng, không phải trạng thái xác nhận quyết định.
         </p>
       )}
     </div>

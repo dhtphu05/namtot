@@ -131,7 +131,9 @@ const validPreview = {
 };
 
 test.describe("Award Decision Registry", () => {
-  test("Data Uploader home explains the job and exposes one primary next action", async ({ page }) => {
+  test("Data Uploader home explains the job and exposes one primary next action", async ({
+    page,
+  }) => {
     await installMocks(page, "data_uploader");
     await page.goto("/app/data-uploader");
 
@@ -382,15 +384,21 @@ test.describe("Award Decision Registry", () => {
     await expect(
       page.getByRole("heading", { name: "Quyết định công nhận số 05/QĐ-ĐTN" }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Tiến độ hoàn thiện quyết định" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Tiến độ hoàn thiện quyết định" }),
+    ).toBeVisible();
     await expect(page.getByText("Workflow", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("Tiến độ này được suy ra từ dữ liệu máy chủ.", { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByText("Tiến độ này được suy ra từ dữ liệu máy chủ.", { exact: true }),
+    ).toHaveCount(0);
     await expect(page.getByText("Văn bản quyết định", { exact: true }).first()).toBeVisible();
     await expect(
       page.getByText("Danh sách sinh viên được công nhận", { exact: true }).first(),
     ).toBeVisible();
     await expect(page.getByText("Không có phần trăm xử lý giả", { exact: true })).toHaveCount(0);
-    await expect(page.getByText(/máy chủ|workspace|Workflow|suy ra từ dữ liệu máy chủ/i)).toHaveCount(0);
+    await expect(
+      page.getByText(/máy chủ|workspace|Workflow|suy ra từ dữ liệu máy chủ/i),
+    ).toHaveCount(0);
 
     await page.getByLabel("Tệp danh sách").setInputFiles({
       name: "roster.csv",
@@ -400,7 +408,9 @@ test.describe("Award Decision Registry", () => {
     await page.getByRole("button", { name: "Đọc danh sách" }).click();
     await expect(page.getByText("Sẵn sàng kiểm tra")).toBeVisible();
     await expect(page.getByText("0010220001", { exact: true })).toBeVisible();
-    await expect(page.getByText(/máy chủ|workspace|Workflow|suy ra từ dữ liệu máy chủ/i)).toHaveCount(0);
+    await expect(
+      page.getByText(/máy chủ|workspace|Workflow|suy ra từ dữ liệu máy chủ/i),
+    ).toHaveCount(0);
     await page.getByRole("button", { name: "Xác nhận dữ liệu công nhận" }).click();
     await expect(page.getByRole("alertdialog")).toBeVisible();
     await page.getByRole("button", { name: "Xác nhận và lưu" }).click();
@@ -471,7 +481,9 @@ test.describe("Award Decision Registry", () => {
       },
     });
     await page.goto("/app/award-registry/award-school-1");
-    await expect(page.getByRole("heading", { name: "Kiểm tra dữ liệu", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Kiểm tra dữ liệu", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Số sinh viên", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Lưu thông tin" })).toBeDisabled();
     await page.getByLabel("Số quyết định").fill("06/QĐ-ĐTN");
@@ -479,7 +491,9 @@ test.describe("Award Decision Registry", () => {
     await expect(page.getByText("Tóm tắt kiểm tra", { exact: true })).toBeVisible();
     await expect(page.getByText("Cần kiểm tra", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("table").getByText("Thiếu MSSV", { exact: true })).toBeVisible();
-    await expect(page.getByRole("table").getByText("Cần kiểm tra thủ công", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("table").getByText("Cần kiểm tra thủ công", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Chưa resolve được đơn vị")).toBeVisible();
     await expect(page.getByRole("button", { name: "Xác nhận dữ liệu công nhận" })).toBeDisabled();
     await page.getByLabel("Cột trường (không bắt buộc với School)").selectOption("Trường");
@@ -684,7 +698,9 @@ test.describe("Award Decision Registry", () => {
     });
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/app/award-registry/award-school-1");
-    await expect(page.getByRole("heading", { name: "Kiểm tra dữ liệu", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Kiểm tra dữ liệu", exact: true }),
+    ).toBeVisible();
     await expect(page.getByTestId("award-workspace-main")).toContainText("Kiểm tra dữ liệu");
     await expect(page.getByTestId("award-workspace-rail")).toContainText("Thông tin quyết định");
 
@@ -710,9 +726,10 @@ test.describe("Award Decision Registry", () => {
             ),
           };
         });
-        expect(layout.documentOverflow, `${viewport.width}x${viewport.height} at ${zoom * 100}%`).toBe(
-          false,
-        );
+        expect(
+          layout.documentOverflow,
+          `${viewport.width}x${viewport.height} at ${zoom * 100}%`,
+        ).toBe(false);
         expect(layout.tableOverflow, `${viewport.width}x${viewport.height} at ${zoom * 100}%`).toBe(
           true,
         );

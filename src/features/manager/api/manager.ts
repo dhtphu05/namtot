@@ -203,9 +203,10 @@ export const managerApi = {
     params?: CommitteeInboxParams,
     role?: Role,
   ): Promise<ApiResponse<CommitteeInboxResponse>> => {
-    const endpoint = role === "city_manager" || role === "city_committee"
-      ? "/api/manager/committee-inbox"
-      : "/api/committee/inbox";
+    const endpoint =
+      role === "city_manager" || role === "city_committee"
+        ? "/api/manager/committee-inbox"
+        : "/api/committee/inbox";
     const response = await apiClient<CommitteeInboxResponse>(
       `${endpoint}${buildQueryString(params)}`,
     );
