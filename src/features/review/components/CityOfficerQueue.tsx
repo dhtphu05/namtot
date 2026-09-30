@@ -17,7 +17,7 @@ import type {
   ReviewTaskStatus,
 } from "../types";
 import { getErrorMessage } from "../utils/errors";
-import { getCriterionLabel, getLevelLabel } from "../utils/formatters";
+import { getCriterionLabel } from "../utils/formatters";
 import { EmptyReviewState } from "./EmptyReviewState";
 import { ReviewErrorState } from "./ReviewErrorState";
 import {
@@ -138,8 +138,8 @@ export function CityOfficerQueue() {
     return (
       <>
         <TopBar
-          title="Hàng đợi xét duyệt cấp Thành phố"
-          subtitle="Các task cá nhân trong phạm vi tiêu chí được phân công cho bạn."
+          title="Việc cần xử lý"
+          subtitle="Các hồ sơ thuộc phạm vi bạn phụ trách trong mùa xét hiện tại."
         />
         <Card className="mt-5 border-dashed p-8 text-center">
           <div className="text-lg font-bold text-brand-deep">
@@ -157,8 +157,8 @@ export function CityOfficerQueue() {
   return (
     <>
       <TopBar
-        title="Hàng đợi xét duyệt cấp Thành phố"
-        subtitle="Theo dõi task cá nhân theo tiêu chí, trạng thái và phân công xử lý."
+        title="Việc cần xử lý"
+        subtitle="Các hồ sơ thuộc phạm vi bạn phụ trách trong mùa xét hiện tại."
       />
 
       <Card className="mt-5 space-y-4 p-4 md:p-5">
@@ -180,7 +180,7 @@ export function CityOfficerQueue() {
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Trạng thái hàng đợi">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Trạng thái xử lý">
           {CITY_QUEUE_TABS.map((tab) => (
             <Button
               key={tab.key}
@@ -233,18 +233,18 @@ export function CityOfficerQueue() {
 
         {isError ? (
           <ReviewErrorState
-            title="Không thể tải hàng đợi City"
+            title="Không thể tải danh sách hồ sơ"
             description={getErrorMessage(error, "Vui lòng thử lại sau.")}
             onRetry={() => void refetch()}
           />
         ) : isLoading ? (
           <div className="flex min-h-48 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-            Đang tải task cần xét…
+            Đang tải hồ sơ cần xét…
           </div>
         ) : items.length === 0 ? (
           <EmptyReviewState
-            title="Không có task trong trạng thái này"
-            description="Danh sách sẽ tự cập nhật khi backend trả về task thuộc phạm vi chuyên trách của bạn."
+            title="Không có hồ sơ trong trạng thái này"
+            description="Danh sách sẽ tự cập nhật khi có hồ sơ thuộc phạm vi bạn phụ trách."
           />
         ) : (
           <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
@@ -253,10 +253,9 @@ export function CityOfficerQueue() {
                 <TableRow>
                   <TableHead>Sinh viên</TableHead>
                   <TableHead>Tiêu chí</TableHead>
-                  <TableHead>Cấp xét</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Phân công</TableHead>
-                  <TableHead>Deadline</TableHead>
+                  <TableHead>Mốc xử lý</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -265,6 +264,7 @@ export function CityOfficerQueue() {
                   <CityQueueRow
                     key={item.id}
                     item={item}
+                    currentOfficerId={user?.id ?? null}
                     isClaiming={claimingTaskId === item.id}
                     onClaim={() => void claim(item.id)}
                     onOpen={() => openTask(item.id)}
@@ -311,19 +311,32 @@ export function CityOfficerQueue() {
 
 function CityQueueRow({
   item,
+  currentOfficerId,
   isClaiming,
   onClaim,
   onOpen,
 }: {
   item: ReviewTaskListItem;
+  currentOfficerId: string | null;
   isClaiming: boolean;
   onClaim: () => void;
   onOpen: () => void;
 }) {
   const statusLabel = STATUS_LABELS[item.status];
+  const assignedToCurrentOfficer = item.assignedOfficerId === currentOfficerId;
   const assignmentLabel = item.assignedOfficerId
-    ? (item.assignedOfficerName ?? "Đã phân công")
+    ? assignedToCurrentOfficer
+      ? "Bạn"
+      : (item.assignedOfficerName ?? "Đã phân công")
     : "Chưa phân công";
+  const assignmentDescription = item.permissions?.canClaim
+    ? "Có thể nhận xử lý"
+    : assignedToCurrentOfficer
+      ? "Đang do bạn xử lý"
+      : item.assignedOfficerId
+        ? "Đang do cán bộ khác xử lý"
+        : "Chỉ xem theo phân công";
+  const actionLabel = getCityTaskActionLabel(item);
 
   return (
     <TableRow
@@ -339,15 +352,16 @@ function CityQueueRow({
       }}
     >
       <TableCell className="min-w-[220px]">
-        <div className="font-semibold text-brand-deep">{item.studentName || "Chưa có tên"}</div>
-        <div className="mt-0.5 text-xs text-muted-foreground">
+        <div className="max-w-[260px] break-words font-semibold text-brand-deep">
+          {item.studentName || "Chưa có tên"}
+        </div>
+        <div className="mt-0.5 max-w-[260px] break-words text-xs text-muted-foreground">
           {[item.studentCode, item.faculty, item.className].filter(Boolean).join(" • ")}
         </div>
       </TableCell>
       <TableCell>
         <Badge variant="outline">{getCriterionLabel(item.criterion)}</Badge>
       </TableCell>
-      <TableCell>{getLevelLabel(item.targetLevel)}</TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1.5">
           <Badge variant={item.status === "rejected" ? "destructive" : "secondary"}>
@@ -357,9 +371,7 @@ function CityQueueRow({
       </TableCell>
       <TableCell>
         <div className="max-w-[180px] text-sm">{assignmentLabel}</div>
-        <div className="mt-0.5 text-xs text-muted-foreground">
-          {item.assignedOfficerId ? "Theo dõi phân công" : "Có thể nhận nếu được phép"}
-        </div>
+        <div className="mt-0.5 text-xs text-muted-foreground">{assignmentDescription}</div>
       </TableCell>
       <TableCell className="whitespace-nowrap text-sm">
         {item.dueDate ? new Date(item.dueDate).toLocaleDateString("vi-VN") : "Chưa có hạn"}
@@ -387,12 +399,21 @@ function CityQueueRow({
               onOpen();
             }}
           >
-            Xem task
+            {actionLabel}
           </Button>
         )}
       </TableCell>
     </TableRow>
   );
+}
+
+function getCityTaskActionLabel(item: ReviewTaskListItem) {
+  if (item.status === "accepted" || item.status === "rejected") return "Xem kết quả";
+  if (item.status === "supplement_required") return "Xem yêu cầu";
+  if (item.status === "resolution_needed") return "Xem hồ sơ";
+  if (item.status === "reviewing" && item.permissions?.canAct) return "Tiếp tục xét";
+  if (item.status === "waiting" && item.permissions?.canAct) return "Mở hồ sơ";
+  return "Xem hồ sơ";
 }
 
 function isConflictError(error: unknown) {

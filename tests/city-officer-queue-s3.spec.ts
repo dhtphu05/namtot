@@ -53,6 +53,25 @@ test.describe("S3 City Officer queue", () => {
         const statuses = url.searchParams.get("statuses");
         const criterion = url.searchParams.get("criterion");
         const completed = statuses === "accepted,rejected";
+        const requestedStatus = status ?? "waiting";
+        const makeStatusItem = (nextStatus: string) => {
+          if (nextStatus === "reviewing") {
+            return task({
+              status: nextStatus,
+              assignedOfficerId: "city-officer-1",
+              assignedOfficerName: "Cán bộ xét duyệt thành phố",
+              permissions: { ...task().permissions, canClaim: false, canAct: true },
+            });
+          }
+          return task({
+            status: nextStatus,
+            permissions: {
+              ...task().permissions,
+              canClaim: nextStatus === "waiting",
+              canAct: false,
+            },
+          });
+        };
         const items = completed
           ? [
               task({
@@ -68,7 +87,10 @@ test.describe("S3 City Officer queue", () => {
                 permissions: { ...task().permissions, canClaim: false },
               }),
             ]
-          : [task({ status: status ?? "waiting", criterion: criterion ?? "academic" })];
+          : [makeStatusItem(requestedStatus)];
+        if (!completed) {
+          items[0] = { ...items[0], criterion: criterion ?? "academic" };
+        }
         await json(route, {
           items,
           pagination: {
@@ -84,11 +106,13 @@ test.describe("S3 City Officer queue", () => {
     });
 
     await page.goto("/app/queue", { waitUntil: "domcontentloaded" });
-    await expect(
-      page.getByRole("heading", { name: "Hàng đợi xét duyệt cấp Thành phố" }),
-    ).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "Việc cần xử lý" })).toBeVisible({
+      timeout: 60_000,
+    });
     await expect(page.getByText("Nhận xử lý", { exact: true })).toBeVisible();
+    await expect(page.getByText("Có thể nhận xử lý", { exact: true })).toBeVisible();
     await expect(page.getByText("Đạo đức tốt", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Cấp xét" })).toHaveCount(0);
     await expect(page.getByText(/Ưu tiên|Tập thể|Trường học/)).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Cần xử lý \(\d+\)/ })).toHaveCount(0);
     await page.screenshot({
@@ -119,6 +143,17 @@ test.describe("S3 City Officer queue", () => {
       await expect
         .poll(() => new URL(taskRequests.at(-1) ?? "http://localhost").searchParams.get("status"))
         .toBe(value);
+      await expect(
+        page.getByRole("button", {
+          name:
+            value === "reviewing"
+              ? "Tiếp tục xét"
+              : value === "supplement_required"
+                ? "Xem yêu cầu"
+                : "Xem hồ sơ",
+          exact: true,
+        }),
+      ).toBeVisible();
       await page.screenshot({
         path: `D:/02_PROJECTS/5TOT/s3-city-queue-1440x900-${value}.png`,
         fullPage: false,
@@ -133,6 +168,7 @@ test.describe("S3 City Officer queue", () => {
       .toBe("accepted,rejected");
     await expect(page.getByText("Tiêu chí đạt", { exact: true })).toBeVisible();
     await expect(page.getByText("Tiêu chí không đạt", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Xem kết quả", exact: true })).toHaveCount(2);
     await page.screenshot({
       path: "D:/02_PROJECTS/5TOT/s3-city-queue-1440x900-da-hoan-thanh.png",
       fullPage: false,
@@ -227,6 +263,81 @@ test.describe("S3 City Officer queue", () => {
     await expect.poll(() => listCount).toBeGreaterThan(1);
     await expect(page.getByRole("button", { name: "Nhận xử lý", exact: true })).toHaveCount(0);
     await expect(page.getByText("Cán bộ khác", { exact: true })).toBeVisible();
+  });
+
+  test("keeps the City Officer work surface usable across desktop viewport and zoom matrix", async ({
+    page,
+  }) => {
+    await stubCityOfficer(page, async (route, path) => {
+      if (path === "/api/review/tasks" && route.request().method() === "GET") {
+        await json(route, {
+          items: [
+            task({
+              studentName:
+                "Nguyễn Văn An có tên sinh viên rất dài để kiểm tra khả năng xuống dòng trong bảng",
+            }),
+          ],
+          pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+        });
+        return;
+      }
+      await json(route, null);
+    });
+
+    await page.goto("/app/queue", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "Việc cần xử lý" })).toBeVisible({
+      timeout: 60_000,
+    });
+
+    const viewports = [
+      [1280, 720],
+      [1366, 768],
+      [1440, 900],
+      [1600, 900],
+      [1920, 1080],
+    ] as const;
+    const zooms = [90, 100, 110, 125] as const;
+
+    for (const [width, height] of viewports) {
+      for (const zoom of zooms) {
+        await page.setViewportSize({ width, height });
+        await page.evaluate((scale) => {
+          document.documentElement.style.zoom = `${scale}%`;
+        }, zoom);
+        await expect(page.getByRole("tab", { name: "Cần xử lý", exact: true })).toBeVisible();
+        await expect(page.getByLabel("Tìm sinh viên hoặc MSSV")).toBeVisible();
+        await expect(page.getByLabel("Lọc tiêu chí")).toBeVisible();
+        await expect(page.getByRole("button", { name: "Nhận xử lý", exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Trang sau", exact: true })).toBeVisible();
+
+        if (width === 1366 && height === 768 && zoom === 100) {
+          await page.screenshot({
+            path: "D:/02_PROJECTS/5TOT/s3-closeout-city-queue-1366x768-can-xu-ly.png",
+            fullPage: false,
+          });
+        }
+
+        const overflow = await page.evaluate(() => {
+          const boxes = Array.from(document.querySelectorAll<HTMLElement>("body *"))
+            .map((element) => element.getBoundingClientRect())
+            .filter((box) => box.width > 0 && box.height > 0);
+
+          return {
+            left: Math.min(...boxes.map((box) => box.left)),
+            right: Math.max(...boxes.map((box) => box.right)),
+            viewport: window.innerWidth,
+          };
+        });
+        expect(
+          overflow.right,
+          `${width}x${height} at ${zoom}% has page-level horizontal overflow`,
+        ).toBeLessThanOrEqual(width + 1);
+        expect(
+          overflow.left,
+          `${width}x${height} at ${zoom}% has content beyond the left edge`,
+        ).toBeGreaterThanOrEqual(-1);
+      }
+    }
   });
 });
 
