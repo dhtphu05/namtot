@@ -173,9 +173,8 @@ export function StudentOverviewV2() {
     trackClick("student_start_application", {
       role: "student",
       page: "overview_v2",
-      target_level: "school",
     });
-    startApplication.mutate({ applicationType: "individual" });
+    startApplication.mutate({});
   }, [startApplication, trackClick]);
 
   if (current.isLoading) return <StudentHomeSkeleton firstName={firstName} />;

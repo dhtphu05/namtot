@@ -1,5 +1,4 @@
 import { apiClient } from "@/lib/api/client";
-import { auditApi } from "@/features/audit/api/audit";
 import type { Criterion, Level } from "@/lib/api/types";
 import type {
   DecisionImport,
@@ -523,14 +522,9 @@ export const decisionImportApi = {
   },
 
   getAudit: async (importId: string) => {
-    try {
-      const response = await apiClient<unknown>(`/api/decision-imports/${importId}/audit`, {
-        method: "GET",
-      });
-      return { ...response, data: normalizeAuditPayload(response.data) };
-    } catch {
-      const fallback = await auditApi.getEntityAudit("decision_import", importId);
-      return { ...fallback, data: normalizeAuditPayload(fallback.data) };
-    }
+    const response = await apiClient<unknown>(`/api/decision-imports/${importId}/audit`, {
+      method: "GET",
+    });
+    return { ...response, data: normalizeAuditPayload(response.data) };
   },
 };

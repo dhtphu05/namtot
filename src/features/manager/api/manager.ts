@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api/client";
-import type { ApiResponse, QueryValue } from "@/features/review/types";
+import type { ApiResponse, QueryValue, Role } from "@/features/review/types";
 import type { CollectiveStatus, FinalStatus, Level } from "@/lib/api/types";
 import type {
   ManagerApplicationsParams,
@@ -201,9 +201,13 @@ export const managerApi = {
 
   getCommitteeInbox: async (
     params?: CommitteeInboxParams,
+    role?: Role,
   ): Promise<ApiResponse<CommitteeInboxResponse>> => {
+    const endpoint = role === "city_manager" || role === "city_committee"
+      ? "/api/manager/committee-inbox"
+      : "/api/committee/inbox";
     const response = await apiClient<CommitteeInboxResponse>(
-      `/api/committee/inbox${buildQueryString(params)}`,
+      `${endpoint}${buildQueryString(params)}`,
     );
 
     return withDataFallback(response, {

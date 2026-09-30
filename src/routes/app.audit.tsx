@@ -1,6 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AuditLogs } from "@/features/audit/components/AuditLogs";
+
+import { TopBar } from "@/components/layout/TopBar";
+import { AuditTimeline } from "@/features/audit/components/AuditTimeline";
 
 export const Route = createFileRoute("/app/audit")({
-  component: AuditLogs,
+  component: StaffAuditRoute,
 });
+
+function StaffAuditRoute() {
+  return (
+    <>
+      <TopBar title="Audit Log" subtitle="Theo dõi các thao tác trong hệ thống" />
+      <AuditTimeline limit={50} />
+    </>
+  );
+}

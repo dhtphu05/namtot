@@ -1,2 +1,8 @@
+packages:
+  - "."
+
+overrides:
+  nf3: 0.3.22
+
 allowBuilds:
   esbuild: false
