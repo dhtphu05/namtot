@@ -160,7 +160,7 @@ an authoritative persisted route field.
 S5 closes the Officer-side handoff contracts without redesigning the workspace:
 
 - Officer supplement requests continue through the canonical ReviewTask decision
-  contract, with linked evidence, reason and optional deadline in
+  contract, with linked evidence, requested fields, reason and optional deadline in
   `supplementRequestJson`.
 - The student assistant route
   `POST /api/student-assistant/supplements/:reviewTaskId/resubmit` now uses a
