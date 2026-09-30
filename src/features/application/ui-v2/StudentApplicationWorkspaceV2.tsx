@@ -255,6 +255,9 @@ export function StudentApplicationWorkspaceV2() {
   const isSupplementMode =
     application?.status === "supplement_required" ||
     String(application?.status) === "draft_supplement";
+  const isBlockedNonCityApplication = Boolean(
+    userRole === "student" && application && application.targetLevel !== "city",
+  );
   const showCityEligibility = Boolean(
     userRole === "student" &&
     application?.applicationType === "individual" &&
@@ -288,6 +291,7 @@ export function StudentApplicationWorkspaceV2() {
   );
   const canSubmitApplication = Boolean(
     application &&
+    !isBlockedNonCityApplication &&
     !["submitted", "under_review", "completed", "rejected", "resolution_needed"].includes(
       application.status,
     ),
@@ -325,10 +329,11 @@ export function StudentApplicationWorkspaceV2() {
   const selectedMetric = getPrimaryMetricInput(selectedCriterion);
   const completedCriteria = criteriaStates.filter((item) => item.status === "ok").length;
   const hasSubmitCta =
-    application?.status === "ready_to_submit" ||
-    (canSubmitApplication && completedCriteria === coreStudentCriteria.length) ||
-    isSupplementMode ||
-    (showCityEligibility && canSubmitApplication);
+    !isBlockedNonCityApplication &&
+    (application?.status === "ready_to_submit" ||
+      (canSubmitApplication && completedCriteria === coreStudentCriteria.length) ||
+      isSupplementMode ||
+      (showCityEligibility && canSubmitApplication));
   const summary = getStudentApplicationSummary(
     application ? { ...application, evidences } : null,
     precheck,
@@ -558,6 +563,12 @@ export function StudentApplicationWorkspaceV2() {
 
   const submitNow = () => {
     if (!application) return;
+    if (isBlockedNonCityApplication) {
+      toast.error(
+        "Hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố. Hồ sơ cấp khác cần được cán bộ hướng dẫn xử lý.",
+      );
+      return;
+    }
     if (!hasSubmitCta) {
       toast.error("Bạn cần kiểm tra và hoàn thiện hồ sơ trước khi nộp.");
       return;
@@ -567,6 +578,13 @@ export function StudentApplicationWorkspaceV2() {
 
   const confirmSubmit = async () => {
     if (!application) return;
+    if (isBlockedNonCityApplication) {
+      setConfirmSubmitOpen(false);
+      toast.error(
+        "Hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố. Hồ sơ cấp khác cần được cán bộ hướng dẫn xử lý.",
+      );
+      return;
+    }
     if (showCityEligibility) {
       const refreshed = await cityEligibility.refetch();
       if (refreshed.isError || !refreshed.data) {
@@ -690,6 +708,14 @@ export function StudentApplicationWorkspaceV2() {
           isPrechecking={runPrecheck.isPending}
           showPrecheck={showCompletionGuidance && workspaceOpen}
         />
+
+        {isBlockedNonCityApplication ? (
+          <InlineStateMessage
+            tone="warning"
+            title="Hồ sơ này không ở cấp Thành phố"
+            description="Hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố. Hồ sơ này không thể nộp hoặc gửi bổ sung; vui lòng liên hệ cán bộ quản lý để được hướng dẫn xử lý hồ sơ cũ."
+          />
+        ) : null}
 
         {criteriaCompletion.isLoading ? (
           <InlineStateMessage
@@ -1789,7 +1815,7 @@ function AcademicDataSectionV2({
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const gpa = findRequirement(completion, "academic_gpa");
+  const gpa = findAcademicGpaRequirement(completion);
   const noFGrade = findRequirement(completion, "no_f_grade");
   const period = findRequirement(completion, "academic_period_valid");
   const gpaMetric = getApplicationMetric(metrics, "gpa");
@@ -1880,28 +1906,36 @@ function AcademicDataSectionV2({
         />
       ),
     },
-    {
-      label: "Tình trạng điểm F",
-      value: noFGradeStatusCopy(noFGrade),
-      source: getDisplayRequirementSourceLabel(noFGrade),
-      status: (
-        <StatusPillV2
-          status={mapRequirementStatus(noFGrade?.status ?? "needs_verification")}
-          label={getRequirementStatusLabel(noFGrade?.status ?? "needs_verification")}
-        />
-      ),
-    },
-    {
-      label: "Xác minh năm học",
-      value: academicPeriodLabel(period),
-      source: getDisplayRequirementSourceLabel(period),
-      status: (
-        <StatusPillV2
-          status={mapRequirementStatus(period?.status ?? "needs_verification")}
-          label={getRequirementStatusLabel(period?.status ?? "needs_verification")}
-        />
-      ),
-    },
+    ...(noFGrade
+      ? [
+          {
+            label: "Tình trạng điểm F",
+            value: noFGradeStatusCopy(noFGrade),
+            source: getDisplayRequirementSourceLabel(noFGrade),
+            status: (
+              <StatusPillV2
+                status={mapRequirementStatus(noFGrade?.status ?? "needs_verification")}
+                label={getRequirementStatusLabel(noFGrade?.status ?? "needs_verification")}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(period
+      ? [
+          {
+            label: "Xác minh năm học",
+            value: academicPeriodLabel(period),
+            source: getDisplayRequirementSourceLabel(period),
+            status: (
+              <StatusPillV2
+                status={mapRequirementStatus(period?.status ?? "needs_verification")}
+                label={getRequirementStatusLabel(period?.status ?? "needs_verification")}
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -3526,6 +3560,24 @@ function findRequirement(completion: CriterionCompletionItem, requirementKey: st
   return (completion.requirementGroups ?? [])
     .flatMap((group) => group.requirements ?? [])
     .find((requirement) => requirement.key === requirementKey);
+}
+
+function findAcademicGpaRequirement(completion: CriterionCompletionItem) {
+  const gpaRequirements = (completion.requirementGroups ?? [])
+    .flatMap((group) => group.requirements ?? [])
+    .filter(
+      (requirement) => requirement.type === "metric" && requirement.config?.metricType === "gpa",
+    );
+
+  return (
+    gpaRequirements.find((requirement) => requirement.key === "academic_gpa") ??
+    gpaRequirements.find((requirement) => requirement.status === "verified") ??
+    gpaRequirements.find(
+      (requirement) =>
+        requirement.status === "declared" || requirement.status === "needs_verification",
+    ) ??
+    gpaRequirements[0]
+  );
 }
 
 function findRequirementGroup(completion: CriterionCompletionItem, groupKey: string) {

@@ -4,10 +4,7 @@ import type {
   StudentAssistantContextParams,
   StudentAssistantContextType,
 } from "@/features/student-assistant/api/student-assistant";
-import { useCurrentApplication } from "@/features/application/hooks/useApplication";
 import type { Criterion } from "@/lib/api/types";
-
-const SCHOOL_YEAR = "2025-2026";
 
 type AssistantSearch = {
   contextType?: StudentAssistantContextType;
@@ -21,10 +18,8 @@ type AssistantSearch = {
 };
 
 export function StudentSupport() {
-  const current = useCurrentApplication(SCHOOL_YEAR);
-  const applicationId = current.data?.application?.id;
   const search = useRouterState({ select: (state) => state.location.search }) as AssistantSearch;
-  const params = buildAssistantParams(search, applicationId);
+  const params = buildAssistantParams(search);
 
   return (
     <div className="mx-auto flex max-w-[960px] flex-col gap-4 py-5">
@@ -50,10 +45,7 @@ export function StudentSupport() {
   );
 }
 
-function buildAssistantParams(
-  search: AssistantSearch,
-  applicationId?: string,
-): StudentAssistantContextParams {
+function buildAssistantParams(search: AssistantSearch): StudentAssistantContextParams {
   const contextType = inferContextType(search);
   return {
     contextType,
@@ -62,14 +54,13 @@ function buildAssistantParams(
       search.evidenceId ??
       search.eventId ??
       search.reviewTaskId ??
-      applicationId ??
+      search.applicationId ??
       "current",
-    applicationId: search.applicationId ?? applicationId,
+    applicationId: search.applicationId,
     criterion: search.criterion,
     evidenceId: search.evidenceId,
     eventId: search.eventId,
     reviewTaskId: search.reviewTaskId,
-    schoolYear: SCHOOL_YEAR,
   };
 }
 

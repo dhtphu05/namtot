@@ -185,6 +185,7 @@ export function StudentApplicationWorkspace({
       application.status,
     ),
   );
+  const isBlockedNonCityApplication = Boolean(application && application.targetLevel !== "city");
   const canEditApplication = application
     ? !isReadOnlyMode &&
       [
@@ -196,7 +197,8 @@ export function StudentApplicationWorkspace({
       ].includes(application.status)
     : false;
   const canSubmitApplication = application
-    ? !["submitted", "under_review", "completed", "rejected", "resolution_needed"].includes(
+    ? !isBlockedNonCityApplication &&
+      !["submitted", "under_review", "completed", "rejected", "resolution_needed"].includes(
         application.status,
       )
     : false;
@@ -414,7 +416,8 @@ export function StudentApplicationWorkspace({
     missingWorkCount,
     Boolean(precheck),
   );
-  const canShowSubmitCta = primaryAction.action === "submit" || isSupplementMode;
+  const canShowSubmitCta =
+    !isBlockedNonCityApplication && (primaryAction.action === "submit" || isSupplementMode);
 
   const isCriterionLockedForSupplement = (criterion: Criterion) =>
     isSupplementMode && supplementCriteria.size > 0 && !supplementCriteria.has(criterion);
@@ -531,6 +534,12 @@ export function StudentApplicationWorkspace({
   };
 
   const submitNow = () => {
+    if (isBlockedNonCityApplication) {
+      toast.error(
+        "Hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố. Hồ sơ cấp khác cần được cán bộ hướng dẫn xử lý.",
+      );
+      return;
+    }
     trackClick("student_submit_application", {
       role: "student",
       page: "application",
@@ -546,6 +555,13 @@ export function StudentApplicationWorkspace({
   };
 
   const confirmSubmit = () => {
+    if (isBlockedNonCityApplication) {
+      setConfirmSubmitOpen(false);
+      toast.error(
+        "Hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố. Hồ sơ cấp khác cần được cán bộ hướng dẫn xử lý.",
+      );
+      return;
+    }
     if (!isSupplementMode && checklistItems.length > 0) {
       setConfirmSubmitOpen(false);
       toast.error("Bạn cần hoàn thiện phần còn thiếu trước khi nộp hồ sơ.");
@@ -642,6 +658,23 @@ export function StudentApplicationWorkspace({
         title="Hồ sơ của tôi"
         subtitle="Hoàn thiện 5 tiêu chí, kiểm tra hồ sơ, nộp hồ sơ và theo dõi kết quả."
       />
+
+      {isBlockedNonCityApplication ? (
+        <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
+          <Card className="mb-4 border-amber-200 bg-amber-50">
+            <div className="flex items-start gap-3 text-amber-950">
+              <CircleAlert className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <div>
+                <h2 className="font-semibold">Hồ sơ này không ở cấp Thành phố</h2>
+                <p className="mt-1 text-sm text-amber-900">
+                  Hệ thống chỉ tiếp nhận hồ sơ cấp Thành phố. Hồ sơ này không thể nộp hoặc gửi bổ
+                  sung; vui lòng liên hệ cán bộ quản lý để được hướng dẫn xử lý hồ sơ cũ.
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ) : null}
 
       <div className="pb-24">
         <Card className="mb-4 border-[#D8E4F2] bg-white shadow-sm">
@@ -762,17 +795,19 @@ export function StudentApplicationWorkspace({
                 </div>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
-                <Button
-                  onClick={handlePrimaryWorkspaceAction}
-                  disabled={runPrecheck.isPending || submitApplication.isPending}
-                >
-                  {runPrecheck.isPending || submitApplication.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    primaryAction.icon
-                  )}
-                  {primaryAction.cta}
-                </Button>
+                {!(isBlockedNonCityApplication && primaryAction.action === "submit") ? (
+                  <Button
+                    onClick={handlePrimaryWorkspaceAction}
+                    disabled={runPrecheck.isPending || submitApplication.isPending}
+                  >
+                    {runPrecheck.isPending || submitApplication.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      primaryAction.icon
+                    )}
+                    {primaryAction.cta}
+                  </Button>
+                ) : null}
                 <Button variant="secondary" onClick={() => setTab("criteria")}>
                   Xem điều kiện 5 tiêu chí
                 </Button>
@@ -798,18 +833,20 @@ export function StudentApplicationWorkspace({
                   <Button variant="secondary" onClick={goToSupplementCriterion}>
                     <Upload className="h-4 w-4" /> Đi tới tiêu chí cần bổ sung
                   </Button>
-                  <Button
-                    disabled={!canSubmitApplication || submitApplication.isPending}
-                    onClick={submitNow}
-                    data-smartux-tag="student_submit_application"
-                  >
-                    {submitApplication.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    Gửi lại hồ sơ
-                  </Button>
+                  {!isBlockedNonCityApplication ? (
+                    <Button
+                      disabled={!canSubmitApplication || submitApplication.isPending}
+                      onClick={submitNow}
+                      data-smartux-tag="student_submit_application"
+                    >
+                      {submitApplication.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      Gửi lại hồ sơ
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 
@@ -858,7 +895,7 @@ export function StudentApplicationWorkspace({
               }
               onUpload={() => setTab("criteria")}
               onPrecheck={precheckNow}
-              onSubmit={submitNow}
+              onSubmit={isBlockedNonCityApplication ? undefined : submitNow}
               onTrack={() => setTab("tracking")}
             />
           </div>
@@ -2075,13 +2112,15 @@ export function StudentApplicationWorkspace({
                     )}
                     Kiểm tra hồ sơ
                   </Button>
-                  <Button
-                    variant="outline"
-                    disabled
-                    title="Bạn cần hoàn thiện phần còn thiếu trước khi nộp hồ sơ."
-                  >
-                    Nộp hồ sơ
-                  </Button>
+                  {!isBlockedNonCityApplication ? (
+                    <Button
+                      variant="outline"
+                      disabled
+                      title="Bạn cần hoàn thiện phần còn thiếu trước khi nộp hồ sơ."
+                    >
+                      Nộp hồ sơ
+                    </Button>
+                  ) : null}
                 </>
               ) : canShowSubmitCta ? (
                 <>
