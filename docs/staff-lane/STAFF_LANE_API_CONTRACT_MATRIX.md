@@ -93,3 +93,24 @@ The S0 mismatch rows are now aligned as follows:
 | City Committee review authority | City Committee may read resolution-needed task context but cannot call normal ReviewTask decision, supplement or escalation routes. Resolution and finalization routes remain canonical; City Manager/Admin authority is unchanged. |
 
 The executable contract coverage is in FE `tests/staff-contract-alignment.spec.ts` and BE `tests/unit/review.routes-access.test.ts`, `staff-core-criteria.test.ts`, plus the existing City scope/task/analytics/resolution suites listed in the S1 audit addendum.
+
+## 6. S4 functional review workspace — 2026-09-30
+
+The existing `GET /api/review/tasks/:id` detail response remains the canonical
+workspace payload. Its `task` projection now includes authoritative workspace
+identity (`institutionName`, workspace id/name/type), assignment, due date and
+decision context; the application projection includes submission/final-status
+context. No new endpoint or permission scope was introduced.
+
+City individual criteria continue to come from the server-side
+`CriteriaVersion`/`CriteriaRule` assessment. The FE does not render a fallback
+City threshold when the authority is missing; it presents a human-review state.
+The reviewed Application model does not expose a persisted authoritative route,
+so the workspace does not invent one.
+
+Evidence files remain lazy-loaded through the canonical signed-file endpoint.
+The existing decision contract persists `evidenceDecisions` and
+`evidenceAssessments` after linked-evidence and note validation. S4 adds the
+minimal per-evidence assessment UI and refreshes the detail after a stale `409`;
+CAS, workspace visibility, supplement-pending and finalization invariants remain
+server-owned.

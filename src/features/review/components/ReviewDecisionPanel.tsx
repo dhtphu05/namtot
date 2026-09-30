@@ -18,6 +18,7 @@ import { useOfficerEvidenceKnowledgeEvent } from "@/features/evidence-knowledge/
 import type { OfficerEvidenceKnowledgeSearchItem } from "@/features/evidence-knowledge/types";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
+import { ApiError } from "@/lib/api/client";
 import { ACTIVE_LEVELS } from "@/lib/levels";
 import {
   useEscalateResolution,
@@ -38,6 +39,11 @@ type ReviewDecisionPanelProps = {
 };
 
 type TaskDecision = ReviewDecision;
+type EvidenceAssessmentValue = "valid" | "invalid" | "needs_supplement" | "ambiguous";
+type EvidenceAssessmentDraft = {
+  assessment: EvidenceAssessmentValue;
+  note: string;
+};
 type PrecedentGuardReason =
   "different_level" | "different_organizer" | "conflicting_information" | "other";
 
@@ -115,6 +121,9 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const [note, setNote] = useState("");
   const [deadline, setDeadline] = useState("");
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
+  const [evidenceAssessments, setEvidenceAssessments] = useState<
+    Record<string, EvidenceAssessmentDraft>
+  >({});
   const [selectedPrecedentEventId, setSelectedPrecedentEventId] = useState<string | null>(null);
   const [resolutionGuardReason, setResolutionGuardReason] = useState<PrecedentGuardReason | "">("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -168,6 +177,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
         suggestedLevel,
         reasonTemplate,
         deadline,
+        evidenceAssessments,
       })
     : "Vui lòng chọn kết luận xét duyệt.";
   const apiError =
@@ -188,6 +198,14 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
     canSearchPrecedents && Boolean(selectedPrecedentEventId),
   );
   const selectedPrecedentEvidence = precedentDetail.data?.acceptedEvidence[0] ?? null;
+  const evidenceAssessmentPayload = buildEvidenceAssessmentPayload(evidenceAssessments);
+
+  const handleMutationError = (error: unknown) => {
+    if (!isConflictError(error)) return;
+    setSubmittedMessage(null);
+    toast.error("Tác vụ đã thay đổi. Đang tải lại dữ liệu mới nhất để bạn kiểm tra lại.");
+    onSuccess?.();
+  };
 
   const toggleEvidence = (evidenceId: string, checked: boolean) => {
     setSelectedEvidenceIds((current) =>
@@ -231,6 +249,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
             ? { assessment: task.criterionLevelAssessment }
             : undefined,
           note: note.trim() || "Chấp nhận theo tiền lệ đã kiểm tra.",
+          evidenceAssessments: evidenceAssessmentPayload,
           precedentId: precedentRef.precedentId,
           precedentEventId: precedent.eventId,
           precedentEvidenceId: precedentRef.precedentEvidenceId,
@@ -244,6 +263,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
           toast.success(message);
           onSuccess?.();
         },
+        onError: handleMutationError,
       },
     );
   };
@@ -309,6 +329,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
             toast.success(message);
             onSuccess?.();
           },
+          onError: handleMutationError,
         },
       );
       return;
@@ -330,6 +351,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
             }
           : undefined,
       note: note.trim(),
+      evidenceAssessments: evidenceAssessmentPayload,
     };
 
     submitDecision.mutate(
@@ -348,6 +370,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
           toast.success(message);
           onSuccess?.();
         },
+        onError: handleMutationError,
       },
     );
   };
@@ -388,6 +411,32 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
               />
             ) : null}
 
+            <EvidenceAssessmentSection
+              disabled={!selectedCanSubmit || isSubmitting}
+              evidences={evidenceOptions}
+              values={evidenceAssessments}
+              onAssessmentChange={(evidenceId, assessment) => {
+                setEvidenceAssessments((current) => ({
+                  ...current,
+                  [evidenceId]: {
+                    assessment,
+                    note: current[evidenceId]?.note ?? "",
+                  },
+                }));
+                setFormError(null);
+              }}
+              onNoteChange={(evidenceId, value) => {
+                setEvidenceAssessments((current) => ({
+                  ...current,
+                  [evidenceId]: {
+                    assessment: current[evidenceId]?.assessment ?? "valid",
+                    note: value,
+                  },
+                }));
+                setFormError(null);
+              }}
+            />
+
             {!visibleDecisionOptions.length ? (
               <div className="mt-3 rounded-xl border bg-muted/40 p-3 text-sm text-muted-foreground">
                 {task.permissions?.reasonLabel ??
@@ -413,6 +462,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                 key={option.value}
                 className="flex min-h-14 cursor-pointer gap-3 rounded-xl border border-[#E5E7EB] p-3 transition-colors hover:bg-slate-50 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
                 data-smartux-tag={getOfficerDecisionEvent(option.value)}
+                data-testid={`decision-${option.value}`}
               >
                 <RadioGroupItem className="mt-1" value={option.value} />
                 <span>
@@ -834,6 +884,7 @@ function DecisionTextarea({
       ) : null}
       <Textarea
         className="mt-2 min-h-24"
+        data-testid="reviewer-note"
         disabled={disabled}
         id="review-decision-note"
         placeholder={placeholder}
@@ -845,6 +896,94 @@ function DecisionTextarea({
       />
     </label>
   );
+}
+
+function EvidenceAssessmentSection({
+  disabled,
+  evidences,
+  values,
+  onAssessmentChange,
+  onNoteChange,
+}: {
+  disabled: boolean;
+  evidences: ReviewTaskDetail["evidences"];
+  values: Record<string, EvidenceAssessmentDraft>;
+  onAssessmentChange: (evidenceId: string, assessment: EvidenceAssessmentValue) => void;
+  onNoteChange: (evidenceId: string, value: string) => void;
+}) {
+  if (!evidences.length) return null;
+
+  return (
+    <section
+      className="mt-3 rounded-xl border border-[#E5E7EB] bg-slate-50 p-3"
+      data-testid="evidence-assessment-section"
+    >
+      <div className="text-sm font-semibold text-brand-deep">Đánh giá từng minh chứng</div>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+        Ghi nhận đánh giá hỗ trợ cho từng minh chứng; kết luận cuối vẫn do cán bộ xác nhận.
+      </p>
+      <div className="mt-3 space-y-3">
+        {evidences.map((evidence) => {
+          const value = values[evidence.id];
+          const label = evidence.evidenceName || "Minh chứng chưa có tên";
+          return (
+            <div
+              key={evidence.id}
+              className="rounded-lg border border-[#E5E7EB] bg-white p-3"
+              data-testid={`evidence-item-${evidence.id}`}
+            >
+              <div className="text-sm font-semibold text-brand-deep">{label}</div>
+              <select
+                aria-label={`Đánh giá ${label}`}
+                className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                disabled={disabled}
+                value={value?.assessment ?? ""}
+                onChange={(event) => {
+                  const next = event.target.value as EvidenceAssessmentValue | "";
+                  if (next) onAssessmentChange(evidence.id, next);
+                }}
+              >
+                <option value="">Chưa đánh giá</option>
+                <option value="valid">Hợp lệ</option>
+                <option value="invalid">Không hợp lệ</option>
+                <option value="needs_supplement">Cần bổ sung</option>
+                <option value="ambiguous">Mơ hồ</option>
+              </select>
+              {value && value.assessment !== "valid" ? (
+                <label className="mt-2 block text-xs font-semibold text-brand-deep">
+                  Ghi chú đánh giá
+                  <Textarea
+                    aria-label={`Ghi chú đánh giá ${label}`}
+                    className="mt-1 min-h-16 bg-white text-sm"
+                    disabled={disabled}
+                    placeholder="Nêu ngắn gọn căn cứ cần lưu ý."
+                    value={value.note}
+                    onChange={(event) => onNoteChange(evidence.id, event.target.value)}
+                  />
+                </label>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function buildEvidenceAssessmentPayload(
+  values: Record<string, EvidenceAssessmentDraft>,
+): SubmitReviewDecisionRequest["evidenceAssessments"] {
+  return Object.entries(values)
+    .filter(([, value]) => Boolean(value.assessment))
+    .map(([evidenceId, value]) => ({
+      evidenceId,
+      assessment: value.assessment,
+      note: value.note.trim() || undefined,
+    }));
+}
+
+function isConflictError(error: unknown) {
+  return error instanceof ApiError && (error.status === 409 || error.code === "CONFLICT");
 }
 
 function canSubmitDecision(
@@ -893,12 +1032,14 @@ function validateDecision({
   suggestedLevel,
   reasonTemplate,
   deadline,
+  evidenceAssessments,
 }: {
   decision: TaskDecision;
   note: string;
   suggestedLevel: Level | "";
   reasonTemplate: string;
   deadline: string;
+  evidenceAssessments: Record<string, EvidenceAssessmentDraft>;
 }) {
   const trimmedNote = note.trim();
 
@@ -916,6 +1057,13 @@ function validateDecision({
 
   if (deadline && Number.isNaN(new Date(`${deadline}T00:00:00`).getTime())) {
     return "Hạn bổ sung không hợp lệ.";
+  }
+
+  const incompleteAssessment = Object.values(evidenceAssessments).find(
+    (assessment) => assessment.assessment !== "valid" && assessment.note.trim().length < 3,
+  );
+  if (incompleteAssessment) {
+    return "Vui lòng ghi ít nhất 3 ký tự cho đánh giá minh chứng chưa hợp lệ.";
   }
 
   return null;

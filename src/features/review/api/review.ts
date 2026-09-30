@@ -170,6 +170,19 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
 
   return {
     id: asString(rawTask.id),
+    institutionName:
+      (rawTask.institutionName as string | null | undefined) ??
+      (asRecord(rawTask.workspace)?.name as string | null | undefined) ??
+      null,
+    workspace: asRecord(rawTask.workspace)
+      ? {
+          id: asString(asRecord(rawTask.workspace)?.id),
+          name: asString(asRecord(rawTask.workspace)?.name),
+          shortName: (asRecord(rawTask.workspace)?.shortName ?? null) as string | null,
+          type: (asRecord(rawTask.workspace)?.type ?? null) as string | null,
+          isActive: Boolean(asRecord(rawTask.workspace)?.isActive),
+        }
+      : null,
     application: {
       id: asString(rawApplication?.id ?? rawTask.applicationId ?? rawCollectiveProfile?.id),
       schoolYear: asString(rawApplication?.schoolYear ?? rawCollectiveProfile?.schoolYear),
@@ -193,6 +206,10 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
     },
     criterion: (rawTask.criterion ?? "academic") as Criterion,
     status: (rawTask.status ?? "waiting") as ReviewTaskStatus,
+    decision: (rawTask.decision ?? null) as ReviewTaskDetail["decision"],
+    dueDate:
+      rawTask.dueDate === undefined || rawTask.dueDate === null ? null : asString(rawTask.dueDate),
+    officerNote: (rawTask.officerNote ?? null) as string | null,
     assignedOfficer: rawAssignedOfficer
       ? {
           id: asString(rawAssignedOfficer.id ?? rawTask.assignedOfficerId),
@@ -204,10 +221,19 @@ function normalizeReviewTaskDetail(payload: RawRecord | null): ReviewTaskDetail 
     metrics: normalizeMetrics(asRecordArray(payload.metrics ?? rawApplication?.metrics)),
     precheck: normalizeReviewPrecheck(payload.precheck),
     checklist: normalizeChecklist(
-      asRecordArray(payload.criteriaChecklist ?? payload.checklist ?? rawTask.checklist),
+      asRecordArray(
+        payload.criteriaChecklist ??
+          payload.checklist ??
+          rawTask.checklist ??
+          rawApplication?.criteriaChecklist,
+      ),
     ),
     criterionLevelAssessment: normalizeCriterionLevelAssessment(
-      asRecord(payload.criterionLevelAssessment ?? rawTask.criterionLevelAssessment),
+      asRecord(
+        payload.criterionLevelAssessment ??
+          rawTask.criterionLevelAssessment ??
+          rawApplication?.criterionLevelAssessment,
+      ),
     ),
     officerSuggestedLevel: (rawTask.officerSuggestedLevel ?? null) as Level | null,
     levelAssessmentJson: rawTask.levelAssessmentJson ?? null,

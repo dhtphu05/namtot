@@ -118,6 +118,7 @@ review lane “S2”.
 ### Reuse
 
 - `src/routes/app.analytics.tsx` and `src/features/manager/city-analytics/*`.
+
 - `src/routes/app.assignment.tsx` and review assignment components.
 - `src/routes/app.manager.results.tsx`, `$applicationId.tsx`.
 - `src/features/manager/components/ApplicationLifecycleActions.tsx`, `FinalizationDialog.tsx`, `CityReviewSeasonAdministration.tsx`, `CitySubmissionDeadlineExceptionPanel.tsx`, `EligibilityVerificationPanel.tsx`.
@@ -135,6 +136,26 @@ review lane “S2”.
 
 - Audit screen endpoint mismatch.
 - Queue route technically accessible to City Manager but not part of navigation; decide whether read-only coordination is intentional.
+
+## S4 — City Officer review workspace — COMPLETE (2026-09-30)
+
+The existing `/app/review/:id` workspace now consumes the additive review-detail
+context contract and supports the functional City Officer review flow:
+
+- authoritative institution/workspace, assignment and due-date context;
+- CriteriaVersion/CriteriaRule-backed checklist and assessment presentation;
+- original evidence preview through the canonical signed-file endpoint;
+- per-evidence advisory assessment notes, reviewer decision notes and existing
+  accept/reject/supplement/escalation actions;
+- conflict refresh UX for stale decisions, while preserving server-side CAS and
+  existing permission/supplement invariants.
+
+If authoritative City criteria are unavailable, the workspace shows an explicit
+human-review state and does not render a hardcoded City threshold. Route/season
+metadata is not fabricated because the reviewed Application model does not expose
+an authoritative persisted route field.
+
+S5 Supplement + Resolution functional implementation has not started.
 
 ## S4 — City Committee resolution-first lane
 

@@ -114,9 +114,8 @@ export function getReviewGpaThreshold(
     )?.check?.value;
 
   if (typeof configured === "number" && Number.isFinite(configured)) return configured;
-  return targetLevel === "city" && assessment?.criteriaAuthority
-    ? null
-    : getGpaThreshold(targetLevel);
+  if (targetLevel === "city") return null;
+  return getGpaThreshold(targetLevel);
 }
 
 export function getEvidenceFields(evidence: ReviewTaskEvidence): Record<string, unknown> {

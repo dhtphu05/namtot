@@ -328,6 +328,14 @@ export type ReviewDecisionHistoryItem = {
 
 export type ReviewTaskDetail = {
   id: string;
+  institutionName?: string | null;
+  workspace?: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+    type?: string | null;
+    isActive?: boolean;
+  } | null;
   application: {
     id: string;
     schoolYear: string;
@@ -347,6 +355,11 @@ export type ReviewTaskDetail = {
   };
   criterion: Criterion;
   status: ReviewTaskStatus;
+  decision?: ReviewDecision | null;
+  dueDate?: string | null;
+  officerNote?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   assignedOfficer?: {
     id: string;
     fullName: string;
@@ -363,8 +376,6 @@ export type ReviewTaskDetail = {
   supplementRequestJson?: unknown;
   permissions?: ReviewTaskPermissions;
   decisionHistory?: ReviewDecisionHistoryItem[];
-  createdAt?: string;
-  updatedAt?: string;
 };
 
 export type SubmitReviewDecisionRequest = {
