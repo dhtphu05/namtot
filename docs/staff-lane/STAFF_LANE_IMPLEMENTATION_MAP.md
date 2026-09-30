@@ -56,8 +56,8 @@ Operations Lane owns:
 
 The following remain shared or deferred:
 
-- Supplement end-to-end
-- Resolution workflow
+- Student-side supplement completion remains cross-branch (`ui/student-workspace` when present)
+- Committee-side Resolution workflow remains shared/deferred
 - City Committee Decision Desk
 - cross-role supplement completion
 - changes to finalization semantics
@@ -155,7 +155,31 @@ human-review state and does not render a hardcoded City threshold. Route/season
 metadata is not fabricated because the reviewed Application model does not expose
 an authoritative persisted route field.
 
-S5 Supplement + Resolution functional implementation has not started.
+## S5 — City Officer Supplement + Resolution functional closure — COMPLETE (2026-09-30)
+
+S5 closes the Officer-side handoff contracts without redesigning the workspace:
+
+- Officer supplement requests continue through the canonical ReviewTask decision
+  contract, with linked evidence, reason and optional deadline in
+  `supplementRequestJson`.
+- The student assistant route
+  `POST /api/student-assistant/supplements/:reviewTaskId/resubmit` now uses a
+  transaction/CAS service that preserves the same ReviewTask, resets only the
+  submitted criterion and leaves unrelated supplement tasks untouched. A
+  generic application submit is rejected when multiple active supplement tasks
+  exist, preventing a duplicate or broad reset.
+- Resolution handoff continues through
+  `POST /api/review/tasks/:id/escalate-resolution`; the response exposes the
+  canonical `resolutionCaseId`, while the Officer remains read-only after
+  `resolution_needed`.
+- Regression coverage includes evidence linkage, same-task/criterion isolation,
+  CAS conflict handling, cancellation/authorization invariants, Playwright
+  supplement/resolution flows, stale refresh and pending read-only states.
+
+The student-side UI is not copied into Staff Lane. If its branch is separate,
+the browser round-trip depends on that branch consuming the canonical student
+assistant endpoint. Committee resolution, Manager finalization and Admin
+control-plane changes remain outside S5.
 
 ## S4 — City Committee resolution-first lane
 
@@ -284,14 +308,14 @@ S2 hoàn thành trên FE branch `feat/staff-lane`; BE Award Registry giữ nguy�
 
 ### Implemented FE map
 
-| Concern | Source | Result |
-|---|---|---|
-| Data Uploader overview | `src/routes/app.data-uploader.tsx` | Purpose-first overview, workspace context, one primary CTA, list-backed current work và loading/error/empty states |
-| Registry list | `src/features/award-registry/components/AwardDecisionList.tsx`, `src/features/award-registry/presentation.ts` | Server filters preserved; clear active/archive states; deterministic lifecycle labels and filtered-empty recovery |
-| Decision workspace | `src/features/award-registry/components/AwardDecisionDetail.tsx`, `AwardWorkflowProgress.tsx`, `AwardSourceFilePanel.tsx`, `AwardNextAction.tsx` | Object → progress → work → next action hierarchy; exact file roles/formats; no fake progress or invented status |
-| Roster review | `AwardRosterValidationSummary.tsx`, `AwardRosterReviewTable.tsx`, `presentation.ts` | Summary counts, deterministic presentation groups, source/current values, issue explanations, mapping/filter/correction controls |
-| Confirmation | `AwardConfirmationPanel.tsx` | Readiness summary and shared confirmation dialog; server remains final authority; confirmed/archived workspace is read-only |
-| Acceptance | `tests/award-decision-registry.spec.ts`, `src/features/award-registry/__tests__/presentation.test.ts` | Covers role/navigation, server filters, upload/process/retry, preview review, mapping, correction/revert, confirm, recipients, archive/unarchive and presentation mapping |
+| Concern                | Source                                                                                                                                           | Result                                                                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data Uploader overview | `src/routes/app.data-uploader.tsx`                                                                                                               | Purpose-first overview, workspace context, one primary CTA, list-backed current work và loading/error/empty states                                                        |
+| Registry list          | `src/features/award-registry/components/AwardDecisionList.tsx`, `src/features/award-registry/presentation.ts`                                    | Server filters preserved; clear active/archive states; deterministic lifecycle labels and filtered-empty recovery                                                         |
+| Decision workspace     | `src/features/award-registry/components/AwardDecisionDetail.tsx`, `AwardWorkflowProgress.tsx`, `AwardSourceFilePanel.tsx`, `AwardNextAction.tsx` | Object → progress → work → next action hierarchy; exact file roles/formats; no fake progress or invented status                                                           |
+| Roster review          | `AwardRosterValidationSummary.tsx`, `AwardRosterReviewTable.tsx`, `presentation.ts`                                                              | Summary counts, deterministic presentation groups, source/current values, issue explanations, mapping/filter/correction controls                                          |
+| Confirmation           | `AwardConfirmationPanel.tsx`                                                                                                                     | Readiness summary and shared confirmation dialog; server remains final authority; confirmed/archived workspace is read-only                                               |
+| Acceptance             | `tests/award-decision-registry.spec.ts`, `src/features/award-registry/__tests__/presentation.test.ts`                                            | Covers role/navigation, server filters, upload/process/retry, preview review, mapping, correction/revert, confirm, recipients, archive/unarchive and presentation mapping |
 
 ### Locked contract carried into S2
 
