@@ -1,9 +1,10 @@
 import { useAuth } from "@/features/auth/store/auth-store";
 import type { ApiFailure, ApiResponse } from "./types";
 
-export const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
-).replace(/\/+$/, "");
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace(
+  /\/+$/,
+  "",
+);
 
 const API_DEBUG = import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === "true";
 const HOT_ENDPOINTS = [
