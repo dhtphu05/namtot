@@ -24,7 +24,9 @@ export function AwardSourceFilePanel({
     <Card className="space-y-4 border-slate-200 bg-white p-4">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Tài liệu nguồn</p>
-        <h2 className="mt-1 text-base font-semibold text-slate-950">Hai tài liệu cần cho một quyết định</h2>
+        <h2 className="mt-1 text-base font-semibold text-slate-950">
+          Hai tài liệu cần cho một quyết định
+        </h2>
         <p className="mt-1 text-xs leading-5 text-slate-600">
           Văn bản quyết định là căn cứ chính thức. Danh sách sinh viên là dữ liệu để hệ thống đọc và
           đối chiếu.
@@ -55,7 +57,11 @@ export function AwardSourceFilePanel({
           Đang tải tài liệu lên...
         </p>
       )}
-      {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
+      {error && (
+        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800" role="alert">
+          {error}
+        </p>
+      )}
     </Card>
   );
 }
@@ -81,7 +87,11 @@ function UploadField({
     <div className="rounded-lg border border-slate-200 p-3">
       <div className="flex items-start gap-3">
         <div className="rounded-md bg-slate-100 p-2 text-slate-600">
-          {kind === "decision" ? <FileUp className="h-4 w-4" aria-hidden="true" /> : <FileCheck2 className="h-4 w-4" aria-hidden="true" />}
+          {kind === "decision" ? (
+            <FileUp className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-900">{label}</p>
@@ -90,7 +100,9 @@ function UploadField({
         </div>
       </div>
       {disabled ? (
-        <p className="mt-3 text-xs text-slate-500">Chỉ có thể thay tài liệu khi quyết định ở trạng thái bản nháp.</p>
+        <p className="mt-3 text-xs text-slate-500">
+          Chỉ có thể thay tài liệu khi quyết định ở trạng thái bản nháp.
+        </p>
       ) : (
         <Button asChild type="button" variant="outline" size="sm" className="mt-3">
           <label className="cursor-pointer">
@@ -105,7 +117,9 @@ function UploadField({
           </label>
         </Button>
       )}
-      {!disabled && <p className="mt-2 text-[11px] text-slate-500">Định dạng: {accept.replaceAll(",", " ")}</p>}
+      {!disabled && (
+        <p className="mt-2 text-[11px] text-slate-500">Định dạng: {accept.replaceAll(",", " ")}</p>
+      )}
     </div>
   );
 }

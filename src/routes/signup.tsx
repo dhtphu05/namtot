@@ -155,11 +155,16 @@ function Signup() {
         if (
           error.code === "WORKSPACE_REGISTRATION_CLOSED" ||
           error.code === "WORKSPACE_INACTIVE" ||
-          error.code === "WORKSPACE_NOT_FOUND"
+          error.code === "WORKSPACE_NOT_FOUND" ||
+          error.code === "WORKSPACE_TYPE_INVALID"
         ) {
           setWorkspaceId("");
           void refetchWorkspaces();
-          setFormError("Trường này không còn nhận đăng ký. Vui lòng chọn lại trường.");
+          setFormError(
+            error.code === "WORKSPACE_TYPE_INVALID"
+              ? error.message
+              : "Trường này không còn nhận đăng ký. Vui lòng chọn lại trường.",
+          );
         } else if (error.code === "CONFLICT") {
           setFormError(
             "Email hoặc mã số sinh viên đã được đăng ký. Vui lòng kiểm tra lại hoặc đăng nhập.",
@@ -526,13 +531,13 @@ function WorkspaceSelector({
             aria-controls={`${id}-options`}
             aria-invalid={!selectedWorkspace && !isLoading && !isError}
             disabled={unavailable}
-            className="h-11 w-full justify-between rounded-md border border-[#B7C5D4] bg-white px-3 text-left text-sm font-medium text-[#162033] hover:bg-[#F8FAFC]"
+            className="h-auto min-h-11 w-full justify-between rounded-md border border-[#B7C5D4] bg-white px-3 text-left text-sm font-medium text-[#162033] hover:bg-[#F8FAFC]"
           >
-            <span className="min-w-0 truncate">
+            <span className="min-w-0 flex-1 whitespace-normal break-words text-left leading-5">
               {isLoading
                 ? "Đang tải danh sách trường…"
                 : selectedWorkspace
-                  ? workspaceDisplayName(selectedWorkspace)
+                  ? selectedWorkspace.name
                   : "Chọn trường / cơ sở đào tạo"}
             </span>
             {isFetching ? (
@@ -548,8 +553,8 @@ function WorkspaceSelector({
         <PopoverContent align="start" className="w-[min(36rem,calc(100vw-2.5rem))] p-0">
           <Command>
             <CommandInput
-              placeholder="Tìm theo tên trường…"
-              aria-label="Tìm trường / cơ sở đào tạo"
+              placeholder="Tìm trường/cơ sở đào tạo..."
+              aria-label="Tìm trường/cơ sở đào tạo"
             />
             <CommandList id={`${id}-options`}>
               <CommandEmpty>Không tìm thấy trường phù hợp.</CommandEmpty>
@@ -558,6 +563,7 @@ function WorkspaceSelector({
                   <CommandItem
                     key={workspace.id}
                     value={`${workspace.name} ${workspace.shortName ?? ""} ${workspace.code}`}
+                    className="items-start"
                     onSelect={() => {
                       onSelect(workspace.id);
                       onOpenChange(false);
@@ -565,10 +571,10 @@ function WorkspaceSelector({
                   >
                     <Check
                       aria-hidden="true"
-                      className={`h-4 w-4 shrink-0 ${selectedWorkspace?.id === workspace.id ? "opacity-100" : "opacity-0"}`}
+                      className={`mt-0.5 h-4 w-4 shrink-0 ${selectedWorkspace?.id === workspace.id ? "opacity-100" : "opacity-0"}`}
                     />
-                    <span className="min-w-0 flex-1 whitespace-normal text-left">
-                      {workspaceDisplayName(workspace)}
+                    <span className="min-w-0 flex-1 whitespace-normal break-words text-left leading-5">
+                      {workspace.name}
                     </span>
                   </CommandItem>
                 ))}
@@ -648,8 +654,4 @@ function Field({
       )}
     </div>
   );
-}
-
-function workspaceDisplayName(workspace: WorkspaceSummary) {
-  return workspace.shortName ? `${workspace.name} (${workspace.shortName})` : workspace.name;
 }
