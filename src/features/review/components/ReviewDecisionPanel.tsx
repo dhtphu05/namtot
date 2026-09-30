@@ -550,6 +550,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                       >
                         <Checkbox
                           checked={selectedEvidenceIds.includes(evidence.id)}
+                          data-testid={`supplement-evidence-${evidence.id}`}
                           disabled={!selectedCanSubmit || isSubmitting}
                           onCheckedChange={(checked) =>
                             toggleEvidence(evidence.id, checked === true)
@@ -596,6 +597,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                 disabled={!selectedCanSubmit || isSubmitting}
                 label="Nội dung bổ sung"
                 placeholder="Nêu rõ sinh viên cần bổ sung hoặc chỉnh sửa phần nào."
+                testId="supplement-reason"
                 value={note}
                 onChange={setNote}
                 onClearError={() => setFormError(null)}
@@ -610,6 +612,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                   className="mt-2"
                   disabled={!selectedCanSubmit || isSubmitting}
                   id="supplement-deadline"
+                  data-testid="supplement-deadline"
                   type="date"
                   value={deadline}
                   onChange={(event) => {
@@ -626,10 +629,48 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
 
           {decision === "resolution_needed" ? (
             <div className="space-y-3">
+              <div>
+                <div className="text-sm font-semibold text-brand-deep">
+                  Minh chứng chuyển Hội đồng
+                </div>
+                {evidenceOptions.length ? (
+                  <div className="mt-2 space-y-2">
+                    {evidenceOptions.map((evidence) => (
+                      <label
+                        key={evidence.id}
+                        className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#E5E7EB] p-3 hover:bg-slate-50"
+                      >
+                        <Checkbox
+                          checked={selectedEvidenceIds.includes(evidence.id)}
+                          data-testid={`resolution-evidence-${evidence.id}`}
+                          disabled={!selectedCanSubmit || isSubmitting}
+                          onCheckedChange={(checked) =>
+                            toggleEvidence(evidence.id, checked === true)
+                          }
+                        />
+                        <span className="min-w-0">
+                          <span className="line-clamp-1 text-sm font-semibold text-brand-deep">
+                            {evidence.evidenceName || "Tên minh chứng chưa có"}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {getCriterionLabel(evidence.criterion)} •{" "}
+                            {getTaskStatusLabel(evidence.status)}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-2 rounded-xl border border-dashed p-3 text-sm text-muted-foreground">
+                    Chưa có minh chứng liên quan. Có thể chuyển Hội đồng theo tiêu chí.
+                  </div>
+                )}
+              </div>
               <DecisionTextarea
                 disabled={!selectedCanSubmit || isSubmitting}
                 label="Lý do chuyển hội ý"
                 placeholder="Nêu điểm mập mờ hoặc căn cứ cần hội đồng xem xét."
+                testId="resolution-reason"
                 value={note}
                 onChange={setNote}
                 onClearError={() => setFormError(null)}
@@ -674,6 +715,13 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
               isSubmitting
             }
             type="submit"
+            data-testid={
+              decision === "supplement_required"
+                ? "submit-supplement"
+                : decision === "resolution_needed"
+                  ? "submit-resolution"
+                  : undefined
+            }
             data-smartux-tag={decision ? getOfficerDecisionEvent(decision) : "officer_open_task"}
           >
             <Send className="h-4 w-4" />
@@ -864,6 +912,7 @@ function DecisionTextarea({
   label,
   optional,
   placeholder,
+  testId,
   value,
   onChange,
   onClearError,
@@ -872,6 +921,7 @@ function DecisionTextarea({
   label: string;
   optional?: boolean;
   placeholder: string;
+  testId?: string;
   value: string;
   onChange: (value: string) => void;
   onClearError: () => void;
@@ -884,7 +934,7 @@ function DecisionTextarea({
       ) : null}
       <Textarea
         className="mt-2 min-h-24"
-        data-testid="reviewer-note"
+        data-testid={testId ?? "reviewer-note"}
         disabled={disabled}
         id="review-decision-note"
         placeholder={placeholder}

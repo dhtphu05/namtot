@@ -856,8 +856,15 @@ function ConfirmClaimDialog({
 }
 
 function ReadOnlyActionPanel({ task }: { task: ReviewTaskDetail }) {
+  const pendingTestId =
+    task.status === "supplement_required"
+      ? "supplement-pending"
+      : task.status === "resolution_needed"
+        ? "resolution-pending"
+        : "review-readonly";
+
   return (
-    <Card>
+    <Card data-testid={pendingTestId}>
       <div className="flex items-start gap-3">
         <Eye className="mt-0.5 h-5 w-5 text-muted-foreground" />
         <div>
