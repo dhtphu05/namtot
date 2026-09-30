@@ -31,8 +31,12 @@ export function AwardConfirmationPanel({
     <Card className="border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Điểm xác nhận</p>
-          <h2 className="mt-1 text-base font-semibold text-slate-950">Xác nhận dữ liệu công nhận</h2>
+          <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">
+            Điểm xác nhận
+          </p>
+          <h2 className="mt-1 text-base font-semibold text-slate-950">
+            Xác nhận dữ liệu công nhận
+          </h2>
           <p className="mt-1 text-xs leading-5 text-slate-600">
             Hệ thống sẽ kiểm tra lại toàn bộ danh sách và lưu các sinh viên được công nhận. Đây là
             bước đưa dữ liệu thành nguồn chính thức.
@@ -60,8 +64,12 @@ export function AwardConfirmationPanel({
         </AlertDialog>
       </div>
       <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-        <p className="rounded-md bg-emerald-50 px-3 py-2 text-emerald-800">{validRows} dòng hợp lệ</p>
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-900">{blockingRows} dòng còn cần xử lý</p>
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-emerald-800">
+          {validRows} dòng hợp lệ
+        </p>
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-900">
+          {blockingRows} dòng còn cần xử lý
+        </p>
       </div>
       {blockingRows > 0 || validRows === 0 ? (
         <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
@@ -69,7 +77,11 @@ export function AwardConfirmationPanel({
           trước khi ghi nhận chính thức.
         </p>
       ) : null}
-      {error && <p role="alert" className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800">
+          {error}
+        </p>
+      )}
     </Card>
   );
 }

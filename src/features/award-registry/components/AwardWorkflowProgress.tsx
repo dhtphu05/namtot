@@ -64,14 +64,19 @@ export function AwardWorkflowProgress({
   const steps = getAwardWorkflowSteps(decision, processing);
 
   return (
-    <section className="mb-4 rounded-xl border border-slate-200 bg-white p-3" aria-labelledby="award-workflow-title">
+    <section
+      className="mb-4 rounded-xl border border-slate-200 bg-white p-3"
+      aria-labelledby="award-workflow-title"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 id="award-workflow-title" className="mt-1 text-base font-semibold text-slate-950">
             Tiến độ hoàn thiện quyết định
           </h2>
         </div>
-        <p className="text-xs text-slate-500">Theo dõi phần đã hoàn tất và việc cần làm tiếp theo.</p>
+        <p className="text-xs text-slate-500">
+          Theo dõi phần đã hoàn tất và việc cần làm tiếp theo.
+        </p>
       </div>
       <ol className="mt-3 grid gap-2 md:grid-cols-5">
         {steps.map((step, index) => (
