@@ -283,7 +283,7 @@ test.describe("student application UI V2 acceptance", () => {
   }) => {
     let submitCount = 0;
     await mockCityApplication(page, "draft");
-    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+    await page.route("**/api/applications/app-1/eligibility", async (route) => {
       await json(route, {
         applicationId: "app-1",
         schoolYear: "2025-2026",
@@ -326,7 +326,7 @@ test.describe("student application UI V2 acceptance", () => {
 
   test("City OCR failure keeps the original file and asks staff to check it", async ({ page }) => {
     await mockCityApplication(page, "draft");
-    await page.route("http://localhost:8080/api/applications/app-1/evidences**", async (route) => {
+    await page.route("**/api/applications/app-1/evidences**", async (route) => {
       await json(route, [
         evidence(
           "ev-city-ocr-failed",
@@ -358,7 +358,7 @@ test.describe("student application UI V2 acceptance", () => {
       if (path.endsWith("/submit")) submitCount += 1;
     });
     await mockCityApplication(page, "noTasks");
-    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+    await page.route("**/api/applications/app-1/eligibility", async (route) => {
       eligibilityReadCount += 1;
       await json(route, {
         applicationId: "app-1",
@@ -391,7 +391,7 @@ test.describe("student application UI V2 acceptance", () => {
   }) => {
     let eligibilityReadCount = 0;
     await mockCityApplication(page, "noTasks");
-    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+    await page.route("**/api/applications/app-1/eligibility", async (route) => {
       eligibilityReadCount += 1;
       await json(route, {
         applicationId: "app-1",
@@ -401,7 +401,7 @@ test.describe("student application UI V2 acceptance", () => {
         reasons: eligibilityReadCount > 2 ? ["IDENTITY_MATCH_REQUIRES_VERIFICATION"] : [],
       });
     });
-    await page.route("http://localhost:8080/api/applications/app-1/submit", async (route) => {
+    await page.route("**/api/applications/app-1/submit", async (route) => {
       await jsonErrorWithCode(
         route,
         409,
@@ -460,7 +460,7 @@ test.describe("student application UI V2 acceptance", () => {
   }) => {
     await mockCityApplication(page, "noTasks");
     let deadlineRequests = 0;
-    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+    await page.route("**/api/applications/app-1/eligibility", async (route) => {
       await json(route, {
         applicationId: "app-1",
         schoolYear: "2025-2026",
@@ -470,7 +470,7 @@ test.describe("student application UI V2 acceptance", () => {
       });
     });
     await page.route(
-      "http://localhost:8080/api/applications/app-1/submission-deadline",
+      "**/api/applications/app-1/submission-deadline",
       async (route) => {
         deadlineRequests += 1;
         await json(route, {
@@ -507,7 +507,7 @@ test.describe("student application UI V2 acceptance", () => {
     page,
   }) => {
     await mockCityApplication(page, "noTasks");
-    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+    await page.route("**/api/applications/app-1/eligibility", async (route) => {
       await json(route, {
         applicationId: "app-1",
         schoolYear: "2025-2026",
@@ -517,7 +517,7 @@ test.describe("student application UI V2 acceptance", () => {
       });
     });
     await page.route(
-      "http://localhost:8080/api/applications/app-1/submission-deadline",
+      "**/api/applications/app-1/submission-deadline",
       async (route) =>
         json(route, {
           applicationId: "app-1",
@@ -551,7 +551,7 @@ test.describe("student application UI V2 acceptance", () => {
     await mockCityApplication(page, "supplement");
     let eligibilityRequests = 0;
     let deadlineRequests = 0;
-    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+    await page.route("**/api/applications/app-1/eligibility", async (route) => {
       eligibilityRequests += 1;
       await json(route, {
         applicationId: "app-1",
@@ -562,7 +562,7 @@ test.describe("student application UI V2 acceptance", () => {
       });
     });
     await page.route(
-      "http://localhost:8080/api/applications/app-1/submission-deadline",
+      "**/api/applications/app-1/submission-deadline",
       async (route) => {
         deadlineRequests += 1;
         await json(route, {
@@ -598,14 +598,14 @@ test.describe("student application UI V2 acceptance", () => {
 
   test("non-City individual application does not request City deadlines", async ({ page }) => {
     await page.route(
-      /^http:\/\/localhost:8080\/api\/applications\/current(?:\?.*)?$/,
+      /\/api\/applications\/current(?:\?.*)?$/,
       async (route) => {
         await json(route, currentApplication("noTasks", "school"));
       },
     );
     let deadlineRequests = 0;
     await page.route(
-      "http://localhost:8080/api/applications/app-1/submission-deadline",
+      "**/api/applications/app-1/submission-deadline",
       async (route) => {
         deadlineRequests += 1;
         await json(route, null);
@@ -625,7 +625,7 @@ test.describe("student application UI V2 acceptance", () => {
   }) => {
     let eligibilityReadCount = 0;
     await mockCityApplication(page, "supplement", null);
-    await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+    await page.route("**/api/applications/app-1/eligibility", async (route) => {
       eligibilityReadCount += 1;
       await json(route, {
         applicationId: "app-1",
@@ -652,12 +652,12 @@ test.describe("student application UI V2 acceptance", () => {
       metric("metric-volunteer-days", "volunteer_days", 15, 20, "pending"),
     );
     await page.route(
-      /^http:\/\/localhost:8080\/api\/applications\/current(?:\?.*)?$/,
+      /\/api\/applications\/current(?:\?.*)?$/,
       async (route) => {
         await json(route, applicationResponse);
       },
     );
-    await page.route("http://localhost:8080/api/applications/app-1/evidences*", async (route) => {
+    await page.route("**/api/applications/app-1/evidences*", async (route) => {
       const allEvidence = [
         ...evidencesFor(null),
         evidence(
@@ -678,12 +678,12 @@ test.describe("student application UI V2 acceptance", () => {
       );
     });
     await page.route(
-      "http://localhost:8080/api/applications/app-1/precheck/latest",
+      "**/api/applications/app-1/precheck/latest",
       async (route) => {
         await json(route, { ...latestPrecheck("noTasks"), readinessScore: 100 });
       },
     );
-    await page.route("http://localhost:8080/api/applications/app-1/submit", async (route) => {
+    await page.route("**/api/applications/app-1/submit", async (route) => {
       await jsonErrorWithCode(
         route,
         409,
@@ -868,10 +868,14 @@ test.describe("student legacy flag smoke", () => {
 });
 
 async function installStudentApiMock(page: Page) {
-  await page.route("http://localhost:8080/api/**", async (route) => {
+  await page.route(/\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
+    if (!path.startsWith("/api/")) {
+      await route.continue();
+      return;
+    }
     const state = routeState(new URL(page.url()));
 
     if (request.method() === "OPTIONS") {
@@ -990,7 +994,10 @@ async function loginAndGoto(page: Page, route: string) {
   await page.goto(route, { waitUntil: "domcontentloaded" });
   await page.locator("body").waitFor({ state: "visible" });
   await expect(page.getByText("Đang kiểm tra phiên đăng nhập...")).toHaveCount(0);
-  await expect(page.locator("body")).toContainText("Hệ thống Sinh viên 5 tốt");
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+  await expect(page.locator("body")).toContainText(
+    /Hệ thống Sinh viên 5 tốt|Hệ thống quản lý Sinh viên 5 tốt|Hồ sơ|Trợ lý|Phản hồi/,
+  );
 }
 
 async function loginAndGotoCityApplication(
@@ -999,7 +1006,7 @@ async function loginAndGotoCityApplication(
   eligibilityRoute: "DIRECT_CITY" | "UDN_PREREQUISITE",
 ) {
   await mockCityApplication(page, "noTasks");
-  await page.route("http://localhost:8080/api/applications/app-1/eligibility", async (route) => {
+  await page.route("**/api/applications/app-1/eligibility", async (route) => {
     await json(route, {
       applicationId: "app-1",
       schoolYear: "2025-2026",
@@ -1014,13 +1021,13 @@ async function loginAndGotoCityApplication(
 
 async function mockCityApplication(page: Page, state: AppMode, submittedAt?: string | null) {
   await page.route(
-    /^http:\/\/localhost:8080\/api\/applications\/current(?:\?.*)?$/,
+    /\/api\/applications\/current(?:\?.*)?$/,
     async (route) => {
       await json(route, currentApplication(state, "city", submittedAt));
     },
   );
   await page.route(
-    "http://localhost:8080/api/applications/app-1/submission-deadline",
+    "**/api/applications/app-1/submission-deadline",
     async (route) =>
       json(route, {
         applicationId: "app-1",
