@@ -1,4 +1,9 @@
-import type { Level, ReviewTaskDetail, ReviewTaskEvidence } from "../types";
+import type {
+  CriterionLevelAssessment,
+  Level,
+  ReviewTaskDetail,
+  ReviewTaskEvidence,
+} from "../types";
 
 export type EvidenceDisplayKind = "academic_transcript" | "event_achievement" | "generic_document";
 
@@ -95,6 +100,23 @@ export function getGpaThreshold(targetLevel: Level): number | null {
     central: 3.4,
   };
   return thresholds[targetLevel] ?? null;
+}
+
+export function getReviewGpaThreshold(
+  targetLevel: Level,
+  assessment?: CriterionLevelAssessment | null,
+): number | null {
+  const configured = assessment?.levels
+    .find((level) => level.level === targetLevel)
+    ?.requirements.find(
+      (requirement) =>
+        requirement.source === "criteria_version" && requirement.check?.metric === "gpa",
+    )?.check?.value;
+
+  if (typeof configured === "number" && Number.isFinite(configured)) return configured;
+  return targetLevel === "city" && assessment?.criteriaAuthority
+    ? null
+    : getGpaThreshold(targetLevel);
 }
 
 export function getEvidenceFields(evidence: ReviewTaskEvidence): Record<string, unknown> {

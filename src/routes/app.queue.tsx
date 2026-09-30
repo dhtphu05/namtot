@@ -67,7 +67,7 @@ import { getErrorMessage } from "@/features/review/utils/errors";
 import {
   buildEvidenceDisplayModel,
   getFieldLabel,
-  getGpaThreshold,
+  getReviewGpaThreshold,
   getMetricValue,
   getVisibleEvidenceFieldEntries,
 } from "@/features/review/utils/evidenceDisplay";
@@ -1540,7 +1540,9 @@ function ExtractedDataPanel({
   model: ReturnType<typeof buildEvidenceDisplayModel>;
 }) {
   const metricGpa = detail ? getMetricValue(detail.metrics ?? [], "gpa") : null;
-  const threshold = detail ? getGpaThreshold(detail.application.targetLevel) : null;
+  const threshold = detail
+    ? getReviewGpaThreshold(detail.application.targetLevel, detail.criterionLevelAssessment)
+    : null;
   const rows: Array<[string, React.ReactNode]> = [
     ["Tên minh chứng", model.title],
     ["Sự kiện/thành tích", model.kind === "event_achievement" ? model.eventName : null],
@@ -2904,7 +2906,9 @@ function QueueEvidenceCard({
 }) {
   const model = buildEvidenceDisplayModel(evidence);
   const metricGpa = detail ? getMetricValue(detail.metrics ?? [], "gpa") : null;
-  const threshold = detail ? getGpaThreshold(detail.application.targetLevel) : null;
+  const threshold = detail
+    ? getReviewGpaThreshold(detail.application.targetLevel, detail.criterionLevelAssessment)
+    : null;
   const visibleFields = getVisibleEvidenceFieldEntries(model);
   const warnings = getEvidenceWarningMessages(evidence, model);
   const firstFileUrl = evidence.files?.find((file) => file.url)?.url;
@@ -3312,7 +3316,9 @@ function DataMatchPanel({ detail }: { detail: ReviewTaskDetail | null }) {
   const displayModels = relatedEvidences.map(buildEvidenceDisplayModel);
   const academicModel = displayModels.find((model) => model.kind === "academic_transcript");
   const metricGpa = detail ? getMetricValue(detail.metrics ?? [], "gpa") : null;
-  const threshold = detail ? getGpaThreshold(detail.application.targetLevel) : null;
+  const threshold = detail
+    ? getReviewGpaThreshold(detail.application.targetLevel, detail.criterionLevelAssessment)
+    : null;
   const matchedCount = displayModels.filter((model) => model.matchLabel.startsWith("Khớp")).length;
 
   return (

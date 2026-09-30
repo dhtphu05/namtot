@@ -59,7 +59,7 @@ import { getErrorMessage } from "@/features/review/utils/errors";
 import {
   buildEvidenceDisplayModel,
   getFieldLabel,
-  getGpaThreshold,
+  getReviewGpaThreshold,
   getMetricValue,
   getVisibleEvidenceFieldEntries,
 } from "@/features/review/utils/evidenceDisplay";
@@ -576,11 +576,12 @@ function CriteriaStatusStrip({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid flex-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
           {coreCriteria.map((criterion) => {
-            const assessment = evaluateCriterionAgainstMatrix(
-              task.application.targetLevel,
-              criterion.key,
-              { metrics, evidences },
-            );
+            const assessment =
+              getConfiguredCityCriterionAssessment(task, criterion.key) ??
+              evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion.key, {
+                metrics,
+                evidences,
+              });
             const active = selectedCriterion === criterion.key;
             const relatedEvidences = getCriterionEvidences(evidences, criterion.key);
             return (
@@ -645,13 +646,19 @@ function ReviewWorkspaceTabs({
   evidences: ReviewTaskEvidence[];
   checklist: NonNullable<ReviewTaskDetail["checklist"]>;
 }) {
-  const matrixItem = getCriterionMatrixItem(task.application.targetLevel, criterion);
+  const configuredAssessment = getConfiguredCityCriterionAssessment(task, criterion);
+  const hasCriteriaAuthority = Boolean(task.criterionLevelAssessment?.criteriaAuthority);
+  const matrixItem = hasCriteriaAuthority
+    ? null
+    : getCriterionMatrixItem(task.application.targetLevel, criterion);
   const relatedMetrics = getCriterionMetrics(metrics, criterion);
   const relatedEvidences = getCriterionEvidences(evidences, criterion);
-  const assessment = evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion, {
-    metrics,
-    evidences,
-  });
+  const assessment =
+    configuredAssessment ??
+    evaluateCriterionAgainstMatrix(task.application.targetLevel, criterion, {
+      metrics,
+      evidences,
+    });
 
   return (
     <Card className="border border-[#E5E7EB] bg-white shadow-none">
@@ -678,6 +685,7 @@ function ReviewWorkspaceTabs({
             evidences={relatedEvidences}
             metrics={relatedMetrics}
             targetLevel={task.application.targetLevel}
+            criterionLevelAssessment={task.criterionLevelAssessment}
           />
         </TabsContent>
         <TabsContent value="conditions" className="mt-5">
@@ -688,6 +696,7 @@ function ReviewWorkspaceTabs({
             evidences={relatedEvidences}
             matrixItem={matrixItem}
             targetLevel={task.application.targetLevel}
+            hasCriteriaAuthority={hasCriteriaAuthority}
           />
         </TabsContent>
         <TabsContent value="reference" className="mt-5">
@@ -938,10 +947,12 @@ function CriteriaOverviewSection({
   const rows = coreCriteria.map((criterion) => {
     const relatedMetrics = getCriterionMetrics(metrics, criterion.key);
     const relatedEvidences = getCriterionEvidences(evidences, criterion.key);
-    const assessment = evaluateCriterionAgainstMatrix(targetLevel, criterion.key, {
-      metrics,
-      evidences,
-    });
+    const assessment =
+      getConfiguredCityCriterionAssessment(task, criterion.key) ??
+      evaluateCriterionAgainstMatrix(targetLevel, criterion.key, {
+        metrics,
+        evidences,
+      });
     const fileCount = relatedEvidences.reduce(
       (count, evidence) => count + (evidence.files?.length ?? 0),
       0,
@@ -1050,12 +1061,14 @@ function CriterionDocumentsSection({
   metrics,
   targetLevel,
   assessmentStatus,
+  criterionLevelAssessment,
 }: {
   criterion: CoreCriterion;
   evidences: ReviewTaskEvidence[];
   metrics: ReviewTaskDetail["metrics"];
   targetLevel: ReviewTaskDetail["application"]["targetLevel"];
   assessmentStatus: ReturnType<typeof evaluateCriterionAgainstMatrix>["status"];
+  criterionLevelAssessment?: ReviewTaskDetail["criterionLevelAssessment"];
 }) {
   const criterionLabel = getCriterionLabel(criterion);
   const hasFiles = evidences.some((evidence) => evidence.files?.length);
@@ -1131,6 +1144,7 @@ function CriterionDocumentsSection({
             evidence={evidence}
             metrics={metrics}
             targetLevel={targetLevel}
+            criterionLevelAssessment={criterionLevelAssessment}
           />
         ))}
         {!filteredEvidences.length ? (
@@ -1158,17 +1172,19 @@ function CriterionEvidenceCard({
   criterion,
   metrics,
   targetLevel,
+  criterionLevelAssessment,
 }: {
   evidence: ReviewTaskEvidence;
   criterion: CoreCriterion;
   metrics: ReviewTaskDetail["metrics"];
   targetLevel: ReviewTaskDetail["application"]["targetLevel"];
+  criterionLevelAssessment?: ReviewTaskDetail["criterionLevelAssessment"];
 }) {
   const model = buildEvidenceDisplayModel(evidence);
   const fields = getVisibleEvidenceFieldEntries(model);
   const warnings = toReadableList(evidence.card?.warningsJson);
   const studentGpa = getMetricValue(metrics, "gpa");
-  const gpaThreshold = getGpaThreshold(targetLevel);
+  const gpaThreshold = getReviewGpaThreshold(targetLevel, criterionLevelAssessment);
   return (
     <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-none">
       <div className="grid gap-4 lg:grid-cols-[minmax(360px,1.25fr)_minmax(320px,0.9fr)]">
@@ -1500,13 +1516,15 @@ function CriterionChecklistSection({
   checklist,
   evidences,
   assessmentStatus,
+  hasCriteriaAuthority,
 }: {
   targetLevel: ReviewTaskDetail["application"]["targetLevel"];
   criterion: CoreCriterion;
-  matrixItem: ReturnType<typeof getCriterionMatrixItem>;
+  matrixItem: ReturnType<typeof getCriterionMatrixItem> | null;
   checklist: NonNullable<ReviewTaskDetail["checklist"]>;
   evidences: ReviewTaskEvidence[];
   assessmentStatus: ReturnType<typeof evaluateCriterionAgainstMatrix>["status"];
+  hasCriteriaAuthority: boolean;
 }) {
   const currentRules = [
     ...(matrixItem?.hardRequirements ?? []),
@@ -1538,25 +1556,27 @@ function CriterionChecklistSection({
           />
         ))}
       </div>
-      <div className="mt-3 space-y-2">
-        {otherLevels.map((level) => {
-          const item = getCriterionMatrixItem(level, criterion);
-          return (
-            <details key={level} className="rounded-md border bg-muted/20 p-3">
-              <summary className="cursor-pointer text-sm font-semibold text-brand-deep">
-                Xem điều kiện cấp {criteriaLevelSummaries[level].label}
-              </summary>
-              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                {[...(item?.hardRequirements ?? []), ...(item?.additionalRequirements ?? [])].map(
-                  (rule) => (
-                    <li key={rule}>{rule}</li>
-                  ),
-                )}
-              </ul>
-            </details>
-          );
-        })}
-      </div>
+      {!hasCriteriaAuthority ? (
+        <div className="mt-3 space-y-2">
+          {otherLevels.map((level) => {
+            const item = getCriterionMatrixItem(level, criterion);
+            return (
+              <details key={level} className="rounded-md border bg-muted/20 p-3">
+                <summary className="cursor-pointer text-sm font-semibold text-brand-deep">
+                  Xem điều kiện cấp {criteriaLevelSummaries[level].label}
+                </summary>
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                  {[...(item?.hardRequirements ?? []), ...(item?.additionalRequirements ?? [])].map(
+                    (rule) => (
+                      <li key={rule}>{rule}</li>
+                    ),
+                  )}
+                </ul>
+              </details>
+            );
+          })}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -1692,6 +1712,57 @@ function getCriterionMetrics(metrics: ReviewTaskDetail["metrics"], criterion: Co
 
 function getCriterionEvidences(evidences: ReviewTaskEvidence[], criterion: CoreCriterion) {
   return evidences.filter((evidence) => evidence.criterion === criterion);
+}
+
+function getConfiguredCityCriterionAssessment(
+  task: ReviewTaskDetail,
+  criterion: CoreCriterion,
+): ReturnType<typeof evaluateCriterionAgainstMatrix> | null {
+  const authority = task.criterionLevelAssessment?.criteriaAuthority;
+  if (
+    task.application.applicationType !== "individual" ||
+    task.application.targetLevel !== "city"
+  ) {
+    return null;
+  }
+  if (!authority) return null;
+
+  if (task.criterion !== criterion) {
+    return {
+      criterion,
+      label: getCriterionLabel(criterion),
+      status: "needs_supplement",
+      statusLabel: "Cần cán bộ đối chiếu",
+      facts: [],
+      missing: ["Chi tiết authoritative của tiêu chí này nằm ở task tương ứng."],
+    };
+  }
+
+  const level = task.criterionLevelAssessment?.levels.find(
+    (item) => item.level === task.application.targetLevel,
+  );
+  const status =
+    level?.status === "passed"
+      ? "met"
+      : level?.status === "failed"
+        ? "not_suitable"
+        : level?.status === "missing"
+          ? "missing_data"
+          : "needs_supplement";
+  const requirements = level?.requirements ?? [];
+
+  return {
+    criterion,
+    label: getCriterionLabel(criterion),
+    status,
+    statusLabel: "Cần cán bộ đối chiếu",
+    facts: requirements
+      .filter((requirement) => requirement.status === "passed")
+      .map((requirement) => requirement.reason ?? requirement.label),
+    missing: requirements
+      .filter((requirement) => requirement.status !== "passed")
+      .map((requirement) => requirement.reason ?? requirement.label),
+  };
 }
 
 function getPrimaryDataText(metrics: ReviewTaskDetail["metrics"], criterion: CoreCriterion) {

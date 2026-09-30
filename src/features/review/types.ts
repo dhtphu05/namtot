@@ -264,6 +264,32 @@ export type CriterionLevelRequirement = {
   requiredValue?: string | null;
   source?: string | null;
   reason?: string | null;
+  ruleType?: string | null;
+  check?: {
+    metric?: string;
+    operator?: string;
+    value?: number;
+    evidenceCriterion?: Criterion;
+    evidenceSourceType?: string;
+  } | null;
+  grouping?: unknown[];
+};
+
+export type CriterionAuthorityLevel = {
+  level: Level;
+  status: "resolved" | "blocked";
+  criteriaVersionId?: string | null;
+  versionName?: string | null;
+  unitScope?: string | null;
+  warnings?: string[];
+};
+
+export type CriterionAuthority = {
+  source: "CriteriaVersion" | string;
+  applicationWorkspaceId?: string | null;
+  schoolYear?: string | null;
+  targetLevel?: Level | null;
+  levels: CriterionAuthorityLevel[];
 };
 
 export type CriterionLevelAssessment = {
@@ -276,9 +302,14 @@ export type CriterionLevelAssessment = {
     score?: number | null;
     requirements: CriterionLevelRequirement[];
     summary: string;
+    criteriaVersion?: {
+      id?: string | null;
+      versionName?: string | null;
+    } | null;
   }>;
   suggestedCriterionLevel?: Level | null;
   humanConfirmationRequired: boolean;
+  criteriaAuthority?: CriterionAuthority | null;
 };
 
 export type ReviewDecisionHistoryItem = {

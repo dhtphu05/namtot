@@ -47,6 +47,20 @@ test("City Officer can FAIL despite a positive rules suggestion", async ({ page 
   );
 });
 
+test("City Officer sees the configured criteria contract instead of a hardcoded threshold", async ({
+  page,
+}) => {
+  const requests: Array<{ url: string; body: unknown }> = [];
+  await installDecidableTask(page, requests, "pass_suggested", "indexed");
+  await page.goto("/app/review/task-city-2", { waitUntil: "domcontentloaded" });
+
+  await page.getByText("Điều kiện xét", { exact: true }).click();
+  await expect(
+    page.getByText("GPA tối thiểu theo bộ tiêu chí hiện hành: 3.9", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("GPA từ 3.2", { exact: true })).not.toBeVisible();
+});
+
 async function installDecidableTask(
   page: Page,
   requests: Array<{ url: string; body: unknown }>,
@@ -63,7 +77,7 @@ async function installDecidableTask(
     officerSpecializations: [{ criterion: "academic", facultyScope: null, isActive: true }],
   };
 
-  await page.route("http://localhost:8080/api/**", async (route) => {
+  await page.route("**/api/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "OPTIONS") {
@@ -106,6 +120,60 @@ async function installDecidableTask(
                     faculty: "Công nghệ thông tin",
                   },
                   metrics: [{ id: "metric-2", metricType: "gpa", value: 2.8, scale: 4 }],
+                  criterionLevelAssessment: {
+                    taskId: "task-city-2",
+                    criterion: "academic",
+                    targetLevel: "city",
+                    humanConfirmationRequired: true,
+                    criteriaAuthority: {
+                      source: "CriteriaVersion",
+                      applicationWorkspaceId: "danang-city",
+                      schoolYear: "2025-2026",
+                      targetLevel: "city",
+                      levels: [
+                        {
+                          level: "city",
+                          status: "resolved",
+                          criteriaVersionId: "criteria-city-2025",
+                          versionName: "Bộ tiêu chí thành phố 2025",
+                          unitScope: "DHBK-DHDN",
+                          warnings: [],
+                        },
+                      ],
+                    },
+                    levels: [
+                      {
+                        level: "city",
+                        status: "failed",
+                        score: 0,
+                        summary: "GPA chưa đạt ngưỡng cấu hình.",
+                        criteriaVersion: {
+                          id: "criteria-city-2025",
+                          versionName: "Bộ tiêu chí thành phố 2025",
+                        },
+                        requirements: [
+                          {
+                            key: "configured-gpa",
+                            label: "GPA tối thiểu theo bộ tiêu chí hiện hành: 3.9",
+                            status: "failed",
+                            requiredValue: ">= 3.9",
+                            source: "criteria_version",
+                            check: { metric: "gpa", operator: ">=", value: 3.9 },
+                            reason: "GPA hiện tại chưa đạt ngưỡng cấu hình.",
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  criteriaChecklist: [
+                    {
+                      id: "city-configured-gpa",
+                      label: "GPA tối thiểu theo bộ tiêu chí hiện hành: 3.9",
+                      passed: false,
+                      required: true,
+                      note: "GPA hiện tại chưa đạt ngưỡng cấu hình.",
+                    },
+                  ],
                 },
                 evidences: [
                   {

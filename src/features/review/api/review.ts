@@ -6,6 +6,7 @@ import type {
   EvidenceStatus,
   ApiResponse,
   ClaimReviewTaskResponse,
+  CriterionAuthority,
   CriterionLevelAssessment,
   EscalateResolutionRequest,
   EscalateResolutionResponse,
@@ -402,6 +403,12 @@ function normalizeCriterionLevelAssessment(
         "needs_review") as CriterionLevelAssessment["levels"][number]["status"],
       score: level.score === undefined || level.score === null ? null : asNumber(level.score),
       summary: asString(level.summary),
+      criteriaVersion: asRecord(level.criteriaVersion)
+        ? {
+            id: asString(asRecord(level.criteriaVersion)?.id) || null,
+            versionName: asString(asRecord(level.criteriaVersion)?.versionName) || null,
+          }
+        : null,
       requirements: asRecordArray(level.requirements).map((requirement) => ({
         key: asString(requirement.key),
         label: asString(requirement.label),
@@ -423,10 +430,52 @@ function normalizeCriterionLevelAssessment(
           requirement.reason === undefined || requirement.reason === null
             ? null
             : asString(requirement.reason),
+        ruleType:
+          requirement.ruleType === undefined || requirement.ruleType === null
+            ? null
+            : asString(requirement.ruleType),
+        check: asRecord(requirement.check)
+          ? {
+              metric: asString(asRecord(requirement.check)?.metric) || undefined,
+              operator: asString(asRecord(requirement.check)?.operator) || undefined,
+              value:
+                typeof asRecord(requirement.check)?.value === "number"
+                  ? (asRecord(requirement.check)?.value as number)
+                  : undefined,
+              evidenceCriterion: asRecord(requirement.check)?.evidenceCriterion as
+                Criterion | undefined,
+              evidenceSourceType:
+                asString(asRecord(requirement.check)?.evidenceSourceType) || undefined,
+            }
+          : null,
+        grouping: Array.isArray(requirement.grouping) ? requirement.grouping : [],
       })),
     })),
     suggestedCriterionLevel: (payload.suggestedCriterionLevel ?? null) as Level | null,
     humanConfirmationRequired: Boolean(payload.humanConfirmationRequired ?? true),
+    criteriaAuthority: normalizeCriterionAuthority(payload.criteriaAuthority),
+  };
+}
+
+function normalizeCriterionAuthority(value: unknown): CriterionAuthority | null {
+  const authority = asRecord(value);
+  if (!authority) return null;
+
+  return {
+    source: asString(authority.source, "CriteriaVersion"),
+    applicationWorkspaceId: authority.applicationWorkspaceId
+      ? asString(authority.applicationWorkspaceId)
+      : null,
+    schoolYear: authority.schoolYear ? asString(authority.schoolYear) : null,
+    targetLevel: (authority.targetLevel ?? null) as Level | null,
+    levels: asRecordArray(authority.levels).map((level) => ({
+      level: (level.level ?? "school") as Level,
+      status: (level.status ?? "blocked") as "resolved" | "blocked",
+      criteriaVersionId: level.criteriaVersionId ? asString(level.criteriaVersionId) : null,
+      versionName: level.versionName ? asString(level.versionName) : null,
+      unitScope: level.unitScope ? asString(level.unitScope) : null,
+      warnings: asStringArray(level.warnings),
+    })),
   };
 }
 
