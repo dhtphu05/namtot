@@ -45,7 +45,8 @@ Nguồn sự thật là route/component hiện tại trong FE và permission th�
 
 ### City Officer
 
-- Nav chỉ hiển thị queue và resolution.
+- Nav chỉ hiển thị queue và resolution. Queue có năm tab server-backed: Cần xử lý, Đang xét, Chờ bổ sung, Cần Hội đồng và Đã hoàn thành.
+- `city_officer` queue dùng đúng năm criteria City (`ethics`, `academic`, `physical`, `volunteer`, `integration`); tab Đã hoàn thành dùng union `accepted + rejected` trên endpoint review tasks.
 - Route guard cho phép `/app/queue`, `/app/review`, `/app/resolution`.
 - BE có claim theo specialization và access scope theo City workspace.
 - Evidence Knowledge không xuất hiện trong nav và bị loại ở FE/BE contract.

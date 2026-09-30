@@ -16,15 +16,31 @@ test("City Officer can PASS despite incomplete rules advice and failed OCR when 
   await expect(page.getByRole("region", { name: /gợi ý tiền kiểm/i })).toContainText(
     "Chưa đủ dữ liệu để xác định hệ đào tạo",
   );
+  await expect(
+    page.getByText("Trường Đại học Bách khoa - Đại học Đà Nẵng", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Mốc xử lý", { exact: true })).toBeVisible();
   await expect(page.getByText("bang-diem-ocr-loi.pdf", { exact: true })).toBeVisible();
   await page.getByText("Đạt tiêu chí", { exact: true }).click();
+  await page.getByLabel("Đánh giá Bảng điểm năm học").selectOption("invalid");
+  await page.getByLabel("Ghi chú đánh giá Bảng điểm năm học").fill("Không khớp dữ liệu sinh viên.");
   await page.getByRole("button", { name: "Xác nhận đạt" }).click();
 
   await expect.poll(() => requests.length).toBe(1);
-  expect(requests[0]).toMatchObject({
-    url: "http://localhost:8080/api/review/tasks/task-city-2/decision",
-    body: expect.objectContaining({ decision: "accepted", officerSuggestedLevel: "city" }),
-  });
+  expect(new URL(requests[0].url).pathname).toBe("/api/review/tasks/task-city-2/decision");
+  expect(requests[0].body).toEqual(
+    expect.objectContaining({
+      decision: "accepted",
+      officerSuggestedLevel: "city",
+      evidenceAssessments: [
+        expect.objectContaining({
+          evidenceId: "evidence-city-2",
+          assessment: "invalid",
+          note: "Không khớp dữ liệu sinh viên.",
+        }),
+      ],
+    }),
+  );
 });
 
 test("City Officer can FAIL despite a positive rules suggestion", async ({ page }) => {
@@ -47,11 +63,40 @@ test("City Officer can FAIL despite a positive rules suggestion", async ({ page 
   );
 });
 
+test("City Officer sees the configured criteria contract instead of a hardcoded threshold", async ({
+  page,
+}) => {
+  const requests: Array<{ url: string; body: unknown }> = [];
+  await installDecidableTask(page, requests, "pass_suggested", "indexed");
+  await page.goto("/app/review/task-city-2", { waitUntil: "domcontentloaded" });
+
+  await page.getByText("Điều kiện xét", { exact: true }).click();
+  await expect(
+    page.getByText("GPA tối thiểu theo bộ tiêu chí hiện hành: 3.9", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("GPA từ 3.2", { exact: true })).not.toBeVisible();
+});
+
+test("City Officer does not see a fallback threshold when criteria authority is unavailable", async ({
+  page,
+}) => {
+  const requests: Array<{ url: string; body: unknown }> = [];
+  await installDecidableTask(page, requests, "human_review_required", "indexed", false);
+  await page.goto("/app/review/task-city-2", { waitUntil: "domcontentloaded" });
+
+  await page.getByText("Điều kiện xét", { exact: true }).click();
+  await expect(
+    page.getByText("Chưa có bộ tiêu chí authoritative cho hồ sơ Thành phố.", { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByText("GPA từ 3.2", { exact: true })).not.toBeVisible();
+});
+
 async function installDecidableTask(
   page: Page,
   requests: Array<{ url: string; body: unknown }>,
   advisoryStatus: string,
   indexingStatus: string,
+  hasCriteriaAuthority = true,
 ) {
   const user = {
     id: "city-officer-2",
@@ -63,9 +108,14 @@ async function installDecidableTask(
     officerSpecializations: [{ criterion: "academic", facultyScope: null, isActive: true }],
   };
 
-  await page.route("http://localhost:8080/api/**", async (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
-    const path = new URL(request.url()).pathname;
+    const requestUrl = new URL(request.url());
+    if (!requestUrl.pathname.startsWith("/api/")) {
+      await route.continue();
+      return;
+    }
+    const path = requestUrl.pathname;
     if (request.method() === "OPTIONS") {
       await route.fulfill({ status: 204, headers: corsHeaders, body: "" });
       return;
@@ -84,7 +134,15 @@ async function installDecidableTask(
                 id: "task-city-2",
                 criterion: "academic",
                 status: "waiting",
+                dueDate: "2026-10-15T00:00:00.000Z",
                 assignedOfficerId: user.id,
+                workspace: {
+                  id: "school-dhbk",
+                  name: "Trường Đại học Bách khoa - Đại học Đà Nẵng",
+                  shortName: "DHBK",
+                  type: "SCHOOL",
+                  isActive: true,
+                },
                 permissions: {
                   canView: true,
                   canAct: true,
@@ -98,6 +156,8 @@ async function installDecidableTask(
                   applicationType: "individual",
                   targetLevel: "city",
                   status: "submitted",
+                  submittedAt: "2026-09-01T00:00:00.000Z",
+                  finalStatus: "pending",
                   student: {
                     id: "student-2",
                     fullName: "Nguyễn Văn Bình",
@@ -106,6 +166,64 @@ async function installDecidableTask(
                     faculty: "Công nghệ thông tin",
                   },
                   metrics: [{ id: "metric-2", metricType: "gpa", value: 2.8, scale: 4 }],
+                  criterionLevelAssessment: {
+                    taskId: "task-city-2",
+                    criterion: "academic",
+                    targetLevel: "city",
+                    humanConfirmationRequired: true,
+                    ...(hasCriteriaAuthority
+                      ? {
+                          criteriaAuthority: {
+                            source: "CriteriaVersion",
+                            applicationWorkspaceId: "danang-city",
+                            schoolYear: "2025-2026",
+                            targetLevel: "city",
+                            levels: [
+                              {
+                                level: "city",
+                                status: "resolved",
+                                criteriaVersionId: "criteria-city-2025",
+                                versionName: "Bộ tiêu chí thành phố 2025",
+                                unitScope: "DHBK-DHDN",
+                                warnings: [],
+                              },
+                            ],
+                          },
+                        }
+                      : {}),
+                    levels: [
+                      {
+                        level: "city",
+                        status: "failed",
+                        score: 0,
+                        summary: "GPA chưa đạt ngưỡng cấu hình.",
+                        criteriaVersion: {
+                          id: "criteria-city-2025",
+                          versionName: "Bộ tiêu chí thành phố 2025",
+                        },
+                        requirements: [
+                          {
+                            key: "configured-gpa",
+                            label: "GPA tối thiểu theo bộ tiêu chí hiện hành: 3.9",
+                            status: "failed",
+                            requiredValue: ">= 3.9",
+                            source: "criteria_version",
+                            check: { metric: "gpa", operator: ">=", value: 3.9 },
+                            reason: "GPA hiện tại chưa đạt ngưỡng cấu hình.",
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  criteriaChecklist: [
+                    {
+                      id: "city-configured-gpa",
+                      label: "GPA tối thiểu theo bộ tiêu chí hiện hành: 3.9",
+                      passed: false,
+                      required: true,
+                      note: "GPA hiện tại chưa đạt ngưỡng cấu hình.",
+                    },
+                  ],
                 },
                 evidences: [
                   {

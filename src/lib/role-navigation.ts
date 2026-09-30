@@ -87,7 +87,7 @@ const navByRole: Record<NavigationRole, NavigationGroup[]> = {
     {
       group: "Xử lý hồ sơ",
       items: [
-        { label: "Hàng chờ hồ sơ", to: "/app/queue", icon: "queue" },
+        { label: "Việc cần xử lý", to: "/app/queue", icon: "queue" },
         { label: "Hồ sơ cần Hội đồng", to: "/app/resolution", icon: "resolution" },
       ],
     },

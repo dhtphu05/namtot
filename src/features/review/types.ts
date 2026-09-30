@@ -64,6 +64,7 @@ export type QueryValue = string | number | boolean | null | undefined;
 export type ReviewTaskListParams = {
   criterion?: Criterion;
   status?: ReviewTaskStatus;
+  statuses?: ReviewTaskStatus[];
   targetLevel?: Level;
   faculty?: string;
   className?: string;
@@ -74,10 +75,13 @@ export type ReviewTaskListParams = {
   supplementRequired?: boolean;
   resolutionNeeded?: boolean;
   assignedToMe?: boolean;
+  ownership?: ReviewTaskOwnership;
   page?: number;
   limit?: number;
   q?: string;
 };
+
+export type ReviewTaskOwnership = "my_tasks" | "claimable" | "visible_scope";
 
 export type ReviewTaskPermissionReason =
   | "manager_full_access"
@@ -146,6 +150,7 @@ export type ReviewTaskListItem = {
   studentId: string;
   studentName: string;
   studentCode: string;
+  institutionName?: string | null;
   faculty?: string | null;
   className?: string | null;
   schoolYear: string;
@@ -169,6 +174,7 @@ export type ReviewTaskListItem = {
 
 export type ReviewTaskListResponse = {
   items: ReviewTaskListItem[];
+  pagination?: Pagination;
 };
 
 export type ReviewTaskEvidenceFile = {
@@ -262,6 +268,32 @@ export type CriterionLevelRequirement = {
   requiredValue?: string | null;
   source?: string | null;
   reason?: string | null;
+  ruleType?: string | null;
+  check?: {
+    metric?: string;
+    operator?: string;
+    value?: number;
+    evidenceCriterion?: Criterion;
+    evidenceSourceType?: string;
+  } | null;
+  grouping?: unknown[];
+};
+
+export type CriterionAuthorityLevel = {
+  level: Level;
+  status: "resolved" | "blocked";
+  criteriaVersionId?: string | null;
+  versionName?: string | null;
+  unitScope?: string | null;
+  warnings?: string[];
+};
+
+export type CriterionAuthority = {
+  source: "CriteriaVersion" | string;
+  applicationWorkspaceId?: string | null;
+  schoolYear?: string | null;
+  targetLevel?: Level | null;
+  levels: CriterionAuthorityLevel[];
 };
 
 export type CriterionLevelAssessment = {
@@ -274,9 +306,14 @@ export type CriterionLevelAssessment = {
     score?: number | null;
     requirements: CriterionLevelRequirement[];
     summary: string;
+    criteriaVersion?: {
+      id?: string | null;
+      versionName?: string | null;
+    } | null;
   }>;
   suggestedCriterionLevel?: Level | null;
   humanConfirmationRequired: boolean;
+  criteriaAuthority?: CriterionAuthority | null;
 };
 
 export type ReviewDecisionHistoryItem = {
@@ -291,6 +328,14 @@ export type ReviewDecisionHistoryItem = {
 
 export type ReviewTaskDetail = {
   id: string;
+  institutionName?: string | null;
+  workspace?: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+    type?: string | null;
+    isActive?: boolean;
+  } | null;
   application: {
     id: string;
     schoolYear: string;
@@ -310,6 +355,11 @@ export type ReviewTaskDetail = {
   };
   criterion: Criterion;
   status: ReviewTaskStatus;
+  decision?: ReviewDecision | null;
+  dueDate?: string | null;
+  officerNote?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   assignedOfficer?: {
     id: string;
     fullName: string;
@@ -326,8 +376,6 @@ export type ReviewTaskDetail = {
   supplementRequestJson?: unknown;
   permissions?: ReviewTaskPermissions;
   decisionHistory?: ReviewDecisionHistoryItem[];
-  createdAt?: string;
-  updatedAt?: string;
 };
 
 export type SubmitReviewDecisionRequest = {
