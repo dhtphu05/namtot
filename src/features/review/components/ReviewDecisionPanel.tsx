@@ -120,6 +120,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
   const [reasonTemplate, setReasonTemplate] = useState("");
   const [note, setNote] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [requestedFieldsText, setRequestedFieldsText] = useState("");
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
   const [evidenceAssessments, setEvidenceAssessments] = useState<
     Record<string, EvidenceAssessmentDraft>
@@ -347,7 +348,7 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
               reason: note.trim(),
               evidenceIds: selectedEvidenceIds,
               deadline: deadline || null,
-              requestedFields: [],
+              requestedFields: parseRequestedFields(requestedFieldsText),
             }
           : undefined,
       note: note.trim(),
@@ -602,6 +603,28 @@ export function ReviewDecisionPanel({ task, onSuccess }: ReviewDecisionPanelProp
                 onChange={setNote}
                 onClearError={() => setFormError(null)}
               />
+
+              <label
+                className="block text-sm font-semibold text-brand-deep"
+                htmlFor="supplement-requested-fields"
+              >
+                Mục cần bổ sung cụ thể
+                <Input
+                  className="mt-2"
+                  data-testid="supplement-requested-fields"
+                  disabled={!selectedCanSubmit || isSubmitting}
+                  id="supplement-requested-fields"
+                  placeholder="Ví dụ: GPA, xác nhận học vụ"
+                  value={requestedFieldsText}
+                  onChange={(event) => {
+                    setRequestedFieldsText(event.target.value);
+                    setFormError(null);
+                  }}
+                />
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  Phân tách nhiều mục bằng dấu phẩy; để trống nếu nội dung đã nêu đủ trong lý do.
+                </span>
+              </label>
 
               <label
                 className="block text-sm font-semibold text-brand-deep"
@@ -1030,6 +1053,17 @@ function buildEvidenceAssessmentPayload(
       assessment: value.assessment,
       note: value.note.trim() || undefined,
     }));
+}
+
+function parseRequestedFields(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
 }
 
 function isConflictError(error: unknown) {

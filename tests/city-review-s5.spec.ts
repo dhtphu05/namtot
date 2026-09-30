@@ -18,6 +18,7 @@ test("City Officer can request criterion-scoped supplement and return to pending
   await expect(submit).toBeDisabled();
   await page.getByTestId("supplement-reason").fill("Bổ sung bảng điểm có xác nhận.");
   await page.getByTestId("supplement-evidence-evidence-s5").click();
+  await page.getByTestId("supplement-requested-fields").fill("GPA, Xác nhận học vụ");
   await page.getByTestId("supplement-deadline").fill("2026-10-15");
   await expect(submit).toBeEnabled();
   await submit.click();
@@ -30,6 +31,7 @@ test("City Officer can request criterion-scoped supplement and return to pending
       supplementRequestJson: expect.objectContaining({
         reason: "Bổ sung bảng điểm có xác nhận.",
         evidenceIds: ["evidence-s5"],
+        requestedFields: ["GPA", "Xác nhận học vụ"],
         deadline: "2026-10-15",
       }),
     }),
