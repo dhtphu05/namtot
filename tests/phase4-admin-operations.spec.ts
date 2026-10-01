@@ -602,6 +602,7 @@ function citySummary() {
       progressDistribution: { "0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
       unexpectedTaskCount: 0,
     },
+    dailySubmissions: [],
     criteria: [],
     bySchool: [],
     reviewers: [],

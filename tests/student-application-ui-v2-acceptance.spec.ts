@@ -845,6 +845,83 @@ test.describe("student application UI V2 acceptance", () => {
     ).toBeVisible();
   });
 
+  test("physical path can attach an already uploaded evidence to the selected requirement", async ({
+    page,
+  }) => {
+    const pathEvidenceRequests: Record<string, unknown>[] = [];
+    page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/applications/app-1/physical/path-evidence"
+      ) {
+        pathEvidenceRequests.push(request.postDataJSON() as Record<string, unknown>);
+      }
+    });
+
+    await loginAndGoto(page, "/app/application?criterion=physical");
+    await page.getByRole("radio", { name: /Hoạt động hoặc giải thể thao/ }).click();
+    await page.getByRole("button", { name: /Gắn minh chứng đã tải/ }).click();
+
+    await expect.poll(() => pathEvidenceRequests.length).toBe(1);
+    expect(pathEvidenceRequests[0]).toMatchObject({
+      requirementKey: "sports_activity_or_award",
+      evidenceId: "ev-official",
+      sourceType: "official_event",
+    });
+  });
+
+  test("uploading evidence from a selected physical path records that path", async ({ page }) => {
+    const pathEvidenceRequests: Record<string, unknown>[] = [];
+    const pathEvidence = evidence(
+      "ev-physical-upload",
+      "Minh chứng thành tích thể thao",
+      "physical",
+      "application/pdf",
+      "draft",
+      "not_started",
+    );
+    await page.route(apiUrl("/api/applications/app-1/evidences"), async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      await json(route, pathEvidence);
+    });
+    await page.route(apiUrl("/api/evidences/ev-physical-upload/files"), async (route) =>
+      json(route, pathEvidence),
+    );
+    await page.route(apiUrl("/api/evidences/ev-physical-upload/start-indexing"), async (route) =>
+      json(route, pathEvidence),
+    );
+    page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/applications/app-1/physical/path-evidence"
+      ) {
+        pathEvidenceRequests.push(request.postDataJSON() as Record<string, unknown>);
+      }
+    });
+
+    await loginAndGoto(page, "/app/application?criterion=physical");
+    await page.getByRole("radio", { name: /Hoạt động hoặc giải thể thao/ }).click();
+    await studentContentMain(page)
+      .getByRole("button", { name: "Tự khai báo và tải minh chứng" })
+      .click();
+    const drawer = page.getByRole("dialog", { name: "Thêm minh chứng" });
+    await drawer.getByLabel("Tên minh chứng").fill("Minh chứng thành tích thể thao");
+    await drawer.locator('input[type="file"]').setInputFiles({
+      name: "the-thao.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4 test"),
+    });
+    await expect(drawer.getByText("the-thao.pdf")).toBeVisible();
+    await drawer.getByRole("button", { name: "Thêm vào hồ sơ" }).click();
+
+    await expect.poll(() => pathEvidenceRequests.length).toBe(1);
+    expect(pathEvidenceRequests[0]).toMatchObject({
+      requirementKey: "sports_activity_or_award",
+      evidenceId: "ev-physical-upload",
+      sourceType: "manual_evidence",
+    });
+  });
+
   test("volunteer ledger uses backend aggregation values", async ({ page }) => {
     await loginAndGoto(page, "/app/application?criterion=volunteer");
     await expect(studentContentMain(page)).toContainText(/12/);

@@ -43,6 +43,7 @@ export type CityAnalyticsSummary = {
     progressDistribution: Record<"0" | "1" | "2" | "3" | "4" | "5", number>;
     unexpectedTaskCount: number;
   };
+  dailySubmissions: Array<{ date: string; count: number }>;
   criteria: Array<{
     criterion: CityAnalyticsCriterion;
     totalTasks: number;
