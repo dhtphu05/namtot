@@ -3,7 +3,7 @@ import { useAuth } from "@/features/auth/store/auth-store";
 import type { ApiResponse, ApplicationStatus, Level, QueryValue } from "@/features/review/types";
 
 export type ExportFormat = "csv" | "json";
-export type ExportDataset = "applications" | "reviewTasks" | "reviewResults";
+export type ExportDataset = "applications" | "reviewTasks" | "reviewResults" | "cityAwardees";
 
 export type ExportApplicationsParams = {
   schoolYear?: string;

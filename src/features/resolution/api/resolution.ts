@@ -77,6 +77,7 @@ function normalizeResolutionCaseItem(raw: RawRecord): ResolutionCaseListItem {
     studentName: asString(raw.studentName ?? student?.fullName),
     studentCode: asString(raw.studentCode ?? student?.studentCode),
     className: (raw.className ?? student?.className ?? null) as string | null,
+    schoolName: asString(raw.schoolName ?? asRecord(raw.workspace)?.name) || null,
     faculty: (raw.faculty ?? student?.faculty ?? null) as string | null,
     targetLevel: (raw.targetLevel ?? application?.targetLevel ?? "school") as Level,
     criterion: (raw.criterion ?? evidence?.criterion ?? "academic") as Criterion,

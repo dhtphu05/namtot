@@ -30,6 +30,7 @@ export type ResolutionCaseListItem = {
   studentName: string;
   studentCode: string;
   className?: string | null;
+  schoolName?: string | null;
   faculty?: string | null;
   targetLevel: Level;
   criterion: Criterion;

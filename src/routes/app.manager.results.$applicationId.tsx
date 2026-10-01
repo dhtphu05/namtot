@@ -111,6 +111,7 @@ function ManagerResultDetailRoute() {
   const inboxFocus = Route.useSearch();
   const user = useAuth((state) => state.user);
   const role = user?.role as Role | undefined;
+  const cityCommittee = role === "city_committee";
   const detailQuery = useManagerResultDetail(applicationId);
   const [finalizing, setFinalizing] = useState(false);
   const [reopening, setReopening] = useState(false);
@@ -128,15 +129,21 @@ function ManagerResultDetailRoute() {
       <>
         <TopBar
           title="Kết quả hồ sơ"
-          subtitle="Không thể tải chi tiết hồ sơ."
+          subtitle={
+            cityCommittee
+              ? "Chưa thể tải thông tin hồ sơ. Vui lòng thử lại."
+              : "Không thể tải chi tiết hồ sơ."
+          }
           action={<BackButton />}
         />
         <Card>
           <div className="py-10 text-center">
             <div className="font-semibold text-rose-600">
-              {detailQuery.error instanceof Error
-                ? detailQuery.error.message
-                : "Không tìm thấy hồ sơ."}
+              {cityCommittee
+                ? "Chưa thể tải thông tin hồ sơ. Vui lòng thử lại."
+                : detailQuery.error instanceof Error
+                  ? detailQuery.error.message
+                  : "Không tìm thấy hồ sơ."}
             </div>
             <Button className="mt-4" variant="outline" onClick={() => void detailQuery.refetch()}>
               Tải lại
@@ -189,6 +196,7 @@ function ManagerResultDetailRoute() {
             focus={inboxFocus.focus}
             resolutionCaseId={inboxFocus.resolutionCaseId}
             cityOnly={isIndividualCityApplication}
+            cityCommittee={cityCommittee}
           />
           <HeaderCard detail={detail} cityOnly={isIndividualCityApplication} />
           {canManageLifecycle ? (
@@ -201,16 +209,25 @@ function ManagerResultDetailRoute() {
           {canManageCityDeadline && isInitialCityDraft ? (
             <CitySubmissionDeadlineExceptionPanel applicationId={detail.application.id} />
           ) : null}
-          <AnalysisSection detail={detail} cityOnly={isIndividualCityApplication} />
-          <CriterionDecisionBoard detail={detail} cityOnly={isIndividualCityApplication} />
-          <ResolutionSection detail={detail} />
-          <AuditSection detail={detail} />
+          <AnalysisSection
+            detail={detail}
+            cityOnly={isIndividualCityApplication}
+            cityCommittee={cityCommittee}
+          />
+          <CriterionDecisionBoard
+            detail={detail}
+            cityOnly={isIndividualCityApplication}
+            cityCommittee={cityCommittee}
+          />
+          <ResolutionSection detail={detail} cityCommittee={cityCommittee} />
+          <AuditSection detail={detail} cityCommittee={cityCommittee} />
         </div>
 
         <aside className="space-y-5 xl:sticky xl:top-4 xl:self-start">
           <DecisionPanel
             detail={detail}
             cityOnly={isIndividualCityApplication}
+            cityCommittee={cityCommittee}
             canFinalize={canFinalize && !detail.application.cancelledAt}
             processedCount={processedCount}
             openResolutionCount={openResolutionCount}
@@ -241,13 +258,15 @@ function InboxFocusBanner({
   focus,
   resolutionCaseId,
   cityOnly,
+  cityCommittee,
 }: {
   focus?: string;
   resolutionCaseId?: string;
   cityOnly: boolean;
+  cityCommittee: boolean;
 }) {
   if (!focus) return null;
-  const content = getInboxFocusContent(focus, cityOnly);
+  const content = getInboxFocusContent(focus, cityOnly, cityCommittee);
   return (
     <Card className="border-[#BBD7FF] bg-[#F4F9FF]">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -258,7 +277,7 @@ function InboxFocusBanner({
         {focus === "needs_resolution" && resolutionCaseId ? (
           <Button asChild>
             <Link to="/app/resolution/$id" params={{ id: resolutionCaseId }}>
-              Mở Resolution Case
+              {cityCommittee ? "Mở hồ sơ hội ý" : "Mở Resolution Case"}
             </Link>
           </Button>
         ) : null}
@@ -267,11 +286,13 @@ function InboxFocusBanner({
   );
 }
 
-function getInboxFocusContent(focus: string, cityOnly: boolean) {
+function getInboxFocusContent(focus: string, cityOnly: boolean, cityCommittee: boolean) {
   if (focus === "ready_to_finalize") {
     return {
       title: "Hồ sơ đủ điều kiện chốt",
-      desc: "Kiểm tra Decision Panel bên phải và chốt theo đề xuất mới nhất.",
+      desc: cityCommittee
+        ? "Đối chiếu thông tin và chọn kết quả phù hợp với hồ sơ."
+        : "Kiểm tra Decision Panel bên phải và chốt theo đề xuất mới nhất.",
     };
   }
   if (focus === "downgraded") {
@@ -292,8 +313,10 @@ function getInboxFocusContent(focus: string, cityOnly: boolean) {
   }
   if (focus === "needs_resolution") {
     return {
-      title: "Còn case hội ý đang mở",
-      desc: "Cần xử lý Resolution Case trước khi chốt kết quả cuối.",
+      title: cityCommittee ? "Hồ sơ đang chờ Hội đồng xem xét" : "Còn case hội ý đang mở",
+      desc: cityCommittee
+        ? "Vui lòng xem nội dung hội ý trước khi chốt kết quả cuối."
+        : "Cần xử lý Resolution Case trước khi chốt kết quả cuối.",
     };
   }
   if (focus === "supplement_required") {
@@ -305,12 +328,16 @@ function getInboxFocusContent(focus: string, cityOnly: boolean) {
   if (focus === "overdue") {
     return {
       title: "Việc xử lý quá hạn",
-      desc: "Ưu tiên kiểm tra task/case lâu chưa cập nhật và nhắc bên phụ trách.",
+      desc: cityCommittee
+        ? "Ưu tiên xem các hồ sơ đã lâu chưa có cập nhật."
+        : "Ưu tiên kiểm tra task/case lâu chưa cập nhật và nhắc bên phụ trách.",
     };
   }
   return {
     title: "Mở từ hàng chờ chốt kết quả",
-    desc: "Hồ sơ này được mở theo bucket công việc của Hội đồng/Cấp quản lý.",
+    desc: cityCommittee
+      ? "Hồ sơ được mở từ danh sách cần Hội đồng xem xét."
+      : "Hồ sơ này được mở theo bucket công việc của Hội đồng/Cấp quản lý.",
   };
 }
 
@@ -413,6 +440,7 @@ function BackButton() {
 function DecisionPanel({
   canFinalize,
   cityOnly,
+  cityCommittee,
   detail,
   onFinalize,
   onReopen,
@@ -423,6 +451,7 @@ function DecisionPanel({
 }: {
   canFinalize: boolean;
   cityOnly: boolean;
+  cityCommittee: boolean;
   detail: ManagerResultDetail;
   onFinalize: () => void;
   onReopen: () => void;
@@ -432,9 +461,14 @@ function DecisionPanel({
   supplementCount: number;
 }) {
   const isFinalized = Boolean(detail.application.finalizedAt);
-  const blockerMessages = detail.aggregation.blockingIssues.map(
-    (issue) => `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`,
-  );
+  const blockerMessages = cityCommittee
+    ? detail.aggregation.blockingIssues.length
+      ? ["Cần đối chiếu thêm thông tin trước khi chốt kết quả."]
+      : []
+    : detail.aggregation.blockingIssues.map(
+        (issue) =>
+          `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`,
+      );
   const businessReady = detail.aggregation.canFinalize && blockerMessages.length === 0;
   const canSubmitFinal = canFinalize && businessReady;
 
@@ -501,7 +535,9 @@ function DecisionPanel({
       <div className="flex items-start gap-3">
         <ShieldAlert className="mt-1 h-5 w-5 text-[#0057C2]" />
         <div>
-          <h2 className="font-bold text-brand-deep">Tổng hợp quyết định</h2>
+          <h2 className="font-bold text-brand-deep">
+            {cityCommittee ? "Tóm tắt hồ sơ" : "Tổng hợp quyết định"}
+          </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             {cityOnly
               ? `Cán bộ đánh giá 5 tiêu chí cho hồ sơ Thành phố năm học ${detail.application.schoolYear}. Hội đồng xác nhận kết quả cuối.`
@@ -538,8 +574,14 @@ function DecisionPanel({
             cityOnly,
           )}
         />
-        <Info label="Điều kiện nghiệp vụ" value={businessReady ? "Đủ để chốt" : "Chưa đủ"} />
-        <Info label="Quyền chốt của tài khoản" value={canFinalize ? "Có" : "Không"} />
+        <Info
+          label={cityCommittee ? "Điều kiện chốt" : "Điều kiện nghiệp vụ"}
+          value={businessReady ? "Đủ để chốt" : "Chưa đủ"}
+        />
+        <Info
+          label={cityCommittee ? "Quyền chốt kết quả" : "Quyền chốt của tài khoản"}
+          value={canFinalize ? "Có" : "Không"}
+        />
       </div>
       <div className="mt-4 space-y-2 rounded-lg border bg-slate-50 p-3 text-sm">
         <DecisionCheck
@@ -694,9 +736,11 @@ function DecisionConsole({ detail }: { detail: ManagerResultDetail }) {
 function CriterionDecisionBoard({
   detail,
   cityOnly,
+  cityCommittee,
 }: {
   detail: ManagerResultDetail;
   cityOnly: boolean;
+  cityCommittee: boolean;
 }) {
   const [selectedEvidence, setSelectedEvidence] = useState<ManagerResultEvidence | null>(null);
 
@@ -707,12 +751,19 @@ function CriterionDecisionBoard({
           <div>
             <h2 className="font-bold text-brand-deep">5 tiêu chí xét duyệt</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mỗi tiêu chí gom task, minh chứng, ghi chú cán bộ và blocker vào một dòng để hội đồng
-              ra quyết định nhanh.
+              {cityCommittee
+                ? "Mỗi tiêu chí có kết quả xem xét, minh chứng và ghi chú liên quan."
+                : "Mỗi tiêu chí gom task, minh chứng, ghi chú cán bộ và blocker vào một dòng để hội đồng ra quyết định nhanh."}
             </p>
           </div>
           <Chip tone={detail.aggregation.canFinalize ? "success" : "warning"}>
-            {detail.aggregation.canFinalize ? "Đủ điều kiện nghiệp vụ" : "Chưa đủ điều kiện"}
+            {cityCommittee
+              ? detail.aggregation.canFinalize
+                ? "Có thể chốt"
+                : "Cần xem lại"
+              : detail.aggregation.canFinalize
+                ? "Đủ điều kiện nghiệp vụ"
+                : "Chưa đủ điều kiện"}
           </Chip>
         </div>
 
@@ -728,7 +779,7 @@ function CriterionDecisionBoard({
             return (
               <details key={criterion} className="group">
                 <summary className="flex cursor-pointer list-none flex-col gap-3 px-4 py-3 hover:bg-slate-50 lg:flex-row lg:items-center">
-                  <div className="min-w-48 flex-1">
+                  <div className="min-w-0 flex-1">
                     <div className="font-semibold text-brand-deep">{criterionLabel[criterion]}</div>
                     <div className="mt-1 line-clamp-1 text-xs text-muted-foreground">{note}</div>
                   </div>
@@ -746,21 +797,28 @@ function CriterionDecisionBoard({
 
                 <div className="border-t bg-slate-50/70 p-4">
                   <div className="grid gap-3 md:grid-cols-4">
-                    <Info label="Trạng thái cuối" value={label(summary?.status)} />
+                    <Info
+                      label={cityCommittee ? "Kết quả xem xét" : "Trạng thái cuối"}
+                      value={label(summary?.status)}
+                    />
                     {!cityOnly ? (
                       <Info label="Cấp tối đa" value={level(summary?.officerSuggestedLevel)} />
                     ) : null}
                     <Info label="Cán bộ xử lý" value={task?.assignedOfficer?.fullName ?? "--"} />
-                    <Info label="Task review" value={task ? task.id.slice(0, 8) : "--"} />
+                    {!cityCommittee ? (
+                      <Info label="Task review" value={task ? task.id.slice(0, 8) : "--"} />
+                    ) : null}
                   </div>
 
                   <div className="mt-3 rounded-lg border bg-white px-3 py-2 text-sm">
-                    <span className="font-semibold text-brand-deep">Ghi chú/blocker: </span>
+                    <span className="font-semibold text-brand-deep">
+                      {cityCommittee ? "Ghi chú xem xét: " : "Ghi chú/blocker: "}
+                    </span>
                     <span className="text-muted-foreground">{note}</span>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {task ? (
+                    {task && !cityCommittee ? (
                       <Button asChild size="sm" variant="outline">
                         <Link to="/app/review/$id" params={{ id: task.id }}>
                           Mở task review
@@ -792,6 +850,7 @@ function CriterionDecisionBoard({
                             key={evidence.id}
                             evidence={evidence}
                             onSelect={setSelectedEvidence}
+                            cityCommittee={cityCommittee}
                           />
                         ))
                     ) : (
@@ -802,8 +861,9 @@ function CriterionDecisionBoard({
                   </div>
                   {evidences.length > 4 ? (
                     <div className="mt-3 rounded-lg border bg-white px-3 py-2 text-sm text-muted-foreground">
-                      Còn {evidences.length - 4} minh chứng khác. Mở task review để xem toàn bộ hồ
-                      sơ tiêu chí.
+                      {cityCommittee
+                        ? `Còn ${evidences.length - 4} minh chứng khác trong tiêu chí này.`
+                        : `Còn ${evidences.length - 4} minh chứng khác. Mở task review để xem toàn bộ hồ sơ tiêu chí.`}
                     </div>
                   ) : null}
                 </div>
@@ -815,6 +875,7 @@ function CriterionDecisionBoard({
       <EvidenceDetailDialog
         evidence={selectedEvidence}
         detail={detail}
+        cityCommittee={cityCommittee}
         onOpenChange={(open) => {
           if (!open) setSelectedEvidence(null);
         }}
@@ -1021,9 +1082,11 @@ function EvidenceSection({ evidences }: { evidences: ManagerResultEvidence[] }) 
 function EvidenceCard({
   evidence,
   onSelect,
+  cityCommittee = false,
 }: {
   evidence: ManagerResultEvidence;
   onSelect: (evidence: ManagerResultEvidence) => void;
+  cityCommittee?: boolean;
 }) {
   const openFile = async (fileId: string) => {
     try {
@@ -1040,10 +1103,12 @@ function EvidenceCard({
         <div className="min-w-0">
           <div className="break-words font-semibold text-brand-deep">{evidence.evidenceName}</div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {evidence.files?.length ?? 0} file •{" "}
-            {typeof evidence.confidence === "number"
-              ? `AI ${Math.round(evidence.confidence * 100)}%`
-              : "Chưa có độ tin cậy AI"}
+            {evidence.files?.length ?? 0} tệp
+            {!cityCommittee && typeof evidence.confidence === "number"
+              ? ` • AI ${Math.round(evidence.confidence * 100)}%`
+              : !cityCommittee
+                ? " • Chưa có độ tin cậy AI"
+                : null}
           </div>
         </div>
         <Button
@@ -1057,16 +1122,28 @@ function EvidenceCard({
         </Button>
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
-        <Chip tone="brand">{label(evidence.sourceType)}</Chip>
+        <Chip tone="brand">
+          {cityCommittee
+            ? getCommitteeEvidenceSourceLabel(evidence.sourceType)
+            : label(evidence.sourceType)}
+        </Chip>
         <Chip tone={statusTone(evidence.status)}>{label(evidence.status)}</Chip>
-        <Chip tone="brand">{label(evidence.indexingStatus)}</Chip>
+        <Chip tone="brand">
+          {cityCommittee
+            ? getCommitteeEvidenceStatusLabel(evidence.indexingStatus)
+            : label(evidence.indexingStatus)}
+        </Chip>
       </div>
-      {evidence.evidenceCard?.aiSummary ? (
+      {!cityCommittee && evidence.evidenceCard?.aiSummary ? (
         <p className="mt-3 text-sm text-muted-foreground">{evidence.evidenceCard.aiSummary}</p>
-      ) : (
+      ) : !cityCommittee ? (
         <p className="mt-3 text-sm text-muted-foreground">AI chưa có tóm tắt cho minh chứng này.</p>
-      )}
-      <EvidenceInlinePreview evidence={evidence} onSelect={onSelect} />
+      ) : null}
+      <EvidenceInlinePreview
+        evidence={evidence}
+        onSelect={onSelect}
+        cityCommittee={cityCommittee}
+      />
       <div className="mt-3 space-y-2">
         {evidence.files?.length ? (
           evidence.files.map((file) => (
@@ -1082,13 +1159,15 @@ function EvidenceCard({
                 data-smartux-tag="officer_view_original_file"
               >
                 <ExternalLink className="h-4 w-4" />
-                Xem file
+                {cityCommittee ? "Xem tệp" : "Xem file"}
               </Button>
             </div>
           ))
         ) : (
           <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Minh chứng này chưa có file đính kèm.
+            {cityCommittee
+              ? "Minh chứng này chưa có tệp đính kèm."
+              : "Minh chứng này chưa có file đính kèm."}
           </div>
         )}
       </div>
@@ -1099,9 +1178,11 @@ function EvidenceCard({
 function EvidenceInlinePreview({
   evidence,
   onSelect,
+  cityCommittee = false,
 }: {
   evidence: ManagerResultEvidence;
   onSelect: (evidence: ManagerResultEvidence) => void;
+  cityCommittee?: boolean;
 }) {
   const primaryFile = evidence.files?.[0];
   const { data: previewUrl, isLoading } = useSignedFileUrl(primaryFile?.id, Boolean(primaryFile));
@@ -1109,7 +1190,7 @@ function EvidenceInlinePreview({
   if (!primaryFile) {
     return (
       <div className="mt-3 rounded-lg border border-dashed bg-slate-50 px-3 py-6 text-center text-sm text-muted-foreground">
-        Chưa có file để preview.
+        {cityCommittee ? "Chưa có tệp để xem." : "Chưa có file để preview."}
       </div>
     );
   }
@@ -1121,14 +1202,16 @@ function EvidenceInlinePreview({
       className="mt-3 block w-full overflow-hidden rounded-lg border bg-slate-50 text-left transition hover:border-[#0057C2]/60 hover:bg-blue-50/40"
     >
       <div className="flex items-center justify-between gap-2 border-b bg-white px-3 py-2 text-xs">
-        <span className="truncate font-semibold text-brand-deep">Preview minh chứng</span>
-        <span className="shrink-0 text-muted-foreground">{evidence.files.length} file</span>
+        <span className="truncate font-semibold text-brand-deep">
+          {cityCommittee ? "Xem minh chứng" : "Preview minh chứng"}
+        </span>
+        <span className="shrink-0 text-muted-foreground">{evidence.files.length} tệp</span>
       </div>
       <div className="flex h-48 items-center justify-center overflow-hidden bg-slate-100">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Đang tải preview...
+            {cityCommittee ? "Đang tải minh chứng..." : "Đang tải preview..."}
           </div>
         ) : previewUrl && isImageMime(primaryFile.mimeType) ? (
           <img
@@ -1147,7 +1230,9 @@ function EvidenceInlinePreview({
         ) : (
           <div className="px-4 text-center text-sm text-muted-foreground">
             <FileText className="mx-auto mb-2 h-8 w-8" />
-            Không preview trực tiếp được file này.
+            {cityCommittee
+              ? "Không thể xem trực tiếp tệp này."
+              : "Không preview trực tiếp được file này."}
           </div>
         )}
       </div>
@@ -1162,17 +1247,19 @@ function EvidenceDetailDialog({
   detail,
   evidence,
   onOpenChange,
+  cityCommittee = false,
 }: {
   detail?: ManagerResultDetail;
   evidence: ManagerResultEvidence | null;
   onOpenChange: (open: boolean) => void;
+  cityCommittee?: boolean;
 }) {
   const [preview, setPreview] = useState<{
     file: ManagerResultEvidence["files"][number];
     url: string;
   } | null>(null);
   const [loadingFileId, setLoadingFileId] = useState<string | null>(null);
-  const fields = useReadableFields(evidence?.evidenceCard?.extractedFieldsJson);
+  const fields = useReadableFields(evidence?.evidenceCard?.extractedFieldsJson, cityCommittee);
   const warnings = useWarnings(evidence?.evidenceCard?.warningsJson);
   const relatedTask = useMemo(() => {
     if (!detail || !evidence) return null;
@@ -1210,7 +1297,7 @@ function EvidenceDetailDialog({
     if (firstFile) {
       void openPreview(firstFile);
     }
-  }, [evidence?.id]);
+  }, [evidence?.id, evidence?.files]);
 
   return (
     <Dialog
@@ -1227,7 +1314,7 @@ function EvidenceDetailDialog({
               <DialogTitle className="pr-8">{evidence.evidenceName}</DialogTitle>
               <DialogDescription>
                 {criterionLabel[evidence.criterion]} • {label(evidence.status)} •{" "}
-                {evidence.files?.length ?? 0} file
+                {evidence.files?.length ?? 0} {cityCommittee ? "tệp" : "file"}
               </DialogDescription>
             </DialogHeader>
 
@@ -1284,7 +1371,9 @@ function EvidenceDetailDialog({
                         >
                           <div className="truncate font-semibold">{file.originalName}</div>
                           <div className="mt-1 truncate">
-                            {file.mimeType || "--"} • {formatFileSize(file.fileSize)}
+                            {cityCommittee
+                              ? `Tệp đính kèm • ${formatFileSize(file.fileSize)}`
+                              : `${file.mimeType || "--"} • ${formatFileSize(file.fileSize)}`}
                           </div>
                         </button>
                       );
@@ -1296,7 +1385,7 @@ function EvidenceDetailDialog({
                   {loadingFileId && !preview ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Đang tải preview...
+                      {cityCommittee ? "Đang tải minh chứng..." : "Đang tải preview..."}
                     </div>
                   ) : preview ? (
                     isImageMime(preview.file.mimeType) ? (
@@ -1318,7 +1407,7 @@ function EvidenceDetailDialog({
                           {preview.file.originalName}
                         </div>
                         <div className="mt-1 text-sm text-muted-foreground">
-                          {preview.file.mimeType || "File"} •{" "}
+                          {preview.file.mimeType || (cityCommittee ? "Tệp" : "File")} •{" "}
                           {formatFileSize(preview.file.fileSize)} •{" "}
                           {formatDate(preview.file.createdAt)}
                         </div>
@@ -1328,13 +1417,15 @@ function EvidenceDetailDialog({
                           onClick={() => openPreview(preview.file, true)}
                         >
                           <ExternalLink className="h-4 w-4" />
-                          Mở file
+                          {cityCommittee ? "Mở tệp" : "Mở file"}
                         </Button>
                       </div>
                     )
                   ) : (
                     <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                      Minh chứng chưa có file đính kèm.
+                      {cityCommittee
+                        ? "Minh chứng chưa có tệp đính kèm."
+                        : "Minh chứng chưa có file đính kèm."}
                     </div>
                   )}
                 </div>
@@ -1344,54 +1435,81 @@ function EvidenceDetailDialog({
                 <section className="rounded-lg border bg-white p-4">
                   <h3 className="flex items-center gap-2 font-bold text-brand-deep">
                     <SearchCheck className="h-4 w-4 text-[#0057C2]" />
-                    Thông tin kiểm tra
+                    {cityCommittee ? "Thông tin minh chứng" : "Thông tin kiểm tra"}
                   </h3>
                   <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-1">
                     <Info label="Tiêu chí" value={criterionLabel[evidence.criterion]} />
-                    <Info label="Nguồn" value={label(evidence.sourceType)} />
-                    <Info label="Trạng thái" value={label(evidence.status)} />
-                    <Info label="AI/OCR" value={label(evidence.indexingStatus)} />
                     <Info
-                      label="Độ tin cậy"
+                      label="Nguồn"
                       value={
-                        typeof evidence.confidence === "number"
-                          ? `${Math.round(evidence.confidence * 100)}%`
-                          : "--"
+                        cityCommittee
+                          ? getCommitteeEvidenceSourceLabel(evidence.sourceType)
+                          : label(evidence.sourceType)
                       }
                     />
-                    <Info label="Số file" value={evidence.files?.length ?? 0} />
+                    <Info label="Trạng thái" value={label(evidence.status)} />
+                    {cityCommittee ? (
+                      <Info
+                        label="Tình trạng đọc tài liệu"
+                        value={getCommitteeEvidenceStatusLabel(evidence.indexingStatus)}
+                      />
+                    ) : (
+                      <>
+                        <Info label="AI/OCR" value={label(evidence.indexingStatus)} />
+                        <Info
+                          label="Độ tin cậy"
+                          value={
+                            typeof evidence.confidence === "number"
+                              ? `${Math.round(evidence.confidence * 100)}%`
+                              : "--"
+                          }
+                        />
+                      </>
+                    )}
+                    <Info
+                      label={cityCommittee ? "Số tệp" : "Số file"}
+                      value={evidence.files?.length ?? 0}
+                    />
                   </div>
                 </section>
 
                 <section className="rounded-lg border bg-white p-4">
                   <h3 className="flex items-center gap-2 font-bold text-brand-deep">
                     <Sparkles className="h-4 w-4 text-[#0057C2]" />
-                    AI/OCR
+                    {cityCommittee ? "Thông tin nhận diện" : "AI/OCR"}
                   </h3>
+                  {!cityCommittee ? (
+                    <TextBlock
+                      label="Tóm tắt AI"
+                      value={evidence.evidenceCard?.aiSummary}
+                      empty="Chưa có tóm tắt AI."
+                    />
+                  ) : null}
                   <TextBlock
-                    label="Tóm tắt AI"
-                    value={evidence.evidenceCard?.aiSummary}
-                    empty="Chưa có tóm tắt AI."
-                  />
-                  <TextBlock
-                    label="OCR preview"
+                    label={cityCommittee ? "Nội dung đọc được" : "OCR preview"}
                     value={evidence.evidenceCard?.ocrText}
-                    empty="Chưa có nội dung OCR."
+                    empty={
+                      cityCommittee
+                        ? "Chưa đọc được nội dung từ tài liệu."
+                        : "Chưa có nội dung OCR."
+                    }
                     clamp
                   />
                   <div className="mt-4">
                     <div className="text-xs font-semibold uppercase text-muted-foreground">
-                      Trường đã trích xuất
+                      {cityCommittee ? "Thông tin đọc được" : "Trường đã trích xuất"}
                     </div>
                     {fields.length ? (
                       <div className="mt-2 grid gap-2">
                         {fields.map((field) => (
-                          <Info key={field.label} label={field.label} value={field.value} />
+                          <Info key={field.key} label={field.label} value={field.value} />
                         ))}
                       </div>
                     ) : (
                       <p className="mt-2 text-sm text-muted-foreground">
-                        Chưa có trường trích xuất.
+                        {cityCommittee
+                          ? "Chưa nhận diện được thông tin."
+                          : "Chưa có trường trích xuất."}
                       </p>
                     )}
                   </div>
@@ -1402,7 +1520,11 @@ function EvidenceDetailDialog({
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                     Cảnh báo cần đối chiếu
                   </h3>
-                  {warnings.length ? (
+                  {warnings.length && cityCommittee ? (
+                    <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                      Một số thông tin cần được đối chiếu với tài liệu gốc.
+                    </p>
+                  ) : warnings.length ? (
                     <div className="mt-3 space-y-2">
                       {warnings.map((warning, index) => (
                         <div
@@ -1420,28 +1542,30 @@ function EvidenceDetailDialog({
                   )}
                 </section>
 
-                <section className="rounded-lg border bg-white p-4">
-                  <h3 className="font-bold text-brand-deep">Trạng thái task/quyết định</h3>
-                  <div className="mt-3 grid gap-2 text-sm">
-                    <Info
-                      label="Task liên quan"
-                      value={relatedTask ? relatedTask.id.slice(0, 8) : "--"}
-                    />
-                    <Info
-                      label="Cán bộ xử lý"
-                      value={relatedTask?.assignedOfficer?.fullName ?? "--"}
-                    />
-                    <Info label="Trạng thái task" value={label(relatedTask?.status)} />
-                    <Info
-                      label="Gợi ý cấp"
-                      value={getLevelLabel(relatedTask?.officerSuggestedLevel)}
-                    />
-                  </div>
-                  <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                    <span className="font-semibold text-brand-deep">Ghi chú cán bộ: </span>
-                    {taskNote}
-                  </div>
-                </section>
+                {!cityCommittee ? (
+                  <section className="rounded-lg border bg-white p-4">
+                    <h3 className="font-bold text-brand-deep">Trạng thái task/quyết định</h3>
+                    <div className="mt-3 grid gap-2 text-sm">
+                      <Info
+                        label="Task liên quan"
+                        value={relatedTask ? relatedTask.id.slice(0, 8) : "--"}
+                      />
+                      <Info
+                        label="Cán bộ xử lý"
+                        value={relatedTask?.assignedOfficer?.fullName ?? "--"}
+                      />
+                      <Info label="Trạng thái task" value={label(relatedTask?.status)} />
+                      <Info
+                        label="Gợi ý cấp"
+                        value={getLevelLabel(relatedTask?.officerSuggestedLevel)}
+                      />
+                    </div>
+                    <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      <span className="font-semibold text-brand-deep">Ghi chú cán bộ: </span>
+                      {taskNote}
+                    </div>
+                  </section>
+                ) : null}
               </div>
             </div>
           </>
@@ -1451,7 +1575,15 @@ function EvidenceDetailDialog({
   );
 }
 
-function AnalysisSection({ detail, cityOnly }: { detail: ManagerResultDetail; cityOnly: boolean }) {
+function AnalysisSection({
+  detail,
+  cityOnly,
+  cityCommittee,
+}: {
+  detail: ManagerResultDetail;
+  cityOnly: boolean;
+  cityCommittee: boolean;
+}) {
   const suggestedLevel = getSuggestedLevel(detail);
   const hasBlockingIssue = detail.aggregation.blockingIssues.length > 0;
   const hasOpenResolution = detail.resolutionCases.some(
@@ -1473,9 +1605,14 @@ function AnalysisSection({ detail, cityOnly }: { detail: ManagerResultDetail; ci
         ? `Đề xuất hạ từ ${getLevelLabel(detail.application.targetLevel)} xuống ${getLevelLabel(suggestedLevel)} theo kết quả tiêu chí.`
         : "Chưa đủ điều kiện đạt cấp nào theo kết quả tiêu chí.";
   const reasons = [
-    ...detail.aggregation.blockingIssues.map(
-      (issue) => `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`,
-    ),
+    ...(cityCommittee
+      ? detail.aggregation.blockingIssues.length
+        ? ["Cần đối chiếu thêm thông tin trước khi chốt kết quả."]
+        : []
+      : detail.aggregation.blockingIssues.map(
+          (issue) =>
+            `${issue.criterion ? `${criterionLabel[issue.criterion]}: ` : ""}${issue.message}`,
+        )),
     ...(hasOpenResolution ? ["Đang còn hồ sơ hội ý cần xử lý."] : []),
     ...(hasSupplement ? ["Đang còn yêu cầu bổ sung minh chứng."] : []),
   ];
@@ -1533,7 +1670,13 @@ function AnalysisSection({ detail, cityOnly }: { detail: ManagerResultDetail; ci
   );
 }
 
-function ResolutionSection({ detail }: { detail: ManagerResultDetail }) {
+function ResolutionSection({
+  detail,
+  cityCommittee,
+}: {
+  detail: ManagerResultDetail;
+  cityCommittee: boolean;
+}) {
   return (
     <Card>
       <h2 className="font-bold text-brand-deep">Hồ sơ hội ý liên quan</h2>
@@ -1547,7 +1690,7 @@ function ResolutionSection({ detail }: { detail: ManagerResultDetail }) {
               className="block rounded-lg border p-4 hover:bg-slate-50"
             >
               <div className="font-semibold text-brand-deep">
-                #{item.id.slice(0, 8)} • {label(item.status)}
+                {cityCommittee ? "Hồ sơ hội ý" : `#${item.id.slice(0, 8)}`} • {label(item.status)}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{item.reason}</p>
             </Link>
@@ -1562,7 +1705,13 @@ function ResolutionSection({ detail }: { detail: ManagerResultDetail }) {
   );
 }
 
-function AuditSection({ detail }: { detail: ManagerResultDetail }) {
+function AuditSection({
+  detail,
+  cityCommittee,
+}: {
+  detail: ManagerResultDetail;
+  cityCommittee: boolean;
+}) {
   const businessEvents = detail.auditTimeline.filter((item) => !item.action.includes("VIEWED"));
   const recent = businessEvents.slice(0, 5);
 
@@ -1586,8 +1735,12 @@ function AuditSection({ detail }: { detail: ManagerResultDetail }) {
               <div key={item.id} className="rounded-lg border p-3 text-sm">
                 <div className="font-semibold text-brand-deep">{auditActionLabel(item.action)}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {formatDate(item.createdAt)} • {item.actorRole ?? "--"} •{" "}
-                  <span className="font-mono">{item.action}</span>
+                  {formatDate(item.createdAt)}
+                  {cityCommittee
+                    ? item.actorName
+                      ? ` • ${item.actorName}`
+                      : " • Hội đồng Thành phố"
+                    : ` • ${item.actorRole ?? "--"} • ${item.action}`}
                 </div>
                 {item.note ? <p className="mt-2 text-muted-foreground">{item.note}</p> : null}
               </div>
@@ -1610,7 +1763,7 @@ function auditActionLabel(action: string) {
   if (action.includes("REVIEW")) return "Cán bộ đã duyệt tiêu chí";
   if (action.includes("REOPEN")) return "Đã mở lại kết quả";
   if (action.includes("RESOLUTION")) return "Đã xử lý hội ý";
-  return "Cập nhật hồ sơ";
+  return "Hồ sơ có cập nhật";
 }
 
 function Info({ label, value }: { label: string; value?: string | number | null }) {
@@ -1871,6 +2024,30 @@ function label(value?: string | null) {
   return workflowLabel === fallbackStatusLabel ? (statusLabel[value] ?? value) : workflowLabel;
 }
 
+function getCommitteeEvidenceStatusLabel(value?: string | null) {
+  if (!value) return "Chưa có thông tin đọc tài liệu";
+  const labels: Record<string, string> = {
+    pending_indexing: "Đang chờ đọc tài liệu",
+    indexed: "Đã đọc tài liệu",
+    not_started: "Chưa đọc tài liệu",
+    uploaded: "Đã tải lên",
+    ocr_processing: "Đang đọc tài liệu",
+    extracting: "Đang nhận diện thông tin",
+    checking_registry: "Đang đối chiếu thông tin",
+    needs_manual_review: "Cần cán bộ đối chiếu",
+    failed: "Chưa đọc được tài liệu",
+  };
+  return labels[value] ?? "Đang chờ cán bộ xem xét";
+}
+
+function getCommitteeEvidenceSourceLabel(value?: string | null) {
+  if (value === "manual_upload") return "Sinh viên gửi";
+  if (value === "event_import") return "Từ hoạt động đã ghi nhận";
+  if (value === "metric_input") return "Thông tin hồ sơ";
+  if (value === "collective_import") return "Từ danh sách tập thể";
+  return "Tài liệu đính kèm";
+}
+
 function statusTone(value?: string | null): "brand" | "success" | "warning" | "error" | "muted" {
   return getStatusTone(value);
 }
@@ -1902,7 +2079,7 @@ function isPdfMime(mimeType?: string | null) {
   return mimeType === "application/pdf";
 }
 
-function useReadableFields(value: unknown) {
+function useReadableFields(value: unknown, cityCommittee = false) {
   return useMemo(() => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return [];
     return Object.entries(value as Record<string, unknown>)
@@ -1910,10 +2087,47 @@ function useReadableFields(value: unknown) {
         ([, fieldValue]) => fieldValue !== undefined && fieldValue !== null && fieldValue !== "",
       )
       .map(([key, fieldValue]) => ({
-        label: key.replace(/_/g, " "),
-        value: Array.isArray(fieldValue) ? fieldValue.join(", ") : String(fieldValue),
+        key,
+        label: cityCommittee ? committeeFieldLabel(key) : key.replace(/_/g, " "),
+        value: committeeFieldValue(fieldValue, cityCommittee),
       }));
-  }, [value]);
+  }, [cityCommittee, value]);
+}
+
+function committeeFieldLabel(key: string) {
+  const labels: Record<string, string> = {
+    student_name: "Họ và tên",
+    full_name: "Họ và tên",
+    student_code: "Mã số sinh viên",
+    class_name: "Lớp",
+    class: "Lớp",
+    faculty: "Khoa",
+    department: "Khoa",
+    activity_name: "Tên hoạt động",
+    title: "Tên giấy tờ",
+    document_type: "Loại giấy tờ",
+    issuing_organization: "Đơn vị cấp",
+    organization: "Đơn vị tổ chức",
+    issue_date: "Ngày cấp",
+    activity_date: "Ngày tham gia",
+    gpa: "Điểm trung bình",
+    academic_year: "Năm học",
+    result: "Kết quả",
+  };
+  return labels[key.toLowerCase()] ?? "Thông tin bổ sung";
+}
+
+function committeeFieldValue(value: unknown, cityCommittee: boolean) {
+  const rendered = Array.isArray(value) ? value.join(", ") : String(value);
+  if (!cityCommittee) return rendered;
+  const labels: Record<string, string> = {
+    university: "Đại học",
+    college: "Cao đẳng",
+    certificate: "Giấy chứng nhận",
+    academic_result: "Kết quả học tập",
+    transcript: "Bảng điểm",
+  };
+  return labels[rendered.toLowerCase()] ?? rendered;
 }
 
 function useWarnings(value: unknown) {

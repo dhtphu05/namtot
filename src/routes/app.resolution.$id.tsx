@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ExternalLink,
   FileQuestion,
+  FileText,
   History,
   Link2,
   MessageSquareText,
@@ -25,6 +26,7 @@ import { LevelBadge } from "@/features/review/components/LevelBadge";
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
 import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingState";
 import { ReviewStatusBadge } from "@/features/review/components/ReviewStatusBadge";
+import { useSignedFileUrl } from "@/features/review/hooks/useReview";
 import type { ReviewDecision, Role } from "@/features/review/types";
 import { getErrorMessage } from "@/features/review/utils/errors";
 import {
@@ -71,7 +73,7 @@ const resolveDecisionOptions: Array<{
   { value: "accepted", label: "Công nhận minh chứng" },
   { value: "rejected", label: "Không công nhận minh chứng" },
   { value: "supplement_required", label: "Yêu cầu bổ sung" },
-  { value: "closed_no_action", label: "Đóng case không xử lý" },
+  { value: "closed_no_action", label: "Kết thúc, không thay đổi kết quả" },
 ];
 
 function ResolutionCaseDetailRoute() {
@@ -132,14 +134,19 @@ function ResolutionCaseDetailContent({ caseId, role }: { caseId: string; role: R
       <>
         <TopBar
           title="Chi tiết hồ sơ hội ý"
-          subtitle="Không thể tải dữ liệu hồ sơ hội ý."
+          subtitle={
+            role === "city_committee"
+              ? "Tạm thời chưa xem được hồ sơ này."
+              : "Không thể tải dữ liệu hồ sơ hội ý."
+          }
           action={<BackToResolutionButton />}
         />
         <ReviewErrorState
-          description={getErrorMessage(
-            error,
-            "Không thể tải chi tiết hồ sơ hội ý. Vui lòng thử lại sau.",
-          )}
+          description={
+            role === "city_committee"
+              ? "Tạm thời chưa xem được hồ sơ này. Vui lòng thử lại sau."
+              : getErrorMessage(error, "Không thể tải chi tiết hồ sơ hội ý. Vui lòng thử lại sau.")
+          }
           onRetry={() => void refetch()}
         />
       </>
@@ -170,48 +177,81 @@ function ResolutionCaseDetailContent({ caseId, role }: { caseId: string; role: R
   return (
     <>
       <TopBar
-        title={`Case hội ý #${shortId(resolutionCase.id)}`}
+        title={
+          role === "city_committee"
+            ? "Chi tiết hồ sơ Hội đồng xem xét"
+            : `Chi tiết hồ sơ hội ý #${shortId(resolutionCase.id)}`
+        }
         subtitle={`${resolutionCase.studentName || fallbackText} • ${resolutionCase.studentCode || fallbackText}`}
         action={<BackToResolutionButton />}
       />
 
       <div className="space-y-5">
-        <Card>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <HeaderField
-              label="Trạng thái hội ý"
-              value={
-                <ReviewStatusBadge status={resolutionStatusToReviewStatus(resolutionCase.status)} />
-              }
-            />
-            <HeaderField
-              label="Tiêu chí"
-              value={<CriterionBadge criterion={resolutionCase.criterion} />}
-            />
-            <HeaderField
-              label="Cấp xét"
-              value={<LevelBadge level={resolutionCase.targetLevel} />}
-            />
-            <HeaderField
-              label="Trạng thái hồ sơ"
-              value={<ReviewStatusBadge status={resolutionCase.applicationStatus} />}
-            />
-            <HeaderField label="Người chuyển" value={getActorLabel(resolutionCase)} />
-            <HeaderField label="Ngày tạo" value={formatDateTime(resolutionCase.createdAt)} />
-            <HeaderField label="Cập nhật" value={formatDateTime(resolutionCase.updatedAt)} />
-            <HeaderField label="Mã hồ sơ" value={`#${shortId(resolutionCase.applicationId)}`} />
-          </div>
+        <Card className="min-w-0">
+          {role === "city_committee" ? (
+            <div className="grid min-w-0 grid-cols-2 gap-3">
+              <HeaderField
+                label="Trạng thái xử lý"
+                value={
+                  <ReviewStatusBadge
+                    status={resolutionStatusToReviewStatus(resolutionCase.status)}
+                  />
+                }
+              />
+              <HeaderField
+                label="Tiêu chí"
+                value={<CriterionBadge criterion={resolutionCase.criterion} />}
+              />
+            </div>
+          ) : (
+            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              <HeaderField
+                label="Trạng thái hội ý"
+                value={
+                  <ReviewStatusBadge
+                    status={resolutionStatusToReviewStatus(resolutionCase.status)}
+                  />
+                }
+              />
+              <HeaderField
+                label="Tiêu chí"
+                value={<CriterionBadge criterion={resolutionCase.criterion} />}
+              />
+              <HeaderField
+                label="Cấp xét"
+                value={<LevelBadge level={resolutionCase.targetLevel} />}
+              />
+              <HeaderField
+                label="Trạng thái hồ sơ"
+                value={<ReviewStatusBadge status={resolutionCase.applicationStatus} />}
+              />
+              <HeaderField label="Người chuyển" value={getActorLabel(resolutionCase)} />
+              <HeaderField label="Ngày tạo" value={formatDateTime(resolutionCase.createdAt)} />
+              <HeaderField label="Cập nhật" value={formatDateTime(resolutionCase.updatedAt)} />
+              <HeaderField label="Mã hồ sơ" value={`#${shortId(resolutionCase.applicationId)}`} />
+            </div>
+          )}
         </Card>
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.42fr)]">
+        <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.42fr)]">
           <div className="space-y-5">
-            <ReasonSection resolutionCase={resolutionCase} />
-            <LinkedDataSection resolutionCase={resolutionCase} />
-            <StudentSection resolutionCase={resolutionCase} />
-            <HistorySection
-              comments={resolutionCase.comments ?? []}
-              decisionHistory={resolutionCase.decisionHistory ?? []}
+            <ReasonSection
+              resolutionCase={resolutionCase}
+              cityCommittee={role === "city_committee"}
             />
+            <LinkedDataSection
+              resolutionCase={resolutionCase}
+              showReviewId={role !== "city_committee"}
+              showApplicationId={role !== "city_committee"}
+              cityCommittee={role === "city_committee"}
+            />
+            <StudentSection resolutionCase={resolutionCase} />
+            {role !== "city_committee" ? (
+              <HistorySection
+                comments={resolutionCase.comments ?? []}
+                decisionHistory={resolutionCase.decisionHistory ?? []}
+              />
+            ) : null}
           </div>
 
           <div className="space-y-5">
@@ -227,7 +267,9 @@ function ResolutionCaseDetailContent({ caseId, role }: { caseId: string; role: R
                 onSuccess={() => void refetch()}
               />
             )}
-            <TimelineSection timeline={resolutionCase.auditTimeline ?? []} />
+            {role !== "city_committee" ? (
+              <TimelineSection timeline={resolutionCase.auditTimeline ?? []} />
+            ) : null}
           </div>
         </section>
       </div>
@@ -256,8 +298,8 @@ function OfficerResolutionReadonlyCard() {
         <div>
           <h3 className="font-bold text-brand-deep">Theo dõi hội ý</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cán bộ xem lại lý do chuyển hội ý, minh chứng liên quan và lịch sử xử lý. Chỉ Hội
-            đồng/Cấp quản lý được kết luận case này.
+            Cán bộ xem lại lý do chuyển hội ý, minh chứng liên quan và lịch sử xử lý. Chỉ Hội đồng
+            và cấp quản lý có thể kết luận hồ sơ này.
           </p>
         </div>
       </div>
@@ -307,33 +349,63 @@ function SectionHeader({
   );
 }
 
-function ReasonSection({ resolutionCase }: { resolutionCase: ResolutionCaseDetail }) {
+function ReasonSection({
+  resolutionCase,
+  cityCommittee,
+}: {
+  resolutionCase: ResolutionCaseDetail;
+  cityCommittee: boolean;
+}) {
+  const reason = resolutionCase.reason || fallbackText;
+  const councilQuestion = `Minh chứng này có được tính cho ${getCriterionLabel(resolutionCase.criterion)} ${getResolutionLevelText(resolutionCase.targetLevel)} không?`;
+
   return (
     <Card>
-      <SectionHeader icon={<FileQuestion className="h-5 w-5" />} title="Lý do cần hội ý" />
-      <div className="mb-3 grid gap-3 md:grid-cols-2">
-        <InfoRow label="Lý do chính" value={resolutionCase.reason || fallbackText} />
-        <InfoRow
-          label="Câu hỏi cần hội đồng quyết định"
-          value={`Minh chứng này có được tính cho ${getCriterionLabel(resolutionCase.criterion)} ${getResolutionLevelText(resolutionCase.targetLevel)} không?`}
-        />
-      </div>
-      <div className="rounded-md border bg-muted/30 p-4 text-sm text-foreground">
-        {resolutionCase.reason || fallbackText}
-      </div>
-      {resolutionCase.officerNote ? (
-        <div className="mt-3 rounded-md border p-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Ghi chú cán bộ
-          </div>
-          <p className="mt-1 text-sm text-foreground">{resolutionCase.officerNote}</p>
+      <SectionHeader
+        icon={<FileQuestion className="h-5 w-5" />}
+        title={cityCommittee ? "Lý do chuyển Hội đồng" : "Lý do cần hội ý"}
+      />
+      {cityCommittee ? (
+        <div className="space-y-3">
+          <div className="rounded-md border bg-muted/30 p-4 text-sm text-foreground">{reason}</div>
+          <InfoRow label="Nội dung cần xem xét" value={councilQuestion} />
+          {resolutionCase.officerNote?.trim() &&
+          resolutionCase.officerNote.trim() !== resolutionCase.reason?.trim() ? (
+            <InfoRow label="Thông tin bổ sung từ cán bộ" value={resolutionCase.officerNote} />
+          ) : null}
         </div>
-      ) : null}
+      ) : (
+        <>
+          <div className="mb-3 grid gap-3 md:grid-cols-2">
+            <InfoRow label="Lý do chính" value={reason} />
+            <InfoRow label="Câu hỏi cần hội đồng quyết định" value={councilQuestion} />
+          </div>
+          <div className="rounded-md border bg-muted/30 p-4 text-sm text-foreground">{reason}</div>
+          {resolutionCase.officerNote ? (
+            <div className="mt-3 rounded-md border p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Ghi chú cán bộ
+              </div>
+              <p className="mt-1 text-sm text-foreground">{resolutionCase.officerNote}</p>
+            </div>
+          ) : null}
+        </>
+      )}
     </Card>
   );
 }
 
-function LinkedDataSection({ resolutionCase }: { resolutionCase: ResolutionCaseDetail }) {
+function LinkedDataSection({
+  resolutionCase,
+  showReviewId,
+  showApplicationId,
+  cityCommittee,
+}: {
+  resolutionCase: ResolutionCaseDetail;
+  showReviewId: boolean;
+  showApplicationId: boolean;
+  cityCommittee: boolean;
+}) {
   const evidenceIds = resolutionCase.evidenceIds ?? [];
   const evidenceNames = resolutionCase.evidenceNames ?? [];
   const relatedEvidences = resolutionCase.relatedEvidences ?? [];
@@ -342,127 +414,295 @@ function LinkedDataSection({ resolutionCase }: { resolutionCase: ResolutionCaseD
     <Card>
       <SectionHeader
         icon={<Link2 className="h-5 w-5" />}
-        title="Liên kết hồ sơ / tác vụ / minh chứng"
+        title={cityCommittee ? "Minh chứng để xem xét" : "Hồ sơ và minh chứng liên quan"}
+        description={
+          cityCommittee ? "Xem tài liệu gốc để đối chiếu trước khi kết luận." : undefined
+        }
       />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <InfoRow label="Mã hồ sơ ngắn" value={`#${shortId(resolutionCase.applicationId)}`} />
-        <InfoRow
-          label="Tác vụ xét duyệt liên quan"
-          value={resolutionCase.taskId ? `#${shortId(resolutionCase.taskId)}` : undefined}
-        />
-      </div>
-
-      {!resolutionCase.applicationId || !resolutionCase.taskId || !evidenceIds.length ? (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          Case này thiếu liên kết minh chứng hoặc tác vụ xét duyệt. Vui lòng quay lại tác vụ xét
-          duyệt và chuyển hội ý lại để hội đồng có đủ ngữ cảnh.
+      {showApplicationId || showReviewId ? (
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          {showApplicationId ? (
+            <InfoRow label="Mã hồ sơ" value={`#${shortId(resolutionCase.applicationId)}`} />
+          ) : null}
+          {showReviewId ? (
+            <InfoRow
+              label="Mã lượt xem xét"
+              value={resolutionCase.taskId ? `#${shortId(resolutionCase.taskId)}` : undefined}
+            />
+          ) : null}
         </div>
       ) : null}
 
-      <div className="mt-4">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Minh chứng liên quan
+      {!cityCommittee &&
+      (!resolutionCase.applicationId || !resolutionCase.taskId || !evidenceIds.length) ? (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Một số thông tin về hồ sơ hoặc minh chứng chưa đầy đủ để đối chiếu. Vui lòng kiểm tra lại
+          trước khi kết luận.
         </div>
-        {evidenceIds.length || evidenceNames.length ? (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {(evidenceNames.length ? evidenceNames : evidenceIds).map((item) => (
-              <Badge key={item} variant="outline">
-                {item}
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-2 text-sm text-muted-foreground">
-            Case này chưa liên kết minh chứng cụ thể.
-          </div>
-        )}
-      </div>
-      <div className="mt-5 space-y-4">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Minh chứng chính
-          </div>
-          {resolutionCase.primaryEvidence ? (
-            <div className="mt-2">
-              <ResolutionEvidenceCard evidence={resolutionCase.primaryEvidence} />
-            </div>
-          ) : (
-            <div className="mt-2 rounded-lg border bg-slate-50 p-3 text-sm text-muted-foreground">
-              Case này chưa liên kết minh chứng cụ thể.
-            </div>
-          )}
-        </div>
-        <div>
+      ) : null}
+
+      {!cityCommittee ? (
+        <div className="mt-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Minh chứng liên quan
           </div>
-          {relatedEvidences.length ? (
-            <div className="mt-2 grid gap-3 md:grid-cols-2">
-              {relatedEvidences.map((evidence) => (
-                <ResolutionEvidenceCard key={evidence.id} evidence={evidence} />
+          {evidenceIds.length || evidenceNames.length ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(evidenceNames.length ? evidenceNames : evidenceIds).map((item) => (
+                <Badge key={item} variant="outline">
+                  {item}
+                </Badge>
               ))}
             </div>
           ) : (
-            <div className="mt-2 rounded-lg border bg-slate-50 p-3 text-sm text-muted-foreground">
-              Không có minh chứng liên quan khác.
+            <div className="mt-2 text-sm text-muted-foreground">
+              Chưa có minh chứng cụ thể được liên kết.
             </div>
           )}
         </div>
+      ) : null}
+      <div className="mt-5 space-y-4">
+        <div>
+          {!cityCommittee ? (
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Minh chứng chính
+            </div>
+          ) : null}
+          {resolutionCase.primaryEvidence ? (
+            <div className="mt-2">
+              <ResolutionEvidenceCard
+                evidence={resolutionCase.primaryEvidence}
+                cityCommittee={cityCommittee}
+              />
+            </div>
+          ) : (
+            <div className="mt-2 rounded-lg border bg-slate-50 p-3 text-sm text-muted-foreground">
+              Chưa có minh chứng cụ thể được liên kết.
+            </div>
+          )}
+        </div>
+        {relatedEvidences.length || !cityCommittee ? (
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Minh chứng liên quan
+            </div>
+            {relatedEvidences.length ? (
+              <div className="mt-2 grid gap-3 md:grid-cols-2">
+                {relatedEvidences.map((evidence) => (
+                  <ResolutionEvidenceCard
+                    key={evidence.id}
+                    evidence={evidence}
+                    cityCommittee={cityCommittee}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-2 rounded-lg border bg-slate-50 p-3 text-sm text-muted-foreground">
+                Không có minh chứng liên quan khác.
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </Card>
   );
 }
 
-function ResolutionEvidenceCard({ evidence }: { evidence: ResolutionEvidence }) {
+function ResolutionEvidenceCard({
+  evidence,
+  cityCommittee,
+}: {
+  evidence: ResolutionEvidence;
+  cityCommittee: boolean;
+}) {
   const openFile = async (fileId: string) => {
     try {
       const response = await evidenceApi.getSignedFileUrl(fileId);
       if (response.data?.url) window.open(response.data.url, "_blank", "noopener,noreferrer");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể mở file.");
+      toast.error(
+        cityCommittee
+          ? "Không mở được tài liệu. Vui lòng thử lại."
+          : error instanceof Error
+            ? error.message
+            : "Không thể mở tệp.",
+      );
     }
   };
 
   return (
     <div className="rounded-lg border p-3">
-      <div className="font-semibold text-brand-deep">{evidence.evidenceName}</div>
-      <div className="mt-1 text-xs text-muted-foreground">
-        {getResolutionEvidenceSourceLabel(evidence.sourceType)} ·{" "}
-        {getResolutionEvidenceStatusLabel(evidence.status)} ·{" "}
-        {getIndexingLabel(evidence.indexingStatus)}
-      </div>
-      {typeof evidence.confidence === "number" ? (
-        <div className="mt-2">
-          <Badge variant="secondary">{formatEvidenceClarityLabel(evidence.confidence)}</Badge>
-        </div>
-      ) : null}
-      {evidence.evidenceCard?.aiSummary ? (
-        <p className="mt-2 text-sm text-muted-foreground">{evidence.evidenceCard.aiSummary}</p>
-      ) : (
-        <p className="mt-2 text-sm text-muted-foreground">
-          Chưa có tóm tắt đọc nhanh cho minh chứng này.
+      <div className="break-words font-semibold text-brand-deep">{evidence.evidenceName}</div>
+      {cityCommittee ? (
+        <p className="mt-1 text-sm text-muted-foreground">
+          Đối chiếu nội dung trên tài liệu với hồ sơ sinh viên.
         </p>
+      ) : (
+        <>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {getResolutionEvidenceSourceLabel(evidence.sourceType)} ·{" "}
+            {getResolutionEvidenceStatusLabel(evidence.status)} ·{" "}
+            {getIndexingLabel(evidence.indexingStatus)}
+          </div>
+          {typeof evidence.confidence === "number" ? (
+            <div className="mt-2">
+              <Badge variant="secondary">{formatEvidenceClarityLabel(evidence.confidence)}</Badge>
+            </div>
+          ) : null}
+          {evidence.evidenceCard?.aiSummary ? (
+            <p className="mt-2 text-sm text-muted-foreground">{evidence.evidenceCard.aiSummary}</p>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Chưa có tóm tắt đọc nhanh cho minh chứng này.
+            </p>
+          )}
+        </>
       )}
       <div className="mt-3 space-y-2">
         {evidence.files?.length ? (
           evidence.files.map((file) => (
-            <div
+            <ResolutionEvidenceFile
               key={file.id}
-              className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm"
-            >
-              <span className="truncate">{file.originalName}</span>
-              <Button size="sm" variant="ghost" onClick={() => openFile(file.id)}>
-                <ExternalLink className="h-4 w-4" />
-                Xem file
-              </Button>
-            </div>
+              file={file}
+              cityCommittee={cityCommittee}
+              onOpen={() => openFile(file.id)}
+            />
           ))
         ) : (
           <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
-            Minh chứng chưa có file đính kèm.
+            Minh chứng chưa có tài liệu đính kèm.
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ResolutionEvidenceFile({
+  file,
+  cityCommittee,
+  onOpen,
+}: {
+  file: ResolutionEvidence["files"][number];
+  cityCommittee: boolean;
+  onOpen: () => void;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const { data: signedUrl, isError, isLoading, refetch } = useSignedFileUrl(file.id, cityCommittee);
+  const isImage = file.mimeType.startsWith("image/");
+  const canShowImage = Boolean(signedUrl) && !imageFailed;
+
+  const retryFile = () => {
+    setImageFailed(false);
+    void refetch();
+  };
+
+  if (cityCommittee) {
+    return (
+      <div className="min-w-0 overflow-hidden rounded-lg border bg-slate-50">
+        {isImage ? (
+          canShowImage ? (
+            <a
+              aria-label={`Mở ảnh ${file.originalName}`}
+              className="block aspect-[4/3] w-full overflow-hidden bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-deep"
+              href={signedUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <img
+                alt={file.originalName}
+                className="h-full w-full object-contain"
+                loading="lazy"
+                src={signedUrl}
+                onError={() => setImageFailed(true)}
+              />
+            </a>
+          ) : (
+            <div className="flex aspect-[4/3] items-center justify-center bg-white px-4 text-center text-sm text-muted-foreground">
+              <div>
+                <div>
+                  {isLoading
+                    ? "Đang tải bản xem trước…"
+                    : isError || imageFailed
+                      ? "Chưa tải được bản xem trước. Hãy thử lại hoặc mở tài liệu gốc."
+                      : "Bản xem trước chưa sẵn sàng."}
+                </div>
+                <Button className="mt-2" size="sm" variant="outline" onClick={retryFile}>
+                  Tải lại tài liệu
+                </Button>
+              </div>
+            </div>
+          )
+        ) : (
+          <>
+            {file.mimeType === "application/pdf" && signedUrl ? (
+              <iframe
+                className="aspect-[4/3] w-full bg-white"
+                loading="lazy"
+                src={signedUrl}
+                title={`Bản xem trước: ${file.originalName}`}
+              />
+            ) : null}
+            <div className="flex min-w-0 items-center gap-3 p-3">
+              <div className="shrink-0 rounded-md bg-white p-2 text-brand-deep">
+                <FileText aria-hidden="true" className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="break-words text-sm font-medium text-foreground">
+                  {file.originalName}
+                </div>
+                {signedUrl ? (
+                  <a
+                    className="mt-1 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-brand-deep underline-offset-4 hover:underline"
+                    href={signedUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <ExternalLink aria-hidden="true" className="h-4 w-4" />
+                    Mở tài liệu
+                  </a>
+                ) : (
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>{isLoading ? "Đang tải tài liệu…" : "Chưa mở được tài liệu."}</span>
+                    {isError ? (
+                      <Button size="sm" variant="outline" onClick={retryFile}>
+                        Tải lại tài liệu
+                      </Button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+        {isImage ? (
+          <div className="flex min-w-0 items-center justify-between gap-2 border-t px-3 py-2">
+            <span className="min-w-0 break-words text-sm text-foreground">{file.originalName}</span>
+            {canShowImage ? (
+              <a
+                aria-label={`Mở ảnh ${file.originalName}`}
+                className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-sm font-medium text-brand-deep hover:bg-white"
+                href={signedUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <ExternalLink aria-hidden="true" className="h-4 w-4" />
+                Mở ảnh
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm">
+      <span className="min-w-0 truncate">{file.originalName}</span>
+      <Button size="sm" variant="ghost" onClick={onOpen}>
+        <ExternalLink className="h-4 w-4" />
+        Mở tài liệu
+      </Button>
     </div>
   );
 }
@@ -532,7 +772,7 @@ function TimelineSection({ timeline }: { timeline: ResolutionTimelineItem[] }) {
   const visibleTimeline = timeline.filter((item) => isUserFacingAuditAction(item.action));
   return (
     <Card>
-      <SectionHeader icon={<History className="h-5 w-5" />} title="Lịch sử xử lý case" />
+      <SectionHeader icon={<History className="h-5 w-5" />} title="Lịch sử hồ sơ hội ý" />
       {visibleTimeline.length ? (
         <div className="space-y-3">
           {visibleTimeline.map((item) => (
@@ -590,7 +830,7 @@ function ResolveResolutionPanel({
     resolveCase.error instanceof Error
       ? resolveCase.error.message
       : resolveCase.error
-        ? "Không thể gửi kết luận hội ý. Chức năng kết luận hội ý sẽ được bật khi backend hỗ trợ."
+        ? "Chưa thể gửi kết luận lúc này. Vui lòng thử lại sau."
         : null;
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -861,7 +1101,7 @@ function getResolutionEvidenceSourceLabel(sourceType?: string | null) {
     event_import: "Minh chứng từ sự kiện",
     collective_import: "Minh chứng tập thể",
   };
-  return sourceType ? (labels[sourceType] ?? sourceType) : fallbackText;
+  return sourceType ? (labels[sourceType] ?? "Nguồn minh chứng khác") : fallbackText;
 }
 
 function getResolutionEvidenceStatusLabel(status?: string | null) {
@@ -875,7 +1115,7 @@ function getResolutionEvidenceStatusLabel(status?: string | null) {
     rejected: "Không công nhận",
     resolution_needed: "Cần hội ý",
   };
-  return status ? (labels[status] ?? status) : fallbackText;
+  return status ? (labels[status] ?? "Đang cập nhật") : fallbackText;
 }
 
 function getIndexingLabel(status?: string | null) {
@@ -890,7 +1130,7 @@ function getIndexingLabel(status?: string | null) {
     needs_manual_review: "Cần cán bộ kiểm tra",
     failed: "Cần kiểm tra thủ công",
   };
-  return status ? (labels[status] ?? status) : fallbackText;
+  return status ? (labels[status] ?? "Đang cập nhật") : fallbackText;
 }
 
 function shortId(id?: string | null) {

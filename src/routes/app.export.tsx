@@ -17,7 +17,6 @@ import type { ApplicationStatus, Level, Role } from "@/features/review/types";
 import { getLevelLabel, getTaskStatusLabel } from "@/features/review/utils/formatters";
 import { ACTIVE_LEVELS } from "@/lib/levels";
 import { cityPilotSchoolYear } from "@/features/manager/city-analytics/constants";
-import { CityCommitteeSubmittedApplications } from "@/features/manager/city-analytics/CityCommitteeSubmittedApplications";
 
 export const Route = createFileRoute("/app/export")({
   component: ExportRoute,
@@ -96,6 +95,51 @@ function ExportContent({ role }: { role: Role }) {
     }
   };
 
+  if (cityOnly) {
+    const reportName = "Danh sách công nhận Sinh viên 5 tốt cấp Thành phố";
+    return (
+      <>
+        <TopBar
+          title="Xuất kết quả công nhận Thành phố"
+          subtitle={`Danh sách sinh viên đã được chốt đạt Sinh viên 5 tốt cấp Thành phố trong năm học ${cityPilotSchoolYear}.`}
+        />
+
+        <div className="space-y-4">
+          <Card className="!p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Phạm vi báo cáo
+            </div>
+            <div className="mt-1 font-semibold text-brand-deep">
+              Cấp Thành phố · Năm học {cityPilotSchoolYear}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Chỉ gồm sinh viên đã được chốt đạt cấp Thành phố; không kèm ghi chú hay dữ liệu xử lý
+              nội bộ.
+            </p>
+          </Card>
+
+          <ExportOptionCard
+            description="Danh sách chính thức để tổng hợp và báo cáo Hội Sinh viên Việt Nam thành phố Đà Nẵng."
+            disabled={isExporting}
+            fields={["STT", "Mã sinh viên", "Họ và tên", "Lớp", "Khoa", "Trường"]}
+            filenameExample={getExportFilenameExample(reportName, cityPilotSchoolYear)}
+            icon={<FileSpreadsheet className="h-6 w-6" />}
+            isLoading={exportingDataset === "cityAwardees"}
+            title={`${reportName} Excel`}
+            onExport={() => void handleExport("cityAwardees", reportName)}
+          />
+
+          {error ? (
+            <div className="flex gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          ) : null}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <TopBar
@@ -108,8 +152,6 @@ function ExportContent({ role }: { role: Role }) {
       />
 
       <div className="space-y-5">
-        {role === "city_committee" ? <CityCommitteeSubmittedApplications /> : null}
-
         <Card>
           <div className="mb-4 flex items-start gap-2">
             <Filter className="mt-0.5 h-5 w-5 text-brand-deep" />

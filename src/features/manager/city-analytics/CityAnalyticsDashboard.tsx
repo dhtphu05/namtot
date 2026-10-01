@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ClipboardList, Search } from "lucide-react";
+import { ClipboardList, Search, SlidersHorizontal } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card } from "@/components/ui-kit";
 import { Badge } from "@/components/ui/badge";
@@ -122,7 +122,7 @@ export function CityAnalyticsDashboard({
     <>
       <TopBar
         title="Theo dõi hồ sơ cấp Thành phố"
-        subtitle="Tiến độ xét duyệt và kết quả chính thức từ hồ sơ, review và quyết định của cán bộ."
+        subtitle="Tiến độ xét duyệt và kết quả chính thức theo hồ sơ, 5 tiêu chí và quyết định của Hội đồng."
       />
 
       {showEligibilityVerification ? <EligibilityVerificationPanel /> : null}
@@ -137,8 +137,19 @@ export function CityAnalyticsDashboard({
         />
       ) : (
         <div className="space-y-5">
-          <Card className="!p-3">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <Card className="overflow-hidden border-slate-200 bg-gradient-to-r from-white via-white to-blue-50/60 p-0 shadow-sm">
+            <div className="flex items-center gap-3 border-b border-blue-100 bg-blue-50/50 px-4 py-3 md:px-5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-800">
+                <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Bộ lọc báo cáo</h2>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  Các chỉ số bên dưới cập nhật theo lựa chọn của bạn.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3 md:p-5">
               <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
                 Năm học
                 <select
@@ -146,7 +157,7 @@ export function CityAnalyticsDashboard({
                   value={activeSchoolYear}
                   onChange={(event) => changeSchoolYear(event.target.value)}
                   disabled={summary.availableSchoolYears.length === 0}
-                  className="h-9 rounded-md bg-[var(--surface-muted)] px-3 text-sm text-brand-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60"
+                  className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700/30 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {summary.availableSchoolYears.length === 0 ? (
                     <option value="">Chưa có năm học</option>
@@ -165,7 +176,7 @@ export function CityAnalyticsDashboard({
                   aria-label="Trường"
                   value={workspaceId}
                   onChange={(event) => changeSchool(event.target.value)}
-                  className="h-9 rounded-md bg-[var(--surface-muted)] px-3 text-sm text-brand-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700/30"
                 >
                   <option value="">Tất cả trường</option>
                   {summary.filterOptions.schools.map((school) => (
@@ -181,7 +192,7 @@ export function CityAnalyticsDashboard({
                   aria-label="Trạng thái hồ sơ"
                   value={status}
                   onChange={(event) => changeStatus(event.target.value)}
-                  className="h-9 rounded-md bg-[var(--surface-muted)] px-3 text-sm text-brand-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700/30"
                 >
                   <option value="">Mọi trạng thái</option>
                   {applicationStatuses.map((item) => (
@@ -258,12 +269,12 @@ export function CityAnalyticsDashboard({
                   ))}
                 </select>
                 <select
-                  aria-label="Trạng thái task trong danh sách"
+                  aria-label="Trạng thái xử lý trong danh sách"
                   value={drilldown.filters.taskStatus ?? ""}
                   onChange={(event) => updateDrilldownFilter("taskStatus", event.target.value)}
                   className="h-9 rounded-md bg-[var(--surface-muted)] px-3 text-sm"
                 >
-                  <option value="">Mọi trạng thái task</option>
+                  <option value="">Mọi trạng thái xử lý</option>
                   {taskStatuses.map((item) => (
                     <option key={item.value} value={item.value}>
                       {item.label}
@@ -308,7 +319,7 @@ export function CityAnalyticsDashboard({
                           <TableHead>Trường</TableHead>
                           <TableHead>Năm học</TableHead>
                           <TableHead>Trạng thái</TableHead>
-                          <TableHead className="text-right">Review</TableHead>
+                          <TableHead className="text-right">Đã xem xét</TableHead>
                           <TableHead>Kết quả</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -333,7 +344,7 @@ export function CityAnalyticsDashboard({
                               </div>
                               {item.reviewProgress.anomalous ? (
                                 <Badge variant="outline" className="mt-1">
-                                  Dữ liệu task bất thường
+                                  Cần kiểm tra dữ liệu xét duyệt
                                 </Badge>
                               ) : null}
                             </TableCell>

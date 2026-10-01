@@ -9,75 +9,65 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AppRouteImport } from './routes/app'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppIndexRouteImport } from './routes/app.index'
-import { Route as AppWizardRouteImport } from './routes/app.wizard'
-import { Route as AppVnptRouteImport } from './routes/app.vnpt'
-import { Route as AppUploadRouteImport } from './routes/app.upload'
-import { Route as AppSmartuxRouteImport } from './routes/app.smartux'
-import { Route as AppSettingsRouteImport } from './routes/app.settings'
-import { Route as AppResultRouteImport } from './routes/app.result'
-import { Route as AppResolutionRouteImport } from './routes/app.resolution'
-import { Route as AppQueueRouteImport } from './routes/app.queue'
-import { Route as AppProfileRouteImport } from './routes/app.profile'
-import { Route as AppOverviewRouteImport } from './routes/app.overview'
-import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
-import { Route as AppMyApplicationRouteImport } from './routes/app.my-application'
-import { Route as AppFeedbackRouteImport } from './routes/app.feedback'
-import { Route as AppExportRouteImport } from './routes/app.export'
-import { Route as AppEvidenceSearchRouteImport } from './routes/app.evidence-search'
-import { Route as AppEvidenceKnowledgeRouteImport } from './routes/app.evidence-knowledge'
-import { Route as AppEvidenceRouteImport } from './routes/app.evidence'
-import { Route as AppEventRegistryRouteImport } from './routes/app.event-registry'
-import { Route as AppEventLibraryRouteImport } from './routes/app.event-library'
-import { Route as AppEkycRouteImport } from './routes/app.ekyc'
-import { Route as AppDraftsRouteImport } from './routes/app.drafts'
-import { Route as AppDecisionImportsRouteImport } from './routes/app.decision-imports'
-import { Route as AppDataUploaderRouteImport } from './routes/app.data-uploader'
-import { Route as AppCollectiveRouteImport } from './routes/app.collective'
-import { Route as AppChatbotRouteImport } from './routes/app.chatbot'
-import { Route as AppCascadeRouteImport } from './routes/app.cascade'
-import { Route as AppAwardRegistryRouteImport } from './routes/app.award-registry'
-import { Route as AppAuditRouteImport } from './routes/app.audit'
-import { Route as AppAssistantRouteImport } from './routes/app.assistant'
-import { Route as AppAssignmentRouteImport } from './routes/app.assignment'
-import { Route as AppApplicationRouteImport } from './routes/app.application'
-import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 import { Route as AppAiPrecheckRouteImport } from './routes/app.ai-precheck'
+import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
+import { Route as AppApplicationRouteImport } from './routes/app.application'
+import { Route as AppAssignmentRouteImport } from './routes/app.assignment'
+import { Route as AppAssistantRouteImport } from './routes/app.assistant'
+import { Route as AppAuditRouteImport } from './routes/app.audit'
+import { Route as AppAwardRegistryRouteImport } from './routes/app.award-registry'
+import { Route as AppCascadeRouteImport } from './routes/app.cascade'
+import { Route as AppChatbotRouteImport } from './routes/app.chatbot'
+import { Route as AppCollectiveRouteImport } from './routes/app.collective'
+import { Route as AppDataUploaderRouteImport } from './routes/app.data-uploader'
+import { Route as AppDecisionImportsRouteImport } from './routes/app.decision-imports'
+import { Route as AppDraftsRouteImport } from './routes/app.drafts'
+import { Route as AppEkycRouteImport } from './routes/app.ekyc'
+import { Route as AppEventLibraryRouteImport } from './routes/app.event-library'
+import { Route as AppEventRegistryRouteImport } from './routes/app.event-registry'
+import { Route as AppEvidenceRouteImport } from './routes/app.evidence'
+import { Route as AppEvidenceKnowledgeRouteImport } from './routes/app.evidence-knowledge'
+import { Route as AppEvidenceSearchRouteImport } from './routes/app.evidence-search'
+import { Route as AppExportRouteImport } from './routes/app.export'
+import { Route as AppFeedbackRouteImport } from './routes/app.feedback'
+import { Route as AppMyApplicationRouteImport } from './routes/app.my-application'
+import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
+import { Route as AppOverviewRouteImport } from './routes/app.overview'
+import { Route as AppProfileRouteImport } from './routes/app.profile'
+import { Route as AppQueueRouteImport } from './routes/app.queue'
+import { Route as AppResolutionRouteImport } from './routes/app.resolution'
+import { Route as AppResultRouteImport } from './routes/app.result'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppSmartuxRouteImport } from './routes/app.smartux'
+import { Route as AppUploadRouteImport } from './routes/app.upload'
+import { Route as AppVnptRouteImport } from './routes/app.vnpt'
+import { Route as AppWizardRouteImport } from './routes/app.wizard'
 import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
-import { Route as AppReviewIdRouteImport } from './routes/app.review.$id'
-import { Route as AppResolutionIdRouteImport } from './routes/app.resolution.$id'
-import { Route as AppManagerResultsRouteImport } from './routes/app.manager.results'
-import { Route as AppManagerResultRouteImport } from './routes/app.manager.result'
-import { Route as AppManagerCollectiveRouteImport } from './routes/app.manager.collective'
-import { Route as AppDecisionImportsDecisionImportIdRouteImport } from './routes/app.decision-imports.$decisionImportId'
-import { Route as AppCommitteeInboxRouteImport } from './routes/app.committee.inbox'
-import { Route as AppCollectiveIdRouteImport } from './routes/app.collective.$id'
-import { Route as AppAwardRegistryAwardDecisionIdRouteImport } from './routes/app.award-registry.$awardDecisionId'
-import { Route as AppAdminWorkspacesRouteImport } from './routes/app.admin.workspaces'
-import { Route as AppAdminWorkspaceRouteImport } from './routes/app.admin.workspace'
-import { Route as AppAdminUsersRouteImport } from './routes/app.admin.users'
 import { Route as AppAdminOfficersRouteImport } from './routes/app.admin.officers'
-import { Route as AppManagerResultsApplicationIdRouteImport } from './routes/app.manager.results.$applicationId'
+import { Route as AppAdminUsersRouteImport } from './routes/app.admin.users'
+import { Route as AppAdminWorkspaceRouteImport } from './routes/app.admin.workspace'
+import { Route as AppAdminWorkspacesRouteImport } from './routes/app.admin.workspaces'
+import { Route as AppAwardRegistryAwardDecisionIdRouteImport } from './routes/app.award-registry.$awardDecisionId'
+import { Route as AppCollectiveIdRouteImport } from './routes/app.collective.$id'
+import { Route as AppCommitteeInboxRouteImport } from './routes/app.committee.inbox'
+import { Route as AppDecisionImportsDecisionImportIdRouteImport } from './routes/app.decision-imports.$decisionImportId'
+import { Route as AppManagerCollectiveRouteImport } from './routes/app.manager.collective'
+import { Route as AppManagerResultRouteImport } from './routes/app.manager.result'
+import { Route as AppManagerResultsRouteImport } from './routes/app.manager.results'
+import { Route as AppResolutionIdRouteImport } from './routes/app.resolution.$id'
+import { Route as AppReviewIdRouteImport } from './routes/app.review.$id'
 import { Route as AppAdminWorkspacesWorkspaceIdRouteImport } from './routes/app.admin.workspaces.$workspaceId'
+import { Route as AppManagerResultsApplicationIdRouteImport } from './routes/app.manager.results.$applicationId'
 
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppRoute = AppRouteImport.update({
-  id: '/app',
-  path: '/app',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -85,9 +75,19 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -95,159 +95,9 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppWizardRoute = AppWizardRouteImport.update({
-  id: '/wizard',
-  path: '/wizard',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppVnptRoute = AppVnptRouteImport.update({
-  id: '/vnpt',
-  path: '/vnpt',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppUploadRoute = AppUploadRouteImport.update({
-  id: '/upload',
-  path: '/upload',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSmartuxRoute = AppSmartuxRouteImport.update({
-  id: '/smartux',
-  path: '/smartux',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppResultRoute = AppResultRouteImport.update({
-  id: '/result',
-  path: '/result',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppResolutionRoute = AppResolutionRouteImport.update({
-  id: '/resolution',
-  path: '/resolution',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppQueueRoute = AppQueueRouteImport.update({
-  id: '/queue',
-  path: '/queue',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppProfileRoute = AppProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppOverviewRoute = AppOverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppNotificationsRoute = AppNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMyApplicationRoute = AppMyApplicationRouteImport.update({
-  id: '/my-application',
-  path: '/my-application',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFeedbackRoute = AppFeedbackRouteImport.update({
-  id: '/feedback',
-  path: '/feedback',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppExportRoute = AppExportRouteImport.update({
-  id: '/export',
-  path: '/export',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEvidenceSearchRoute = AppEvidenceSearchRouteImport.update({
-  id: '/evidence-search',
-  path: '/evidence-search',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEvidenceKnowledgeRoute = AppEvidenceKnowledgeRouteImport.update({
-  id: '/evidence-knowledge',
-  path: '/evidence-knowledge',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEvidenceRoute = AppEvidenceRouteImport.update({
-  id: '/evidence',
-  path: '/evidence',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEventRegistryRoute = AppEventRegistryRouteImport.update({
-  id: '/event-registry',
-  path: '/event-registry',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEventLibraryRoute = AppEventLibraryRouteImport.update({
-  id: '/event-library',
-  path: '/event-library',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEkycRoute = AppEkycRouteImport.update({
-  id: '/ekyc',
-  path: '/ekyc',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDraftsRoute = AppDraftsRouteImport.update({
-  id: '/drafts',
-  path: '/drafts',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDecisionImportsRoute = AppDecisionImportsRouteImport.update({
-  id: '/decision-imports',
-  path: '/decision-imports',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDataUploaderRoute = AppDataUploaderRouteImport.update({
-  id: '/data-uploader',
-  path: '/data-uploader',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCollectiveRoute = AppCollectiveRouteImport.update({
-  id: '/collective',
-  path: '/collective',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppChatbotRoute = AppChatbotRouteImport.update({
-  id: '/chatbot',
-  path: '/chatbot',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCascadeRoute = AppCascadeRouteImport.update({
-  id: '/cascade',
-  path: '/cascade',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAwardRegistryRoute = AppAwardRegistryRouteImport.update({
-  id: '/award-registry',
-  path: '/award-registry',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAuditRoute = AppAuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAssistantRoute = AppAssistantRouteImport.update({
-  id: '/assistant',
-  path: '/assistant',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAssignmentRoute = AppAssignmentRouteImport.update({
-  id: '/assignment',
-  path: '/assignment',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppApplicationRoute = AppApplicationRouteImport.update({
-  id: '/application',
-  path: '/application',
+const AppAiPrecheckRoute = AppAiPrecheckRouteImport.update({
+  id: '/ai-precheck',
+  path: '/ai-precheck',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
@@ -255,9 +105,159 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAiPrecheckRoute = AppAiPrecheckRouteImport.update({
-  id: '/ai-precheck',
-  path: '/ai-precheck',
+const AppApplicationRoute = AppApplicationRouteImport.update({
+  id: '/application',
+  path: '/application',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssignmentRoute = AppAssignmentRouteImport.update({
+  id: '/assignment',
+  path: '/assignment',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssistantRoute = AppAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAwardRegistryRoute = AppAwardRegistryRouteImport.update({
+  id: '/award-registry',
+  path: '/award-registry',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCascadeRoute = AppCascadeRouteImport.update({
+  id: '/cascade',
+  path: '/cascade',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChatbotRoute = AppChatbotRouteImport.update({
+  id: '/chatbot',
+  path: '/chatbot',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCollectiveRoute = AppCollectiveRouteImport.update({
+  id: '/collective',
+  path: '/collective',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDataUploaderRoute = AppDataUploaderRouteImport.update({
+  id: '/data-uploader',
+  path: '/data-uploader',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDecisionImportsRoute = AppDecisionImportsRouteImport.update({
+  id: '/decision-imports',
+  path: '/decision-imports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDraftsRoute = AppDraftsRouteImport.update({
+  id: '/drafts',
+  path: '/drafts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEkycRoute = AppEkycRouteImport.update({
+  id: '/ekyc',
+  path: '/ekyc',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEventLibraryRoute = AppEventLibraryRouteImport.update({
+  id: '/event-library',
+  path: '/event-library',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEventRegistryRoute = AppEventRegistryRouteImport.update({
+  id: '/event-registry',
+  path: '/event-registry',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEvidenceRoute = AppEvidenceRouteImport.update({
+  id: '/evidence',
+  path: '/evidence',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEvidenceKnowledgeRoute = AppEvidenceKnowledgeRouteImport.update({
+  id: '/evidence-knowledge',
+  path: '/evidence-knowledge',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEvidenceSearchRoute = AppEvidenceSearchRouteImport.update({
+  id: '/evidence-search',
+  path: '/evidence-search',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExportRoute = AppExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFeedbackRoute = AppFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMyApplicationRoute = AppMyApplicationRouteImport.update({
+  id: '/my-application',
+  path: '/my-application',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOverviewRoute = AppOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQueueRoute = AppQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResolutionRoute = AppResolutionRouteImport.update({
+  id: '/resolution',
+  path: '/resolution',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResultRoute = AppResultRouteImport.update({
+  id: '/result',
+  path: '/result',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSmartuxRoute = AppSmartuxRouteImport.update({
+  id: '/smartux',
+  path: '/smartux',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUploadRoute = AppUploadRouteImport.update({
+  id: '/upload',
+  path: '/upload',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVnptRoute = AppVnptRouteImport.update({
+  id: '/vnpt',
+  path: '/vnpt',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWizardRoute = AppWizardRouteImport.update({
+  id: '/wizard',
+  path: '/wizard',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
@@ -265,29 +265,40 @@ const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppReviewIdRoute = AppReviewIdRouteImport.update({
-  id: '/review/$id',
-  path: '/review/$id',
+const AppAdminOfficersRoute = AppAdminOfficersRouteImport.update({
+  id: '/admin/officers',
+  path: '/admin/officers',
   getParentRoute: () => AppRoute,
 } as any)
-const AppResolutionIdRoute = AppResolutionIdRouteImport.update({
+const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminWorkspaceRoute = AppAdminWorkspaceRouteImport.update({
+  id: '/admin/workspace',
+  path: '/admin/workspace',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminWorkspacesRoute = AppAdminWorkspacesRouteImport.update({
+  id: '/admin/workspaces',
+  path: '/admin/workspaces',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAwardRegistryAwardDecisionIdRoute =
+  AppAwardRegistryAwardDecisionIdRouteImport.update({
+    id: '/$awardDecisionId',
+    path: '/$awardDecisionId',
+    getParentRoute: () => AppAwardRegistryRoute,
+  } as any)
+const AppCollectiveIdRoute = AppCollectiveIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => AppResolutionRoute,
+  getParentRoute: () => AppCollectiveRoute,
 } as any)
-const AppManagerResultsRoute = AppManagerResultsRouteImport.update({
-  id: '/manager/results',
-  path: '/manager/results',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppManagerResultRoute = AppManagerResultRouteImport.update({
-  id: '/manager/result',
-  path: '/manager/result',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppManagerCollectiveRoute = AppManagerCollectiveRouteImport.update({
-  id: '/manager/collective',
-  path: '/manager/collective',
+const AppCommitteeInboxRoute = AppCommitteeInboxRouteImport.update({
+  id: '/committee/inbox',
+  path: '/committee/inbox',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDecisionImportsDecisionImportIdRoute =
@@ -296,53 +307,42 @@ const AppDecisionImportsDecisionImportIdRoute =
     path: '/$decisionImportId',
     getParentRoute: () => AppDecisionImportsRoute,
   } as any)
-const AppCommitteeInboxRoute = AppCommitteeInboxRouteImport.update({
-  id: '/committee/inbox',
-  path: '/committee/inbox',
+const AppManagerCollectiveRoute = AppManagerCollectiveRouteImport.update({
+  id: '/manager/collective',
+  path: '/manager/collective',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCollectiveIdRoute = AppCollectiveIdRouteImport.update({
+const AppManagerResultRoute = AppManagerResultRouteImport.update({
+  id: '/manager/result',
+  path: '/manager/result',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppManagerResultsRoute = AppManagerResultsRouteImport.update({
+  id: '/manager/results',
+  path: '/manager/results',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResolutionIdRoute = AppResolutionIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => AppCollectiveRoute,
+  getParentRoute: () => AppResolutionRoute,
 } as any)
-const AppAwardRegistryAwardDecisionIdRoute =
-  AppAwardRegistryAwardDecisionIdRouteImport.update({
-    id: '/$awardDecisionId',
-    path: '/$awardDecisionId',
-    getParentRoute: () => AppAwardRegistryRoute,
-  } as any)
-const AppAdminWorkspacesRoute = AppAdminWorkspacesRouteImport.update({
-  id: '/admin/workspaces',
-  path: '/admin/workspaces',
+const AppReviewIdRoute = AppReviewIdRouteImport.update({
+  id: '/review/$id',
+  path: '/review/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAdminWorkspaceRoute = AppAdminWorkspaceRouteImport.update({
-  id: '/admin/workspace',
-  path: '/admin/workspace',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
-  id: '/admin/users',
-  path: '/admin/users',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAdminOfficersRoute = AppAdminOfficersRouteImport.update({
-  id: '/admin/officers',
-  path: '/admin/officers',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppManagerResultsApplicationIdRoute =
-  AppManagerResultsApplicationIdRouteImport.update({
-    id: '/$applicationId',
-    path: '/$applicationId',
-    getParentRoute: () => AppManagerResultsRoute,
-  } as any)
 const AppAdminWorkspacesWorkspaceIdRoute =
   AppAdminWorkspacesWorkspaceIdRouteImport.update({
     id: '/$workspaceId',
     path: '/$workspaceId',
     getParentRoute: () => AppAdminWorkspacesRoute,
+  } as any)
+const AppManagerResultsApplicationIdRoute =
+  AppManagerResultsApplicationIdRouteImport.update({
+    id: '/$applicationId',
+    path: '/$applicationId',
+    getParentRoute: () => AppManagerResultsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -699,25 +699,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -727,11 +713,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/': {
@@ -741,221 +741,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/wizard': {
-      id: '/app/wizard'
-      path: '/wizard'
-      fullPath: '/app/wizard'
-      preLoaderRoute: typeof AppWizardRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/vnpt': {
-      id: '/app/vnpt'
-      path: '/vnpt'
-      fullPath: '/app/vnpt'
-      preLoaderRoute: typeof AppVnptRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/upload': {
-      id: '/app/upload'
-      path: '/upload'
-      fullPath: '/app/upload'
-      preLoaderRoute: typeof AppUploadRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/smartux': {
-      id: '/app/smartux'
-      path: '/smartux'
-      fullPath: '/app/smartux'
-      preLoaderRoute: typeof AppSmartuxRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings': {
-      id: '/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/result': {
-      id: '/app/result'
-      path: '/result'
-      fullPath: '/app/result'
-      preLoaderRoute: typeof AppResultRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/resolution': {
-      id: '/app/resolution'
-      path: '/resolution'
-      fullPath: '/app/resolution'
-      preLoaderRoute: typeof AppResolutionRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/queue': {
-      id: '/app/queue'
-      path: '/queue'
-      fullPath: '/app/queue'
-      preLoaderRoute: typeof AppQueueRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/profile': {
-      id: '/app/profile'
-      path: '/profile'
-      fullPath: '/app/profile'
-      preLoaderRoute: typeof AppProfileRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/overview': {
-      id: '/app/overview'
-      path: '/overview'
-      fullPath: '/app/overview'
-      preLoaderRoute: typeof AppOverviewRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/notifications': {
-      id: '/app/notifications'
-      path: '/notifications'
-      fullPath: '/app/notifications'
-      preLoaderRoute: typeof AppNotificationsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/my-application': {
-      id: '/app/my-application'
-      path: '/my-application'
-      fullPath: '/app/my-application'
-      preLoaderRoute: typeof AppMyApplicationRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/feedback': {
-      id: '/app/feedback'
-      path: '/feedback'
-      fullPath: '/app/feedback'
-      preLoaderRoute: typeof AppFeedbackRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/export': {
-      id: '/app/export'
-      path: '/export'
-      fullPath: '/app/export'
-      preLoaderRoute: typeof AppExportRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/evidence-search': {
-      id: '/app/evidence-search'
-      path: '/evidence-search'
-      fullPath: '/app/evidence-search'
-      preLoaderRoute: typeof AppEvidenceSearchRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/evidence-knowledge': {
-      id: '/app/evidence-knowledge'
-      path: '/evidence-knowledge'
-      fullPath: '/app/evidence-knowledge'
-      preLoaderRoute: typeof AppEvidenceKnowledgeRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/evidence': {
-      id: '/app/evidence'
-      path: '/evidence'
-      fullPath: '/app/evidence'
-      preLoaderRoute: typeof AppEvidenceRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/event-registry': {
-      id: '/app/event-registry'
-      path: '/event-registry'
-      fullPath: '/app/event-registry'
-      preLoaderRoute: typeof AppEventRegistryRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/event-library': {
-      id: '/app/event-library'
-      path: '/event-library'
-      fullPath: '/app/event-library'
-      preLoaderRoute: typeof AppEventLibraryRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/ekyc': {
-      id: '/app/ekyc'
-      path: '/ekyc'
-      fullPath: '/app/ekyc'
-      preLoaderRoute: typeof AppEkycRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/drafts': {
-      id: '/app/drafts'
-      path: '/drafts'
-      fullPath: '/app/drafts'
-      preLoaderRoute: typeof AppDraftsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/decision-imports': {
-      id: '/app/decision-imports'
-      path: '/decision-imports'
-      fullPath: '/app/decision-imports'
-      preLoaderRoute: typeof AppDecisionImportsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/data-uploader': {
-      id: '/app/data-uploader'
-      path: '/data-uploader'
-      fullPath: '/app/data-uploader'
-      preLoaderRoute: typeof AppDataUploaderRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/collective': {
-      id: '/app/collective'
-      path: '/collective'
-      fullPath: '/app/collective'
-      preLoaderRoute: typeof AppCollectiveRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/chatbot': {
-      id: '/app/chatbot'
-      path: '/chatbot'
-      fullPath: '/app/chatbot'
-      preLoaderRoute: typeof AppChatbotRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/cascade': {
-      id: '/app/cascade'
-      path: '/cascade'
-      fullPath: '/app/cascade'
-      preLoaderRoute: typeof AppCascadeRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/award-registry': {
-      id: '/app/award-registry'
-      path: '/award-registry'
-      fullPath: '/app/award-registry'
-      preLoaderRoute: typeof AppAwardRegistryRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/audit': {
-      id: '/app/audit'
-      path: '/audit'
-      fullPath: '/app/audit'
-      preLoaderRoute: typeof AppAuditRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/assistant': {
-      id: '/app/assistant'
-      path: '/assistant'
-      fullPath: '/app/assistant'
-      preLoaderRoute: typeof AppAssistantRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/assignment': {
-      id: '/app/assignment'
-      path: '/assignment'
-      fullPath: '/app/assignment'
-      preLoaderRoute: typeof AppAssignmentRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/application': {
-      id: '/app/application'
-      path: '/application'
-      fullPath: '/app/application'
-      preLoaderRoute: typeof AppApplicationRouteImport
+    '/app/ai-precheck': {
+      id: '/app/ai-precheck'
+      path: '/ai-precheck'
+      fullPath: '/app/ai-precheck'
+      preLoaderRoute: typeof AppAiPrecheckRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/analytics': {
@@ -965,11 +755,221 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/ai-precheck': {
-      id: '/app/ai-precheck'
-      path: '/ai-precheck'
-      fullPath: '/app/ai-precheck'
-      preLoaderRoute: typeof AppAiPrecheckRouteImport
+    '/app/application': {
+      id: '/app/application'
+      path: '/application'
+      fullPath: '/app/application'
+      preLoaderRoute: typeof AppApplicationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/assignment': {
+      id: '/app/assignment'
+      path: '/assignment'
+      fullPath: '/app/assignment'
+      preLoaderRoute: typeof AppAssignmentRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/assistant': {
+      id: '/app/assistant'
+      path: '/assistant'
+      fullPath: '/app/assistant'
+      preLoaderRoute: typeof AppAssistantRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/audit': {
+      id: '/app/audit'
+      path: '/audit'
+      fullPath: '/app/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/award-registry': {
+      id: '/app/award-registry'
+      path: '/award-registry'
+      fullPath: '/app/award-registry'
+      preLoaderRoute: typeof AppAwardRegistryRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/cascade': {
+      id: '/app/cascade'
+      path: '/cascade'
+      fullPath: '/app/cascade'
+      preLoaderRoute: typeof AppCascadeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/chatbot': {
+      id: '/app/chatbot'
+      path: '/chatbot'
+      fullPath: '/app/chatbot'
+      preLoaderRoute: typeof AppChatbotRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/collective': {
+      id: '/app/collective'
+      path: '/collective'
+      fullPath: '/app/collective'
+      preLoaderRoute: typeof AppCollectiveRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/data-uploader': {
+      id: '/app/data-uploader'
+      path: '/data-uploader'
+      fullPath: '/app/data-uploader'
+      preLoaderRoute: typeof AppDataUploaderRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/decision-imports': {
+      id: '/app/decision-imports'
+      path: '/decision-imports'
+      fullPath: '/app/decision-imports'
+      preLoaderRoute: typeof AppDecisionImportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/drafts': {
+      id: '/app/drafts'
+      path: '/drafts'
+      fullPath: '/app/drafts'
+      preLoaderRoute: typeof AppDraftsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/ekyc': {
+      id: '/app/ekyc'
+      path: '/ekyc'
+      fullPath: '/app/ekyc'
+      preLoaderRoute: typeof AppEkycRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/event-library': {
+      id: '/app/event-library'
+      path: '/event-library'
+      fullPath: '/app/event-library'
+      preLoaderRoute: typeof AppEventLibraryRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/event-registry': {
+      id: '/app/event-registry'
+      path: '/event-registry'
+      fullPath: '/app/event-registry'
+      preLoaderRoute: typeof AppEventRegistryRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/evidence': {
+      id: '/app/evidence'
+      path: '/evidence'
+      fullPath: '/app/evidence'
+      preLoaderRoute: typeof AppEvidenceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/evidence-knowledge': {
+      id: '/app/evidence-knowledge'
+      path: '/evidence-knowledge'
+      fullPath: '/app/evidence-knowledge'
+      preLoaderRoute: typeof AppEvidenceKnowledgeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/evidence-search': {
+      id: '/app/evidence-search'
+      path: '/evidence-search'
+      fullPath: '/app/evidence-search'
+      preLoaderRoute: typeof AppEvidenceSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/export': {
+      id: '/app/export'
+      path: '/export'
+      fullPath: '/app/export'
+      preLoaderRoute: typeof AppExportRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/feedback': {
+      id: '/app/feedback'
+      path: '/feedback'
+      fullPath: '/app/feedback'
+      preLoaderRoute: typeof AppFeedbackRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/my-application': {
+      id: '/app/my-application'
+      path: '/my-application'
+      fullPath: '/app/my-application'
+      preLoaderRoute: typeof AppMyApplicationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/notifications': {
+      id: '/app/notifications'
+      path: '/notifications'
+      fullPath: '/app/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/overview': {
+      id: '/app/overview'
+      path: '/overview'
+      fullPath: '/app/overview'
+      preLoaderRoute: typeof AppOverviewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/queue': {
+      id: '/app/queue'
+      path: '/queue'
+      fullPath: '/app/queue'
+      preLoaderRoute: typeof AppQueueRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/resolution': {
+      id: '/app/resolution'
+      path: '/resolution'
+      fullPath: '/app/resolution'
+      preLoaderRoute: typeof AppResolutionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/result': {
+      id: '/app/result'
+      path: '/result'
+      fullPath: '/app/result'
+      preLoaderRoute: typeof AppResultRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/smartux': {
+      id: '/app/smartux'
+      path: '/smartux'
+      fullPath: '/app/smartux'
+      preLoaderRoute: typeof AppSmartuxRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/upload': {
+      id: '/app/upload'
+      path: '/upload'
+      fullPath: '/app/upload'
+      preLoaderRoute: typeof AppUploadRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/vnpt': {
+      id: '/app/vnpt'
+      path: '/vnpt'
+      fullPath: '/app/vnpt'
+      preLoaderRoute: typeof AppVnptRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/wizard': {
+      id: '/app/wizard'
+      path: '/wizard'
+      fullPath: '/app/wizard'
+      preLoaderRoute: typeof AppWizardRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/admin/': {
@@ -979,81 +979,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/review/$id': {
-      id: '/app/review/$id'
-      path: '/review/$id'
-      fullPath: '/app/review/$id'
-      preLoaderRoute: typeof AppReviewIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/resolution/$id': {
-      id: '/app/resolution/$id'
-      path: '/$id'
-      fullPath: '/app/resolution/$id'
-      preLoaderRoute: typeof AppResolutionIdRouteImport
-      parentRoute: typeof AppResolutionRoute
-    }
-    '/app/manager/results': {
-      id: '/app/manager/results'
-      path: '/manager/results'
-      fullPath: '/app/manager/results'
-      preLoaderRoute: typeof AppManagerResultsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/manager/result': {
-      id: '/app/manager/result'
-      path: '/manager/result'
-      fullPath: '/app/manager/result'
-      preLoaderRoute: typeof AppManagerResultRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/manager/collective': {
-      id: '/app/manager/collective'
-      path: '/manager/collective'
-      fullPath: '/app/manager/collective'
-      preLoaderRoute: typeof AppManagerCollectiveRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/decision-imports/$decisionImportId': {
-      id: '/app/decision-imports/$decisionImportId'
-      path: '/$decisionImportId'
-      fullPath: '/app/decision-imports/$decisionImportId'
-      preLoaderRoute: typeof AppDecisionImportsDecisionImportIdRouteImport
-      parentRoute: typeof AppDecisionImportsRoute
-    }
-    '/app/committee/inbox': {
-      id: '/app/committee/inbox'
-      path: '/committee/inbox'
-      fullPath: '/app/committee/inbox'
-      preLoaderRoute: typeof AppCommitteeInboxRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/collective/$id': {
-      id: '/app/collective/$id'
-      path: '/$id'
-      fullPath: '/app/collective/$id'
-      preLoaderRoute: typeof AppCollectiveIdRouteImport
-      parentRoute: typeof AppCollectiveRoute
-    }
-    '/app/award-registry/$awardDecisionId': {
-      id: '/app/award-registry/$awardDecisionId'
-      path: '/$awardDecisionId'
-      fullPath: '/app/award-registry/$awardDecisionId'
-      preLoaderRoute: typeof AppAwardRegistryAwardDecisionIdRouteImport
-      parentRoute: typeof AppAwardRegistryRoute
-    }
-    '/app/admin/workspaces': {
-      id: '/app/admin/workspaces'
-      path: '/admin/workspaces'
-      fullPath: '/app/admin/workspaces'
-      preLoaderRoute: typeof AppAdminWorkspacesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/admin/workspace': {
-      id: '/app/admin/workspace'
-      path: '/admin/workspace'
-      fullPath: '/app/admin/workspace'
-      preLoaderRoute: typeof AppAdminWorkspaceRouteImport
+    '/app/admin/officers': {
+      id: '/app/admin/officers'
+      path: '/admin/officers'
+      fullPath: '/app/admin/officers'
+      preLoaderRoute: typeof AppAdminOfficersRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/admin/users': {
@@ -1063,19 +993,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminUsersRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/admin/officers': {
-      id: '/app/admin/officers'
-      path: '/admin/officers'
-      fullPath: '/app/admin/officers'
-      preLoaderRoute: typeof AppAdminOfficersRouteImport
+    '/app/admin/workspace': {
+      id: '/app/admin/workspace'
+      path: '/admin/workspace'
+      fullPath: '/app/admin/workspace'
+      preLoaderRoute: typeof AppAdminWorkspaceRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/manager/results/$applicationId': {
-      id: '/app/manager/results/$applicationId'
-      path: '/$applicationId'
-      fullPath: '/app/manager/results/$applicationId'
-      preLoaderRoute: typeof AppManagerResultsApplicationIdRouteImport
-      parentRoute: typeof AppManagerResultsRoute
+    '/app/admin/workspaces': {
+      id: '/app/admin/workspaces'
+      path: '/admin/workspaces'
+      fullPath: '/app/admin/workspaces'
+      preLoaderRoute: typeof AppAdminWorkspacesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/award-registry/$awardDecisionId': {
+      id: '/app/award-registry/$awardDecisionId'
+      path: '/$awardDecisionId'
+      fullPath: '/app/award-registry/$awardDecisionId'
+      preLoaderRoute: typeof AppAwardRegistryAwardDecisionIdRouteImport
+      parentRoute: typeof AppAwardRegistryRoute
+    }
+    '/app/collective/$id': {
+      id: '/app/collective/$id'
+      path: '/$id'
+      fullPath: '/app/collective/$id'
+      preLoaderRoute: typeof AppCollectiveIdRouteImport
+      parentRoute: typeof AppCollectiveRoute
+    }
+    '/app/committee/inbox': {
+      id: '/app/committee/inbox'
+      path: '/committee/inbox'
+      fullPath: '/app/committee/inbox'
+      preLoaderRoute: typeof AppCommitteeInboxRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/decision-imports/$decisionImportId': {
+      id: '/app/decision-imports/$decisionImportId'
+      path: '/$decisionImportId'
+      fullPath: '/app/decision-imports/$decisionImportId'
+      preLoaderRoute: typeof AppDecisionImportsDecisionImportIdRouteImport
+      parentRoute: typeof AppDecisionImportsRoute
+    }
+    '/app/manager/collective': {
+      id: '/app/manager/collective'
+      path: '/manager/collective'
+      fullPath: '/app/manager/collective'
+      preLoaderRoute: typeof AppManagerCollectiveRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/manager/result': {
+      id: '/app/manager/result'
+      path: '/manager/result'
+      fullPath: '/app/manager/result'
+      preLoaderRoute: typeof AppManagerResultRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/manager/results': {
+      id: '/app/manager/results'
+      path: '/manager/results'
+      fullPath: '/app/manager/results'
+      preLoaderRoute: typeof AppManagerResultsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/resolution/$id': {
+      id: '/app/resolution/$id'
+      path: '/$id'
+      fullPath: '/app/resolution/$id'
+      preLoaderRoute: typeof AppResolutionIdRouteImport
+      parentRoute: typeof AppResolutionRoute
+    }
+    '/app/review/$id': {
+      id: '/app/review/$id'
+      path: '/review/$id'
+      fullPath: '/app/review/$id'
+      preLoaderRoute: typeof AppReviewIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/app/admin/workspaces/$workspaceId': {
       id: '/app/admin/workspaces/$workspaceId'
@@ -1083,6 +1076,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/admin/workspaces/$workspaceId'
       preLoaderRoute: typeof AppAdminWorkspacesWorkspaceIdRouteImport
       parentRoute: typeof AppAdminWorkspacesRoute
+    }
+    '/app/manager/results/$applicationId': {
+      id: '/app/manager/results/$applicationId'
+      path: '/$applicationId'
+      fullPath: '/app/manager/results/$applicationId'
+      preLoaderRoute: typeof AppManagerResultsApplicationIdRouteImport
+      parentRoute: typeof AppManagerResultsRoute
     }
   }
 }

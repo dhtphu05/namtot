@@ -224,6 +224,7 @@ export type ManagerResultItem = {
   studentCode?: string | null;
   className?: string | null;
   faculty?: string | null;
+  schoolName?: string | null;
   schoolYear: string;
   targetLevel: Level;
   suggestedLevel?: Level | null;
