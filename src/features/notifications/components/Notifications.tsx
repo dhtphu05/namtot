@@ -29,6 +29,7 @@ import {
 import { formatCriterionLabel, formatLevelLabel } from "@/features/review/utils/formatters";
 import { PageHeader, ScrollSafeModal } from "@/features/student/components/primitives";
 import { criterionLabels, getFeedbackUiItems } from "@/features/student/selectors/student-ui";
+import { STUDENT_ASSISTANT_UI_ENABLED } from "@/lib/student-assistant-ui";
 
 type NotificationFilter = "all" | "unread" | "action" | "result";
 type StudentFeedbackTab = "action" | "handled" | "all";
@@ -519,9 +520,11 @@ function FeedbackRow({
             <Link to={toStudentHref(actionHref)}>{item.actionLabel}</Link>
           </ButtonV2>
         )}
-        <ButtonV2 asChild size="compact" variant="tertiary">
-          <Link to={toStudentHref(assistantHref)}>Hỏi trợ lý</Link>
-        </ButtonV2>
+        {STUDENT_ASSISTANT_UI_ENABLED ? (
+          <ButtonV2 asChild size="compact" variant="tertiary">
+            <Link to={toStudentHref(assistantHref)}>Hỏi trợ lý</Link>
+          </ButtonV2>
+        ) : null}
         {!isAcknowledgeOnly && (item.status === "new" || item.isActionable) ? (
           <ButtonV2
             size="compact"
@@ -717,7 +720,7 @@ function presentNotificationGroup(group: Notification[]): PresentedNotification 
     lowerText.includes("resolution") ||
     lowerText.includes("hội ý")
   ) {
-    title = "Case hội ý đã được cập nhật";
+    title = "Hồ sơ được chuyển hội đồng xem xét";
   } else if (lowerType.includes("deadline") || lowerText.includes("quá hạn")) {
     title = "Tác vụ sắp quá hạn";
   }
@@ -779,7 +782,7 @@ function getNotificationCta(item: Notification) {
     return {
       icon: <FileText className="mr-1 h-3.5 w-3.5" />,
       link: caseId ? `/app/resolution/${caseId}` : "/app/resolution",
-      text: "Xem case hội ý",
+      text: "Xem nội dung hội ý",
     };
   }
   if (item.reviewTaskId) {
@@ -815,7 +818,7 @@ function sanitizeNotificationText(value: string) {
     .replace(/\bphysical\b/g, "Thể lực tốt")
     .replace(/\bacademic\b/g, "Học tập tốt")
     .replace(/\bethics\b/g, "Đạo đức tốt")
-    .replace(/Resolution case updated/gi, "Case hội ý đã được cập nhật")
+    .replace(/Resolution case updated/gi, "Hồ sơ được chuyển hội đồng xem xét")
     .replace(/Resolution/gi, "Hội ý")
     .replace(/Officer/gi, "Cán bộ xét duyệt")
     .replace(/Manager/gi, "Cấp quản lý")

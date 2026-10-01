@@ -122,6 +122,14 @@ test("validates the evidence upload formats and configured size limit", () => {
     validateEvidenceUploadFile({ name: "scan.webp", type: "image/webp", size: 500 }),
     null,
   );
+  assert.equal(
+    validateEvidenceUploadFile({
+      name: "phone-photo.jpg",
+      type: "application/octet-stream",
+      size: 500,
+    }),
+    null,
+  );
   assert.match(
     validateEvidenceUploadFile({ name: "scan.gif", type: "image/gif", size: 500 }),
     /PDF, JPG, PNG hoặc WEBP/,

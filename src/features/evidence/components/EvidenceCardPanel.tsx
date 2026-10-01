@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -14,7 +14,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import type { EvidenceResponse } from "@/lib/api/types";
 import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 import type { EvidenceCard } from "@/types/evidence";
-import { normalizeWarnings, warningCopy } from "./evidence-card-utils";
+import {
+  getWarningDisplayCopy,
+  isVietnameseUiCopy,
+  localizeEvidenceValue,
+  normalizeWarnings,
+  warningCopy,
+} from "./evidence-card-utils";
 import { EvidenceAuditButton } from "./EvidenceAuditButton";
 import {
   getStudentEvidenceStatus,
@@ -191,12 +197,12 @@ function AcademicSummary({
       <h3 className="font-semibold text-foreground">Thông tin học tập</h3>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <FieldInfo
-          label="GPA bạn đã nhập"
+          label="Điểm học tập bạn đã nhập"
           value={academic.userGpaDisplay}
           source="Sinh viên nhập"
         />
         <FieldInfo
-          label="GPA nhận diện"
+          label="Điểm học tập được nhận diện"
           value={academic.suggestionDisplay}
           source="Hệ thống nhận diện"
         />
@@ -227,14 +233,17 @@ function EvidencePrecheckSummary({ card }: { card: EvidenceCard }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-semibold uppercase tracking-normal text-sky-800">
-            Thông tin hệ thống nhận diện
+            Thông tin từ tài liệu
           </div>
           <h3 className="mt-1 text-base font-semibold text-foreground">
-            {precheck.identifiedAs?.documentLabel ?? documentTypeLabel(card.documentType)}
+            {precheck.identifiedAs?.documentLabel &&
+            isVietnameseUiCopy(precheck.identifiedAs.documentLabel)
+              ? precheck.identifiedAs?.documentLabel
+              : documentTypeLabel(card.documentType)}
           </h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {precheck.identifiedAs?.shortDescription &&
-            !isTechnicalCopy(precheck.identifiedAs.shortDescription)
+            isVietnameseUiCopy(precheck.identifiedAs.shortDescription)
               ? precheck.identifiedAs.shortDescription
               : "Thông tin dưới đây giúp bạn đối chiếu với tài liệu đã tải lên."}
           </p>
@@ -271,7 +280,7 @@ function EvidencePrecheckSummary({ card }: { card: EvidenceCard }) {
                     .filter(Boolean)
                     .join(" - ") || "Kết quả"
                 }
-                value={[entry.score ?? null, entry.classification]
+                value={[entry.score ?? null, localizeEvidenceValue(entry.classification)]
                   .filter((part) => part !== null && part !== undefined && part !== "")
                   .join(" - ")}
                 source="Hệ thống nhận diện"
@@ -284,8 +293,8 @@ function EvidencePrecheckSummary({ card }: { card: EvidenceCard }) {
           {availableFacts.slice(0, 6).map((fact, index) => (
             <FieldInfo
               key={`${fact.key ?? "fact"}-${index}`}
-              label={fact.label ?? "Thông tin nhận diện"}
-              value={fact.displayValue ?? null}
+              label={precheckFactLabel(fact.key, fact.label)}
+              value={localizeEvidenceValue(fact.displayValue)}
               source="Hệ thống nhận diện"
             />
           ))}
@@ -303,11 +312,7 @@ function EvidencePrecheckSummary({ card }: { card: EvidenceCard }) {
           {warnings.slice(0, 3).map((warning, index) => (
             <li key={`${warning.code ?? "warning"}-${index}`} className="flex gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>
-                {warning.friendlyMessage && !isTechnicalCopy(warning.friendlyMessage)
-                  ? warning.friendlyMessage
-                  : "Có thông tin cần bạn kiểm tra lại."}
-              </span>
+              <span>{getWarningDisplayCopy(warning.code, warning.friendlyMessage)}</span>
             </li>
           ))}
         </ul>
@@ -347,7 +352,7 @@ function StatusSection({
   const message =
     processingMessage ??
     (status.key === "unreadable_file" && !onRetry
-      ? "Không đọc rõ tài liệu. Bạn vẫn có thể xem file và thông tin đã có trong hồ sơ."
+      ? "Không đọc rõ tài liệu. Bạn vẫn có thể xem tệp và thông tin đã có trong hồ sơ."
       : isTechnicalCopy(status.message)
         ? studentEvidenceStatusMap[status.key].message
         : status.message);
@@ -420,6 +425,7 @@ function ConfirmationWorkspace({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const details = useMemo(() => card?.fieldDetails ?? [], [card?.fieldDetails]);
+  const fieldsContainerRef = useRef<HTMLDivElement>(null);
   const initialDraft = useMemo(
     () =>
       Object.fromEntries(
@@ -450,6 +456,15 @@ function ConfirmationWorkspace({
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
 
+  useEffect(() => {
+    if (!editing) return;
+    fieldsContainerRef.current
+      ?.querySelector<HTMLInputElement | HTMLSelectElement>(
+        "input:not([disabled]), select:not([disabled])",
+      )
+      ?.focus();
+  }, [editing]);
+
   const isConfirmed = card?.confirmationStatus === "confirmed";
   const canEditFields = Boolean(
     onSaveCorrections && card?.canEdit && !isConfirmed && details.some((field) => field.editable),
@@ -477,14 +492,14 @@ function ConfirmationWorkspace({
     >
       <div className="border-b border-sky-100 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-foreground">
               {isConfirmed ? "Bạn đã xác nhận thông tin" : "Thông tin nhận diện"}
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
               {isConfirmed
                 ? "Cán bộ sẽ xem xét minh chứng theo quy trình hồ sơ."
-                : "Đối chiếu từng thông tin với tài liệu. Bạn chỉ có thể chỉnh sửa hoặc xác nhận khi thao tác được mở."}
+                : "Thông tin nhận diện có thể chưa chính xác. Hãy đối chiếu với tài liệu trước khi xác nhận."}
             </p>
             {card?.confirmedAt ? (
               <p className="mt-1 text-xs text-muted-foreground">
@@ -492,13 +507,41 @@ function ConfirmationWorkspace({
               </p>
             ) : null}
           </div>
-          <Badge variant="outline" className="bg-background">
-            {confirmationStatusLabel(card?.confirmationStatus)}
-          </Badge>
+          <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
+            {!isConfirmed && canEditFields && !editing ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 w-full gap-2 border-primary/30 bg-background text-primary hover:bg-primary/5 sm:w-auto"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                Chỉnh sửa thông tin nhận diện
+              </Button>
+            ) : editing ? (
+              <p role="status" className="text-sm font-medium text-primary">
+                Đang chỉnh sửa thông tin nhận diện
+              </p>
+            ) : null}
+            <Badge variant="outline" className="bg-background">
+              {confirmationStatusLabel(card?.confirmationStatus)}
+            </Badge>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-4 p-4">
+      {!isConfirmed && canEditFields ? (
+        <div className="mx-4 mt-4 flex flex-col items-start justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-2 text-sm text-amber-950">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p>
+              Hệ thống có thể nhận diện chưa đúng. Hãy kiểm tra thông tin bên cạnh ảnh minh chứng.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <div ref={fieldsContainerRef} className="space-y-4 p-4">
         {groupFieldDetails(details).map((group) => (
           <div key={group.title}>
             <h4 className="text-sm font-semibold text-foreground">{group.title}</h4>
@@ -527,12 +570,6 @@ function ConfirmationWorkspace({
           {isConfirmed && onRunPrecheck ? (
             <Button type="button" variant="outline" size="sm" onClick={onRunPrecheck}>
               Chạy lại tiền kiểm
-            </Button>
-          ) : null}
-          {!editing && !isConfirmed && canEditFields ? (
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
-              <Pencil className="h-4 w-4" aria-hidden="true" />
-              Chỉnh sửa
             </Button>
           ) : null}
           {editing ? (
@@ -604,7 +641,7 @@ function EditableField({
     <div className="rounded-md bg-background px-3 py-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor={inputId} className="text-xs font-medium uppercase text-muted-foreground">
-          {field.label}
+          {isVietnameseUiCopy(field.label) ? field.label : fieldLabel(field.key)}
         </label>
         {changed ? <Badge variant="outline">Đã chỉnh</Badge> : null}
       </div>
@@ -624,9 +661,7 @@ function EditableField({
       ) : null}
       {field.warningCodes?.length ? (
         <p className="mt-1 text-xs text-amber-700">
-          {field.warningCodes
-            .map((code) => warningCopy[code] ?? "Có thông tin cần kiểm tra lại.")
-            .join(" ")}
+          {field.warningCodes.map((code) => getWarningDisplayCopy(code)).join(" ")}
         </p>
       ) : null}
     </div>
@@ -736,11 +771,10 @@ function RegistryBadge({
 function FieldInfo({
   label,
   value,
-  source,
 }: {
   label: string;
   value?: string | null;
-  source:
+  source?:
     | "Hồ sơ"
     | "Sinh viên nhập"
     | "Hệ thống nhận diện"
@@ -751,11 +785,8 @@ function FieldInfo({
 }) {
   return (
     <div className="rounded-md bg-muted/40 px-3 py-2 text-sm">
-      <div className="flex flex-wrap items-center gap-2">
+      <div>
         <div className="text-xs font-medium uppercase text-muted-foreground">{label}</div>
-        <Badge variant="outline" className="border-slate-200 bg-background px-1.5 py-0 text-[10px]">
-          {source}
-        </Badge>
       </div>
       <div className="mt-1 break-words font-semibold text-foreground">
         {value || "Chưa tìm thấy thông tin này trong tài liệu."}
@@ -856,7 +887,7 @@ function getExtractedReadableFields(card?: EvidenceCard | null) {
   return (card?.evidencePrecheck?.availableFacts ?? [])
     .map((fact) => ({
       key: fact.key ?? fact.label ?? "",
-      label: fact.label ?? "Thông tin nhận diện",
+      label: precheckFactLabel(fact.key, fact.label),
       value: getDisplayValue(fact.displayValue),
       source: suggestionSource,
     }))
@@ -899,8 +930,9 @@ function getAcademicInfo(card?: EvidenceCard | null) {
     suggestionDisplay: suggestionValue ? `${suggestionValue}/${suggestionScale}` : null,
     thresholdDisplay: thresholdValue ? `${thresholdValue}/${thresholdScale}` : "Chưa có ngưỡng",
     message:
-      getDisplayValue(academic.message) ??
-      "Hệ thống chỉ tạo gợi ý. Vui lòng xác nhận trước khi dùng để tiền kiểm.",
+      (isVietnameseUiCopy(getDisplayValue(academic.message))
+        ? getDisplayValue(academic.message)
+        : null) ?? "Hệ thống chỉ tạo gợi ý. Vui lòng xác nhận trước khi dùng để tiền kiểm.",
   };
 }
 
@@ -943,7 +975,7 @@ function confirmationStatusLabel(status?: string | null) {
 
 function evidencePrecheckStatusLabel(status?: string | null) {
   if (status === "ready_for_confirmation") return "Sẵn sàng xác nhận";
-  if (status === "file_not_readable") return "File khó đọc";
+  if (status === "file_not_readable") return "Tệp khó đọc";
   if (status === "insufficient_information") return "Thiếu thông tin";
   if (status === "possible_mismatch") return "Cần đối chiếu";
   if (status === "needs_attention") return "Cần kiểm tra";
@@ -968,7 +1000,11 @@ function documentTypeLabel(type?: string | null) {
     participant_list: "Danh sách tham gia",
     other: "Tài liệu minh chứng",
   };
-  return type ? (labels[type] ?? "Tài liệu minh chứng") : "Tài liệu minh chứng";
+  const normalizedType = type
+    ?.trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  return normalizedType ? (labels[normalizedType] ?? "Tài liệu minh chứng") : "Tài liệu minh chứng";
 }
 
 function qualityLabel(level?: string | null) {
@@ -1001,10 +1037,18 @@ function fieldLabel(key: string) {
     volunteer_days: "số ngày tham gia",
     certificate_type: "loại chứng nhận",
     language_score: "điểm ngoại ngữ",
-    gpa: "GPA",
+    gpa: "Điểm học tập",
     conduct_score: "điểm rèn luyện",
   };
-  return labels[key] ?? (looksLikeInternalCode(key) ? "thông tin liên quan" : key);
+  return labels[key] ?? (looksLikeInternalCode(key) ? "thông tin liên quan" : "Thông tin khác");
+}
+
+function precheckFactLabel(key?: string, label?: string) {
+  if (key) {
+    const knownLabel = fieldLabel(key);
+    if (knownLabel !== "Thông tin khác" && knownLabel !== "thông tin liên quan") return knownLabel;
+  }
+  return label && isVietnameseUiCopy(label) ? label : "Thông tin nhận diện";
 }
 
 function formatFieldDisplay(value: unknown) {
@@ -1029,7 +1073,9 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function getDisplayValue(value: unknown): string | null {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value === "number") return String(value);
-  if (typeof value === "string") return formatDateText(value) ?? mapOrganizerLevel(value) ?? value;
+  if (typeof value === "string") {
+    return formatDateText(value) ?? mapOrganizerLevel(value) ?? localizeEvidenceValue(value);
+  }
   if (typeof value === "object" && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
     return getDisplayValue(record.display ?? record.label ?? record.value ?? record.raw);
@@ -1117,6 +1163,7 @@ function looksLikeInternalCode(value: string) {
 function isTechnicalCopy(value: string) {
   return (
     looksLikeInternalCode(value) ||
+    !isVietnameseUiCopy(value) ||
     /\b(?:ai|ocr|indexing|extraction|pipeline|smartreader)\b/i.test(value)
   );
 }

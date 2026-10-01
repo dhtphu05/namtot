@@ -39,11 +39,11 @@ export function EvidenceFilePreview({ evidence, onUploadMore }: EvidenceFilePrev
     return (
       <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 p-6 text-center">
         <FileText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-        <p className="mt-3 font-medium text-foreground">Chưa có file trong minh chứng này.</p>
+        <p className="mt-3 font-medium text-foreground">Chưa có tệp trong minh chứng này.</p>
         {onUploadMore ? (
           <Button type="button" variant="outline" className="mt-4" onClick={onUploadMore}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            Tải file bổ sung
+            Tải tệp bổ sung
           </Button>
         ) : null}
       </div>
@@ -77,7 +77,7 @@ export function EvidenceFilePreview({ evidence, onUploadMore }: EvidenceFilePrev
       </div>
 
       {files.length > 1 ? (
-        <div className="flex flex-wrap gap-2" aria-label="Chọn file minh chứng">
+        <div className="flex flex-wrap gap-2" aria-label="Chọn tệp minh chứng">
           {files.map((file) => {
             const key = fileKey(file);
             const selected = fileKey(selectedFile!) === key;
@@ -147,7 +147,7 @@ export function EvidenceFilePreview({ evidence, onUploadMore }: EvidenceFilePrev
             <FileText className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
             <p className="mt-3 font-medium text-foreground">Không thể hiển thị bản xem trước.</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mở bản gốc để xem file bằng ứng dụng phù hợp.
+            Mở bản gốc để xem tệp bằng ứng dụng phù hợp.
             </p>
           </div>
         )}
@@ -157,7 +157,7 @@ export function EvidenceFilePreview({ evidence, onUploadMore }: EvidenceFilePrev
         <div className="flex justify-end">
           <Button type="button" variant="ghost" size="sm" onClick={onUploadMore}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            Tải file bổ sung
+            Tải tệp bổ sung
           </Button>
         </div>
       ) : null}

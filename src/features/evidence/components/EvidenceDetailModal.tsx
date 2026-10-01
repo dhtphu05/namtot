@@ -140,10 +140,12 @@ export function EvidenceDetailModal({
       if (!uploaded.res?.jobId) {
         await startIndexing.mutateAsync({ evidenceId: activeEvidence.id });
       }
-      toast.success("Đã nhận file bổ sung. Hệ thống đang đọc nhanh file.");
+      toast.success("Đã nhận tệp bổ sung. Hệ thống đang đọc nội dung.");
       onChanged?.();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể tải file bổ sung.");
+    } catch {
+      toast.error(
+        "Không tải được tệp bổ sung. Vui lòng thử lại hoặc kiểm tra định dạng và dung lượng tệp.",
+      );
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -246,7 +248,7 @@ export function EvidenceDetailModal({
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  aria-label="Chọn file bổ sung"
+                  aria-label="Chọn tệp bổ sung"
                   accept=".pdf,.jpg,.jpeg,.png,.webp"
                   onChange={(event) => void uploadMore(event.target.files?.[0])}
                 />
@@ -263,7 +265,7 @@ export function EvidenceDetailModal({
                   ) : (
                     <FilePlus2 className="h-4 w-4" />
                   )}
-                  Tải file bổ sung
+                  Tải tệp bổ sung
                 </Button>
               </>
             ) : null}

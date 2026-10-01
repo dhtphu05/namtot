@@ -346,6 +346,7 @@ export function CriteriaNavigationRowV2({
   number,
   title,
   status,
+  statusLabel,
   detail,
   active = false,
   onClick,
@@ -354,6 +355,7 @@ export function CriteriaNavigationRowV2({
   number?: string;
   title: string;
   status: StudentApplicationV2ProgressStatus;
+  statusLabel?: string;
   detail?: string;
   active?: boolean;
   onClick?: () => void;
@@ -376,7 +378,7 @@ export function CriteriaNavigationRowV2({
           {title}
         </span>
         <span className="mt-1 flex flex-wrap items-center gap-2">
-          <StatusPillV2 status={status} />
+          <StatusPillV2 status={status} label={statusLabel} />
           {detail ? (
             <span className="truncate text-[13px] font-medium leading-[18px] text-[var(--student-v2-text-muted)]">
               {detail}

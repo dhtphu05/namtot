@@ -2803,6 +2803,7 @@ function StudentEvidenceGalleryCard({
     isNearViewport && canPreviewFile && Boolean(primaryFile?.id) && !existingPreviewUrl,
   );
   const previewUrl = existingPreviewUrl ?? signedUrl.data ?? undefined;
+  const cardStatus = getEvidenceCardStatus(evidence, cityInitialSubmission);
 
   return (
     <div ref={elementRef}>
@@ -2811,7 +2812,8 @@ function StudentEvidenceGalleryCard({
         metadata={getEvidenceMetadata(evidence, applicationId)}
         context={studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]}
         processingDetail={getEvidenceProcessingDetail(evidence, cityInitialSubmission)}
-        status={mapEvidenceToProgressStatus(evidence, cityInitialSubmission)}
+        status={cardStatus.status}
+        statusLabel={cardStatus.label}
         preview={getEvidencePreview(evidence, previewUrl, signedUrl.isLoading)}
         onOpen={() => onViewEvidence(evidence)}
         actionItems={[
@@ -3477,26 +3479,30 @@ function getStringRecordValue(record: Record<string, unknown> | null, key: strin
   return null;
 }
 
-function mapEvidenceToProgressStatus(
+function getEvidenceCardStatus(
   evidence: EvidenceResponse,
   cityInitialSubmission = false,
-): StudentApplicationV2ProgressStatus {
-  if (
-    cityInitialSubmission &&
-    ["failed", "needs_manual_review"].includes(evidence.indexingStatus)
-  ) {
-    return "waiting";
+): { status: StudentApplicationV2ProgressStatus; label: string } {
+  if (evidence.status === "accepted") return { status: "complete", label: "Đã xác nhận" };
+  if (["needs_supplement", "rejected"].includes(evidence.status)) {
+    return { status: "supplement", label: "Cần bổ sung" };
   }
-  if (evidence.status === "accepted" || evidence.indexingStatus === "indexed") return "complete";
-  if (
-    ["needs_supplement", "rejected"].includes(evidence.status) ||
-    evidence.indexingStatus === "failed"
-  ) {
-    return "supplement";
+  if (evidence.indexingStatus === "failed" || evidence.indexingStatus === "needs_manual_review") {
+    return {
+      status: "waiting",
+      label: cityInitialSubmission ? "Cán bộ sẽ kiểm tra" : "Cần kiểm tra lại",
+    };
   }
-  if (evidence.status === "draft" && evidence.indexingStatus === "not_started")
-    return "not-started";
-  return "waiting";
+  if (evidence.indexingStatus === "indexed") return { status: "waiting", label: "Đã đọc xong" };
+  if (evidence.status === "under_review") return { status: "waiting", label: "Đang xét duyệt" };
+  if (
+    ["ocr_processing", "processing", "extracting", "checking_registry"].includes(
+      evidence.indexingStatus,
+    )
+  ) {
+    return { status: "waiting", label: "Đang xử lý" };
+  }
+  return { status: "waiting", label: "Đã tải lên" };
 }
 
 function mapSupplementRequests(tasks: ApplicationReviewTaskSummary[]): SupplementRequest[] {

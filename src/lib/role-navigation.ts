@@ -1,3 +1,5 @@
+import { STUDENT_ASSISTANT_UI_ENABLED } from "./student-assistant-ui.ts";
+
 export type NavigationRole =
   | "student"
   | "data_uploader"
@@ -197,5 +199,11 @@ const navByRole: Record<NavigationRole, NavigationGroup[]> = {
 export function getRoleNavigation(role: NavigationRole, backendRole?: string) {
   if (backendRole === "admin") return navByRole.admin;
   if (backendRole === "committee") return navByRole.committee;
+  if (role === "student" && !STUDENT_ASSISTANT_UI_ENABLED) {
+    return navByRole.student.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.to !== "/app/assistant"),
+    }));
+  }
   return navByRole[role];
 }

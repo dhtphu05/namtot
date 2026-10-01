@@ -257,7 +257,7 @@ export function StudentEvidenceCard({
                 disabled={uploadFile.isPending}
               >
                 <RefreshCw className="h-4 w-4" />
-                {needsFileCheckAgain ? "Thay thế file" : "Thay thế"}
+                {needsFileCheckAgain ? "Thay thế tệp" : "Thay thế"}
               </AppButton>
             ) : null}
             {canEdit && onDelete ? (

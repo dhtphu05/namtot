@@ -1108,7 +1108,7 @@ function SuggestionUnavailable({
         <div>
           <p className="font-medium">Gợi ý đang tạm thời không khả dụng.</p>
           <p className="mt-0.5 text-blue-800">
-            Bạn vẫn có thể tải minh chứng thủ công; sự cố này không ảnh hưởng đến việc gửi file.
+            Bạn vẫn có thể tải minh chứng thủ công; sự cố này không ảnh hưởng đến việc gửi tệp.
           </p>
         </div>
       </div>
@@ -1121,7 +1121,7 @@ function SuggestionUnavailable({
           onClick={onChooseFile}
         >
           <FileUp className="h-4 w-4" aria-hidden="true" />
-          Chọn file thủ công
+          Chọn tệp thủ công
         </Button>
         <Button
           type="button"

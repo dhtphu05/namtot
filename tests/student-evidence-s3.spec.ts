@@ -104,6 +104,45 @@ test.describe("Student evidence workspace S3 + S4", () => {
     );
   });
 
+  test("suggestion service failures do not block manual evidence upload", async ({ page }) => {
+    let createCount = 0;
+    let uploadCount = 0;
+    await installEvidenceApi(page, {
+      onCreate: () => {
+        createCount += 1;
+      },
+      onUpload: () => {
+        uploadCount += 1;
+      },
+    });
+    await page.route("**/api/evidence-matching/library**", (route) =>
+      route.fulfill({ status: 503, body: "temporarily unavailable" }),
+    );
+    await page.route("**/api/evidence-matching/suggestions**", (route) =>
+      route.fulfill({ status: 503, body: "temporarily unavailable" }),
+    );
+
+    await openStudentPage(page, "/app/upload");
+    await page.getByRole("button", { name: "Thêm minh chứng" }).first().click();
+    const dialog = page.getByRole("dialog", { name: "Thêm minh chứng" });
+    await dialog.getByRole("button", { name: "Tình nguyện tốt" }).click();
+    await dialog.getByLabel("Tên minh chứng").fill("Giấy xác nhận hoạt động tình nguyện");
+    const [chooser] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      dialog.getByRole("button", { name: "Chọn file thủ công" }).first().click(),
+    ]);
+    await chooser.setFiles({
+      name: "xac-nhan-tinh-nguyen.jpg",
+      mimeType: "image/jpeg",
+      buffer: Buffer.from("image fixture"),
+    });
+    await dialog.getByRole("button", { name: "Thêm vào hồ sơ" }).click();
+
+    await expect(dialog).toBeHidden();
+    expect(createCount).toBe(1);
+    expect(uploadCount).toBe(1);
+  });
+
   test("adds multiple files to one evidence and resumes failed uploads without duplicating it", async ({
     page,
   }) => {
@@ -144,10 +183,31 @@ test.describe("Student evidence workspace S3 + S4", () => {
         buffer: Buffer.from("fixture image"),
       },
     ]);
-    await expect(dialog.getByText("3 file đã chọn", { exact: true })).toBeVisible();
-    await expect(dialog.getByText("transcript.pdf", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("3 tệp đã chọn", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Đang xem transcript.pdf" })).toBeVisible();
+    await expect(
+      dialog.getByText("Chọn tệp bên dưới hoặc dùng mũi tên để xem trước."),
+    ).toBeVisible();
+    await expect(dialog.getByText("Xem trước", { exact: true })).toHaveCount(2);
     await expect(dialog.getByText("theory.jpg", { exact: true })).toBeVisible();
     await expect(dialog.getByText("award.png", { exact: true })).toBeVisible();
+    await expect(dialog.locator('iframe[title="transcript.pdf"]')).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Tệp trước" })).toBeDisabled();
+    await expect(dialog.getByRole("button", { name: "Tệp tiếp theo" })).toBeEnabled();
+    await dialog.getByRole("button", { name: "Tệp tiếp theo" }).click();
+    await expect(dialog.getByRole("img", { name: "theory.jpg" })).toHaveAttribute("src", /^blob:/);
+    await dialog.getByRole("button", { name: "Tệp tiếp theo" }).click();
+    await expect(dialog.getByRole("img", { name: "award.png" })).toHaveAttribute("src", /^blob:/);
+    await expect(dialog.getByRole("button", { name: "Tệp tiếp theo" })).toBeDisabled();
+    await dialog.getByRole("button", { name: "Tệp trước" }).click();
+    await expect(dialog.getByRole("img", { name: "theory.jpg" })).toHaveAttribute("src", /^blob:/);
+    await expect(dialog.getByRole("button", { name: "Đang xem theory.jpg" })).toBeVisible();
+    await dialog.getByRole("button", { name: "Xem trước award.png" }).click();
+    await expect(dialog.getByRole("img", { name: "award.png" })).toHaveAttribute("src", /^blob:/);
+    await expect(dialog.getByText("Đang xem tệp 3/3", { exact: true })).toBeVisible();
+    await dialog.getByRole("button", { name: "Xem trước theory.jpg" }).click();
+    await expect(dialog.getByRole("img", { name: "theory.jpg" })).toHaveAttribute("src", /^blob:/);
+    await expect(dialog.getByText("Đang xem tệp 2/3", { exact: true })).toBeVisible();
     const evidenceQueueFits = await dialog.evaluate((element) => {
       const dialogBounds = element.getBoundingClientRect();
       const rows = Array.from(element.querySelectorAll("li")).map((row) =>
@@ -165,9 +225,9 @@ test.describe("Student evidence workspace S3 + S4", () => {
       );
     });
     expect(evidenceQueueFits).toBe(true);
-    await dialog.getByRole("button", { name: "Thêm 3 file vào hồ sơ" }).click();
+    await dialog.getByRole("button", { name: "Thêm 3 tệp vào hồ sơ" }).click();
 
-    await expect(dialog.getByRole("alert")).toContainText("1 file chưa tải được");
+    await expect(dialog.getByRole("alert")).toContainText("1 tệp chưa tải được");
     expect(createCount).toBe(1);
     expect(uploads).toEqual([
       { evidenceId: "ev-new-1", fileName: "transcript.pdf" },
@@ -177,7 +237,7 @@ test.describe("Student evidence workspace S3 + S4", () => {
     await expect(dialog.getByText("Đã tải lên", { exact: true })).toHaveCount(2);
     await expect(dialog.getByText("Tải thất bại", { exact: true })).toHaveCount(1);
 
-    await dialog.getByRole("button", { name: "Thử lại 1 file lỗi" }).click();
+    await dialog.getByRole("button", { name: "Thử lại 1 tệp lỗi" }).click();
     await expect(dialog).toBeHidden();
     expect(createCount).toBe(1);
     expect(uploads.at(-1)).toEqual({ evidenceId: "ev-new-1", fileName: "theory.jpg" });
@@ -219,6 +279,7 @@ test.describe("Student evidence workspace S3 + S4", () => {
     await expect(dialog.getByRole("alert")).toContainText("vượt quá giới hạn 20 MB");
     await page.screenshot({ path: "/tmp/student-evidence-upload-validation-1280x720.png" });
     await dialog.getByRole("button", { name: "Thêm vào hồ sơ" }).click();
+    await expect(dialog.getByRole("alert")).toContainText("vượt quá giới hạn 20 MB");
     await expect.poll(() => createCount).toBe(0);
   });
 
@@ -366,7 +427,7 @@ test.describe("Student evidence workspace S3 + S4", () => {
       dialog.getByText(/0\.98|98%|Độ tin cậy|AI|OCR|extraction|pending_indexing/i),
     ).toHaveCount(0);
 
-    await dialog.getByRole("button", { name: "Chỉnh sửa" }).click();
+    await dialog.getByRole("button", { name: "Chỉnh sửa thông tin nhận diện" }).click();
     await dialog.getByLabel("Tên hoạt động").fill("Ngày hội tình nguyện mùa xuân 2026");
     await dialog.getByRole("button", { name: "Lưu thay đổi" }).click();
     await expect(page.getByText("Đã lưu thông tin đã chỉnh.")).toBeVisible();
@@ -388,6 +449,74 @@ test.describe("Student evidence workspace S3 + S4", () => {
       .toEqual({
         expectedUpdatedAt: "2026-01-03T00:00:00.000Z",
       });
+  });
+
+  test("S4 localizes OCR warnings and makes correction easy to find", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const card = editableCard();
+    card.evidencePrecheck = {
+      status: "needs_attention",
+      identifiedAs: {
+        documentLabel: "Academic transcript",
+        shortDescription:
+          "Yearly academic transcript from the university; image is somewhat low resolution and slightly skewed.",
+      },
+      completeness: { score: 0.7, missingImportantFields: [] },
+      quality: { level: "needs_check" },
+      identityCheck: { status: "matched" },
+      warnings: [
+        {
+          code: "issuer_stamp_visible",
+          friendlyMessage: "issuer stamp visible",
+        },
+        {
+          code: "document_quality_warning",
+          friendlyMessage:
+            "Image is somewhat low resolution and slightly skewed; some small text may be unreadable.",
+        },
+        {
+          code: "visual_fields_need_confirmation",
+          friendlyMessage:
+            "Values were detected visually from the uploaded image; please confirm student code and GPA match internal records.",
+        },
+      ],
+      availableFacts: [
+        { key: "organizer_level", label: "Organization level", displayValue: "university" },
+        { key: "document_type", label: "Document type", displayValue: "academic_result" },
+      ],
+    };
+    card.documentType = "academic_result";
+
+    await installEvidenceApi(page, {
+      evidences: [evidence("ev-ocr-copy", "Bảng điểm", "academic", "indexed", { card })],
+    });
+    await openStudentPage(page, "/app/upload?evidenceId=ev-ocr-copy&mode=confirm");
+
+    const dialog = page.getByRole("dialog");
+    const workspace = dialog.locator("#evidence-confirmation-workspace");
+    const workspaceHeader = workspace.locator(":scope > div").first();
+    await expect(dialog.getByText("Tải lên thủ công")).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Kết quả học tập" })).toBeVisible();
+    await expect(dialog.getByText("Thông tin hệ thống nhận diện", { exact: true })).toHaveCount(0);
+    await expect(dialog.getByText("Hệ thống nhận diện", { exact: true })).toHaveCount(0);
+    await expect(
+      dialog.getByText(
+        "Thông tin trong ảnh đã được nhận diện; vui lòng đối chiếu MSSV và GPA với hồ sơ.",
+      ),
+    ).toBeVisible();
+    await expect(
+      workspaceHeader.getByRole("button", { name: "Chỉnh sửa thông tin nhận diện" }),
+    ).toBeVisible();
+    await expect(dialog.getByText(/dấu hoặc thông tin đơn vị cấp/i)).toBeVisible();
+    await expect(dialog.getByText(/độ phân giải thấp/i)).toBeVisible();
+    await expect(dialog.getByText("Cấp Đại học")).toBeVisible();
+    await expect(dialog).not.toContainText(
+      /issuer stamp visible|Image is somewhat low resolution|Academic transcript|university|Yearly academic transcript|Values were detected|academic_result/,
+    );
+
+    await workspaceHeader.getByRole("button", { name: "Chỉnh sửa thông tin nhận diện" }).click();
+    await expect(dialog.getByLabel("Tên hoạt động")).toBeVisible();
+    await expect(dialog.getByLabel("Tên hoạt động")).toBeFocused();
   });
 
   test("S4 hides correction and confirmation controls for submitted or decision-locked evidence", async ({

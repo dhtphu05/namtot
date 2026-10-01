@@ -26,25 +26,25 @@ export const sourceTypeLabel: Record<EvidenceSourceType, string> = {
 
 export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
   draft: "Đã lưu",
-  pending_indexing: "Đang kiểm tra file",
-  indexed: "Đã đọc được file",
+  pending_indexing: "Đang kiểm tra tệp",
+  indexed: "Đã đọc được nội dung tệp",
   needs_supplement: "Cần bổ sung",
   under_review: "Chờ cán bộ xác nhận sau khi nộp",
   accepted: "Đã được xác nhận",
-  rejected: "Không đọc rõ file",
-  resolution_needed: "File cần kiểm tra thêm",
+  rejected: "Không đọc rõ nội dung tệp",
+  resolution_needed: "Tệp cần kiểm tra thêm",
 };
 
 export const indexingStatusLabel: Record<IndexingStatus, string> = {
   not_started: "Đã lưu",
   uploaded: "Đã lưu",
-  pending_indexing: "Đang kiểm tra file",
-  ocr_processing: "Đang kiểm tra file",
-  extracting: "Đang kiểm tra file",
-  checking_registry: "Đang kiểm tra file",
-  indexed: "Đã đọc được file",
-  needs_manual_review: "File cần kiểm tra thêm",
-  failed: "Không đọc rõ file",
+  pending_indexing: "Đang kiểm tra tệp",
+  ocr_processing: "Đang kiểm tra tệp",
+  extracting: "Đang kiểm tra tệp",
+  checking_registry: "Đang kiểm tra tệp",
+  indexed: "Đã đọc được nội dung tệp",
+  needs_manual_review: "Tệp cần kiểm tra thêm",
+  failed: "Không đọc rõ nội dung tệp",
 };
 
 export function formatStudentDate(value?: string | null) {

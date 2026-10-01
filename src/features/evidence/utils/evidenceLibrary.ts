@@ -184,7 +184,10 @@ export function validateEvidenceUploadFile(file: {
   size: number;
 }): string | null {
   const extension = `.${file.name.split(".").pop()?.toLowerCase() ?? ""}`;
-  const supported = file.type ? allowedMimeTypes.has(file.type) : allowedExtensions.has(extension);
+  const mimeType = file.type?.trim().toLowerCase() ?? "";
+  const supported =
+    allowedMimeTypes.has(mimeType) ||
+    ((!mimeType || mimeType === "application/octet-stream") && allowedExtensions.has(extension));
   if (!supported) return "Định dạng chưa được hỗ trợ. Hãy chọn PDF, JPG, PNG hoặc WEBP.";
   if (file.size > EVIDENCE_UPLOAD_LIMIT_BYTES) {
     return `Tài liệu vượt quá giới hạn ${EVIDENCE_UPLOAD_LIMIT_MB} MB.`;

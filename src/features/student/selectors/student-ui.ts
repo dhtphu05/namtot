@@ -162,7 +162,12 @@ export function applyCompletionToCriteriaState(
               : ""
           }.`
         : state.description,
-    primaryMissingReason: completion.nextAction?.label ?? state.primaryMissingReason,
+    primaryMissingReason:
+      completion.criterion === "physical"
+        ? "Tải minh chứng phù hợp cho tiêu chí Thể lực tốt"
+        : completion.criterion === "integration"
+          ? "Tải minh chứng phù hợp cho tiêu chí Hội nhập tốt"
+          : (completion.nextAction?.label ?? state.primaryMissingReason),
     completionText,
     completionSource: "criteria_completion",
   };
@@ -213,8 +218,8 @@ export function getCriteriaUiState(
     description: getCriterionDescription(criteriaKey, status, evidences.length),
     primaryMissingReason:
       feedback.find((item) => item.isActionable)?.message ??
-      precheckMissing?.message ??
-      (failedEvidence ? "Minh chứng chưa đọc được, cần kiểm tra lại file." : ""),
+      (precheckMissing?.message ? cleanStudentText(precheckMissing.message) : undefined) ??
+      (failedEvidence ? "Minh chứng chưa đọc được, cần kiểm tra lại tệp." : ""),
   };
 }
 
@@ -269,9 +274,9 @@ export function getNextActions(
   if (backendNextAction) {
     actions.push({
       priority: backendNextAction.priority,
-      title: backendNextAction.label,
-      description: backendNextAction.shortReason,
-      actionLabel: backendNextAction.label,
+      title: cleanStudentText(backendNextAction.label),
+      description: cleanStudentText(backendNextAction.shortReason),
+      actionLabel: cleanStudentText(backendNextAction.label),
       route: backendNextAction.route || "/app/application",
       criterionKey: backendNextAction.criterion,
       requirementKey: backendNextAction.requirementKey,
@@ -309,7 +314,7 @@ export function getNextActions(
         title: usesRequirementFlow
           ? item.primaryMissingReason ||
             (isAcademic
-              ? "Nhập GPA và chọn thang điểm"
+              ? "Nhập điểm trung bình tích lũy và chọn thang điểm"
               : isPhysical
                 ? "Chọn cách chứng minh Thể lực tốt"
                 : isVolunteer
@@ -688,13 +693,16 @@ function inferCriterionFromText(text: string): Criterion | undefined {
 }
 
 function cleanStudentText(value: string) {
+  if (/\b(path|key backend|backend key|formSchema|json|api|endpoint)\b/i.test(value)) {
+    return "Bạn có thể tải minh chứng phù hợp. Cán bộ sẽ đối chiếu thông tin khi xét hồ sơ.";
+  }
   return value
     .replace(/\bintegration\b/g, "Hội nhập tốt")
     .replace(/\bvolunteer\b/g, "Tình nguyện tốt")
     .replace(/\bphysical\b/g, "Thể lực tốt")
     .replace(/\bacademic\b/g, "Học tập tốt")
     .replace(/\bethics\b/g, "Đạo đức tốt")
-    .replace(/\bOCR\b/g, "xử lý file")
+    .replace(/\bOCR\b/g, "xử lý nội dung minh chứng")
     .replace(/\bAI confidence\b/gi, "mức độ rõ ràng")
     .replace(/[A-Z]+_[A-Z0-9_]+/g, "Cập nhật xử lý")
     .trim();

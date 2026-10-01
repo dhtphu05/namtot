@@ -147,7 +147,7 @@ export function UploadEvidence() {
   return (
     <>
       <TopBar
-        title="Upload minh chứng"
+        title="Tải minh chứng"
         subtitle="Tải lên minh chứng theo 5 tiêu chí để hoàn thiện hồ sơ"
         action={<Button onClick={() => nav({ to: "/app" })}>Quay lại bảng điều khiển</Button>}
       />
@@ -235,10 +235,10 @@ export function UploadEvidence() {
             <div className="font-semibold text-brand-deep">
               {createEvidence.isPending || uploadAndIndex.isPending
                 ? "Đang xử lý tải lên..."
-                : "Kéo thả file hoặc bấm để chọn"}
+                : "Kéo thả tệp hoặc bấm để chọn"}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              PDF, JPG, PNG, WEBP — tối đa {EVIDENCE_UPLOAD_LIMIT_MB} MB / file
+              Tệp PDF, JPG, PNG, WEBP — tối đa {EVIDENCE_UPLOAD_LIMIT_MB} MB / tệp
             </div>
             <div className="mt-4">
               <Button
@@ -303,8 +303,7 @@ export function UploadEvidence() {
               <AlertTriangle className="w-3.5 h-3.5" /> Lưu ý phổ biến
             </div>
             <div className="text-xs text-amber-800">
-              Ảnh mờ, thiếu dấu xác nhận, hoặc chứng chỉ hết hạn sẽ bị AI cảnh báo và yêu cầu cán bộ
-              xác minh.
+              Ảnh mờ, thiếu dấu xác nhận hoặc chứng chỉ hết hạn có thể cần cán bộ kiểm tra lại.
             </div>
           </div>
         </Card>
@@ -330,7 +329,7 @@ export function UploadEvidence() {
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <div>
-                  <div className="font-bold text-brand-deep">VNPT SmartReader đang xử lý</div>
+                  <div className="font-bold text-brand-deep">Đang đọc nội dung minh chứng</div>
                   <div className="text-xs text-muted-foreground">
                     Hệ thống đang kiểm tra minh chứng của bạn
                   </div>
@@ -338,7 +337,7 @@ export function UploadEvidence() {
               </div>
               <div className="space-y-3">
                 {[
-                  "Đang tải file lên hệ thống",
+                  "Đang tải tệp lên hệ thống",
                   "Đang đọc nội dung",
                   "Bóc tách thông tin",
                   "Tạo thẻ minh chứng",
