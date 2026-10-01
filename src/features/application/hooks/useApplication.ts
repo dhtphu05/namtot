@@ -193,7 +193,7 @@ export function useSubmitApplication() {
       }
       if (code === "CITY_SUBMISSION_NEEDS_VERIFICATION") {
         toast.error(
-          "Điều kiện nộp hồ sơ cấp Thành phố đang chờ cán bộ xác minh. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.",
+          "Thông tin điều kiện nộp hồ sơ đang được đối chiếu. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.",
         );
         return;
       }

@@ -58,8 +58,8 @@ export function buildCriterionSummary(
   if (result?.status === "ai_failed") {
     return {
       criterion,
-      label: "Cần kiểm tra thủ công",
-      explanation: "Hệ thống chưa đọc được minh chứng. Cán bộ có thể cần kiểm tra thủ công.",
+      label: "Tệp chưa đọc được",
+      explanation: "Bạn có thể mở tệp gốc hoặc tải lên bản rõ hơn.",
       tone: "warning",
       icon: AlertTriangle,
       requiredAttention: true,
@@ -73,13 +73,13 @@ export function buildCriterionSummary(
   ) {
     return {
       criterion,
-      label: "Chờ cán bộ xác nhận",
+      label: "Đã ghi nhận",
       explanation: getUserFacingText(
         warnings[0] ?? reasons[0] ?? result?.status,
-        "Dữ liệu đã có nhưng cần cán bộ xác nhận trước khi chốt kết quả.",
+        "Thông tin đã được lưu trong hồ sơ của bạn.",
       ),
-      tone: "warning",
-      icon: AlertTriangle,
+      tone: "brand",
+      icon: Clock3,
       requiredAttention: false,
     };
   }
@@ -116,8 +116,8 @@ export function buildCriterionSummary(
   if (evidenceCount > 0) {
     return {
       criterion,
-      label: "Chờ kết quả kiểm tra",
-      explanation: `${evidenceCount} minh chứng đã được ghi nhận. Hệ thống/cán bộ cần kiểm tra trước khi xác nhận tiêu chí.`,
+      label: "Đã ghi nhận",
+      explanation: `${evidenceCount} minh chứng đã được lưu trong hồ sơ.`,
       tone: "brand",
       icon: Clock3,
       requiredAttention: false,
@@ -126,10 +126,10 @@ export function buildCriterionSummary(
 
   return {
     criterion,
-    label: "Chờ cán bộ xác nhận",
-    explanation: "Chưa đủ dữ liệu chi tiết từ hệ thống kiểm tra. Cán bộ sẽ xác nhận khi xét duyệt.",
+    label: "Đã ghi nhận",
+    explanation: "Thông tin hiện có đã được lưu trong hồ sơ.",
     tone: "brand",
-    icon: AlertTriangle,
+    icon: Clock3,
     requiredAttention: false,
   };
 }

@@ -129,13 +129,39 @@ function getCompletionDisplayState(input: CriterionDisplayInput): StudentCriteri
   const completion = input.completion;
   const action = getActionPresentation(completion?.nextAction ?? input.precheckAction);
   const status = completion?.status ?? "not_started";
+  const isUnsubmittedDraft =
+    input.application?.submittedAt == null &&
+    ["draft", "prechecked", "ready_to_submit"].includes(input.application?.status ?? "");
+
+  if (
+    isUnsubmittedDraft &&
+    (status === "needs_verification" ||
+      (completion?.completion.needsVerification ?? 0) > 0 ||
+      (status === "not_started" && (completion?.evidenceCount ?? 0) > 0))
+  ) {
+    const hasEvidence = (completion?.evidenceCount ?? 0) > 0;
+    return {
+      criterion: input.criterion,
+      status: "in_progress",
+      source: "completion",
+      label: hasEvidence ? "Đã có minh chứng" : "Đã ghi nhận",
+      description: hasEvidence
+        ? "Minh chứng đã được lưu trong hồ sơ."
+        : "Thông tin đã được lưu trong hồ sơ.",
+      tone: "info",
+      primaryAction: action,
+      completionDetail: undefined,
+      canShowCompletionDetail: false,
+    };
+  }
+
   return {
     criterion: input.criterion,
     status: mapCompletionStatus(status),
     source: "completion",
     label: mapCompletionLabel(status),
     description: getCompletionDetail(completion) ?? "Chưa có dữ liệu hoàn thiện cho tiêu chí này.",
-    tone: toneForStatus(status),
+    tone: status === "needs_verification" ? "info" : toneForStatus(status),
     primaryAction: action,
     completionDetail: getCompletionDetail(completion),
     canShowCompletionDetail: Boolean(completion),
@@ -158,8 +184,8 @@ function mapCompletionStatus(
 function mapCompletionLabel(status: CriterionCompletionItem["status"] | string) {
   if (status === "accepted") return "Đã xác nhận";
   if (status === "ready_for_precheck") return "Sẵn sàng kiểm tra";
-  if (status === "needs_verification") return "Cần xác minh";
-  if (status === "precheck_warning") return "Có cảnh báo";
+  if (status === "needs_verification") return "Đã ghi nhận";
+  if (status === "precheck_warning") return "Có lưu ý";
   if (status === "under_review") return "Đang xét duyệt";
   if (status === "supplement_required") return "Cần bổ sung";
   if (status === "rejected") return "Chưa phù hợp";
@@ -170,13 +196,17 @@ function mapCompletionLabel(status: CriterionCompletionItem["status"] | string) 
 
 function getCompletionDetail(completion?: CriterionCompletionItem | null) {
   if (!completion) return undefined;
+  if (
+    completion.completion.required > 0 &&
+    completion.completion.satisfied >= completion.completion.required &&
+    completion.completion.needsVerification > 0
+  ) {
+    return "Thông tin đã được ghi nhận.";
+  }
   const group = completion.requirementGroups?.[0];
   if (group) return getRequirementGroupPresentation(group).progressLabel;
   const required = completion.completion?.required ?? 0;
   if (required <= 0) return "Chưa có điều kiện bắt buộc";
-  if (completion.completion.satisfied >= required && completion.completion.needsVerification > 0) {
-    return "Đã khai báo đủ, đang chờ xác minh";
-  }
   if (completion.completion.satisfied >= required) return "Sẵn sàng kiểm tra";
   if (completion.completion.satisfied === 0) return "Chưa khai báo dữ liệu";
   return `Còn ${required - completion.completion.satisfied} mục cần hoàn thiện`;
