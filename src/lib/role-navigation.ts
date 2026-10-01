@@ -139,17 +139,39 @@ const navByRole: Record<NavigationRole, NavigationGroup[]> = {
     {
       group: "Hội đồng xét duyệt",
       items: [
+        { label: "Chốt kết quả", to: "/app/manager/results", icon: "results" },
+        { label: "Xuất kết quả", to: "/app/export", icon: "export" },
+        { label: "Thống kê Thành phố", to: "/app/analytics", icon: "dashboard" },
         { label: "Resolution Hub", to: "/app/resolution", icon: "resolution" },
-        { label: "Kết quả cuối", to: "/app/manager/results", icon: "results" },
         { label: "Audit log", to: "/app/audit", icon: "audit" },
       ],
     },
   ],
   admin: [
     {
-      group: "Quản trị hệ thống",
+      group: "Điều hành xét duyệt",
       items: [
-        { label: "Theo dõi tiến độ", to: "/app/analytics", icon: "dashboard" },
+        { label: "Trung tâm vận hành", to: "/app/admin", icon: "dashboard" },
+        { label: "Theo dõi Thành phố", to: "/app/analytics", icon: "dashboard" },
+        { label: "Hàng chờ review", to: "/app/queue", icon: "queue" },
+        { label: "Phân công cán bộ", to: "/app/assignment", icon: "assignment" },
+        { label: "Hồ sơ và kết quả", to: "/app/manager/results", icon: "results" },
+        { label: "Resolution Hub", to: "/app/resolution", icon: "resolution" },
+        { label: "Báo cáo & export", to: "/app/export", icon: "export" },
+      ],
+    },
+    {
+      group: "Dữ liệu nghiệp vụ",
+      items: [
+        { label: "Quyết định công nhận", to: "/app/award-registry", icon: "registry" },
+        { label: "Sự kiện chính thức", to: "/app/event-registry", icon: "events" },
+        { label: "Import quyết định", to: "/app/decision-imports", icon: "import" },
+        { label: "Kho tiền lệ minh chứng", to: "/app/evidence-knowledge", icon: "knowledge" },
+      ],
+    },
+    {
+      group: "Quản trị nền tảng",
+      items: [
         { label: "Đơn vị / Trường", to: "/app/admin/workspaces", icon: "workspace" },
         { label: "Người dùng", to: "/app/admin/users", icon: "users" },
         { label: "Chuyên môn City Officer", to: "/app/admin/officers", icon: "officers" },

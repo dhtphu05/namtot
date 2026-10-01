@@ -26,9 +26,10 @@ export const criterionTaskStatusKeys = [
   { key: "fail", status: "rejected", label: "Không đạt" },
 ] as const;
 
+export const cityPilotSchoolYear = "2025-2026";
+
 export const finalStatuses = [
   { value: "pending", label: "Chưa chốt" },
-  { value: "passed", label: "Đạt" },
-  { value: "partially_passed", label: "Đạt cấp thấp hơn" },
-  { value: "failed", label: "Chưa đạt" },
+  { value: "passed", label: "Đạt Thành phố" },
+  { value: "failed", label: "Chưa đạt Thành phố" },
 ] as const;

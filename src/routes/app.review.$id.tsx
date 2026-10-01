@@ -45,8 +45,12 @@ import { ReviewDecisionPanel } from "@/features/review/components/ReviewDecision
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
 import { ReviewLoadingState } from "@/features/review/components/ReviewLoadingState";
 import { ReviewStatusBadge } from "@/features/review/components/ReviewStatusBadge";
-import { reviewApi } from "@/features/review/api/review";
-import { useClaimReviewTask, useReviewTask } from "@/features/review/hooks/useReview";
+import { useEvidencePreviewVisibility } from "@/features/evidence/hooks/useEvidence";
+import {
+  useClaimReviewTask,
+  useReviewTask,
+  useSignedFileUrl,
+} from "@/features/review/hooks/useReview";
 import type {
   ReviewDecision,
   ReviewTaskAvailableAction,
@@ -1294,31 +1298,18 @@ function CriterionEvidenceCard({
 
 function PreviewFileAttachment({ file }: { file: ReviewTaskEvidenceFile }) {
   const [loadingAction, setLoadingAction] = useState<"preview" | "open" | "download" | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(file.url ?? null);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (previewUrl || !file.id) return;
-    let active = true;
-    reviewApi
-      .getSignedFileUrl(file.id)
-      .then((response) => {
-        if (active && response.data?.url) setPreviewUrl(response.data.url);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [file.id, previewUrl]);
+  const { elementRef, isNearViewport } = useEvidencePreviewVisibility();
+  const signedFileUrl = useSignedFileUrl(file.id, isNearViewport && !file.url);
+  const previewUrl = file.url ?? signedFileUrl.data ?? null;
 
   const runAction = async (action: "preview" | "open" | "download") => {
     setError(null);
     setLoadingAction(action);
     try {
-      const response = await reviewApi.getSignedFileUrl(file.id);
-      const url = response.data?.url ?? previewUrl;
+      const response = previewUrl ? null : await signedFileUrl.refetch();
+      const url = previewUrl ?? response?.data;
       if (!url) throw new Error("Không lấy được liên kết tài liệu.");
-      setPreviewUrl(url);
       if (action !== "preview") window.open(url, "_blank", "noopener,noreferrer");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể mở tài liệu.");
@@ -1328,20 +1319,33 @@ function PreviewFileAttachment({ file }: { file: ReviewTaskEvidenceFile }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-md border bg-muted/20" data-testid="evidence-original">
+    <div
+      ref={elementRef}
+      className="overflow-hidden rounded-md border bg-muted/20"
+      data-testid="evidence-original"
+    >
       <div className="flex min-h-[260px] items-center justify-center bg-white">
         {previewUrl && file.mimeType?.startsWith("image/") ? (
           <img
             alt={file.originalName}
             className="max-h-[420px] w-full object-contain"
+            decoding="async"
+            loading="lazy"
             src={previewUrl}
           />
         ) : previewUrl && file.mimeType === "application/pdf" ? (
-          <iframe className="h-[420px] w-full" src={previewUrl} title={file.originalName} />
+          <iframe
+            className="h-[420px] w-full"
+            loading="lazy"
+            src={previewUrl}
+            title={file.originalName}
+          />
         ) : (
           <div className="p-5 text-center text-sm text-muted-foreground">
             <FileText className="mx-auto mb-2 h-8 w-8" />
-            Chưa tải được preview. Cán bộ có thể mở lớn hoặc tải xuống.
+            {isNearViewport && signedFileUrl.isLoading
+              ? "Đang tải preview..."
+              : "Preview sẽ tải khi minh chứng gần vùng hiển thị. Cán bộ có thể mở lớn hoặc tải xuống."}
           </div>
         )}
       </div>

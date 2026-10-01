@@ -32,7 +32,7 @@ This file is the current source of truth for ChatGPT planning and Codex implemen
 
 - The frontend API role union includes `student`, `data_uploader`, `city_officer`, `city_manager`, `city_committee`, and `admin`, while retaining `class_representative`, `officer`, `manager`, and `committee` for compatibility.
 - `/api/me` continues to provide workspace `{ id, code, name, shortName }`; it does not provide `WorkspaceType`, and `SafeUser` does not infer or add that field.
-- Default authenticated destinations are student `/app`, data uploader `/app/data-uploader`, City Officer `/app/queue`, City Manager `/app/analytics`, City Committee `/app/resolution`, and admin `/app/admin/workspaces`. Legacy officer, manager, and committee routes retain their earlier defaults.
+- Default authenticated destinations are student `/app`, data uploader `/app/data-uploader`, City Officer `/app/queue`, City Manager `/app/analytics`, City Committee `/app/resolution`, and admin `/app/admin`. Legacy officer, manager, and committee routes retain their earlier defaults.
 - Route authorization uses the authenticated backend role in `src/features/auth/route-guard.ts`. The optional demo role selector changes presentation only; it does not change the authenticated role used for route access or API requests.
 - City Officer has review queue, task detail, specialization, and Resolution read-only surfaces. City Manager has cross-School review operations, assignment, workload, results, export, audit, Event Registry, and Knowledge Base. City Committee has Resolution, results/finalization, export/audit, read-only Event Registry, and Knowledge Base; it does not have assignment or dashboard-summary routes.
 - Data Uploader lands on a short information page without upload controls. Decision Import, criteria configuration, and admin workspace routes remain closed to City roles.
@@ -186,23 +186,21 @@ This section reflects the completed university workspace implementation on 2026-
 This section reflects the global admin workspace management UI added on 2026-07-17.
 
 - Routes:
-  - `src/routes/admin.tsx` -> `/admin` compatibility redirect to `/app/admin/workspaces`.
+  - `src/routes/admin.tsx` -> `/admin` compatibility redirect to `/app/admin`.
+  - `src/routes/app.admin.index.tsx` -> authenticated `/app/admin` operations home.
   - `src/routes/app.admin.workspace.tsx` -> `/app/admin/workspace` compatibility redirect to `/app/admin/workspaces` for the common singular typo.
   - `src/routes/app.admin.workspaces.tsx` -> `/app/admin/workspaces`; this parent route renders `<Outlet />` for nested detail paths so `/app/admin/workspaces/:workspaceId` does not get masked by the list page.
   - `src/routes/app.admin.workspaces.$workspaceId.tsx` -> `/app/admin/workspaces/:workspaceId`.
-- `src/features/auth/role-map.ts` now sends admin users to `/app/admin/workspaces` by default. Student/officer/manager/committee defaults are unchanged.
+- `src/features/auth/role-map.ts` sends admin users to `/app/admin` by default. Student/officer/manager/committee defaults are unchanged.
 - `src/features/auth/route-guard.ts` allows `/app/admin/*` only for backend role `admin`; if a browser still has a persisted non-admin session and opens an admin URL, the guard clears that session and sends the user to `/login` instead of silently redirecting into the student/officer app.
 - `src/features/core/components/AppLayout.tsx` mirrors the same admin boundary during client-side access checks so stale runtime auth state cannot pull a student/officer/manager user back to their default app after manually typing `/app/admin/workspace`.
-- `src/routes/login.tsx` includes a quick-access admin card for `admin@dut.udn.vn`; selecting it fills the login form and successful admin login lands on `/app/admin/workspaces`.
+- `src/routes/login.tsx` includes a quick-access admin card for `admin@dut.udn.vn`; selecting it fills the login form and successful admin login lands on `/app/admin`.
 - `src/components/layout/Sidebar.tsx` now has an admin-specific shell identity:
   - `HỘI SINH VIÊN VIỆT NAM`
   - `Hệ thống quản lý Sinh viên 5 tốt`
   - role panel `Quản trị hệ thống` / `Toàn bộ đơn vị`
   - no workspace switcher and no read-only workspace/profile block for global admins.
-- Admin sidebar menu shows only implemented admin navigation:
-  - group `QUẢN LÝ ĐƠN VỊ`
-  - item `Trường triển khai`
-  - no fake menu entries for global users, settings, audit, faculties, or criteria.
+- Admin sidebar is grouped into operations, business data, and platform administration; every item links to an existing admin-authorized route.
 - Feature module: `src/features/admin-workspace`.
   - API client: `api/admin-workspace.ts` uses the existing `apiClient`.
   - Hooks: `useAdminWorkspaces`, `useAdminWorkspacesSummary`, `useAdminWorkspaceDetail`, `useAdminWorkspaceUsers`, `useCreateWorkspace`, `useUpdateWorkspace`, and `useUpdateWorkspaceStatus`.
@@ -538,7 +536,7 @@ This section captures planning context for "Kho minh chứng" / Evidence Reposit
 ### Current Upload, Indexing, And Card Pipeline
 
 - Frontend upload entry points are `AddEvidenceDrawer`, legacy `UploadEvidence`, and evidence actions embedded in `StudentApplicationActionWorkspace`.
-- `AddEvidenceDrawer` creates an evidence record with `sourceType: "manual_upload"`, uploads one required file, and starts indexing only if the upload response lacks a `jobId`.
+- `AddEvidenceDrawer` creates one evidence record with `sourceType: "manual_upload"`, then uploads one or more selected files sequentially to the existing single-file endpoint. It validates and displays each file independently, retries only failed files against the same evidence ID, and starts indexing only if the final successful upload response lacks a `jobId`.
 - Frontend `evidenceApi` uses:
   - `GET /api/applications/:applicationId/evidences`
   - `POST /api/applications/:applicationId/evidences`
@@ -1506,18 +1504,20 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 ## Phase 4 Part 2 — City review completion
 
 - Reuses the existing review queue/detail, human decision panel, supplement flow, Resolution Hub, manager result detail, and finalization dialog; no parallel review workflow or analytics surface was added.
-- The manager result detail now exposes the final decision action to `city_manager` and `city_committee` for individual City applications, and keeps the existing school-role behavior for other application levels. The shared route guard checks City Committee result routes before the broader City Manager route group, so the committee result links already shown in navigation work.
-- `tests/city-review-finalization-roles.spec.ts` protects the City finalization role split and existing City Manager finalization behavior for non-City applications. `tests/city-review-human-authority.spec.ts` proves a City Officer can accept despite incomplete rules/OCR failure and reject despite a positive rules suggestion.
+- The manager result detail exposes finalization to `city_manager` and `city_committee` for individual City applications. City operations cannot load non-City records through the City result detail; legacy manager/committee behavior remains unchanged. The shared route guard checks City Committee result routes before the broader City Manager route group, so committee result links work.
+- `tests/city-review-finalization-roles.spec.ts` protects the City finalization role split and rejects non-City detail through City result routes. `tests/city-review-human-authority.spec.ts` proves a City Officer can accept despite incomplete rules/OCR failure and reject despite a positive rules suggestion.
 - Rules Engine/OCR output remains advisory; official criterion and final decisions continue through existing human review and finalization actions. No Award Registry, Eligibility, schema, or migration change is part of Part 2.
 
 ## Phase 4 Part 3A — City analytics dashboard (2026-09-27)
 
-- `/app/analytics` selects the City dashboard for `city_manager` and `admin`; legacy `manager` and `committee` continue to use the existing workspace dashboard and endpoint. City Officer, City Committee, uploader, and student roles do not access City analytics.
+- `/app/analytics` selects the City dashboard for `city_manager`, `city_committee`, and `admin`; City Manager and City Committee must belong to a CITY workspace, while admin retains global access. City Officer, uploader, student, and legacy school roles remain outside the City analytics API. Legacy `manager` and `committee` continue to use the existing workspace dashboard and endpoint.
 - The City dashboard reads `/api/analytics/city` and its paginated `/api/analytics/city/applications` drill-down. Year, school, and exact Application status controls (including `not_started`) are the source of truth for summary and list. List-only filters include criterion, task/final status, `submitted`, `inReview`, `supplementRequired`, and `resolutionBlocked`; result and submitted counts carry `submitted=true`, and KPI scope is synchronized to the visible year/school/status controls.
-- Summary views show workflow counts, progress by five human-reviewed criteria, data anomalies (missing criterion slots and unexpected tasks), school breakdown, final outcomes, supplement/resolution counts, and City Officer workload. The summary does not display student PII. Review-complete and progress-distribution values are informational because no exact list filter maps to those aggregates. Drill-down rows link to the existing manager result detail.
-- City Manager retains the Eligibility Verification panel on analytics. Admin does not see that panel and can use the existing result-detail route from the City drill-down. Drill-down itself adds no mutation controls; existing result-list/detail, assignment, finalization, and reopen behavior remains governed by the existing routes and backend permissions.
+- Summary views show workflow counts, progress by five human-reviewed criteria, data anomalies (missing criterion slots and unexpected tasks), school breakdown, final outcomes, supplement/resolution counts, and City Officer workload. The school breakdown includes every active school with zeroes for schools without matching applications; a selected school filter limits the breakdown to that school. The summary does not display student PII. Review-complete and progress-distribution values are informational because no exact list filter maps to those aggregates. Drill-down rows link to the existing manager result detail.
+  - City Committee sidebar separates `/app/manager/results` (finalization), `/app/export` (Excel exports), and `/app/analytics` (City metrics). The submitted-by-school report is on `/app/export`; it shows each active school, submitted count, season total, and `.xlsx` export for all schools or one school. Every export card on `/app/export` downloads a real `.xlsx` workbook with Vietnamese column labels and a descriptive Vietnamese filename, including season and school scope where applicable. Committee workbooks use the official `HỘI SINH VIÊN VIỆT NAM THÀNH PHỐ ĐÀ NẴNG` heading. Export data retains the existing filters and server authorization. The report is Committee-only. `/app/analytics` retains its submitted-by-school analytics drill-down table.
+- City Manager retains the Eligibility Verification panel on analytics. City Manager and admin can use the existing season-administration controls; City Committee sees read-only analytics with neither season administration nor the eligibility-verification panel. Admin can use the existing result-detail route from the City drill-down. Drill-down itself adds no mutation controls; existing result-list/detail, assignment, finalization, and reopen behavior remains governed by the existing routes and backend permissions.
 - The role split adds no navigation item, persistence, schema, cache, or background job. The existing legacy dashboard and its workspace scope remain unchanged.
-- Verification: the focused City analytics Playwright suite passes (17 tests), frontend build passes, and lint passes with the same 11 baseline warnings. `npx tsc --noEmit` reports 193 diagnostics, matching the recorded 193 baseline; the new City analytics files add none. The route-guard exceptions are limited to the role sets for analytics and existing results routes; assignment access is unchanged.
+- City operations use the `2025-2026` pilot season by default. `/app/manager/results`, Committee inbox, Resolution Hub, and exports are City-individual views for `city_manager`, `city_committee`, and `admin`; they do not show School/ĐHĐN award choices, partial/lower-level result breakdowns, or cascade/downgrade reports. A City award counts as achieved only for `finalStatus=passed` and `finalLevel=city`; other finalized results are not-achieved at City level. City labels use `Đạt Thành phố`, `Chưa đạt Thành phố`, and `Chưa chốt`; school names remain only as institution grouping/context in City analytics. KPI counts and drill-down filters use the same server-scoped City result set. Legacy `manager`/`committee` keep the multi-level list and workspace summary.
+- Verification: the focused City analytics Playwright suite passes (28 tests), frontend build passes, and the changed source files pass ESLint. The last TypeScript check reported 167 diagnostics across the dirty checkout, below the historical 193-diagnostic baseline; the new table and role-gating files had no diagnostics. The route-guard exceptions are limited to analytics and existing results routes; assignment access is unchanged.
 
 ## Phase 4 Part 3B — City review season and submission deadlines (2026-09-27)
 
@@ -1547,11 +1547,13 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 
 ## Admin Operations Completion (2026-09-29)
 
-- Admin navigation now links to workspace/organization management, user/account management, City Officer specialization configuration, existing Award Registry, and City Review Season administration. Non-admins do not receive the admin configuration navigation or direct access to the admin account routes.
+- `/app/admin` is the authenticated admin operations home and the default admin landing destination; `/admin` remains a compatibility redirect. The home and sidebar link to existing review, assignment, results, Resolution, export, Award Registry, Event Registry, Decision Import, evidence-knowledge, workspace, user, City Officer specialization, criteria reference, and audit screens.
+- The home is a frontend navigation surface only. It does not add APIs, aggregate readiness metrics, or grant authority. Existing route guards and backend role allowlists remain authoritative; non-admin direct access to `/app/admin/*` stays denied.
+- Admin uses City analytics and season administration where already supported. Eligibility verification remains City Manager-only. Criteria configuration remains explicitly read-only because there is no matching write API.
 - Workspace UI supports `SCHOOL`, `UNIVERSITY_SYSTEM`, and `CITY`, parent selection for schools, safe metadata edits, and activation/deactivation. Parent configuration follows server rules; schools with application history cannot be reparented.
 - User screens provide search/role/workspace filters, create/edit/activate/deactivate actions, a five-checkbox City Officer specialization editor, and an admin-only password reset form with confirmation. Reset warns that refreshable sessions are revoked, confirms success, and clears entered password values. Server validation remains authoritative for role/workspace pairings.
 - Season operations reuse `/app/analytics` and the existing season APIs for list/create/update/open/close and safe deletion. Empty seasons can be deleted and recreated; used seasons surface the actionable conflict and preserve applications/history.
-- Focused UI regression lives in `tests/phase4-admin-operations.spec.ts`. Its API route mock must target `http://localhost:8080/api/**`; a broad `**/api/**` pattern also intercepts frontend module URLs such as `/src/features/.../api/...` and returns JSON in place of JavaScript.
+- Focused UI regression lives in `tests/phase4-admin-operations.spec.ts`. Its API mock filters fetch/XHR and preflight requests by the `/api/` URL path, independent of API host/port, while allowing frontend modules such as `/src/features/.../api/...` to load normally.
 
 ## Final UI Polish and OCR Human Review (2026-09-29)
 
@@ -1640,6 +1642,7 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 - `/signup` follows the current `main` public-auth layout and keeps field-level labels/errors; the E1.5 institution selector retains the canonical full name and wraps long institution names.
 - The shared API client trims trailing slashes from `VITE_API_BASE_URL` before joining endpoint paths, so a configured base ending in `/` does not produce invalid `//api/...` routes.
 - Focused coverage is in backend `tests/unit/auth-register.test.ts` and `tests/unit/workspace-registry-seed.test.ts`, plus frontend `tests/signup-institution-registry.spec.ts`. Current institution names and merger/hierarchy evidence are recorded with source links in the backend context document. Non-UDN college coverage beyond the two verified City-supported candidates still requires Admin/manual confirmation before being seeded.
+
 ## Phase S5 — Student precheck review and City submission (2026-09-30)
 
 - Student `/app/ai-precheck` now renders `src/features/application/s5/StudentPrecheckReviewPage.tsx` for an individual City application. The route retains its existing `AiPrecheck` fallback for the allowed class-representative role; City Officer access remains governed by the existing route guard and returns to its queue. Non-City/legacy applications and active supplement/resolution states keep the existing Student workspace, so S5 does not become the S6 editor.
@@ -1667,3 +1670,10 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 - The existing start contract creates new Student individual applications at City level, and Students cannot change targetLevel through the existing update APIs. The server remains authoritative and rejects direct submit and supplement-resubmit requests for Student-owned non-City applications before submission side effects.
 - The Student supplement assistant disables its resubmit action for a non-City record and shows the same City-only reason. No routes, API contracts, enums, role guards, review workflows, or database rows were changed.
 - Focused Playwright coverage verifies the historical non-City warning and absence of submit/resubmit buttons in both Student workspaces. Backend policy tests cover individual and collective non-City submissions and canonical supplement resubmission.
+
+## Application read-performance pass (2026-10-01)
+
+- Saving GPA now updates the cached current-application metric from the persisted requirement-response payload (`metricId`, value, scale, verification state, and timestamps) rather than invalidating and reloading the full `/api/applications/current` response. If the response lacks the fields needed for a safe cache update, the hook falls back to invalidating the authoritative queries. Criteria completion and assistant context still refresh after save. Current application and criteria queries use a 5-second freshness window; existing mutation invalidations remain authoritative.
+- The current reviewer task-detail request sends `includeAudit=false` because the master-detail reviewer screen has no audit timeline. The backend default remains audit-inclusive for other consumers. The reviewer already opts out of unused Knowledge Base matches; that existing behavior was retained.
+- Regression verification: the GPA cache test confirms the saved value reopens correctly with one current-application read; the GPA and City Officer queue Playwright tests pass 4/4. Targeted ESLint passes for the changed frontend files. The frontend production build passes. Full lint still reports formatting errors and warnings from other already-dirty files; no repository-wide formatting cleanup was made. Full `tsc --noEmit` remains nonzero with repository diagnostics; none point to the cache hook or changed request line. The earlier 193-diagnostic baseline was recorded on an older checkout, so this run is reported separately rather than compared as an equivalent baseline.
+- No API contract, schema, database data, or visual workflow changed. Browser tests used mocked API responses; no real-session latency benchmark or database integration run was performed.

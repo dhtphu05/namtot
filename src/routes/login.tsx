@@ -99,7 +99,7 @@ function Login() {
             <span>
               <span className="block text-sm font-bold text-[#123B6D]">5TOT Đà Nẵng</span>
               <span className="block text-xs text-[#526174]">
-                Hội Sinh viên Việt Nam TP. Đà Nẵng
+                Hội Sinh viên Việt Nam thành phố Đà Nẵng
               </span>
             </span>
           </Link>

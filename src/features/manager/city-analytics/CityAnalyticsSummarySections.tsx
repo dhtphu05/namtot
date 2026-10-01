@@ -28,9 +28,14 @@ import type { CityAnalyticsListFilters, CityAnalyticsSummary } from "./types";
 type Props = {
   summary: CityAnalyticsSummary;
   onOpenList: (title: string, filters?: CityAnalyticsListFilters) => void;
+  showSubmittedBySchool?: boolean;
 };
 
-export function CityAnalyticsSummarySections({ summary, onOpenList }: Props) {
+export function CityAnalyticsSummarySections({
+  summary,
+  onOpenList,
+  showSubmittedBySchool = false,
+}: Props) {
   const criteriaByKey = useMemo(
     () => new Map(summary.criteria.map((row) => [row.criterion, row])),
     [summary.criteria],
@@ -81,6 +86,58 @@ export function CityAnalyticsSummarySections({ summary, onOpenList }: Props) {
           icon={<CheckCircle2 className="h-4 w-4" />}
         />
       </section>
+
+      {showSubmittedBySchool ? (
+        <Card className="p-0">
+          <div className="border-b p-4">
+            <SectionHeading
+              title="Thống kê hồ sơ đã nộp theo trường"
+              description="Số hồ sơ đã nộp theo trường trong mùa xét và bộ lọc đang chọn."
+            />
+          </div>
+          <div
+            className="overflow-x-auto"
+            role="region"
+            aria-label="Bảng hồ sơ đã nộp theo trường"
+            tabIndex={0}
+          >
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Trường</TableHead>
+                  <TableHead className="text-right">Hồ sơ đã nộp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {summary.bySchool.map((school) => (
+                  <TableRow key={school.workspaceId}>
+                    <TableCell>
+                      <span className="font-semibold">{school.name}</span>
+                      <span className="ml-1 text-xs text-muted-foreground">{school.code}</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <MetricLink
+                        label={`${school.name}: hồ sơ đã nộp`}
+                        value={school.submitted}
+                        onClick={() =>
+                          onOpenList(`Hồ sơ đã nộp: ${school.name}`, {
+                            workspaceId: school.workspaceId,
+                            submitted: true,
+                          })
+                        }
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="font-semibold">
+                  <TableCell>Tổng theo bộ lọc</TableCell>
+                  <TableCell className="text-right">{summary.applications.submitted}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      ) : null}
 
       <section className="grid gap-5 xl:grid-cols-2">
         <Card className="p-0">
@@ -288,7 +345,7 @@ export function CityAnalyticsSummarySections({ summary, onOpenList }: Props) {
                   </TableCell>
                   <TableCell className="text-right">
                     <MetricLink
-                      label={`${school.name}: kết quả chưa đạt`}
+                      label={`${school.name}: chưa đạt Thành phố`}
                       value={school.finalFailed}
                       onClick={() =>
                         onOpenList(`Hồ sơ chưa đạt: ${school.name}`, {
@@ -323,9 +380,7 @@ export function CityAnalyticsSummarySections({ summary, onOpenList }: Props) {
                   ? summary.finalResults.passed
                   : item.value === "failed"
                     ? summary.finalResults.failed
-                    : item.value === "partially_passed"
-                      ? summary.finalResults.partiallyPassed
-                      : summary.finalResults.notFinalized;
+                    : summary.finalResults.notFinalized;
               return (
                 <MetricTile
                   key={item.value}
@@ -342,7 +397,7 @@ export function CityAnalyticsSummarySections({ summary, onOpenList }: Props) {
             })}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Đã chốt: {summary.finalResults.finalized}; Đạt cấp thấp hơn được tách riêng.
+            Đã chốt: {summary.finalResults.finalized}. Chỉ kết quả đạt Thành phố được tính là đạt.
           </p>
         </Card>
 

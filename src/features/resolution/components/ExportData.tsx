@@ -10,17 +10,17 @@ export function ExportData() {
     <>
       <TopBar
         title="Xuất dữ liệu hồ sơ"
-        subtitle="CSV và JSON được xuất trực tiếp từ backend với token xác thực."
+        subtitle="Tải báo cáo Excel theo phạm vi và bộ lọc được phép."
       />
       <Card>
         <EmptyReviewState
-          title="Export legacy không còn dùng dữ liệu mẫu"
-          description="Vui lòng mở trang xuất dữ liệu chính để tải CSV hoặc JSON theo bộ lọc."
+          title="Trang xuất báo cáo tập trung"
+          description="Mở trang xuất dữ liệu chính để tải các báo cáo Excel theo bộ lọc."
         />
         <div className="mt-4 flex justify-center">
           <Button asChild>
             <Link to="/app/export">
-              Mở trang export
+              Mở trang xuất báo cáo
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

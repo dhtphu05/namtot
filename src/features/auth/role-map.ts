@@ -17,7 +17,7 @@ export function getDefaultAppPathForRole(role: ApiRole): string {
   if (role === "class_representative") return "/app/collective";
   if (role === "officer" || role === "city_officer") return "/app/queue";
   if (role === "city_committee") return "/app/resolution";
-  if (role === "admin") return "/app/admin/workspaces";
+  if (role === "admin") return "/app/admin";
   if (role === "manager" || role === "committee" || role === "city_manager") {
     return "/app/analytics";
   }

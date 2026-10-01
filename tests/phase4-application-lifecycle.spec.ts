@@ -148,7 +148,9 @@ test("City Manager list defaults to active records and can discover cancelled an
   await installResultsMocks(page, "city_manager", resultQueries);
   await page.goto("/app/manager/results", { waitUntil: "domcontentloaded" });
 
-  await expect(page.getByRole("heading", { name: "Kết quả xét duyệt theo cấp" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Kết quả xét duyệt cấp Thành phố" }),
+  ).toBeVisible();
   const lifecycleFilter = page.getByLabel("Vòng đời hồ sơ");
   const archiveFilter = page.getByLabel("Trạng thái lưu trữ");
   await expect(lifecycleFilter).toHaveValue("active");
@@ -191,7 +193,7 @@ test("lifecycle filters preserve existing search and final-result filters", asyn
   await page.goto("/app/manager/results", { waitUntil: "domcontentloaded" });
 
   await page.getByPlaceholder("Tìm sinh viên, MSSV, lớp, khoa...").fill("Student");
-  await page.getByRole("button", { name: "Chưa đạt", exact: true }).click();
+  await page.getByRole("button", { name: "Chưa đạt Thành phố", exact: true }).click();
 
   await expect
     .poll(() =>
@@ -213,6 +215,48 @@ test("admin can inspect lifecycle and archive filters", async ({ page }) => {
   await expect(page.getByLabel("Vòng đời hồ sơ")).toHaveValue("active");
   await expect(page.getByLabel("Trạng thái lưu trữ")).toHaveValue("exclude");
 });
+
+for (const role of ["city_manager", "city_committee", "admin"] as const) {
+  test(`${role} result console shows City-only levels and counts from the scoped results API`, async ({
+    page,
+  }) => {
+    const resultQueries: URL[] = [];
+    const dashboardRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/manager/dashboard-summary")) {
+        dashboardRequests.push(request.url());
+      }
+    });
+    await installResultsMocks(page, role, resultQueries);
+    await page.goto("/app/manager/results", { waitUntil: "domcontentloaded" });
+
+    await expect(
+      page.getByRole("heading", { name: "Kết quả xét duyệt cấp Thành phố" }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cấp Trường", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Cấp ĐHĐN", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Đạt Thành phố", exact: true })).toBeVisible();
+    await expect(page.getByText("Bị hạ cấp", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Không đạt cấp nào", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Đạt cấp thấp hơn", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Cấp đăng ký", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Đạt Thành phố", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Đạt một phần", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("12", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Đạt Thành phố", { exact: true }).first().locator(".."),
+    ).toContainText("5");
+    await expect(
+      page.getByText("Chưa đạt Thành phố", { exact: true }).first().locator(".."),
+    ).toContainText("5");
+    await expect(page.getByText("Chưa chốt", { exact: true }).first().locator("..")).toContainText(
+      "2",
+    );
+    expect(dashboardRequests).toEqual([]);
+    expect(resultQueries[0]?.searchParams.get("targetLevel")).toBeNull();
+    expect(resultQueries[0]?.searchParams.get("schoolYear")).toBe("2025-2026");
+  });
+}
 
 test("City Manager cancels a current final with reason, explicit warning and immutable history", async ({
   page,
@@ -240,7 +284,7 @@ test("City Manager cancels a current final with reason, explicit warning and imm
   await confirm.click();
   await expect(page.getByText("Đã hủy hồ sơ", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Lịch sử kết quả trước đây" })).toBeVisible();
-  await expect(page.getByText("Kết quả trước đó: Đạt cấp Thành phố")).toBeVisible();
+  await expect(page.getByText("Kết quả trước đó: Đạt Thành phố")).toBeVisible();
   await expect(page.getByText("Đã chốt", { exact: true })).toHaveCount(0);
   expect(
     requests.filter((request) => request.url.endsWith("/cancel")).map((request) => request.body),
@@ -275,7 +319,7 @@ test("cancelled archived final reopens without restoring its final and preserves
   await expect(page.getByText("Đã hủy hồ sơ", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Đã lưu trữ", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Lịch sử kết quả trước đây" })).toBeVisible();
-  await expect(page.getByText("Kết quả trước đó: Đạt cấp Thành phố")).toBeVisible();
+  await expect(page.getByText("Kết quả trước đó: Đạt Thành phố")).toBeVisible();
   await expect(page.getByText("Đang xét duyệt", { exact: true })).toBeVisible();
   expect(requestForLifecycle(requests, "/reopen-cancelled")?.body).toEqual({
     reason: "Đã xác minh thông tin chính xác.",
@@ -402,6 +446,12 @@ async function installResultsMocks(page: Page, role: string, resultQueries: URL[
           totalPages: showCancelled ? 1 : 0,
         },
         sort: { sortBy: "lastActivityAt", sortOrder: "desc" },
+        summary: {
+          totalApplications: showCancelled ? 1 : 12,
+          passedCity: 5,
+          notAchievedCity: 5,
+          unfinalized: 2,
+        },
       });
     }
     return fulfillJson(route, null);
@@ -416,7 +466,12 @@ async function installResultsMocks(page: Page, role: string, resultQueries: URL[
 function lifecycleUser(role: string) {
   return {
     id: `user-${role}`,
-    workspaceId: role === "admin" ? null : role === "city_manager" ? "danang-city" : "school-dut",
+    workspaceId:
+      role === "admin"
+        ? null
+        : role === "city_manager" || role === "city_committee"
+          ? "danang-city"
+          : "school-dut",
     email: `${role}@test.local`,
     role,
     fullName: role === "city_manager" ? "City Manager" : "Test Manager",
@@ -433,9 +488,9 @@ function lifecycleUser(role: string) {
       role === "admin"
         ? null
         : {
-            id: role === "city_manager" ? "danang-city" : "school-dut",
-            code: role === "city_manager" ? "DANANG_CITY" : "DDK",
-            name: role === "city_manager" ? "Đà Nẵng" : "Trường",
+            id: role === "city_manager" || role === "city_committee" ? "danang-city" : "school-dut",
+            code: role === "city_manager" || role === "city_committee" ? "DANANG_CITY" : "DDK",
+            name: role === "city_manager" || role === "city_committee" ? "Đà Nẵng" : "Trường",
             shortName: null,
           },
     officerSpecializations: [],

@@ -143,7 +143,7 @@ export function canAccessPath(role: Role, pathname: string): boolean {
     return ["manager", "committee", "city_manager", "city_committee", "admin"].includes(role);
   }
   if (pathname === "/app/analytics") {
-    return ["city_manager", "manager", "committee", "admin"].includes(role);
+    return ["city_manager", "city_committee", "manager", "committee", "admin"].includes(role);
   }
   if (matchesAny(pathname, dataUploaderRoutes)) return role === "data_uploader";
   if (matchesAny(pathname, awardRegistryRoutes))

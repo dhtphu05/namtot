@@ -644,7 +644,9 @@ export const reviewApi = {
   },
 
   getReviewTask: async (id: string): Promise<ApiResponse<ReviewTaskDetail>> => {
-    const response = await apiClient<RawRecord>(`/api/review/tasks/${id}`);
+    const response = await apiClient<RawRecord>(
+      `/api/review/tasks/${id}?includeKnowledgeBaseMatches=false&includeAudit=false`,
+    );
 
     return withDataFallback({
       ...response,

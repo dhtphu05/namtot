@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { evidenceApi } from "@/features/evidence/api/evidence";
 import { jobsApi } from "@/features/evidence/api/jobs";
 import type {
@@ -109,6 +110,32 @@ export function useSignedFileUrl(fileId?: string, enabled = false) {
     enabled: Boolean(fileId) && enabled,
     staleTime: 4 * 60 * 1000,
   });
+}
+
+export function useEvidencePreviewVisibility() {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const [isNearViewport, setIsNearViewport] = useState(false);
+
+  useEffect(() => {
+    if (isNearViewport || !elementRef.current) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setIsNearViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setIsNearViewport(true);
+        observer.disconnect();
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(elementRef.current);
+    return () => observer.disconnect();
+  }, [isNearViewport]);
+
+  return { elementRef, isNearViewport };
 }
 
 export function useCreateEvidence(applicationId?: string, options: { silent?: boolean } = {}) {

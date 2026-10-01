@@ -80,9 +80,31 @@ describe("role navigation", () => {
     assert.deepEqual(cityOfficerRoutes, ["/app/queue", "/app/resolution"]);
   });
 
-  it("keeps admin criteria read-only in navigation and omits unsupported pages", () => {
+  it("exposes the approved operational destinations to admin once each", () => {
     const admin = getRoleNavigation("admin").flatMap((group) => group.items);
+    assert.deepEqual(
+      admin.map((item) => item.to),
+      [
+        "/app/admin",
+        "/app/analytics",
+        "/app/queue",
+        "/app/assignment",
+        "/app/manager/results",
+        "/app/resolution",
+        "/app/export",
+        "/app/award-registry",
+        "/app/event-registry",
+        "/app/decision-imports",
+        "/app/evidence-knowledge",
+        "/app/admin/workspaces",
+        "/app/admin/users",
+        "/app/admin/officers",
+        "/app/settings",
+        "/app/audit",
+      ],
+    );
     assert.ok(admin.some((item) => item.to === "/app/settings" && item.label.includes("chỉ đọc")));
-    assert.ok(!admin.some((item) => item.to === "/app/award-registry" || item.to === "/app"));
+    assert.ok(!admin.some((item) => item.to === "/app/application"));
+    assert.ok(!admin.some((item) => item.label.toLowerCase().includes("xác minh điều kiện")));
   });
 });

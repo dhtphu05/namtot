@@ -48,6 +48,7 @@ import { Route as AppAssignmentRouteImport } from './routes/app.assignment'
 import { Route as AppApplicationRouteImport } from './routes/app.application'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 import { Route as AppAiPrecheckRouteImport } from './routes/app.ai-precheck'
+import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
 import { Route as AppReviewIdRouteImport } from './routes/app.review.$id'
 import { Route as AppResolutionIdRouteImport } from './routes/app.resolution.$id'
 import { Route as AppManagerResultsRouteImport } from './routes/app.manager.results'
@@ -259,6 +260,11 @@ const AppAiPrecheckRoute = AppAiPrecheckRouteImport.update({
   path: '/ai-precheck',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppReviewIdRoute = AppReviewIdRouteImport.update({
   id: '/review/$id',
   path: '/review/$id',
@@ -392,6 +398,7 @@ export interface FileRoutesByFullPath {
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
   '/app/resolution/$id': typeof AppResolutionIdRoute
   '/app/review/$id': typeof AppReviewIdRoute
+  '/app/admin/': typeof AppAdminIndexRoute
   '/app/admin/workspaces/$workspaceId': typeof AppAdminWorkspacesWorkspaceIdRoute
   '/app/manager/results/$applicationId': typeof AppManagerResultsApplicationIdRoute
 }
@@ -447,6 +454,7 @@ export interface FileRoutesByTo {
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
   '/app/resolution/$id': typeof AppResolutionIdRoute
   '/app/review/$id': typeof AppReviewIdRoute
+  '/app/admin': typeof AppAdminIndexRoute
   '/app/admin/workspaces/$workspaceId': typeof AppAdminWorkspacesWorkspaceIdRoute
   '/app/manager/results/$applicationId': typeof AppManagerResultsApplicationIdRoute
 }
@@ -504,6 +512,7 @@ export interface FileRoutesById {
   '/app/manager/results': typeof AppManagerResultsRouteWithChildren
   '/app/resolution/$id': typeof AppResolutionIdRoute
   '/app/review/$id': typeof AppReviewIdRoute
+  '/app/admin/': typeof AppAdminIndexRoute
   '/app/admin/workspaces/$workspaceId': typeof AppAdminWorkspacesWorkspaceIdRoute
   '/app/manager/results/$applicationId': typeof AppManagerResultsApplicationIdRoute
 }
@@ -562,6 +571,7 @@ export interface FileRouteTypes {
     | '/app/manager/results'
     | '/app/resolution/$id'
     | '/app/review/$id'
+    | '/app/admin/'
     | '/app/admin/workspaces/$workspaceId'
     | '/app/manager/results/$applicationId'
   fileRoutesByTo: FileRoutesByTo
@@ -617,6 +627,7 @@ export interface FileRouteTypes {
     | '/app/manager/results'
     | '/app/resolution/$id'
     | '/app/review/$id'
+    | '/app/admin'
     | '/app/admin/workspaces/$workspaceId'
     | '/app/manager/results/$applicationId'
   id:
@@ -673,6 +684,7 @@ export interface FileRouteTypes {
     | '/app/manager/results'
     | '/app/resolution/$id'
     | '/app/review/$id'
+    | '/app/admin/'
     | '/app/admin/workspaces/$workspaceId'
     | '/app/manager/results/$applicationId'
   fileRoutesById: FileRoutesById
@@ -960,6 +972,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAiPrecheckRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/admin/': {
+      id: '/app/admin/'
+      path: '/admin'
+      fullPath: '/app/admin/'
+      preLoaderRoute: typeof AppAdminIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/review/$id': {
       id: '/app/review/$id'
       path: '/review/$id'
@@ -1181,6 +1200,7 @@ interface AppRouteChildren {
   AppManagerResultRoute: typeof AppManagerResultRoute
   AppManagerResultsRoute: typeof AppManagerResultsRouteWithChildren
   AppReviewIdRoute: typeof AppReviewIdRoute
+  AppAdminIndexRoute: typeof AppAdminIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1227,6 +1247,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppManagerResultRoute: AppManagerResultRoute,
   AppManagerResultsRoute: AppManagerResultsRouteWithChildren,
   AppReviewIdRoute: AppReviewIdRoute,
+  AppAdminIndexRoute: AppAdminIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

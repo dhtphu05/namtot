@@ -17,6 +17,7 @@ export type ResolutionCasesParams = {
   criterion?: Criterion;
   escalator?: string;
   level?: Level;
+  schoolYear?: string;
   q?: string;
 };
 

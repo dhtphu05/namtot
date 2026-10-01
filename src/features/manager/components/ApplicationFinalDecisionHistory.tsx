@@ -2,8 +2,10 @@ import { Card } from "@/components/ui-kit";
 import type { ApplicationFinalDecisionHistoryItem } from "../types";
 
 export function ApplicationFinalDecisionHistory({
+  cityOnly = false,
   history,
 }: {
+  cityOnly?: boolean;
   history: ApplicationFinalDecisionHistoryItem[];
 }) {
   if (!history.length) return null;
@@ -15,7 +17,7 @@ export function ApplicationFinalDecisionHistory({
         {history.map((item) => (
           <article key={item.id} className="rounded-lg border bg-slate-50 p-4">
             <p className="font-semibold text-slate-900">
-              Kết quả trước đó: {finalLabel(item.finalStatus, item.finalLevel)}
+              Kết quả trước đó: {finalLabel(item.finalStatus, item.finalLevel, cityOnly)}
             </p>
             {item.finalNote ? (
               <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{item.finalNote}</p>
@@ -45,7 +47,13 @@ export function ApplicationFinalDecisionHistory({
   );
 }
 
-function finalLabel(status: string, level: string | null) {
+function finalLabel(status: string, level: string | null, cityOnly: boolean) {
+  if (cityOnly) {
+    if (status === "pending") return "Chưa chốt";
+    if (status === "passed" && level === "city") return "Đạt Thành phố";
+    if (status === "passed" && !level) return "Cần đối soát";
+    return "Chưa đạt Thành phố";
+  }
   const statusText: Record<string, string> = {
     passed: "Đạt",
     partially_passed: "Đạt cấp thấp hơn",

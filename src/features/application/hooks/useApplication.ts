@@ -6,7 +6,15 @@ import {
   streamCurrentAssistantNarrative,
   studentAssistantApi,
 } from "@/features/application/api/student-assistant";
-import type { Level, MetricInput, MetricType, VerificationStatus } from "@/lib/api/types";
+import type {
+  ApplicationMetric,
+  CurrentApplicationEmpty,
+  CurrentApplicationResponse,
+  Level,
+  MetricInput,
+  MetricType,
+  VerificationStatus,
+} from "@/lib/api/types";
 import { notificationKeys } from "@/features/notifications/hooks/useNotifications";
 import { getStudentSubmitErrorCopy } from "@/features/application/s5/precheck-review";
 
@@ -31,6 +39,7 @@ export function useCurrentApplication(schoolYear?: string) {
       return res.data;
     },
     retry: false,
+    staleTime: 5_000,
   });
 }
 
@@ -227,6 +236,7 @@ export function useCriteriaCompletion(applicationId: string | undefined) {
     },
     enabled: !!applicationId,
     retry: false,
+    staleTime: 5_000,
   });
 }
 
@@ -474,11 +484,77 @@ export function useDeclareAcademicGpa() {
         schoolYear,
         sourceType: "manual_metric",
       });
-      return res.data;
+      return res.data as {
+        metricId: string | null;
+        createdAt: string;
+        updatedAt: string;
+        payloadJson: {
+          value?: number;
+          scale?: number;
+          verificationStatus?: string;
+        } | null;
+      };
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
-      queryClient.invalidateQueries({ queryKey: applicationKeys.metrics(variables.id) });
+    onSuccess: (savedResponse, variables) => {
+      const metricsKey = applicationKeys.metrics(variables.id);
+      const savedValue = savedResponse.payloadJson?.value;
+      const savedScale = savedResponse.payloadJson?.scale;
+      const savedMetricId = savedResponse.metricId;
+
+      if (
+        savedMetricId &&
+        typeof savedValue === "number" &&
+        Number.isFinite(savedValue) &&
+        typeof savedScale === "number" &&
+        Number.isFinite(savedScale)
+      ) {
+        const withSavedGpa = (metrics: ApplicationMetric[] = []) => {
+          const previousMetric = metrics.find((metric) => metric.metricType === "gpa");
+          const verificationStatus: VerificationStatus =
+            savedResponse.payloadJson?.verificationStatus === "verified"
+              ? "verified"
+              : savedResponse.payloadJson?.verificationStatus === "rejected"
+                ? "rejected"
+                : "pending";
+          const savedMetric: ApplicationMetric & { valueNumber: number } = {
+            ...previousMetric,
+            id: savedMetricId,
+            applicationId: variables.id,
+            metricType: "gpa",
+            value: savedValue,
+            valueNumber: savedValue,
+            scale: savedScale,
+            verificationStatus,
+            createdAt: previousMetric?.createdAt ?? savedResponse.createdAt,
+            updatedAt: savedResponse.updatedAt,
+          };
+
+          return [...metrics.filter((metric) => metric.metricType !== "gpa"), savedMetric];
+        };
+
+        queryClient.setQueriesData<CurrentApplicationResponse | CurrentApplicationEmpty>(
+          { queryKey: applicationKeys.current() },
+          (current) => {
+            const application = current?.application;
+            if (!application || application.id !== variables.id) return current;
+
+            return {
+              ...current,
+              application: {
+                ...application,
+                metrics: withSavedGpa(application.metrics),
+              },
+            };
+          },
+        );
+        if (queryClient.getQueryData<ApplicationMetric[]>(metricsKey)) {
+          queryClient.setQueryData<ApplicationMetric[]>(metricsKey, withSavedGpa);
+        }
+      } else {
+        // Refetch authoritative state if the server response cannot safely update the cache.
+        queryClient.invalidateQueries({ queryKey: applicationKeys.current() });
+        queryClient.invalidateQueries({ queryKey: metricsKey });
+      }
       queryClient.invalidateQueries({ queryKey: applicationKeys.assistantContext() });
       queryClient.invalidateQueries({
         queryKey: applicationKeys.criteriaCompletion(variables.id),

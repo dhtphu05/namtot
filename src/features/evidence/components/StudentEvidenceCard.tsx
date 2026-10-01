@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   FileText,
   ImageIcon,
@@ -12,8 +12,12 @@ import {
 import { toast } from "sonner";
 import { AppButton, StatusBadge } from "@/features/student/components/primitives";
 import { getEvidenceDisplayModel } from "@/features/application/presentation";
-import { evidenceApi } from "@/features/evidence/api/evidence";
-import { useUpdateEvidence, useUploadEvidenceFile } from "@/features/evidence/hooks/useEvidence";
+import {
+  useEvidencePreviewVisibility,
+  useSignedFileUrl,
+  useUpdateEvidence,
+  useUploadEvidenceFile,
+} from "@/features/evidence/hooks/useEvidence";
 import { getEvidenceStudentStatus } from "@/features/student/selectors/student-ui";
 import { PRESENTATION_SEMANTICS_V2 } from "@/lib/presentation-semantics";
 import type { EvidenceResponse } from "@/lib/api/types";
@@ -49,12 +53,19 @@ export function StudentEvidenceCard({
 }) {
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(evidence.evidenceName);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const updateEvidence = useUpdateEvidence();
   const uploadFile = useUploadEvidenceFile(applicationId);
   const files = useMemo(() => getEvidenceFiles(evidence), [evidence]);
   const primaryFile = useMemo(() => getPrimaryFile(evidence), [evidence]);
+  const { elementRef, isNearViewport } = useEvidencePreviewVisibility();
+  const signedUrl = useSignedFileUrl(
+    primaryFile?.id,
+    isNearViewport &&
+      Boolean(primaryFile?.id) &&
+      Boolean(isImageFile(primaryFile) || isPdfFile(primaryFile)),
+  );
+  const previewUrl = signedUrl.data ?? null;
   const status = getEvidenceStudentStatus(evidence);
   const display = useMemo(() => getEvidenceDisplayModel(evidence), [evidence]);
   const statusTone = statusOverride
@@ -67,25 +78,6 @@ export function StudentEvidenceCard({
   const warnings = getEvidenceWarnings(evidence, profile);
   const needsFileCheckAgain =
     evidence.indexingStatus === "failed" || evidence.indexingStatus === "needs_manual_review";
-
-  useEffect(() => {
-    let active = true;
-    setPreviewUrl(null);
-    if (!primaryFile?.id || (!isImageFile(primaryFile) && !isPdfFile(primaryFile))) return;
-
-    evidenceApi
-      .getSignedFileUrl(primaryFile.id)
-      .then((res) => {
-        if (active) setPreviewUrl(res.data?.url ?? null);
-      })
-      .catch(() => {
-        if (active) setPreviewUrl(null);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [primaryFile]);
 
   const saveName = async () => {
     const evidenceName = name.trim();
@@ -137,6 +129,7 @@ export function StudentEvidenceCard({
 
       <div className="flex min-w-0 flex-col gap-3 md:flex-row">
         <div
+          ref={elementRef}
           role="button"
           tabIndex={isBusy ? -1 : 0}
           className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-[#F8FBFE] text-[#0057C2] md:w-32"
@@ -161,12 +154,15 @@ export function StudentEvidenceCard({
             <img
               src={previewUrl}
               alt={evidence.evidenceName}
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-contain"
             />
           ) : previewUrl && primaryFile && isPdfFile(primaryFile) ? (
             <iframe
               title={evidence.evidenceName}
               src={previewUrl}
+              loading="lazy"
               className="pointer-events-none h-full w-full bg-white"
             />
           ) : (

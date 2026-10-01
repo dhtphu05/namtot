@@ -15,17 +15,27 @@ test.describe("final authority for individual City review", () => {
       await expect(page.getByRole("heading", { name: "Tổng hợp quyết định" })).toBeVisible();
       await expect(page.getByText("5/5 tiêu chí đã xử lý")).toBeVisible();
       await expect(page.getByRole("button", { name: "Chọn kết quả chốt" })).toBeEnabled();
+      await page.getByRole("button", { name: "Chọn kết quả chốt" }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByText("Chốt kết quả hồ sơ")).toBeVisible();
+      await expect(dialog.getByText("Cấp Trường", { exact: true })).toHaveCount(0);
+      await expect(dialog.getByText("Cấp ĐHĐN", { exact: true })).toHaveCount(0);
+      await expect(dialog.getByText("Đạt cấp thấp hơn", { exact: true })).toHaveCount(0);
+      await expect(dialog.getByText("Chưa đạt Thành phố", { exact: true })).toBeVisible();
     });
   }
 
-  test("City Manager keeps the existing final action for a non-City application", async ({
-    page,
-  }) => {
+  test("City Manager cannot load a non-City application through City results", async ({ page }) => {
     await installCityResultMock(page, "city_manager", "school");
+    const detailResponse = page.waitForResponse((response) =>
+      response.url().endsWith("/api/manager/results/app-school-1"),
+    );
     await page.goto("/app/manager/results/app-school-1", { waitUntil: "domcontentloaded" });
 
-    await expect(page.getByRole("heading", { name: "Tổng hợp quyết định" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Chọn kết quả chốt" })).toBeEnabled();
+    expect((await detailResponse).status()).toBe(404);
+    await expect(page.getByRole("heading", { name: "Kết quả hồ sơ" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Chọn kết quả chốt" })).toHaveCount(0);
+    await expect(page.getByText("Cấp Trường", { exact: true })).toHaveCount(0);
   });
 
   test("City Officer cannot open the result finalization route", async ({ page }) => {
@@ -65,9 +75,17 @@ async function installCityResultMock(
           ? cityResultDetail(targetLevel)
           : null;
     await route.fulfill({
-      status: 200,
+      status: path === "/api/manager/results/app-school-1" ? 404 : 200,
       headers: { ...corsHeaders, "content-type": "application/json" },
-      body: JSON.stringify({ success: true, data, error: null, meta: {} }),
+      body: JSON.stringify({
+        success: path !== "/api/manager/results/app-school-1",
+        data,
+        error:
+          path === "/api/manager/results/app-school-1"
+            ? { code: "NOT_FOUND", message: "Application not found" }
+            : null,
+        meta: {},
+      }),
     });
   });
   await page.addInitScript(
