@@ -55,7 +55,7 @@ const statusOptions: Array<{ value: StatusFilter; label: string }> = [
   { value: "processing", label: "Đang được xử lý" },
   { value: "attention", label: "Cần bạn kiểm tra" },
   { value: "ready", label: "Đã sẵn sàng" },
-  { value: "waiting", label: "Chờ cán bộ kiểm tra" },
+  { value: "waiting", label: "Đã tiếp nhận" },
   { value: "error", label: "Có vấn đề" },
   { value: "recorded", label: "Đã ghi nhận" },
 ];
