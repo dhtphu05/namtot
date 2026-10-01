@@ -90,11 +90,11 @@ const reasonCopy: Record<string, string> = {
   MISSING_IDENTITY_CONTEXT:
     "Thông tin định danh sinh viên chưa đầy đủ để đối chiếu. Vui lòng kiểm tra thông tin hồ sơ với trường.",
   IDENTITY_MATCH_REQUIRES_VERIFICATION:
-    "Thông tin danh hiệu cần cán bộ Thành phố xác minh với trường trước khi nộp.",
+    "Thông tin danh hiệu đang được đối chiếu với dữ liệu của trường.",
   AMBIGUOUS_UNIVERSITY_SYSTEM_AWARD_MATCH:
-    "Có nhiều thông tin cần được cán bộ Thành phố đối chiếu với trường.",
+    "Có nhiều thông tin tương tự; hồ sơ đang được đối chiếu để chọn đúng kết quả.",
   MANUAL_VERIFICATION_REJECTED:
-    "Cán bộ Thành phố chưa xác nhận điều kiện này. Vui lòng liên hệ trường nếu cần hỗ trợ.",
+    "Điều kiện này hiện chưa được xác nhận. Vui lòng liên hệ trường nếu cần hỗ trợ.",
 };
 
 function getEligibilityPresentation(data?: CitySubmissionEligibility) {
@@ -119,8 +119,8 @@ function getEligibilityPresentation(data?: CitySubmissionEligibility) {
   if (data?.status === "NEEDS_VERIFICATION") {
     return {
       icon: Clock3,
-      label: "Chờ xác minh",
-      message: "Thông tin điều kiện cần được cán bộ Thành phố xác minh trước khi bạn nộp hồ sơ.",
+      label: "Đang đối chiếu",
+      message: "Thông tin điều kiện đang được đối chiếu. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.",
     };
   }
 

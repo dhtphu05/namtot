@@ -119,11 +119,16 @@ export function EvidenceCardV2({
         onOpen={onOpen}
       />
       <div className="flex min-w-0 flex-1 flex-col p-4">
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <h3 className="line-clamp-2 text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)]">
+        <div className="flex min-w-0 flex-col items-start gap-2">
+          <h3 className="line-clamp-2 min-w-0 text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)] [overflow-wrap:anywhere]">
             {title}
           </h3>
-          <StatusPillV2 status={status} label={statusLabel} />
+          <StatusPillV2
+            status={status}
+            label={statusLabel}
+            className="shrink-0"
+            wrapLabel
+          />
         </div>
         {metadata ? (
           <p className="mt-2 line-clamp-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
