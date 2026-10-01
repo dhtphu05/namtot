@@ -11,7 +11,6 @@ import {
   FileWarning,
   Hourglass,
   ListChecks,
-  MessageSquare,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -412,7 +411,6 @@ function ReviewQueueContent({ role }: { role: Role }) {
           isLoading={isLoading}
           lockedCriterion={lockedOfficerCriterion}
           onClaimTask={(task) => setClaimCandidate(task)}
-          onOpenTask={openTask}
           onRetry={() => void refetch()}
           onLoadMore={() =>
             setFilters((current) => ({
@@ -783,7 +781,6 @@ function OfficerLeanReviewQueue({
   lockedCriterion,
   onClaimTask,
   onLoadMore,
-  onOpenTask,
   onRetry,
   onSearchChange,
   onSelectCriterion,
@@ -807,7 +804,6 @@ function OfficerLeanReviewQueue({
   lockedCriterion: Criterion;
   onClaimTask: (task: ReviewTaskListItem) => void;
   onLoadMore: () => void;
-  onOpenTask: (taskId: string) => void;
   onRetry: () => void;
   onSearchChange: (q: string) => void;
   onSelectCriterion: (criterion: Criterion) => void;
@@ -865,7 +861,6 @@ function OfficerLeanReviewQueue({
           }
           group={selectedGroup}
           onClaimTask={onClaimTask}
-          onOpenTask={onOpenTask}
           onSelectCriterion={onSelectCriterion}
         />
       </div>
@@ -1039,13 +1034,11 @@ function SequentialOfficerApplicationWorkspace({
   activeCriterion,
   group,
   onClaimTask,
-  onOpenTask,
   onSelectCriterion,
 }: {
   activeCriterion: Criterion | null;
   group: OfficerApplicationGroup | null;
   onClaimTask: (task: ReviewTaskListItem) => void;
-  onOpenTask: (taskId: string) => void;
   onSelectCriterion: (criterion: Criterion) => void;
 }) {
   const [activeEvidenceIndex, setActiveEvidenceIndex] = useState(0);
@@ -1152,28 +1145,6 @@ function SequentialOfficerApplicationWorkspace({
                 <ListChecks className="h-4 w-4" />
                 Checklist
               </Button>
-              <Button
-                size="sm"
-                type="button"
-                variant="outline"
-                onClick={() => setOpenDrawer("reference")}
-              >
-                <ClipboardList className="h-4 w-4" />
-                Đối chiếu
-              </Button>
-              <Button size="sm" type="button" variant="outline" onClick={() => setOpenDrawer("ai")}>
-                <MessageSquare className="h-4 w-4" />
-                Trợ lý AI
-              </Button>
-              <Button
-                size="sm"
-                type="button"
-                variant="outline"
-                onClick={() => setOpenDrawer("technical_log")}
-              >
-                <Clock3 className="h-4 w-4" />
-                Nhật ký
-              </Button>
             </div>
           </div>
         </div>
@@ -1191,7 +1162,6 @@ function SequentialOfficerApplicationWorkspace({
               evidences={evidenceItems}
               nextCriterion={nextCriterion}
               onClaimTask={onClaimTask}
-              onOpenTask={onOpenTask}
               onSelectCriterion={handleSelectCriterion}
             />
           ) : (
@@ -1201,8 +1171,6 @@ function SequentialOfficerApplicationWorkspace({
               currentDraft={currentDraft}
               evidence={currentEvidence}
               evidenceIndex={activeEvidenceIndex}
-              onOpenDrawer={setOpenDrawer}
-              onOpenTask={() => onOpenTask(activeTask.id)}
               onSaveDecision={saveDecisionDraft}
               totalEvidenceCount={evidenceItems.length}
             />
@@ -1435,8 +1403,6 @@ function ActiveEvidenceReviewSurface({
   currentDraft,
   evidence,
   evidenceIndex,
-  onOpenDrawer,
-  onOpenTask,
   onSaveDecision,
   totalEvidenceCount,
 }: {
@@ -1445,8 +1411,6 @@ function ActiveEvidenceReviewSurface({
   currentDraft?: EvidenceDecisionDraft;
   evidence: ReviewEvidence | null;
   evidenceIndex: number;
-  onOpenDrawer: (drawer: ReviewDrawer) => void;
-  onOpenTask: () => void;
   onSaveDecision: (evidenceId: string, draft: EvidenceDecisionDraft) => void;
   totalEvidenceCount: number;
 }) {
@@ -1504,20 +1468,6 @@ function ActiveEvidenceReviewSurface({
             model={model}
           />
           <EvidenceWarnings warnings={warnings} />
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-3">
-            <div className="text-sm font-bold text-brand-deep">Công cụ hỗ trợ</div>
-            <div className="mt-3 grid gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenDrawer("ai")}>
-                Tóm tắt / soạn yêu cầu bổ sung
-              </Button>
-              <Button type="button" variant="outline" onClick={() => onOpenDrawer("reference")}>
-                Xem đối chiếu
-              </Button>
-              <Button type="button" variant="outline" onClick={onOpenTask}>
-                Mở task chi tiết
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1814,7 +1764,6 @@ function CriterionFinalizationPanel({
   evidences,
   nextCriterion,
   onClaimTask,
-  onOpenTask,
   onSelectCriterion,
 }: {
   activeDetail: ReviewTaskDetail | null;
@@ -1823,7 +1772,6 @@ function CriterionFinalizationPanel({
   evidences: ReviewEvidence[];
   nextCriterion: Criterion | null;
   onClaimTask: (task: ReviewTaskListItem) => void;
-  onOpenTask: (taskId: string) => void;
   onSelectCriterion: (criterion: Criterion) => void;
 }) {
   const submitDecision = useSubmitReviewDecision(activeTask.id);
@@ -1923,22 +1871,9 @@ function CriterionFinalizationPanel({
         <EvidenceFact label="Chuyển hội ý" value={summary.resolutionNeeded} />
       </div>
 
-      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
-        <span className="font-semibold">Gợi ý hệ thống: </span>
-        {getSystemFinalizationSuggestion(summary, unresolvedCount)}
-      </div>
-
       {!canAct ? (
         <div className="mt-4 rounded-xl border border-[#E5E7EB] bg-slate-50 p-3 text-sm text-muted-foreground">
           {activeTask.permissions?.reasonLabel ?? "Bạn không có quyền chốt tiêu chí này."}
-          <Button
-            className="mt-3"
-            type="button"
-            variant="outline"
-            onClick={() => onOpenTask(activeTask.id)}
-          >
-            Mở task chi tiết
-          </Button>
         </div>
       ) : null}
 
@@ -2243,12 +2178,15 @@ function OfficerCaseCompactCard({
           })}
         </div>
       )}
-      <div className="mt-3 flex items-start gap-2 rounded-lg bg-slate-50 px-2 py-2 text-xs text-slate-600">
-        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-        <span className="line-clamp-2">
-          {getPriorityReasonLabel(priorityTask)} • Deadline {formatDateTime(group.dueDate)}
-        </span>
-      </div>
+      {priorityTask.priorityReason !== "assigned_to_you" ? (
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-slate-50 px-2 py-2 text-xs text-slate-600">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+          <span className="line-clamp-2">
+            {getPriorityReasonLabel(priorityTask)}
+            {group.dueDate ? ` • Deadline ${formatDateTime(group.dueDate)}` : ""}
+          </span>
+        </div>
+      ) : null}
     </button>
   );
 }
@@ -2437,7 +2375,6 @@ function OfficerApplicationWorkspace({
             activeTask={activeTask}
             nextCriterion={nextCriterion}
             onClaimTask={onClaimTask}
-            onOpenTask={onOpenTask}
             onSelectCriterion={onSelectCriterion}
           />
         </div>
@@ -2457,7 +2394,6 @@ function OfficerApplicationWorkspace({
               activeTask={activeTask}
               nextCriterion={nextCriterion}
               onClaimTask={onClaimTask}
-              onOpenTask={onOpenTask}
               onSelectCriterion={(criterion) => {
                 setDecisionDrawerOpen(false);
                 onSelectCriterion(criterion);
@@ -2484,14 +2420,12 @@ function DecisionPanelSlot({
   activeTask,
   nextCriterion,
   onClaimTask,
-  onOpenTask,
   onSelectCriterion,
 }: {
   activeDetail: ReviewTaskDetail | null;
   activeTask: ReviewTaskListItem;
   nextCriterion: Criterion | null;
   onClaimTask: (task: ReviewTaskListItem) => void;
-  onOpenTask: (taskId: string) => void;
   onSelectCriterion: (criterion: Criterion) => void;
 }) {
   return (
@@ -2524,14 +2458,6 @@ function DecisionPanelSlot({
               {activeTask.permissions?.reasonLabel ??
                 "Bạn không có quyền gửi kết luận cho tiêu chí này."}
             </p>
-            <Button
-              className="mt-3 w-full"
-              variant="outline"
-              type="button"
-              onClick={() => onOpenTask(activeTask.id)}
-            >
-              Mở task chi tiết
-            </Button>
           </div>
         )
       ) : (
@@ -3977,18 +3903,6 @@ function buildEvidenceDecisionPayloads(
       };
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
-}
-
-function getSystemFinalizationSuggestion(
-  summary: ReturnType<typeof getEvidenceDecisionSummary>,
-  unresolvedCount: number,
-) {
-  if (unresolvedCount > 0) return "Cần xử lý hết minh chứng trước khi chốt tiêu chí.";
-  if (summary.resolutionNeeded > 0) return "Nên chuyển hội ý vì có minh chứng cần xem xét thêm.";
-  if (summary.supplementRequired > 0) return "Nên yêu cầu bổ sung trước khi chốt đạt tiêu chí.";
-  if (summary.rejected > 0 && summary.accepted === 0)
-    return "Có thể không đạt tiêu chí do chưa có minh chứng hợp lệ.";
-  return "Có thể đạt tiêu chí nếu checklist điều kiện chính cũng phù hợp.";
 }
 
 function getConfidencePhrase(value?: number | null) {

@@ -14,6 +14,7 @@ export type ExportPresentation = {
 };
 
 const columnLabels: Record<string, string> = {
+  serialNumber: "STT",
   applicationId: "Mã hồ sơ",
   schoolYear: "Năm học",
   applicationType: "Loại hồ sơ",
@@ -24,6 +25,8 @@ const columnLabels: Record<string, string> = {
   fullName: "Họ và tên sinh viên",
   className: "Lớp",
   faculty: "Khoa",
+  schoolName: "Trường",
+  schoolCode: "Mã trường",
   evidenceCount: "Số minh chứng",
   reviewTaskCount: "Số tiêu chí",
   acceptedTaskCount: "Số tiêu chí đã đạt",
@@ -96,6 +99,7 @@ const emptyDatasetColumns: Record<ExportDataset, string[]> = {
     "finalizedByName",
     "finalNote",
   ],
+  cityAwardees: ["serialNumber", "studentCode", "fullName", "className", "faculty", "schoolName"],
 };
 
 export function getVietnameseExportFilename(reportName: string, schoolYear?: string) {

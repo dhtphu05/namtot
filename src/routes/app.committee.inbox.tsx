@@ -48,14 +48,14 @@ const bucketConfig: Array<{
   {
     key: "ready_to_finalize",
     label: "Có thể chốt ngay",
-    desc: "Đủ task, không còn case mở",
+    desc: "Đã hoàn tất các tiêu chí xem xét",
     icon: CheckCircle2,
     tone: "success",
   },
   {
     key: "needs_resolution",
     label: "Cần hội ý",
-    desc: "Resolution đang mở",
+    desc: "Đã chuyển Hội đồng cho ý kiến",
     icon: ShieldQuestion,
     tone: "danger",
   },
@@ -76,14 +76,14 @@ const bucketConfig: Array<{
   {
     key: "supplement_required",
     label: "Cần bổ sung",
-    desc: "Sinh viên/cán bộ cần bổ sung",
+    desc: "Hồ sơ đang chờ bổ sung thông tin",
     icon: RotateCcw,
     tone: "warning",
   },
   {
     key: "overdue",
     label: "Quá hạn",
-    desc: "Task/case lâu chưa xử lý",
+    desc: "Đã quá thời hạn xử lý",
     icon: Clock3,
     tone: "danger",
   },
@@ -131,7 +131,7 @@ function CommitteeInboxRoute() {
         subtitle={
           cityOnly
             ? `Hồ sơ cá nhân cấp Thành phố · Năm học ${cityPilotSchoolYear}`
-            : "Các hồ sơ/case của Hội đồng/Cấp quản lý, sắp theo việc cần làm tiếp theo."
+            : "Các hồ sơ được sắp xếp theo việc cần xử lý tiếp theo."
         }
         action={
           <Button asChild variant="outline">
@@ -142,7 +142,7 @@ function CommitteeInboxRoute() {
         }
       />
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-5 grid min-w-0 grid-cols-2 gap-3 2xl:grid-cols-4">
         {cards.map((bucket) => {
           const Icon = bucket.icon;
           const active = activeBucket === bucket.key;
@@ -151,7 +151,7 @@ function CommitteeInboxRoute() {
               key={bucket.key}
               to="/app/committee/inbox"
               search={{ bucket: bucket.key }}
-              className={`rounded-lg border bg-white p-4 transition hover:border-[#0057C2] hover:shadow-sm ${
+              className={`min-w-0 rounded-lg border bg-white p-3 transition hover:border-[#0057C2] hover:shadow-sm sm:p-4 ${
                 active ? "border-[#0057C2] ring-2 ring-[#0057C2]/10" : "border-[#DCE7F2]"
               }`}
             >
@@ -159,10 +159,14 @@ function CommitteeInboxRoute() {
                 <div className={`rounded-md p-2 ${bucketIconClass(bucket.tone)}`}>
                   <Icon className="h-4 w-4" />
                 </div>
-                <span className="text-2xl font-bold text-brand-deep">{bucket.count}</span>
+                <span className="shrink-0 text-2xl font-bold text-brand-deep">{bucket.count}</span>
               </div>
-              <div className="mt-3 text-sm font-bold text-brand-deep">{bucket.label}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{bucket.desc}</div>
+              <div className="mt-3 break-words text-sm font-bold text-brand-deep">
+                {bucketLabel(bucket.key, cityOnly)}
+              </div>
+              <div className="mt-1 break-words text-xs text-muted-foreground">
+                {bucketDescription(bucket, cityOnly)}
+              </div>
             </Link>
           );
         })}
@@ -171,9 +175,13 @@ function CommitteeInboxRoute() {
       <Card className="mb-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-sm font-bold text-brand-deep">Việc cần xử lý hôm nay</div>
+            <div className="text-sm font-bold text-brand-deep">
+              {cityOnly ? "Hồ sơ cần xử lý" : "Việc cần xử lý hôm nay"}
+            </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              Mỗi dòng có lý do, blocker và hành động kế tiếp để không phải tự đọc toàn bộ hồ sơ.
+              {cityOnly
+                ? "Mỗi hồ sơ có gợi ý bước tiếp theo để Hội đồng tiện theo dõi."
+                : "Mỗi dòng có lý do, nội dung cần lưu ý và hành động kế tiếp."}
             </div>
           </div>
           <div className="relative w-full md:w-80">
@@ -181,7 +189,7 @@ function CommitteeInboxRoute() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm sinh viên, MSSV, lớp, khoa..."
+              placeholder={cityOnly ? "Tìm theo tên hoặc mã sinh viên" : "Tìm sinh viên, MSSV, lớp, khoa..."}
               className="w-full rounded-lg border border-[#DCE7F2] bg-white py-2 pl-8 pr-3 text-[13px] font-medium text-brand-deep outline-none focus:ring-2 focus:ring-[#0057C2]/20"
             />
           </div>
@@ -200,7 +208,7 @@ function CommitteeInboxRoute() {
           <div className="py-10 text-center">
             <div className="font-semibold text-rose-600">Không thể tải hàng chờ chốt kết quả.</div>
             <div className="mt-2 text-sm text-muted-foreground">
-              Tài khoản này có thể không có quyền hoặc backend chưa sẵn sàng.
+              Vui lòng thử lại. Nếu sự cố tiếp tục, hãy liên hệ người phụ trách.
             </div>
             <Button className="mt-4" variant="outline" onClick={() => void inboxQuery.refetch()}>
               Thử lại
@@ -217,11 +225,11 @@ function CommitteeInboxRoute() {
             <div className="mt-4 flex justify-center gap-2">
               <Button asChild variant="outline">
                 <Link to="/app/manager/results" search={{ filter: "recently_finalized" }}>
-                  Xem đã chốt gần đây
+                  Xem kết quả mới chốt
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link to="/app/analytics">Mở thống kê</Link>
+                <Link to="/app/analytics">Xem thống kê</Link>
               </Button>
             </div>
           </div>
@@ -276,15 +284,15 @@ function InboxItemCard({ item, cityOnly }: { item: CommitteeInboxItem; cityOnly:
             </div>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap lg:justify-end">
           {item.nextAction === "open_resolution_case" && item.resolutionCaseId ? (
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link to="/app/resolution/$id" params={{ id: item.resolutionCaseId }}>
-                Mở Resolution Case <ArrowRight className="h-4 w-4" />
+                Mở hồ sơ Hội đồng <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           ) : (
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link
                 to="/app/manager/results/$applicationId"
                 params={{ applicationId: item.applicationId }}
@@ -298,7 +306,7 @@ function InboxItemCard({ item, cityOnly }: { item: CommitteeInboxItem; cityOnly:
               </Link>
             </Button>
           )}
-          <Button asChild variant="outline">
+          <Button asChild className="w-full sm:w-auto" variant="outline">
             <Link
               to="/app/manager/results/$applicationId"
               params={{ applicationId: item.applicationId }}
@@ -346,7 +354,11 @@ function totalActionable(summary: CommitteeInboxSummary | undefined) {
 
 function bucketLabel(type: CommitteeInboxItem["type"], cityOnly: boolean) {
   if (cityOnly && type === "downgraded") return "Cần rà soát kết quả";
-  if (cityOnly && type === "no_eligible_level") return "Chưa đạt điều kiện Thành phố";
+  if (cityOnly && type === "no_eligible_level") return "Cần xem lại kết quả";
+  if (cityOnly && type === "needs_resolution") return "Chờ Hội đồng xem xét";
+  if (cityOnly && type === "supplement_required") return "Đang chờ bổ sung";
+  if (cityOnly && type === "overdue") return "Quá hạn xử lý";
+  if (cityOnly && type === "recently_finalized") return "Mới chốt kết quả";
   return bucketConfig.find((bucket) => bucket.key === type)?.label ?? "Việc cần xử lý";
 }
 
@@ -366,7 +378,24 @@ function nextActionLabel(item: CommitteeInboxItem, cityOnly: boolean) {
   if (item.nextAction === "wait_for_supplement") return "Theo dõi bổ sung";
   if (item.nextAction === "send_reminder") return "Mở hồ sơ quá hạn";
   if (item.nextAction === "reopen_final_result") return "Xem lại kết quả";
-  return "Mở Decision Console";
+  return "Mở hồ sơ";
+}
+
+function bucketDescription(
+  bucket: (typeof bucketConfig)[number],
+  cityOnly: boolean,
+) {
+  if (!cityOnly) return bucket.desc;
+  const descriptions: Partial<Record<CommitteeInboxBucket, string>> = {
+    all: "Ưu tiên hồ sơ cần xử lý trước.",
+    ready_to_finalize: "Đã hoàn tất các tiêu chí xem xét.",
+    needs_resolution: "Đã chuyển Hội đồng cho ý kiến.",
+    no_eligible_level: "Hồ sơ cần được rà soát lại.",
+    supplement_required: "Đang chờ sinh viên hoàn thiện hồ sơ.",
+    overdue: "Đã quá thời hạn xử lý.",
+    recently_finalized: "Theo dõi các kết quả mới chốt.",
+  };
+  return descriptions[bucket.key] ?? bucket.desc;
 }
 
 function priorityTone(priority: CommitteeInboxItem["priority"]) {

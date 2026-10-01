@@ -17,11 +17,18 @@ type AuditTimelineProps = {
   taskId?: string;
   caseId?: string;
   limit?: number;
+  simpleLanguage?: boolean;
 };
 
 const fallbackText = "Chưa có dữ liệu";
 
-export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: AuditTimelineProps) {
+export function AuditTimeline({
+  applicationId,
+  caseId,
+  limit = 10,
+  simpleLanguage = false,
+  taskId,
+}: AuditTimelineProps) {
   const params = useMemo<AuditLogParams>(
     () => ({
       applicationId,
@@ -47,7 +54,9 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
             <div>
               <h2 className="text-base font-bold text-brand-deep">Lịch sử xử lý</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Theo dõi các thao tác quan trọng liên quan đến hồ sơ hoặc tác vụ này.
+                {simpleLanguage
+                  ? "Theo dõi những thay đổi quan trọng liên quan đến hồ sơ này."
+                  : "Theo dõi các thao tác quan trọng liên quan đến hồ sơ hoặc tác vụ này."}
               </p>
             </div>
           </div>
@@ -66,7 +75,12 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
             ) : items.length ? (
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <TimelineItem key={item.id} isLast={index === items.length - 1} item={item} />
+                  <TimelineItem
+                    key={item.id}
+                    isLast={index === items.length - 1}
+                    item={item}
+                    simpleLanguage={simpleLanguage}
+                  />
                 ))}
               </div>
             ) : (
@@ -79,8 +93,16 @@ export function AuditTimeline({ applicationId, caseId, limit = 10, taskId }: Aud
   );
 }
 
-function TimelineItem({ isLast, item }: { isLast: boolean; item: AuditLogEntry }) {
-  const safeDetails = getSafeDetails(item.details);
+function TimelineItem({
+  isLast,
+  item,
+  simpleLanguage,
+}: {
+  isLast: boolean;
+  item: AuditLogEntry;
+  simpleLanguage: boolean;
+}) {
+  const safeDetails = simpleLanguage ? [] : getSafeDetails(item.details);
 
   return (
     <div className="relative flex gap-3">
@@ -95,22 +117,28 @@ function TimelineItem({ isLast, item }: { isLast: boolean; item: AuditLogEntry }
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="font-semibold text-brand-deep">
-              {formatAuditActionLabel(item.action)}
+              {simpleLanguage
+                ? getCommitteeAuditActionLabel(item.action)
+                : formatAuditActionLabel(item.action)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
               {item.actor || fallbackText}
-              {item.role ? ` / ${formatRoleLabel(item.role)}` : ""}
+              {item.role
+                ? ` / ${simpleLanguage ? getCommitteeRoleLabel(item.role) : formatRoleLabel(item.role)}`
+                : ""}
             </div>
           </div>
           <div className="text-xs text-muted-foreground">{formatDateTime(item.createdAt)}</div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          {item.entityType ? (
-            <Badge variant="outline">{formatEntityTypeLabel(item.entityType)}</Badge>
-          ) : null}
-          {item.entityId ? <Badge variant="outline">#{item.entityId.slice(0, 8)}</Badge> : null}
-        </div>
+        {!simpleLanguage ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {item.entityType ? (
+              <Badge variant="outline">{formatEntityTypeLabel(item.entityType)}</Badge>
+            ) : null}
+            {item.entityId ? <Badge variant="outline">#{item.entityId.slice(0, 8)}</Badge> : null}
+          </div>
+        ) : null}
 
         <AuditNotes item={item} />
 
@@ -195,6 +223,37 @@ function formatEntityTypeLabel(entityType: string) {
     notification: "Thông báo",
   };
   return labels[entityType] ?? formatKey(entityType);
+}
+
+function getCommitteeAuditActionLabel(action: string) {
+  const normalized = action.toUpperCase();
+  if (normalized.includes("FINALIZE")) return "Đã chốt kết quả";
+  if (normalized.includes("RESOLUTION") && normalized.includes("RESOLVED")) {
+    return "Hội đồng đã kết luận hồ sơ";
+  }
+  if (normalized.includes("RESOLUTION")) return "Hồ sơ được chuyển đến Hội đồng";
+  if (normalized.includes("SUPPLEMENT")) return "Đã tiếp nhận thông tin bổ sung";
+  if (normalized.includes("ASSIGN")) return "Đã phân công cán bộ";
+  if (normalized.includes("REVIEW") || normalized.includes("TASK")) {
+    return "Cán bộ đã cập nhật kết quả tiêu chí";
+  }
+  if (normalized.includes("AGGREG")) return "Đã tổng hợp thông tin hồ sơ";
+  return "Hồ sơ có cập nhật";
+}
+
+function getCommitteeRoleLabel(role: string) {
+  const labels: Record<string, string> = {
+    city_committee: "Hội đồng Thành phố",
+    city_manager: "Cán bộ điều phối Thành phố",
+    city_officer: "Cán bộ xét duyệt Thành phố",
+    committee: "Hội đồng",
+    manager: "Cán bộ quản lý",
+    officer: "Cán bộ xét duyệt",
+    admin: "Quản trị viên",
+    student: "Sinh viên",
+    data_uploader: "Cán bộ nhập dữ liệu",
+  };
+  return labels[role] ?? "Người thực hiện";
 }
 
 function formatKey(key: string) {

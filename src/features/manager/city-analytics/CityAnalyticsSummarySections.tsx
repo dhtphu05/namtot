@@ -59,46 +59,63 @@ export function CityAnalyticsSummarySections({
 
   return (
     <div className="space-y-5">
-      <section aria-label="Tổng quan hồ sơ" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section
+        aria-label="Tổng quan hồ sơ"
+        className="grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-4"
+      >
         <SummaryButton
           label="Hồ sơ đã tạo"
           value={summary.applications.created}
+          description="Tổng số hồ sơ trong bộ lọc"
+          tone="blue"
           icon={<ClipboardList className="h-4 w-4" />}
           onClick={() => onOpenList("Hồ sơ theo bộ lọc hiện tại")}
         />
         <SummaryButton
           label="Chưa nộp"
           value={summary.applications.notSubmitted}
+          description="Còn ở bước chuẩn bị"
+          tone="amber"
           icon={<FileWarning className="h-4 w-4" />}
           onClick={() => onOpenList("Hồ sơ chưa nộp", { submitted: false })}
         />
         <SummaryButton
           label="Hồ sơ đã nộp"
           value={summary.applications.submitted}
+          description="Đã gửi vào mùa xét"
+          tone="sky"
           icon={<CheckCircle2 className="h-4 w-4" />}
           onClick={() => onOpenList("Hồ sơ đã nộp", { submitted: true })}
         />
         <SummaryButton
           label="Đang xét"
           value={summary.applications.inReview}
+          description="Đang được cán bộ xử lý"
+          tone="indigo"
           icon={<Hourglass className="h-4 w-4" />}
           onClick={() => onOpenList("Hồ sơ đang xét", { inReview: true })}
         />
         <SummaryButton
           label="Cần bổ sung hồ sơ"
           value={summary.applications.supplementRequired}
+          description="Chờ sinh viên bổ sung"
+          tone="orange"
           icon={<FileWarning className="h-4 w-4" />}
           onClick={() => onOpenList("Hồ sơ cần bổ sung", { supplementRequired: true })}
         />
         <SummaryButton
           label="Vướng hội đồng"
           value={summary.applications.resolutionBlocked}
+          description="Cần Hội đồng kết luận"
+          tone="violet"
           icon={<ShieldQuestion className="h-4 w-4" />}
           onClick={() => onOpenList("Hồ sơ vướng hội đồng", { resolutionBlocked: true })}
         />
         <SummaryButton
-          label="Đã review đủ 5 tiêu chí"
+          label="Đã xem xét đủ 5 tiêu chí"
           value={summary.applications.reviewComplete}
+          description="Đã có kết luận đủ 5 tiêu chí"
+          tone="emerald"
           icon={<CheckCircle2 className="h-4 w-4" />}
         />
       </section>
@@ -117,21 +134,42 @@ export function CityAnalyticsSummarySections({
             aria-label="Bảng hồ sơ đã nộp theo trường"
             tabIndex={0}
           >
-            <Table className="min-w-[480px]">
+            <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Trường</TableHead>
-                  <TableHead className="text-right">Hồ sơ đã nộp</TableHead>
+                  <TableHead className="w-[48%]">Trường</TableHead>
+                  <TableHead className="w-[34%]">Tỷ trọng</TableHead>
+                  <TableHead className="w-[18%] text-right">Đã nộp</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {summary.bySchool.map((school) => (
                   <TableRow key={school.workspaceId}>
-                    <TableCell>
-                      <span className="font-semibold">{school.name}</span>
-                      <span className="ml-1 text-xs text-muted-foreground">{school.code}</span>
+                    <TableCell className="py-3.5">
+                      <div className="font-semibold leading-5 text-slate-900">{school.name}</div>
+                      <span className="mt-1 inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-slate-600">
+                        {school.code}
+                      </span>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="h-2 min-w-16 flex-1 overflow-hidden rounded-full bg-slate-100"
+                          aria-hidden="true"
+                        >
+                          <div
+                            className="h-full rounded-full bg-blue-700 transition-[width]"
+                            style={{
+                              width: `${percent(school.submitted, summary.applications.submitted)}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="w-10 text-right text-xs font-semibold tabular-nums text-slate-600">
+                          {percent(school.submitted, summary.applications.submitted)}%
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
                       <MetricLink
                         label={`${school.name}: hồ sơ đã nộp`}
                         value={school.submitted}
@@ -146,8 +184,12 @@ export function CityAnalyticsSummarySections({
                   </TableRow>
                 ))}
                 <TableRow className="font-semibold">
-                  <TableCell>Tổng theo bộ lọc</TableCell>
-                  <TableCell className="text-right">{summary.applications.submitted}</TableCell>
+                  <TableCell colSpan={2} className="text-slate-700">
+                    Tổng theo bộ lọc
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-brand-deep">
+                    {summary.applications.submitted}
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -290,8 +332,8 @@ export function CityAnalyticsSummarySections({
         <Card className="min-w-0 p-0">
           <div className="border-b p-4">
             <SectionHeading
-              title="Tiến độ theo 5 tiêu chí"
-              description="Chỉ trạng thái review của cán bộ được tính là hoàn tất."
+              title="Tiến độ xét duyệt theo 5 tiêu chí"
+              description="Chỉ kết quả cán bộ đã kết luận mới được tính là hoàn tất."
             />
           </div>
           <div
@@ -304,7 +346,7 @@ export function CityAnalyticsSummarySections({
               <TableHeader>
                 <TableRow>
                   <TableHead>Tiêu chí</TableHead>
-                  <TableHead className="text-right">Tổng task</TableHead>
+                  <TableHead className="text-right">Tổng lượt xem xét</TableHead>
                   {criterionTaskStatusKeys.map((statusItem) => (
                     <TableHead key={statusItem.key} className="text-right">
                       {statusItem.label}
@@ -322,7 +364,7 @@ export function CityAnalyticsSummarySections({
                       </TableCell>
                       <TableCell className="text-right">
                         <MetricLink
-                          label={`${criterionLabels[criterion]} tổng task`}
+                          label={`${criterionLabels[criterion]} tổng lượt xem xét`}
                           value={row?.totalTasks ?? 0}
                           onClick={() =>
                             onOpenList(`${criterionLabels[criterion]}: tất cả trạng thái`, {
@@ -358,15 +400,15 @@ export function CityAnalyticsSummarySections({
 
         <Card>
           <SectionHeading
-            title="Phân bố tiến độ review"
-            description="Số hồ sơ theo số tiêu chí đã được cán bộ xử lý."
+            title="Tiến độ xem xét hồ sơ"
+            description="Số hồ sơ theo số tiêu chí cán bộ đã xem xét."
           />
           <div className="mt-4 space-y-2">
             {Object.entries(summary.applications.progressDistribution).map(([count, value]) => (
               <div
                 key={count}
                 role="img"
-                aria-label={`${count} tiêu chí đã review: ${value} hồ sơ`}
+                aria-label={`${count} tiêu chí đã được xem xét: ${value} hồ sơ`}
                 className="grid w-full grid-cols-[minmax(7rem,auto)_minmax(2rem,1fr)_2.5rem] items-center gap-3 px-1 py-1 text-left text-sm"
               >
                 <span>{count}/5 tiêu chí</span>
@@ -390,14 +432,14 @@ export function CityAnalyticsSummarySections({
               <span>
                 {summary.applications.unexpectedTaskCount > 0 ? (
                   <span className="block">
-                    Có {summary.applications.unexpectedTaskCount} task ngoài bộ 5 tiêu chí chuẩn; số
-                    liệu được tách riêng.
+                    Có {summary.applications.unexpectedTaskCount} lượt xử lý ngoài 5 tiêu chí chuẩn;
+                    số liệu được tách riêng.
                   </span>
                 ) : null}
                 {summary.applications.missingCriterionSlots > 0 ? (
                   <span className="block">
-                    Thiếu {summary.applications.missingCriterionSlots} vị trí task trong bộ 5 tiêu
-                    chí; không suy diễn thành đã review.
+                    Chưa ghi nhận {summary.applications.missingCriterionSlots} lượt xử lý trong bộ 5
+                    tiêu chí; chưa tính là đã xem xét.
                   </span>
                 ) : null}
               </span>
@@ -426,7 +468,7 @@ export function CityAnalyticsSummarySections({
                 <TableHead className="text-right">Đã nộp</TableHead>
                 <TableHead className="text-right">Đang xét</TableHead>
                 <TableHead className="text-right">Bổ sung</TableHead>
-                <TableHead className="text-right">Review đủ</TableHead>
+                <TableHead className="text-right">Đã xem xét đủ</TableHead>
                 <TableHead className="text-right">Đạt</TableHead>
                 <TableHead className="text-right">Chưa đạt</TableHead>
               </TableRow>
@@ -478,7 +520,7 @@ export function CityAnalyticsSummarySections({
                     />
                   </TableCell>
                   <TableCell className="text-right">
-                    <span aria-label={`${school.name}: review đủ ${school.reviewComplete}`}>
+                    <span aria-label={`${school.name}: đã xem xét đủ ${school.reviewComplete}`}>
                       {school.reviewComplete}
                     </span>
                   </TableCell>
@@ -522,7 +564,7 @@ export function CityAnalyticsSummarySections({
         </div>
       </Card>
 
-      <section className="grid min-w-0 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+      <section className="grid min-w-0 gap-5 md:grid-cols-2">
         <Card>
           <SectionHeading title="Kết quả cuối" description="Lấy từ quyết định chốt hồ sơ." />
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -556,7 +598,7 @@ export function CityAnalyticsSummarySections({
         <Card>
           <SectionHeading
             title="Bổ sung và hội đồng"
-            description="Hồ sơ đếm một lần; task và case hiển thị riêng."
+            description="Mỗi hồ sơ chỉ tính một lần; yêu cầu bổ sung và hồ sơ Hội đồng được thống kê riêng."
           />
           <div className="mt-3 space-y-2">
             <MetricRow
@@ -565,13 +607,15 @@ export function CityAnalyticsSummarySections({
               onClick={() => onOpenList("Hồ sơ cần bổ sung", { supplementRequired: true })}
             />
             <MetricRow
-              label="Task cần bổ sung"
+              label="Yêu cầu bổ sung theo tiêu chí"
               value={summary.supplement.tasks}
-              onClick={() => onOpenList("Task cần bổ sung", { taskStatus: "supplement_required" })}
+              onClick={() =>
+                onOpenList("Yêu cầu bổ sung theo tiêu chí", { taskStatus: "supplement_required" })
+              }
             />
-            <MetricRow label="Case hội đồng đang mở" value={summary.resolution.openCases} />
+            <MetricRow label="Hồ sơ Hội đồng đang xem xét" value={summary.resolution.openCases} />
             <MetricRow
-              label="Case hội đồng đã giải quyết"
+              label="Hồ sơ Hội đồng đã kết luận"
               value={summary.resolution.resolvedCases}
             />
             <MetricRow
@@ -582,17 +626,17 @@ export function CityAnalyticsSummarySections({
           </div>
         </Card>
 
-        <Card className="min-w-0 p-0 md:col-span-2 2xl:col-span-1">
+        <Card className="min-w-0 p-0 md:col-span-2">
           <div className="border-b p-4">
             <SectionHeading
-              title="Khối lượng City Officer"
-              description="Chỉ task thuộc hồ sơ cá nhân cấp Thành phố."
+              title="Khối lượng cán bộ xét duyệt"
+              description="Chỉ tính hồ sơ cá nhân cấp Thành phố."
             />
           </div>
           <div
             className="overflow-x-auto"
             role="region"
-            aria-label="Bảng khối lượng City Officer"
+            aria-label="Bảng công việc cán bộ xét duyệt"
             tabIndex={0}
           >
             <Table className="min-w-[700px]">
@@ -632,7 +676,7 @@ export function CityAnalyticsSummarySections({
                 {summary.reviewers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                      Chưa có dữ liệu workload.
+                      Chưa có thông tin phân công.
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -648,27 +692,44 @@ export function CityAnalyticsSummarySections({
 function SummaryButton({
   label,
   value,
+  description,
+  tone,
   icon,
   onClick,
 }: {
   label: string;
   value: number;
+  description: string;
+  tone: "blue" | "amber" | "sky" | "indigo" | "orange" | "violet" | "emerald";
   icon: React.ReactNode;
   onClick?: () => void;
 }) {
+  const tones = {
+    blue: { rail: "border-l-blue-700", icon: "bg-blue-50 text-blue-800" },
+    amber: { rail: "border-l-amber-500", icon: "bg-amber-50 text-amber-800" },
+    sky: { rail: "border-l-sky-600", icon: "bg-sky-50 text-sky-800" },
+    indigo: { rail: "border-l-indigo-600", icon: "bg-indigo-50 text-indigo-800" },
+    orange: { rail: "border-l-orange-500", icon: "bg-orange-50 text-orange-800" },
+    violet: { rail: "border-l-violet-600", icon: "bg-violet-50 text-violet-800" },
+    emerald: { rail: "border-l-emerald-600", icon: "bg-emerald-50 text-emerald-800" },
+  };
   const content = (
     <div
-      className={`card-soft flex min-h-[82px] items-center justify-between gap-3 p-3.5 ${
-        onClick ? "transition-colors hover:bg-[var(--surface-secondary)]" : ""
+      className={`flex min-h-[112px] items-start justify-between gap-3 rounded-xl border border-l-4 border-slate-200 bg-white p-3.5 shadow-sm transition-all ${tones[tone].rail} ${
+        onClick ? "group-hover:-translate-y-0.5 group-hover:shadow-md sm:p-4" : "sm:p-4"
       }`}
     >
-      <div className="min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="min-w-0 flex-1">
+        <div className="break-words text-xs font-semibold leading-4 text-slate-600">
           {label}
         </div>
-        <div className="mt-1 text-2xl font-bold leading-none text-brand-deep">{value}</div>
+        <div className="mt-2 text-3xl font-bold leading-none tabular-nums text-slate-950">{value}</div>
+        <p className="mt-2 text-xs leading-relaxed text-slate-600">{description}</p>
       </div>
-      <span className="text-brand-primary" aria-hidden="true">
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tones[tone].icon}`}
+        aria-hidden="true"
+      >
         {icon}
       </span>
     </div>
@@ -681,7 +742,7 @@ function SummaryButton({
       type="button"
       aria-label={`${label}: ${value}; mở danh sách hồ sơ`}
       onClick={onClick}
-      className="rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="group rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700/40"
     >
       {content}
     </button>
@@ -691,8 +752,8 @@ function SummaryButton({
 function SectionHeading({ title, description }: { title: string; description: string }) {
   return (
     <div>
-      <h2 className="text-base font-bold text-brand-deep">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      <h2 className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">{title}</h2>
+      <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-600">{description}</p>
     </div>
   );
 }

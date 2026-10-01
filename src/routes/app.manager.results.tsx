@@ -14,6 +14,8 @@ import type {
   ManagerResultItem,
 } from "@/features/manager/types";
 import type { Criterion, Level, ReviewTaskStatus, Role } from "@/features/review/types";
+import { getTaskStatusLabel } from "@/features/review/utils/formatters";
+import { getCoreCriterionLabel } from "@/lib/criteria-presentation";
 import type { FinalStatus } from "@/lib/api/types";
 import {
   ACTIVE_LEVELS,
@@ -178,7 +180,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
       />
 
       {cityOnly ? (
-        <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mb-5 grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-4">
           <StatCard
             icon={<FileSearch className="h-5 w-5" />}
             label="Hồ sơ trong mùa xét"
@@ -238,7 +240,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
                 ["ready", "Có thể chốt"],
                 ["resolution", "Cần hội ý"],
                 ["supplement", "Cần bổ sung"],
-                ["unfinished", "Chưa đủ task"],
+                ["unfinished", "Chưa đủ tiêu chí"],
                 ["city", "Đạt Thành phố"],
                 ["failed", "Chưa đạt Thành phố"],
                 ["pending", "Chưa chốt"],
@@ -431,7 +433,10 @@ function ResultSummaryCard({
   onFinalize: (item: ManagerResultItem) => void;
 }) {
   const finalized = item.finalStatus !== "pending" && Boolean(item.finalizedAt);
-  const blockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
+  const rawBlockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
+  const blockedReason = cityOnly
+    ? getCityFriendlyBlockedReason(rawBlockedReason)
+    : rawBlockedReason;
   const legacyCentral = isLegacyCentral(item.targetLevel);
   const cancelled = Boolean(item.cancelledAt);
   const finalizeDisabled =
@@ -465,11 +470,23 @@ function ResultSummaryCard({
             {item.studentName}
           </Link>
           <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-sm text-muted-foreground">
-            <span>{item.studentCode ?? "--"}</span>
-            <span>•</span>
-            <span>{item.className ?? "--"}</span>
-            <span>•</span>
-            <span className="max-w-full truncate">{item.faculty ?? "--"}</span>
+            {cityOnly ? (
+              <>
+                <span>{item.className ?? "Chưa rõ lớp"}</span>
+                <span>•</span>
+                <span className="max-w-full break-words">
+                  {item.schoolName ?? "Chưa rõ trường"}
+                </span>
+              </>
+            ) : (
+              <>
+                <span>{item.studentCode ?? "--"}</span>
+                <span>•</span>
+                <span>{item.className ?? "--"}</span>
+                <span>•</span>
+                <span className="max-w-full truncate">{item.faculty ?? "--"}</span>
+              </>
+            )}
           </div>
           {cancelled || item.archivedAt ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -483,19 +500,15 @@ function ResultSummaryCard({
               ) : null}
             </div>
           ) : null}
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {cityOnly ? (
-              <SmallInfo label="Cấp xét" value={`Thành phố · ${cityPilotSchoolYear}`} />
-            ) : (
-              <>
-                <SmallInfo label="Cấp đăng ký" value={getLevelLabel(item.targetLevel)} />
-                <SmallInfo
-                  label="Đề xuất"
-                  value={item.suggestedLevel ? getLevelLabel(item.suggestedLevel) : "--"}
-                />
-              </>
-            )}
-          </div>
+          {!cityOnly ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <SmallInfo label="Cấp đăng ký" value={getLevelLabel(item.targetLevel)} />
+              <SmallInfo
+                label="Đề xuất"
+                value={item.suggestedLevel ? getLevelLabel(item.suggestedLevel) : "--"}
+              />
+            </div>
+          ) : null}
         </section>
 
         <section className="min-w-0 space-y-3">
@@ -511,7 +524,9 @@ function ResultSummaryCard({
               </Chip>
             ) : null}
             <Chip tone="brand">
-              {acceptedCount}/{totalCount} task đạt
+              {cityOnly
+                ? `${acceptedCount}/${totalCount} tiêu chí đã được chấp nhận`
+                : `${acceptedCount}/${totalCount} task đạt`}
             </Chip>
           </div>
           <CriterionStatusStrip item={item} />
@@ -571,6 +586,16 @@ function SmallInfo({ label, value }: { label: string; value: string | number }) 
       <div className="mt-1 truncate text-sm font-semibold text-brand-deep">{value}</div>
     </div>
   );
+}
+
+function getCityFriendlyBlockedReason(reason: string) {
+  if (/resolution\s+case|resolution hub/i.test(reason)) {
+    return "Hồ sơ còn nội dung cần Hội đồng xem xét. Vui lòng hoàn tất bước này trước khi chốt kết quả.";
+  }
+  if (/\btask\b/i.test(reason)) {
+    return "Hồ sơ còn tiêu chí chưa được xem xét.";
+  }
+  return reason;
 }
 
 function normalizeActiveFilter(value: string): ActiveFilter | undefined {
@@ -640,7 +665,8 @@ function CriterionStatusStrip({ item }: { item: ManagerResultItem }) {
           <span
             key={criterion}
             className={`inline-flex h-6 min-w-8 items-center justify-center rounded-md px-1.5 text-[11px] font-bold ${criterionClass(task?.status)}`}
-            title={`${criterionShortLabel[criterion]}: ${task?.status ?? "Chưa có task"}`}
+            title={`${criterionShortLabel[criterion]}: ${task ? getTaskStatusLabel(task.status) : "Chưa có kết quả"}`}
+            aria-label={`${getCoreCriterionLabel(criterion)}: ${task ? getTaskStatusLabel(task.status) : "Chưa có kết quả"}`}
           >
             {criterionShortLabel[criterion]}
           </span>

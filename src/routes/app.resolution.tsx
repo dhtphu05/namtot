@@ -24,11 +24,7 @@ import { getErrorMessage } from "@/features/review/utils/errors";
 import { formatDateTime, getCriterionLabel } from "@/features/review/utils/formatters";
 import { useResolutionCases } from "@/features/resolution/hooks/useResolution";
 import { cityPilotSchoolYear } from "@/features/manager/city-analytics/constants";
-import type {
-  ResolutionCaseListItem,
-  ResolutionCasesParams,
-  ResolutionCaseStatus,
-} from "@/features/resolution/types";
+import type { ResolutionCasesParams, ResolutionCaseStatus } from "@/features/resolution/types";
 
 export const Route = createFileRoute("/app/resolution")({
   component: ResolutionCasesRoute,
@@ -93,6 +89,7 @@ function ResolutionCasesRoute() {
 function ResolutionCasesContent({ role }: { role: Role }) {
   const navigate = useNavigate();
   const cityOnly = role === "city_manager" || role === "city_committee" || role === "admin";
+  const cityCommittee = role === "city_committee";
   const [filters, setFilters] = useState<ResolutionCasesParams>(() => ({
     page: 1,
     limit: defaultLimit,
@@ -122,12 +119,18 @@ function ResolutionCasesContent({ role }: { role: Role }) {
   return (
     <>
       <TopBar
-        title={cityOnly ? "Hồ sơ hội ý Thành phố" : officerView ? "Hội ý của tôi" : "Hồ sơ hội ý"}
+        title={
+          cityOnly
+            ? "Hồ sơ cần Hội đồng xem xét"
+            : officerView
+              ? "Hồ sơ tôi chuyển Hội đồng"
+              : "Hồ sơ hội ý"
+        }
         subtitle={
           cityOnly
-            ? `Các hồ sơ cá nhân cấp Thành phố trong mùa xét ${cityPilotSchoolYear}.`
+            ? `Hồ sơ cấp Thành phố được chuyển Hội đồng xem xét trong mùa ${cityPilotSchoolYear}.`
             : officerView
-              ? "Theo dõi case do bạn chuyển lên hoặc liên quan đến task bạn được giao."
+              ? "Theo dõi các hồ sơ bạn chuyển lên hoặc được giao xem xét."
               : "Theo dõi các hồ sơ cần hội ý, minh chứng chưa rõ hoặc trường hợp cán bộ chuyển xử lý."
         }
       />
@@ -257,99 +260,115 @@ function ResolutionCasesContent({ role }: { role: Role }) {
         ) : isError ? (
           <ReviewErrorState
             title="Không thể tải hồ sơ hội ý"
-            description={getErrorMessage(
-              error,
-              "Vui lòng thử lại hoặc kiểm tra quyền truy cập với backend.",
-            )}
+            description={
+              cityCommittee
+                ? "Danh sách tạm thời chưa tải được. Vui lòng thử lại sau."
+                : getErrorMessage(
+                    error,
+                    "Vui lòng thử lại. Nếu sự cố tiếp tục, hãy liên hệ người phụ trách hệ thống.",
+                  )
+            }
             onRetry={() => void refetch()}
           />
         ) : items.length ? (
-          <Card className="p-0">
-            <Table className="min-w-[1120px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Mã case</TableHead>
-                  <TableHead>Sinh viên</TableHead>
-                  <TableHead>Tiêu chí</TableHead>
-                  {!cityOnly ? <TableHead>Cấp xét</TableHead> : null}
-                  <TableHead>Lý do hội ý</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Người chuyển</TableHead>
-                  <TableHead>Ngày chuyển</TableHead>
-                  <TableHead>Minh chứng</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow
-                    key={item.id}
-                    className="cursor-pointer"
-                    onClick={() => navigate({ to: "/app/resolution/$id", params: { id: item.id } })}
-                  >
-                    <TableCell className="font-semibold text-brand-deep">
-                      #{shortId(item.id)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium text-foreground">
-                        {item.studentName || fallbackText}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {[item.studentCode, item.faculty, item.className]
-                          .filter(Boolean)
-                          .join(" / ") || fallbackText}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <CriterionBadge criterion={item.criterion} />
-                    </TableCell>
-                    {!cityOnly ? (
-                      <TableCell>
-                        <LevelBadge level={item.targetLevel} />
-                      </TableCell>
-                    ) : null}
-                    <TableCell className="max-w-[260px]">
-                      <div className="line-clamp-2 text-sm text-foreground">
-                        {item.reason || "Chưa có lý do hội ý"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${resolutionStatusClass(item.status)}`}
-                      >
-                        {getResolutionStatusLabel(item.status)}
-                      </span>
-                    </TableCell>
-                    <TableCell>{getCreatorLabel(item)}</TableCell>
-                    <TableCell>{formatDateTime(item.createdAt)}</TableCell>
-                    <TableCell>
-                      {item.evidenceIds?.length
-                        ? `${item.evidenceIds.length} minh chứng`
-                        : "Chưa liên kết"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          navigate({ to: "/app/resolution/$id", params: { id: item.id } });
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                        Xem chi tiết
-                      </Button>
-                    </TableCell>
+          <Card className="min-w-0 overflow-hidden rounded-xl border-slate-200 p-0 shadow-sm">
+            <div
+              className="min-w-0 overflow-x-auto"
+              role="region"
+              aria-label="Danh sách hồ sơ hội ý"
+              tabIndex={0}
+            >
+              <Table
+                className={cityCommittee ? "min-w-[900px] xl:min-w-0" : "min-w-[1080px] xl:min-w-0"}
+              >
+                <TableHeader>
+                  <TableRow className="bg-slate-50/90 hover:bg-slate-50/90">
+                    {!cityCommittee ? <TableHead className="w-24 px-4">Mã hồ sơ</TableHead> : null}
+                    <TableHead className="w-[230px] px-4">Sinh viên</TableHead>
+                    <TableHead className="w-32 px-4">Tiêu chí</TableHead>
+                    {!cityOnly ? <TableHead className="w-28 px-4">Cấp xét</TableHead> : null}
+                    <TableHead className="px-4">Lý do hội ý</TableHead>
+                    <TableHead className="w-32 px-4">Trạng thái</TableHead>
+                    <TableHead className="w-40 px-4">Ngày chuyển</TableHead>
+                    <TableHead className="w-32 px-4">Minh chứng</TableHead>
+                    <TableHead className="w-40 px-4 text-right">Thao tác</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow
+                      key={item.id}
+                      className="group cursor-pointer transition-colors hover:bg-blue-50/50"
+                      onClick={() =>
+                        navigate({ to: "/app/resolution/$id", params: { id: item.id } })
+                      }
+                    >
+                      {!cityCommittee ? (
+                        <TableCell className="whitespace-nowrap px-4 font-semibold text-brand-deep">
+                          #{shortId(item.id)}
+                        </TableCell>
+                      ) : null}
+                      <TableCell className="px-4 py-3.5">
+                        <div className="font-semibold leading-5 text-slate-900">
+                          {item.studentName || fallbackText}
+                        </div>
+                        <div className="mt-1 text-xs leading-4 text-slate-600">
+                          {[item.className, item.schoolName].filter(Boolean).join(" · ") ||
+                            fallbackText}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-4">
+                        <CriterionBadge criterion={item.criterion} />
+                      </TableCell>
+                      {!cityOnly ? (
+                        <TableCell className="px-4">
+                          <LevelBadge level={item.targetLevel} />
+                        </TableCell>
+                      ) : null}
+                      <TableCell className="max-w-[320px] px-4 py-3.5">
+                        <div className="line-clamp-2 text-sm leading-5 text-slate-700">
+                          {item.reason || "Chưa có lý do hội ý"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-4">
+                        <span
+                          className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${resolutionStatusClass(item.status)}`}
+                        >
+                          {getResolutionStatusLabel(item.status)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 text-sm text-slate-700">
+                        {formatDateTime(item.createdAt)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 text-sm text-slate-600">
+                        {item.evidenceIds?.length
+                          ? `${item.evidenceIds.length} minh chứng`
+                          : "Chưa liên kết"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 text-right">
+                        <Button
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate({ to: "/app/resolution/$id", params: { id: item.id } });
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                          Xem chi tiết
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         ) : (
           <EmptyReviewState
-            title="Chưa có case hội ý."
-            description="Các trường hợp cán bộ chuyển hội ý sẽ hiển thị tại đây với đầy đủ hồ sơ, task và minh chứng liên quan."
+            title="Chưa có hồ sơ cần Hội đồng xem xét."
+            description="Hồ sơ được chuyển lên sẽ hiển thị tại đây cùng tiêu chí và minh chứng liên quan."
           />
         )}
       </div>
@@ -442,17 +461,6 @@ function FilterSelect({
   );
 }
 
-function getCreatorLabel(item: ResolutionCaseListItem) {
-  const name = item.escalatedByName || item.createdByName;
-  const role = item.escalatedByRole || item.createdByRole;
-
-  if (!name && !role) {
-    return fallbackText;
-  }
-
-  return [name, formatResolutionRole(role)].filter(Boolean).join(" / ");
-}
-
 function getResolutionStatusLabel(status: ResolutionCaseStatus) {
   if (status === "resolved") {
     return "Đã kết luận";
@@ -479,18 +487,6 @@ function getLevelFilterLabel(level: Level) {
     central: "Cấp Trung ương",
   };
   return labels[level];
-}
-
-function formatResolutionRole(role?: string | null) {
-  if (!role) return "";
-  if (role === "officer") return "Cán bộ xét duyệt";
-  if (role === "city_officer") return "Cán bộ xét duyệt thành phố";
-  if (role === "manager") return "Cấp quản lý";
-  if (role === "city_manager") return "Quản lý thành phố";
-  if (role === "committee") return "Hội đồng";
-  if (role === "city_committee") return "Hội đồng thành phố";
-  if (role === "admin") return "Quản trị viên";
-  return role;
 }
 
 function shortId(id?: string | null) {
