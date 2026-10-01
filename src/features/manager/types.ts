@@ -266,6 +266,12 @@ export type ManagerResultItem = {
 
 export type ManagerResultsResponse = {
   items: ManagerResultItem[];
+  summary?: {
+    totalApplications: number;
+    passedCity: number;
+    notAchievedCity: number;
+    unfinalized: number;
+  };
   pagination: {
     page: number;
     pageSize: number;

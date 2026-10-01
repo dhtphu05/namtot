@@ -78,7 +78,7 @@ const levelLabel: Record<Level, string> = {
 const statusLabel: Record<string, string> = {
   pending: "Chưa chốt",
   passed: "Đạt",
-  partially_passed: "Đạt cấp thấp hơn",
+  partially_passed: "Đạt một phần",
   failed: "Chưa đạt",
   draft: "Bản nháp",
   ready_to_submit: "Sẵn sàng nộp",
@@ -188,17 +188,21 @@ function ManagerResultDetailRoute() {
           <InboxFocusBanner
             focus={inboxFocus.focus}
             resolutionCaseId={inboxFocus.resolutionCaseId}
+            cityOnly={isIndividualCityApplication}
           />
-          <HeaderCard detail={detail} />
+          <HeaderCard detail={detail} cityOnly={isIndividualCityApplication} />
           {canManageLifecycle ? (
             <ApplicationLifecycleActions application={detail.application} />
           ) : null}
-          <ApplicationFinalDecisionHistory history={detail.finalDecisionHistory ?? []} />
+          <ApplicationFinalDecisionHistory
+            history={detail.finalDecisionHistory ?? []}
+            cityOnly={isIndividualCityApplication}
+          />
           {canManageCityDeadline && isInitialCityDraft ? (
             <CitySubmissionDeadlineExceptionPanel applicationId={detail.application.id} />
           ) : null}
-          <AnalysisSection detail={detail} />
-          <CriterionDecisionBoard detail={detail} />
+          <AnalysisSection detail={detail} cityOnly={isIndividualCityApplication} />
+          <CriterionDecisionBoard detail={detail} cityOnly={isIndividualCityApplication} />
           <ResolutionSection detail={detail} />
           <AuditSection detail={detail} />
         </div>
@@ -206,6 +210,7 @@ function ManagerResultDetailRoute() {
         <aside className="space-y-5 xl:sticky xl:top-4 xl:self-start">
           <DecisionPanel
             detail={detail}
+            cityOnly={isIndividualCityApplication}
             canFinalize={canFinalize && !detail.application.cancelledAt}
             processedCount={processedCount}
             openResolutionCount={openResolutionCount}
@@ -220,6 +225,7 @@ function ManagerResultDetailRoute() {
       <FinalizationDialog
         item={selectedItem}
         open={finalizing}
+        cityOnly={isIndividualCityApplication}
         onOpenChange={(open) => setFinalizing(open)}
       />
       <ReopenFinalDialog
@@ -234,12 +240,14 @@ function ManagerResultDetailRoute() {
 function InboxFocusBanner({
   focus,
   resolutionCaseId,
+  cityOnly,
 }: {
   focus?: string;
   resolutionCaseId?: string;
+  cityOnly: boolean;
 }) {
   if (!focus) return null;
-  const content = getInboxFocusContent(focus);
+  const content = getInboxFocusContent(focus, cityOnly);
   return (
     <Card className="border-[#BBD7FF] bg-[#F4F9FF]">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -259,7 +267,7 @@ function InboxFocusBanner({
   );
 }
 
-function getInboxFocusContent(focus: string) {
+function getInboxFocusContent(focus: string, cityOnly: boolean) {
   if (focus === "ready_to_finalize") {
     return {
       title: "Hồ sơ đủ điều kiện chốt",
@@ -268,14 +276,18 @@ function getInboxFocusContent(focus: string) {
   }
   if (focus === "downgraded") {
     return {
-      title: "Hồ sơ bị hạ cấp",
-      desc: "Ưu tiên xem phần phân tích cascade và lý do blocker trước khi chốt.",
+      title: cityOnly ? "Cần rà soát quyết định Thành phố" : "Hồ sơ bị hạ cấp",
+      desc: cityOnly
+        ? "Đối chiếu kết quả 5 tiêu chí và căn cứ trước khi Hội đồng chốt hồ sơ."
+        : "Ưu tiên xem phần phân tích cascade và lý do blocker trước khi chốt.",
     };
   }
   if (focus === "no_eligible_level") {
     return {
-      title: "Không đạt cấp nào",
-      desc: "Xem blocker chính và chốt chưa đạt nếu dữ liệu đã đầy đủ.",
+      title: cityOnly ? "Chưa đạt điều kiện Thành phố" : "Không đạt cấp nào",
+      desc: cityOnly
+        ? "Đối chiếu hồ sơ và chốt kết quả sau khi dữ liệu đã đầy đủ."
+        : "Xem blocker chính và chốt chưa đạt nếu dữ liệu đã đầy đủ.",
     };
   }
   if (focus === "needs_resolution") {
@@ -390,7 +402,7 @@ function ReopenFinalDialog({
 function BackButton() {
   return (
     <Button asChild variant="secondary">
-      <Link to="/app/manager/results">
+      <Link to="/app/manager/results" search={{ filter: undefined }}>
         <ArrowLeft className="h-4 w-4" />
         Quay lại danh sách
       </Link>
@@ -400,6 +412,7 @@ function BackButton() {
 
 function DecisionPanel({
   canFinalize,
+  cityOnly,
   detail,
   onFinalize,
   onReopen,
@@ -409,6 +422,7 @@ function DecisionPanel({
   supplementCount,
 }: {
   canFinalize: boolean;
+  cityOnly: boolean;
   detail: ManagerResultDetail;
   onFinalize: () => void;
   onReopen: () => void;
@@ -438,11 +452,23 @@ function DecisionPanel({
         </div>
 
         <div className="mt-4 space-y-2 text-sm">
-          <Info label="Kết quả cuối" value={getFinalResultLabel(detail)} />
           <Info
-            label="Cấp đạt"
-            value={getLevelLabel(detail.application.finalLevel, "Không có cấp đạt")}
+            label="Kết quả cuối"
+            value={
+              cityOnly
+                ? getCityFinalResultLabel(
+                    detail.application.finalStatus,
+                    detail.application.finalLevel,
+                  )
+                : getFinalResultLabel(detail)
+            }
           />
+          {!cityOnly ? (
+            <Info
+              label="Cấp đạt"
+              value={getLevelLabel(detail.application.finalLevel, "Không có cấp đạt")}
+            />
+          ) : null}
           <Info label="Thời gian chốt" value={formatDate(detail.application.finalizedAt)} />
           <Info label="Người chốt" value={detail.application.finalizedBy?.fullName ?? "--"} />
         </div>
@@ -476,17 +502,40 @@ function DecisionPanel({
         <ShieldAlert className="mt-1 h-5 w-5 text-[#0057C2]" />
         <div>
           <h2 className="font-bold text-brand-deep">Tổng hợp quyết định</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{detail.aggregation.reason}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {cityOnly
+              ? `Cán bộ đánh giá 5 tiêu chí cho hồ sơ Thành phố năm học ${detail.application.schoolYear}. Hội đồng xác nhận kết quả cuối.`
+              : detail.aggregation.reason}
+          </p>
         </div>
       </div>
       <div className="mt-4 space-y-2 text-sm">
-        <Info label="Aim đăng ký" value={getLevelLabel(detail.application.targetLevel)} />
-        <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
         <Info
-          label="Gợi ý hệ thống"
+          label={cityOnly ? "Cấp xét" : "Aim đăng ký"}
+          value={
+            cityOnly
+              ? `Thành phố · ${detail.application.schoolYear}`
+              : getLevelLabel(detail.application.targetLevel)
+          }
+        />
+        <Info
+          label={cityOnly ? "Kết quả tiêu chí tham khảo" : "Cấp đạt đề xuất"}
+          value={
+            cityOnly
+              ? getPendingFinalResultLabel(
+                  detail.aggregation.suggestedFinalStatus,
+                  suggestedLevel,
+                  true,
+                )
+              : getSuggestedLevelLabel(detail)
+          }
+        />
+        <Info
+          label={cityOnly ? "Kết quả tham khảo" : "Gợi ý hệ thống"}
           value={getPendingFinalResultLabel(
             detail.aggregation.suggestedFinalStatus,
             suggestedLevel,
+            cityOnly,
           )}
         />
         <Info label="Điều kiện nghiệp vụ" value={businessReady ? "Đủ để chốt" : "Chưa đủ"} />
@@ -534,13 +583,15 @@ function DecisionPanel({
   );
 }
 
-function HeaderCard({ detail }: { detail: ManagerResultDetail }) {
+function HeaderCard({ detail, cityOnly }: { detail: ManagerResultDetail; cityOnly: boolean }) {
   const [imageFailed, setImageFailed] = useState(false);
   const rawPhotoUrl = getStudentPhotoUrl(detail);
   const resolvedPhotoUrl = useResolvedAvatarUrl(rawPhotoUrl);
   const photoUrl = imageFailed ? null : resolvedPhotoUrl;
   const isLegacyCentral = detail.application.targetLevel === "central";
-  const hasFinalLevel = Boolean(detail.application.finalizedAt && detail.application.finalLevel);
+  const hasFinalLevel = Boolean(
+    detail.application.finalizedAt && (cityOnly || detail.application.finalLevel),
+  );
 
   return (
     <Card>
@@ -573,12 +624,23 @@ function HeaderCard({ detail }: { detail: ManagerResultDetail }) {
               <Chip tone={statusTone(detail.application.status)}>
                 {label(detail.application.status)}
               </Chip>
-              <Chip tone="brand">{getLevelLabel(detail.application.targetLevel)}</Chip>
+              <Chip tone="brand">
+                {cityOnly
+                  ? `Cấp Thành phố · ${detail.application.schoolYear}`
+                  : getLevelLabel(detail.application.targetLevel)}
+              </Chip>
               {hasFinalLevel ? (
-                <Chip tone="success">Đã chốt {getLevelLabel(detail.application.finalLevel)}</Chip>
+                <Chip tone="success">
+                  {cityOnly
+                    ? getCityFinalResultLabel(
+                        detail.application.finalStatus,
+                        detail.application.finalLevel,
+                      )
+                    : `Đã chốt ${getLevelLabel(detail.application.finalLevel)}`}
+                </Chip>
               ) : null}
               {!photoUrl ? <Chip tone="muted">Chưa có ảnh hồ sơ</Chip> : null}
-              {isLegacyCentral ? (
+              {!cityOnly && isLegacyCentral ? (
                 <Chip tone="warning">Ngoài phạm vi flow chính hiện tại</Chip>
               ) : null}
             </div>
@@ -629,7 +691,13 @@ function DecisionConsole({ detail }: { detail: ManagerResultDetail }) {
   );
 }
 
-function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
+function CriterionDecisionBoard({
+  detail,
+  cityOnly,
+}: {
+  detail: ManagerResultDetail;
+  cityOnly: boolean;
+}) {
   const [selectedEvidence, setSelectedEvidence] = useState<ManagerResultEvidence | null>(null);
 
   return (
@@ -679,7 +747,9 @@ function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
                 <div className="border-t bg-slate-50/70 p-4">
                   <div className="grid gap-3 md:grid-cols-4">
                     <Info label="Trạng thái cuối" value={label(summary?.status)} />
-                    <Info label="Cấp tối đa" value={level(summary?.officerSuggestedLevel)} />
+                    {!cityOnly ? (
+                      <Info label="Cấp tối đa" value={level(summary?.officerSuggestedLevel)} />
+                    ) : null}
                     <Info label="Cán bộ xử lý" value={task?.assignedOfficer?.fullName ?? "--"} />
                     <Info label="Task review" value={task ? task.id.slice(0, 8) : "--"} />
                   </div>
@@ -753,7 +823,13 @@ function CriterionDecisionBoard({ detail }: { detail: ManagerResultDetail }) {
   );
 }
 
-function CriterionSummary({ detail }: { detail: ManagerResultDetail }) {
+function CriterionSummary({
+  detail,
+  cityOnly = false,
+}: {
+  detail: ManagerResultDetail;
+  cityOnly?: boolean;
+}) {
   const incompleteCriteria = criterionOrder.filter((criterion) => {
     const item = detail.criterionSummary[criterion];
     return item?.status !== "accepted";
@@ -811,7 +887,9 @@ function CriterionSummary({ detail }: { detail: ManagerResultDetail }) {
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
                 <Info label="Kết luận" value={label(item?.decision)} />
-                <Info label="Gợi ý cấp" value={level(item?.officerSuggestedLevel)} />
+                {!cityOnly ? (
+                  <Info label="Gợi ý cấp" value={level(item?.officerSuggestedLevel)} />
+                ) : null}
                 <Info label="Minh chứng" value={`${item?.evidenceCount ?? 0}`} />
                 <Info label="Đã đạt" value={`${item?.acceptedEvidenceCount ?? 0}`} />
               </div>
@@ -912,7 +990,7 @@ function EvidenceSection({ evidences }: { evidences: ManagerResultEvidence[] }) 
               <h3 className="text-sm font-bold text-brand-deep">{criterionLabel[criterion]}</h3>
               <div className="mt-2 grid gap-3 md:grid-cols-2">
                 {(grouped[criterion] ?? []).length ? (
-                  grouped[criterion].map((evidence) => (
+                  grouped[criterion]!.map((evidence) => (
                     <EvidenceCard
                       key={evidence.id}
                       evidence={evidence}
@@ -1373,21 +1451,23 @@ function EvidenceDetailDialog({
   );
 }
 
-function AnalysisSection({ detail }: { detail: ManagerResultDetail }) {
+function AnalysisSection({ detail, cityOnly }: { detail: ManagerResultDetail; cityOnly: boolean }) {
   const suggestedLevel = getSuggestedLevel(detail);
   const hasBlockingIssue = detail.aggregation.blockingIssues.length > 0;
   const hasOpenResolution = detail.resolutionCases.some(
     (item) => item.status === "open" || item.status === "in_review",
   );
   const hasSupplement = detail.reviewTasks.some((task) => task.status === "supplement_required");
-  const isDowngraded = Boolean(suggestedLevel && suggestedLevel !== detail.application.targetLevel);
+  const isDowngraded =
+    !cityOnly && Boolean(suggestedLevel && suggestedLevel !== detail.application.targetLevel);
   const isStraightPass =
     suggestedLevel === detail.application.targetLevel &&
     !hasBlockingIssue &&
     !hasOpenResolution &&
     !hasSupplement;
-  const reason =
-    suggestedLevel === detail.application.targetLevel
+  const reason = cityOnly
+    ? getPendingFinalResultLabel(detail.aggregation.suggestedFinalStatus, suggestedLevel, true)
+    : suggestedLevel === detail.application.targetLevel
       ? "Đủ 5/5 tiêu chí theo cấp đăng ký."
       : suggestedLevel
         ? `Đề xuất hạ từ ${getLevelLabel(detail.application.targetLevel)} xuống ${getLevelLabel(suggestedLevel)} theo kết quả tiêu chí.`
@@ -1403,21 +1483,34 @@ function AnalysisSection({ detail }: { detail: ManagerResultDetail }) {
   if (isStraightPass) {
     return (
       <div className="rounded-lg border bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-        Đủ 5/5 tiêu chí theo cấp đăng ký.
+        {cityOnly
+          ? "Đủ 5/5 tiêu chí Thành phố, chờ Hội đồng chốt kết quả."
+          : "Đủ 5/5 tiêu chí theo cấp đăng ký."}
       </div>
     );
   }
 
   return (
     <Card>
-      <h2 className="font-bold text-brand-deep">Gợi ý cấp đạt</h2>
+      <h2 className="font-bold text-brand-deep">
+        {cityOnly ? "Đánh giá hồ sơ Thành phố" : "Gợi ý cấp đạt"}
+      </h2>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <Info label="Cấp đăng ký" value={getLevelLabel(detail.application.targetLevel)} />
-        <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
+        {cityOnly ? (
+          <Info label="Cấp xét" value={`Thành phố · ${detail.application.schoolYear}`} />
+        ) : (
+          <>
+            <Info label="Cấp đăng ký" value={getLevelLabel(detail.application.targetLevel)} />
+            <Info label="Cấp đạt đề xuất" value={getSuggestedLevelLabel(detail)} />
+          </>
+        )}
       </div>
       <p className="mt-4 text-sm text-muted-foreground">
-        Cán bộ duyệt từng tiêu chí. Hội đồng/Cấp quản lý theo dõi, điều phối và chốt kết quả cuối.
+        {cityOnly
+          ? `Cán bộ đánh giá 5 tiêu chí cho hồ sơ cấp Thành phố năm học ${detail.application.schoolYear}. Kết quả cuối do Hội đồng xác nhận.`
+          : "Cán bộ duyệt từng tiêu chí. Hội đồng/Cấp quản lý theo dõi, điều phối và chốt kết quả cuối."}
       </p>
+      <p className="mt-2 text-sm font-semibold text-brand-deep">{reason}</p>
       {isDowngraded || !suggestedLevel || reasons.length ? (
         <div className="mt-4 space-y-2">
           {reasons.length ? (
@@ -1663,11 +1756,25 @@ function getSuggestedLevelLabel(detail: ManagerResultDetail) {
 function getPendingFinalResultLabel(
   status?: FinalStatus | "pending",
   suggestedLevel?: Level | null,
+  cityOnly = false,
 ) {
+  if (cityOnly) {
+    if (status === "pending") return "Chưa có kết quả tham khảo";
+    if (status === "failed" || !suggestedLevel) return "Chưa đạt Thành phố";
+    if (status === "passed" && suggestedLevel === "city") return "Đạt Thành phố";
+    return "Chưa đạt Thành phố";
+  }
   if (status === "failed" || !suggestedLevel) return "Chưa đạt";
   if (status === "partially_passed") return `Đạt cấp thấp hơn: ${getLevelLabel(suggestedLevel)}`;
   if (status === "passed") return `Đạt ${getLevelLabel(suggestedLevel)}`;
   return suggestedLevel ? `Đạt ${getLevelLabel(suggestedLevel)}` : "Chưa đạt";
+}
+
+function getCityFinalResultLabel(status: FinalStatus, finalLevel?: Level | null) {
+  if (status === "pending") return "Chưa chốt";
+  if (status === "passed" && finalLevel === "city") return "Đạt Thành phố";
+  if (status === "passed" && !finalLevel) return "Cần đối soát";
+  return "Chưa đạt Thành phố";
 }
 
 function getFinalResultLabel(detail: ManagerResultDetail) {
@@ -1721,7 +1828,7 @@ function useResolvedAvatarUrl(avatarUrl?: string | null) {
 
       try {
         const response = await evidenceApi.getSignedFileUrl(fileId);
-        if (!cancelled) setResolvedUrl(response.data.url);
+        if (!cancelled) setResolvedUrl(response.data?.url ?? null);
       } catch {
         if (!cancelled) setResolvedUrl(null);
       }

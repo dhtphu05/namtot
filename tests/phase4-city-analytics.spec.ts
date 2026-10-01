@@ -1,4 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import ExcelJS from "exceljs";
 
 type Role =
   | "student"
@@ -10,14 +12,17 @@ type Role =
   | "committee"
   | "admin";
 
-const corsHeaders = {
-  "access-control-allow-headers": "authorization, content-type",
-  "access-control-allow-methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
-  "access-control-allow-origin": "*",
-};
+function corsHeaders(route: Route) {
+  return {
+    "access-control-allow-credentials": "true",
+    "access-control-allow-headers": "authorization, content-type",
+    "access-control-allow-methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+    "access-control-allow-origin": route.request().headers().origin ?? "http://127.0.0.1:5173",
+  };
+}
 
 test.describe("Phase 4 Part 3A City analytics", () => {
-  for (const role of ["city_manager", "admin"] as const) {
+  for (const role of ["city_manager", "city_committee", "admin"] as const) {
     test(`${role} loads City analytics through the City API`, async ({ page }) => {
       const requests: string[] = [];
       await installMocks(page, role, requests);
@@ -27,10 +32,21 @@ test.describe("Phase 4 Part 3A City analytics", () => {
       await expect(
         page.getByRole("heading", { name: "Theo dõi hồ sơ cấp Thành phố" }),
       ).toBeVisible();
-      await expect(page.getByText("Hồ sơ đã nộp", { exact: true })).toBeVisible();
+      await expect(page.getByLabel("Năm học")).toHaveValue("2025-2026");
+      await expect(page.getByText("Hồ sơ đã nộp", { exact: true }).first()).toBeVisible();
       await expect(page.getByRole("heading", { name: "Tiến độ theo 5 tiêu chí" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Theo trường" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Theo trường", exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Kết quả cuối" })).toBeVisible();
+      if (role === "city_committee") {
+        await expect(
+          page.getByRole("heading", { name: "Thống kê hồ sơ đã nộp theo trường" }),
+        ).toBeVisible();
+      } else {
+        await expect(
+          page.getByRole("heading", { name: "Thống kê hồ sơ đã nộp theo trường" }),
+        ).toHaveCount(0);
+      }
+      await expect(page.getByText("Đạt cấp thấp hơn", { exact: true })).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "Khối lượng City Officer" })).toBeVisible();
       await expect(page.getByRole("status")).toContainText("Thiếu 2 vị trí task");
       await expect(page.getByRole("button", { name: /Đã review đủ 5 tiêu chí/ })).toHaveCount(0);
@@ -38,12 +54,25 @@ test.describe("Phase 4 Part 3A City analytics", () => {
       await expect(page.getByText("Nguyễn An", { exact: true })).toHaveCount(0);
       expect(requests.some((url) => new URL(url).pathname === "/api/analytics/city")).toBe(true);
       expect(requests.some((url) => url.includes("/api/manager/dashboard-summary"))).toBe(false);
-      await expect(page.getByRole("heading", { name: "Quản lý mùa xét Thành phố" })).toBeVisible();
-      expect(
-        requests.some(
-          (url) => new URL(url).pathname === "/api/manager/city-review-seasons/2025-2026",
-        ),
-      ).toBe(true);
+      if (role !== "city_committee") {
+        await expect(
+          page.getByRole("heading", { name: "Quản lý mùa xét Thành phố" }),
+        ).toBeVisible();
+        expect(
+          requests.some(
+            (url) => new URL(url).pathname === "/api/manager/city-review-seasons/2025-2026",
+          ),
+        ).toBe(true);
+      } else {
+        await expect(page.getByRole("heading", { name: "Quản lý mùa xét Thành phố" })).toHaveCount(
+          0,
+        );
+        expect(
+          requests.some((url) =>
+            new URL(url).pathname.startsWith("/api/manager/city-review-seasons"),
+          ),
+        ).toBe(false);
+      }
 
       if (role === "city_manager") {
         await expect(
@@ -54,6 +83,256 @@ test.describe("Phase 4 Part 3A City analytics", () => {
           page.getByRole("heading", { name: "Hồ sơ cần xác minh điều kiện" }),
         ).toHaveCount(0);
       }
+    });
+  }
+
+  test("City Committee can open submitted applications from the per-school statistics table", async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    await installMocks(page, "city_committee", requests);
+
+    await page.goto("/app/analytics", { waitUntil: "domcontentloaded" });
+
+    const table = page.getByRole("region", { name: "Bảng hồ sơ đã nộp theo trường" });
+    await expect(table).toBeVisible();
+    await expect(
+      table.getByRole("button", {
+        name: "Trường Đại học Bách khoa: hồ sơ đã nộp: 14; xem hồ sơ",
+      }),
+    ).toBeVisible();
+    await expect(table.getByRole("row").last()).toContainText("14");
+
+    await table
+      .getByRole("button", {
+        name: "Trường Đại học Bách khoa: hồ sơ đã nộp: 14; xem hồ sơ",
+      })
+      .click();
+
+    await expect(page.getByRole("heading", { name: "Danh sách hồ sơ" })).toBeVisible();
+    await expect
+      .poll(() =>
+        requests.some((url) => {
+          const parsed = new URL(url);
+          return (
+            parsed.pathname === "/api/analytics/city/applications" &&
+            parsed.searchParams.get("workspaceId") === "school-dut" &&
+            parsed.searchParams.get("submitted") === "true"
+          );
+        }),
+      )
+      .toBe(true);
+  });
+
+  test("City Committee sidebar separates finalization, export, and analytics pages", async ({
+    page,
+  }) => {
+    await installMocks(page, "city_committee", []);
+    await page.goto("/app/manager/results", { waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("region", { name: "Bảng hồ sơ đã nộp theo trường" })).toHaveCount(
+      0,
+    );
+    await expect(page.getByRole("link", { name: "Chốt kết quả" })).toHaveAttribute(
+      "href",
+      "/app/manager/results",
+    );
+    await expect(page.getByRole("link", { name: "Xuất kết quả" })).toHaveAttribute(
+      "href",
+      "/app/export",
+    );
+    await expect(page.getByRole("link", { name: "Thống kê Thành phố" })).toHaveAttribute(
+      "href",
+      "/app/analytics",
+    );
+
+    await page.getByRole("link", { name: "Xuất kết quả" }).click();
+    await expect(page).toHaveURL(/\/app\/export$/);
+    await expect(page.getByRole("heading", { name: "Hồ sơ đã nộp theo trường" })).toBeVisible();
+  });
+
+  test("City Committee finds school submission statistics and exports the full City roster", async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    await installMocks(page, "city_committee", requests);
+
+    await page.goto("/app/export", { waitUntil: "domcontentloaded" });
+
+    const table = page.getByRole("region", { name: "Bảng hồ sơ đã nộp theo trường" });
+    await expect(table).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hồ sơ đã nộp theo trường" })).toBeVisible();
+    await expect(table.getByRole("row").last()).toContainText("14");
+    await expect(
+      page.getByRole("button", { name: "Xuất Excel toàn bộ danh sách đã nộp" }),
+    ).toBeVisible();
+    await expect(
+      table.getByRole("button", {
+        name: "Xuất Excel danh sách đã nộp: Trường Đại học Bách khoa",
+      }),
+    ).toBeVisible();
+    await expect
+      .poll(() =>
+        requests.some((url) => {
+          const parsed = new URL(url);
+          return (
+            parsed.pathname === "/api/analytics/city" &&
+            parsed.searchParams.get("schoolYear") === "2025-2026"
+          );
+        }),
+      )
+      .toBe(true);
+
+    const downloadPromise = page.waitForEvent("download", { timeout: 10_000 }).catch(() => null);
+    await page.getByRole("button", { name: "Xuất Excel toàn bộ danh sách đã nộp" }).click();
+    const download = await downloadPromise;
+    if (!download) {
+      const notification = await page
+        .getByRole("region", { name: "Notifications alt+T" })
+        .innerText();
+      throw new Error(`Excel export did not download: ${notification}`);
+    }
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await readFile((await download.path())!));
+    const sheet = workbook.getWorksheet("Danh sách hồ sơ");
+
+    expect(download.suggestedFilename()).toBe(
+      "Danh sách hồ sơ đã nộp cấp Thành phố - Toàn thành phố - Năm học 2025-2026.xlsx",
+    );
+    expect(sheet?.getCell("A1").value).toBe("HỘI SINH VIÊN VIỆT NAM THÀNH PHỐ ĐÀ NẴNG");
+    expect(sheet?.getCell("A2").value).toBe("DANH SÁCH HỒ SƠ ĐÃ NỘP CẤP THÀNH PHỐ");
+    expect(sheet?.getCell("B3").value).toBe("2025-2026");
+    expect(sheet?.getCell("E6").value).toBe("Nguyễn An");
+    expect(sheet?.getCell("F6").value).toBe("001234");
+    expect(sheet?.rowCount).toBe(106);
+
+    const listRequests = requests
+      .map((url) => new URL(url))
+      .filter((url) => url.pathname === "/api/analytics/city/applications");
+    expect(listRequests).toHaveLength(2);
+    expect(listRequests.map((url) => url.searchParams.get("page")).sort()).toEqual(["1", "2"]);
+    for (const request of listRequests) {
+      expect(request.searchParams.get("schoolYear")).toBe("2025-2026");
+      expect(request.searchParams.get("submitted")).toBe("true");
+      expect(request.searchParams.get("limit")).toBe("100");
+    }
+
+    const [schoolDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      table
+        .getByRole("button", {
+          name: "Xuất Excel danh sách đã nộp: Trường Đại học Bách khoa",
+        })
+        .click(),
+    ]);
+    expect(schoolDownload.suggestedFilename()).toBe(
+      "Danh sách hồ sơ đã nộp cấp Thành phố - Trường Đại học Bách khoa - Năm học 2025-2026.xlsx",
+    );
+    await schoolDownload.path();
+    await expect
+      .poll(() =>
+        requests.some((url) => {
+          const parsed = new URL(url);
+          return (
+            parsed.pathname === "/api/analytics/city/applications" &&
+            parsed.searchParams.get("workspaceId") === "school-dut" &&
+            parsed.searchParams.get("submitted") === "true"
+          );
+        }),
+      )
+      .toBe(true);
+  });
+
+  test("all City export options are Excel workbooks with clear Vietnamese filenames", async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    await installMocks(page, "city_committee", requests);
+    await page.goto("/app/export", { waitUntil: "domcontentloaded" });
+
+    for (const title of [
+      "Danh sách hồ sơ Excel",
+      "Chi tiết xét duyệt, minh chứng và hội ý Excel",
+      "Biên bản kết quả Thành phố Excel",
+    ]) {
+      await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
+    }
+    await expect(page.getByRole("heading", { name: /CSV|JSON/ })).toHaveCount(0);
+    await expect(page.getByText(/Tên tệp: .*\.xlsx$/)).toHaveCount(3);
+
+    const exports = [
+      {
+        button: "Danh sách hồ sơ Excel",
+        filename: "Danh sách hồ sơ",
+        reportName: "DANH SÁCH HỒ SƠ",
+        firstCell: "app-export-1",
+      },
+      {
+        button: "Chi tiết xét duyệt, minh chứng và hội ý Excel",
+        filename: "Chi tiết xét duyệt, minh chứng và hội ý",
+        reportName: "CHI TIẾT XÉT DUYỆT, MINH CHỨNG VÀ HỘI Ý",
+        firstCell: "task-1",
+      },
+      {
+        button: "Biên bản kết quả Thành phố Excel",
+        filename: "Biên bản kết quả xét duyệt Thành phố",
+        reportName: "BIÊN BẢN KẾT QUẢ XÉT DUYỆT THÀNH PHỐ",
+        firstCell: "00123",
+      },
+    ];
+
+    for (const item of exports) {
+      const downloadPromise = page.waitForEvent("download");
+      await page.getByRole("button", { name: item.button, exact: true }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toContain(item.filename);
+      expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await readFile((await download.path())!));
+      const worksheet = workbook.getWorksheet("Danh sách");
+      expect(worksheet?.getCell("A1").value).toBe("HỘI SINH VIÊN VIỆT NAM THÀNH PHỐ ĐÀ NẴNG");
+      expect(worksheet?.getCell("A2").value).toBe(item.reportName);
+      expect(worksheet?.getCell("A6").value).toBe(item.firstCell);
+    }
+    expect(requests.some((url) => new URL(url).pathname === "/api/exports/applications.json")).toBe(
+      true,
+    );
+    expect(requests.some((url) => new URL(url).pathname === "/api/exports/review-tasks.json")).toBe(
+      true,
+    );
+    expect(requests.some((url) => new URL(url).pathname === "/api/exports/review-results")).toBe(
+      true,
+    );
+  });
+
+  for (const role of ["city_manager", "admin", "manager", "committee"] as const) {
+    test(`${role} does not see the Committee-only submitted-by-school report`, async ({ page }) => {
+      await installMocks(page, role, []);
+
+      await page.goto("/app/manager/results", { waitUntil: "domcontentloaded" });
+
+      await expect(page.getByRole("heading", { name: "Hồ sơ đã nộp theo trường" })).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Xuất Excel toàn bộ danh sách đã nộp" }),
+      ).toHaveCount(0);
+    });
+  }
+
+  for (const role of ["city_manager", "city_committee"] as const) {
+    test(`${role} export page uses the City season without legacy award levels`, async ({
+      page,
+    }) => {
+      await installMocks(page, role, []);
+      await page.goto("/app/export", { waitUntil: "domcontentloaded" });
+
+      await expect(page.getByLabel("Phạm vi")).toHaveValue("Cấp Thành phố · 2025-2026");
+      await expect(page.getByLabel("Cấp xét", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("Danh sách bị hạ cấp", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("Danh sách đạt theo cấp", { exact: true })).toHaveCount(0);
+      await expect(
+        page.getByRole("heading", { name: "Biên bản kết quả Thành phố Excel" }),
+      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: /CSV|JSON/ })).toHaveCount(0);
     });
   }
 
@@ -78,7 +357,7 @@ test.describe("Phase 4 Part 3A City analytics", () => {
     });
   }
 
-  for (const role of ["student", "city_officer", "city_committee", "data_uploader"] as const) {
+  for (const role of ["student", "city_officer", "data_uploader"] as const) {
     test(`${role} cannot load City analytics`, async ({ page }) => {
       const requests: string[] = [];
       await installMocks(page, role, requests);
@@ -521,6 +800,10 @@ test.describe("Phase 4 Part 3A City analytics", () => {
     await expect(page.getByText("Chưa có hồ sơ Thành phố trong dữ liệu.")).toBeVisible();
     await expect(page.getByRole("button", { name: /Hồ sơ đã nộp: 0/ })).toBeVisible();
     await expect(page.getByRole("img", { name: "5 tiêu chí đã review: 0 hồ sơ" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Xem hồ sơ trường Trường Đại học Bách khoa" }),
+    ).toBeVisible();
+    await expect(page.getByText("Chưa có dữ liệu theo trường.")).toHaveCount(0);
     await page.getByLabel("Trạng thái hồ sơ").selectOption("not_started");
     await expect
       .poll(() =>
@@ -554,7 +837,7 @@ test.describe("Phase 4 Part 3A City analytics", () => {
       )
       .toBe(true);
 
-    await page.getByRole("button", { name: "Đạt: 1; xem hồ sơ", exact: true }).click();
+    await page.getByRole("button", { name: "Đạt Thành phố: 1; xem hồ sơ", exact: true }).click();
     await expect
       .poll(() =>
         requests.some((url) => {
@@ -761,7 +1044,7 @@ test.describe("Phase 4 Part 3A City analytics", () => {
     await expect(page.getByRole("button", { name: "Mở lại kết quả" })).toBeVisible();
 
     await page.goto("/app/assignment", { waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/\/app\/admin\/workspaces$/);
+    await expect(page).toHaveURL(/\/app\/admin$/);
 
     await page.goto("/app/manager/results", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/app\/manager\/results$/);
@@ -791,14 +1074,106 @@ async function installMocks(page: Page, role: Role, requests: string[], empty = 
     const url = request.url();
     const path = new URL(url).pathname;
     if (request.method() === "OPTIONS") {
-      await route.fulfill({ status: 204, headers: corsHeaders, body: "" });
+      await route.fulfill({ status: 204, headers: corsHeaders(route), body: "" });
       return;
     }
     if (path !== "/api/me" && path !== "/api/auth/me") requests.push(url);
     if (path === "/api/me" || path === "/api/auth/me") return json(route, user);
+    if (path === "/api/exports/applications.json") {
+      return json(route, {
+        exportedAt: "2026-10-01T00:00:00.000Z",
+        filters: {},
+        items: [
+          {
+            applicationId: "app-export-1",
+            schoolYear: "2025-2026",
+            applicationType: "individual",
+            targetLevel: "city",
+            status: "submitted",
+            studentCode: "00123",
+            studentName: "Nguyễn An",
+            className: "25A",
+            faculty: "Công nghệ thông tin",
+            evidenceCount: 5,
+            reviewTaskCount: 5,
+            updatedAt: "2026-09-30T10:00:00.000Z",
+          },
+        ],
+      });
+    }
+    if (path === "/api/exports/review-tasks.json") {
+      return json(route, {
+        exportedAt: "2026-10-01T00:00:00.000Z",
+        filters: {},
+        items: [
+          {
+            reviewTaskId: "task-1",
+            applicationId: "app-export-1",
+            schoolYear: "2025-2026",
+            criterion: "academic",
+            status: "accepted",
+            decision: "accepted",
+            officerNote: "Cần đối chiếu minh chứng",
+            assignedOfficerName: "Cán bộ A",
+            studentCode: "00123",
+            studentName: "Nguyễn An",
+            className: "25A",
+            faculty: "Công nghệ thông tin",
+            evidenceCount: 2,
+            dueDate: null,
+            updatedAt: "2026-09-30T10:00:00.000Z",
+          },
+        ],
+      });
+    }
+    if (path === "/api/exports/review-results") {
+      return json(route, {
+        format: "json",
+        data: [
+          {
+            studentCode: "00123",
+            fullName: "Nguyễn An",
+            schoolYear: "2025-2026",
+            finalStatus: "passed",
+            applicationStatus: "completed",
+            submittedAt: "2026-09-01T10:00:00.000Z",
+            completedAt: "2026-09-30T10:00:00.000Z",
+            finalizedByName: "Hội đồng Thành phố",
+            finalNote: "Đạt cấp Thành phố",
+          },
+        ],
+      });
+    }
     if (path === "/api/analytics/city") return json(route, citySummary(empty));
     if (path === "/api/analytics/city/applications") {
-      const requestedPage = Number(new URL(url).searchParams.get("page") ?? 1);
+      const search = new URL(url).searchParams;
+      const requestedPage = Number(search.get("page") ?? 1);
+      const requestedLimit = Number(search.get("limit") ?? 20);
+      if (requestedLimit === 100) {
+        const start = (requestedPage - 1) * requestedLimit;
+        const count = Math.max(0, Math.min(requestedLimit, 101 - start));
+        return json(route, {
+          items: Array.from({ length: count }, (_, index) => {
+            const number = start + index + 1;
+            return {
+              id: `app-export-${number}`,
+              schoolYear: "2025-2026",
+              status: "under_review",
+              submittedAt: "2026-09-29T09:00:00.000Z",
+              reviewProgress: { reviewed: 0, expected: 5, anomalous: false },
+              finalStatus: "pending",
+              supplementRequired: false,
+              resolutionBlocked: false,
+              student: {
+                fullName: number === 1 ? "Nguyễn An" : `Sinh viên ${number}`,
+                studentCode: "001234",
+              },
+              school: { workspaceId: "school-dut", code: "DDK", name: "Trường Đại học Bách khoa" },
+            };
+          }),
+          pagination: { page: requestedPage, limit: requestedLimit, total: 101, totalPages: 2 },
+        });
+      }
       return json(route, {
         items: [
           {
@@ -946,7 +1321,7 @@ function userFor(role: Role) {
     ? null
     : isStudent
       ? "school-dut"
-      : role === "city_manager"
+      : role === "city_manager" || role === "city_committee"
         ? "danang-city"
         : "school-dut";
   return {
@@ -1019,21 +1394,19 @@ function citySummary(empty: boolean) {
         fail: 0,
       })),
     ],
-    bySchool: empty
-      ? []
-      : [
-          {
-            workspaceId: "school-dut",
-            code: "DDK",
-            name: "Trường Đại học Bách khoa",
-            submitted: 14,
-            inReview: 7,
-            supplementRequired: 3,
-            reviewComplete: 4,
-            finalPassed: 1,
-            finalFailed: 0,
-          },
-        ],
+    bySchool: [
+      {
+        workspaceId: "school-dut",
+        code: "DDK",
+        name: "Trường Đại học Bách khoa",
+        submitted: empty ? 0 : 14,
+        inReview: empty ? 0 : 7,
+        supplementRequired: empty ? 0 : 3,
+        reviewComplete: empty ? 0 : 4,
+        finalPassed: empty ? 0 : 1,
+        finalFailed: 0,
+      },
+    ],
     reviewers: empty
       ? []
       : [
@@ -1051,7 +1424,6 @@ function citySummary(empty: boolean) {
       finalized: empty ? 0 : 1,
       passed: empty ? 0 : 1,
       failed: 0,
-      partiallyPassed: 0,
       notFinalized: empty ? 0 : 13,
     },
     supplement: { applications: empty ? 0 : 3, tasks: empty ? 0 : 4 },
@@ -1066,7 +1438,7 @@ function citySummary(empty: boolean) {
 async function json(route: Route, data: unknown) {
   await route.fulfill({
     status: 200,
-    headers: { ...corsHeaders, "content-type": "application/json" },
+    headers: { ...corsHeaders(route), "content-type": "application/json" },
     body: JSON.stringify({ success: true, data, error: null, meta: {} }),
   });
 }

@@ -1,17 +1,23 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertCircle, Download, FileJson, FileSpreadsheet, Filter } from "lucide-react";
+import { AlertCircle, Download, FileSpreadsheet, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { TopBar } from "@/components/layout/TopBar";
 import { Card } from "@/components/ui-kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/store/auth-store";
-import type { ExportApplicationsParams, ExportFormat } from "@/features/export/api/export";
+import type { ExportApplicationsParams, ExportDataset } from "@/features/export/api/export";
+import {
+  getExportFilenameExample,
+  type ExportPresentation,
+} from "@/features/export/hooks/useExport";
 import { useExportApplications } from "@/features/export/hooks/useExport";
 import type { ApplicationStatus, Level, Role } from "@/features/review/types";
 import { getLevelLabel, getTaskStatusLabel } from "@/features/review/utils/formatters";
 import { ACTIVE_LEVELS } from "@/lib/levels";
+import { cityPilotSchoolYear } from "@/features/manager/city-analytics/constants";
+import { CityCommitteeSubmittedApplications } from "@/features/manager/city-analytics/CityCommitteeSubmittedApplications";
 
 export const Route = createFileRoute("/app/export")({
   component: ExportRoute,
@@ -37,7 +43,7 @@ function ExportRoute() {
       <>
         <TopBar
           title="Xuất dữ liệu hồ sơ"
-          subtitle="Xuất CSV hoặc JSON phục vụ báo cáo và xử lý ngoại tuyến."
+          subtitle="Tải báo cáo Excel theo phạm vi và bộ lọc được phép."
         />
         <Card>
           <div className="py-8 text-center">
@@ -53,29 +59,38 @@ function ExportRoute() {
     );
   }
 
-  return <ExportContent />;
+  return <ExportContent role={role} />;
 }
 
-function ExportContent() {
+function ExportContent({ role }: { role: Role }) {
+  const cityOnly = role === "city_manager" || role === "city_committee" || role === "admin";
   const [filters, setFilters] = useState<ExportApplicationsParams>({});
-  const { downloadDataset, error, exportingDataset, exportingFormat, isExporting } =
-    useExportApplications();
+  const { downloadDataset, error, exportingDataset, isExporting } = useExportApplications();
   const normalizedFilters = useMemo(
     () => ({
-      schoolYear: filters.schoolYear?.trim() || undefined,
-      targetLevel: filters.targetLevel,
+      schoolYear: cityOnly ? cityPilotSchoolYear : filters.schoolYear?.trim() || undefined,
+      targetLevel: cityOnly ? "city" : filters.targetLevel,
       status: filters.status,
       faculty: filters.faculty?.trim() || undefined,
     }),
-    [filters],
+    [cityOnly, filters],
   );
 
-  const handleExport = async (format: ExportFormat) => {
+  const getPresentation = (reportName: string): ExportPresentation => ({
+    reportName,
+    organizationName: cityOnly
+      ? "HỘI SINH VIÊN VIỆT NAM THÀNH PHỐ ĐÀ NẴNG"
+      : "HỘI SINH VIÊN VIỆT NAM",
+  });
+
+  const handleExport = async (
+    dataset: ExportDataset,
+    reportName: string,
+    params = normalizedFilters,
+  ) => {
     try {
-      await downloadDataset("applications", format, normalizedFilters);
-      toast.success(
-        format === "csv" ? "Đã tải danh sách hồ sơ CSV." : "Đã tải dữ liệu hồ sơ JSON.",
-      );
+      await downloadDataset(dataset, params, getPresentation(reportName));
+      toast.success(`Đã tải tệp Excel: ${reportName}.`);
     } catch {
       // Error text is rendered below from the hook.
     }
@@ -84,11 +99,17 @@ function ExportContent() {
   return (
     <>
       <TopBar
-        title="Xuất dữ liệu hồ sơ"
-        subtitle="Xuất CSV hoặc JSON phục vụ báo cáo và xử lý ngoại tuyến."
+        title={cityOnly ? "Xuất dữ liệu xét duyệt Thành phố" : "Xuất dữ liệu hồ sơ"}
+        subtitle={
+          cityOnly
+            ? `Dữ liệu hồ sơ cá nhân Thành phố · Năm học ${cityPilotSchoolYear}. Kết quả chỉ phản ánh quyết định của mùa xét này.`
+            : "Tải báo cáo Excel theo phạm vi và bộ lọc được phép."
+        }
       />
 
       <div className="space-y-5">
+        {role === "city_committee" ? <CityCommitteeSubmittedApplications /> : null}
+
         <Card>
           <div className="mb-4 flex items-start gap-2">
             <Filter className="mt-0.5 h-5 w-5 text-brand-deep" />
@@ -101,37 +122,42 @@ function ExportContent() {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <FilterField label="Năm học">
+            <FilterField label={cityOnly ? "Phạm vi" : "Năm học"}>
               <Input
-                disabled={isExporting}
+                aria-label={cityOnly ? "Phạm vi" : undefined}
+                disabled={isExporting || cityOnly}
                 placeholder="Ví dụ: 2025-2026"
-                value={filters.schoolYear ?? ""}
+                value={
+                  cityOnly ? `Cấp Thành phố · ${cityPilotSchoolYear}` : (filters.schoolYear ?? "")
+                }
                 onChange={(event) =>
                   setFilters((current) => ({ ...current, schoolYear: event.target.value }))
                 }
               />
             </FilterField>
 
-            <FilterField label="Cấp xét">
-              <select
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
-                disabled={isExporting}
-                value={filters.targetLevel ?? ""}
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    targetLevel: event.target.value ? (event.target.value as Level) : undefined,
-                  }))
-                }
-              >
-                <option value="">Tất cả cấp xét</option>
-                {levelOptions.map((level) => (
-                  <option key={level} value={level}>
-                    {getLevelLabel(level)}
-                  </option>
-                ))}
-              </select>
-            </FilterField>
+            {!cityOnly ? (
+              <FilterField label="Cấp xét">
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                  disabled={isExporting}
+                  value={filters.targetLevel ?? ""}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      targetLevel: event.target.value ? (event.target.value as Level) : undefined,
+                    }))
+                  }
+                >
+                  <option value="">Tất cả cấp xét</option>
+                  {levelOptions.map((level) => (
+                    <option key={level} value={level}>
+                      {getLevelLabel(level)}
+                    </option>
+                  ))}
+                </select>
+              </FilterField>
+            ) : null}
 
             <FilterField label="Trạng thái hồ sơ">
               <select
@@ -182,121 +208,131 @@ function ExportContent() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <ExportOptionCard
-            description="Tải danh sách hồ sơ ở định dạng bảng, phù hợp cho Excel hoặc công cụ xử lý dữ liệu."
+            description="Tải danh sách hồ sơ theo bộ lọc, mở trực tiếp bằng Microsoft Excel."
             disabled={isExporting}
-            format="csv"
+            filenameExample={getExportFilenameExample(
+              "Danh sách hồ sơ",
+              normalizedFilters.schoolYear,
+            )}
             icon={<FileSpreadsheet className="h-6 w-6" />}
-            isLoading={exportingDataset === "applications" && exportingFormat === "csv"}
-            title="Xuất danh sách hồ sơ CSV"
-            onExport={() => void handleExport("csv")}
+            isLoading={exportingDataset === "applications"}
+            title="Danh sách hồ sơ Excel"
+            onExport={() => void handleExport("applications", "Danh sách hồ sơ")}
           />
           <ExportOptionCard
-            description="Tải dữ liệu hồ sơ có cấu trúc để tích hợp hoặc xử lý ngoại tuyến."
+            description="Đối chiếu công việc xét duyệt, minh chứng, hội ý và ghi chú xử lý."
             disabled={isExporting}
-            format="json"
-            icon={<FileJson className="h-6 w-6" />}
-            isLoading={exportingDataset === "applications" && exportingFormat === "json"}
-            title="Xuất dữ liệu hồ sơ JSON"
-            onExport={() => void handleExport("json")}
-          />
-          <ExportOptionCard
-            description="Tải danh sách task xét duyệt, cán bộ phụ trách, trạng thái và số minh chứng kèm theo."
-            disabled={isExporting}
-            format="csv"
+            fields={[
+              "Mã hồ sơ",
+              "Sinh viên",
+              "Tiêu chí",
+              "Cán bộ phụ trách",
+              "Trạng thái",
+              "Số minh chứng",
+              "Ghi chú xử lý",
+            ]}
+            filenameExample={getExportFilenameExample(
+              "Chi tiết xét duyệt, minh chứng và hội ý",
+              normalizedFilters.schoolYear,
+            )}
             icon={<FileSpreadsheet className="h-6 w-6" />}
             isLoading={exportingDataset === "reviewTasks"}
-            title="Chi tiết task xét duyệt CSV"
-            onExport={() => void downloadDataset("reviewTasks", "csv", normalizedFilters)}
-          />
-          <ExportOptionCard
-            description="Tải kết quả xét duyệt đã tổng hợp, gồm final result và snapshot cascade tại thời điểm xuất/chốt."
-            disabled={isExporting}
-            format="csv"
-            icon={<FileSpreadsheet className="h-6 w-6" />}
-            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
-            title="Biên bản kết quả cuối CSV"
-            onExport={() => void downloadDataset("reviewResults", "csv", normalizedFilters)}
-          />
-          <ExportOptionCard
-            description="Tải review results dạng JSON để đối soát, tích hợp hoặc lưu snapshot ngoài hệ thống."
-            disabled={isExporting}
-            format="json"
-            icon={<FileJson className="h-6 w-6" />}
-            isLoading={exportingDataset === "reviewResults" && exportingFormat === "json"}
-            title="Snapshot kết quả cuối JSON"
-            onExport={() => void downloadDataset("reviewResults", "json", normalizedFilters)}
-          />
-          <ExportOptionCard
-            description="Báo cáo hồ sơ đã chốt đạt, dùng để tổng hợp danh sách công nhận theo cấp."
-            disabled={isExporting}
-            fields={["student", "aim", "final level", "finalized at", "finalized by", "final note"]}
-            format="csv"
-            icon={<FileSpreadsheet className="h-6 w-6" />}
-            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
-            title="Danh sách đạt theo cấp"
+            title="Chi tiết xét duyệt, minh chứng và hội ý Excel"
             onExport={() =>
-              void downloadDataset("reviewResults", "csv", {
-                ...normalizedFilters,
-                status: "completed",
-              })
+              void handleExport("reviewTasks", "Chi tiết xét duyệt, minh chứng và hội ý")
             }
           />
           <ExportOptionCard
-            description="Báo cáo hồ sơ bị hạ so với aim đăng ký, dựa trên aim, đề xuất cấp đạt và final level trong file kết quả."
+            description={
+              cityOnly
+                ? "Biên bản kết quả Thành phố theo quyết định cuối đã được xác nhận."
+                : "Kết quả xét duyệt đã tổng hợp, gồm kết quả cuối và dữ liệu đối chiếu."
+            }
             disabled={isExporting}
-            fields={[
-              "student",
-              "aim",
-              "suggested level",
-              "final level",
-              "downrank reason",
-              "5 criteria",
-            ]}
-            format="csv"
+            fields={["Sinh viên", "Năm học", "Kết quả cuối", "Người chốt", "Ghi chú"]}
+            filenameExample={getExportFilenameExample(
+              cityOnly ? "Biên bản kết quả xét duyệt Thành phố" : "Biên bản kết quả xét duyệt",
+              normalizedFilters.schoolYear,
+            )}
             icon={<FileSpreadsheet className="h-6 w-6" />}
-            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
-            title="Danh sách bị hạ cấp"
-            onExport={() => void downloadDataset("reviewResults", "csv", normalizedFilters)}
-          />
-          <ExportOptionCard
-            description="Báo cáo hồ sơ đã chốt chưa đạt, phục vụ đối soát và phản hồi."
-            disabled={isExporting}
-            fields={[
-              "student",
-              "aim",
-              "final status",
-              "5 criteria",
-              "final note",
-              "cascade snapshot",
-            ]}
-            format="csv"
-            icon={<FileSpreadsheet className="h-6 w-6" />}
-            isLoading={exportingDataset === "reviewResults" && exportingFormat === "csv"}
-            title="Danh sách chưa đạt"
+            isLoading={exportingDataset === "reviewResults"}
+            title={cityOnly ? "Biên bản kết quả Thành phố Excel" : "Biên bản kết quả cuối Excel"}
             onExport={() =>
-              void downloadDataset("reviewResults", "csv", {
-                ...normalizedFilters,
-                status: "rejected",
-              })
+              void handleExport(
+                "reviewResults",
+                cityOnly ? "Biên bản kết quả xét duyệt Thành phố" : "Biên bản kết quả xét duyệt",
+              )
             }
           />
-          <ExportOptionCard
-            description="Dữ liệu phục vụ đối chiếu minh chứng và các case hội ý, gồm task status và ghi chú xử lý."
-            disabled={isExporting}
-            fields={[
-              "student",
-              "criterion",
-              "evidence count",
-              "task decision",
-              "officer note",
-              "updated at",
-            ]}
-            format="csv"
-            icon={<FileSpreadsheet className="h-6 w-6" />}
-            isLoading={exportingDataset === "reviewTasks"}
-            title="Chi tiết minh chứng/hội ý"
-            onExport={() => void downloadDataset("reviewTasks", "csv", normalizedFilters)}
-          />
+          {!cityOnly ? (
+            <ExportOptionCard
+              description="Danh sách hồ sơ đã chốt đạt, phục vụ tổng hợp danh sách công nhận theo cấp."
+              disabled={isExporting}
+              fields={[
+                "Sinh viên",
+                "Cấp đăng ký",
+                "Cấp công nhận",
+                "Thời điểm chốt",
+                "Người chốt",
+                "Ghi chú",
+              ]}
+              filenameExample={getExportFilenameExample(
+                "Danh sách sinh viên đạt",
+                normalizedFilters.schoolYear,
+              )}
+              icon={<FileSpreadsheet className="h-6 w-6" />}
+              isLoading={exportingDataset === "reviewResults"}
+              title="Danh sách sinh viên đạt Excel"
+              onExport={() =>
+                void handleExport("reviewResults", "Danh sách sinh viên đạt", {
+                  ...normalizedFilters,
+                  status: "completed",
+                })
+              }
+            />
+          ) : null}
+          {!cityOnly ? (
+            <ExportOptionCard
+              description="Danh sách hồ sơ có kết quả công nhận thấp hơn cấp đăng ký."
+              disabled={isExporting}
+              fields={[
+                "Sinh viên",
+                "Cấp đăng ký",
+                "Cấp đề xuất",
+                "Cấp công nhận",
+                "Lý do",
+                "Năm tiêu chí",
+              ]}
+              filenameExample={getExportFilenameExample(
+                "Danh sách hồ sơ điều chỉnh cấp",
+                normalizedFilters.schoolYear,
+              )}
+              icon={<FileSpreadsheet className="h-6 w-6" />}
+              isLoading={exportingDataset === "reviewResults"}
+              title="Danh sách hồ sơ điều chỉnh cấp Excel"
+              onExport={() => void handleExport("reviewResults", "Danh sách hồ sơ điều chỉnh cấp")}
+            />
+          ) : null}
+          {!cityOnly ? (
+            <ExportOptionCard
+              description="Danh sách hồ sơ đã chốt chưa đạt, phục vụ đối soát và phản hồi."
+              disabled={isExporting}
+              fields={["Sinh viên", "Cấp đăng ký", "Kết quả cuối", "Năm tiêu chí", "Ghi chú"]}
+              filenameExample={getExportFilenameExample(
+                "Danh sách sinh viên chưa đạt",
+                normalizedFilters.schoolYear,
+              )}
+              icon={<FileSpreadsheet className="h-6 w-6" />}
+              isLoading={exportingDataset === "reviewResults"}
+              title="Danh sách sinh viên chưa đạt Excel"
+              onExport={() =>
+                void handleExport("reviewResults", "Danh sách sinh viên chưa đạt", {
+                  ...normalizedFilters,
+                  status: "rejected",
+                })
+              }
+            />
+          ) : null}
         </div>
 
         {error ? (
@@ -309,7 +345,7 @@ function ExportContent() {
         <Card>
           <h2 className="text-base font-bold text-brand-deep">Phạm vi sprint</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Trang này chỉ hỗ trợ xuất CSV và JSON. Báo cáo PDF không nằm trong phạm vi hiện tại.
+            Tất cả báo cáo trên trang được tải dưới dạng tệp Excel (.xlsx).
           </p>
         </Card>
       </div>
@@ -332,7 +368,7 @@ function ExportOptionCard({
   description,
   disabled,
   fields,
-  format,
+  filenameExample,
   icon,
   isLoading,
   title,
@@ -341,14 +377,12 @@ function ExportOptionCard({
   description: string;
   disabled?: boolean;
   fields?: string[];
-  format: ExportFormat;
+  filenameExample: string;
   icon: React.ReactNode;
   isLoading?: boolean;
   title: string;
   onExport: () => void;
 }) {
-  const fileName = `sv5t-applications-YYYY-MM-DD.${format}`;
-
   return (
     <Card>
       <div className="flex items-start gap-4">
@@ -359,7 +393,7 @@ function ExportOptionCard({
           <h2 className="text-base font-bold text-brand-deep">{title}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{description}</p>
           <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
-            Tên file: {fileName}
+            Tên tệp: {filenameExample}
           </div>
           {fields?.length ? (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -378,7 +412,7 @@ function ExportOptionCard({
 
       <Button className="mt-5 w-full" disabled={disabled} type="button" onClick={onExport}>
         <Download className="h-4 w-4" />
-        {isLoading ? "Đang xuất..." : title}
+        {isLoading ? "Đang tạo tệp Excel..." : title}
       </Button>
     </Card>
   );

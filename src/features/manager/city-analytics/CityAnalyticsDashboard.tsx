@@ -54,8 +54,12 @@ const pageSize = 20;
 
 export function CityAnalyticsDashboard({
   showEligibilityVerification,
+  showSeasonAdministration,
+  showSubmittedBySchool,
 }: {
   showEligibilityVerification: boolean;
+  showSeasonAdministration: boolean;
+  showSubmittedBySchool: boolean;
 }) {
   const [schoolYear, setSchoolYear] = useState("");
   const [workspaceId, setWorkspaceId] = useState("");
@@ -202,9 +206,15 @@ export function CityAnalyticsDashboard({
             </Card>
           ) : null}
 
-          <CityReviewSeasonAdministration defaultSchoolYear={activeSchoolYear} />
+          {showSeasonAdministration ? (
+            <CityReviewSeasonAdministration defaultSchoolYear={activeSchoolYear} />
+          ) : null}
 
-          <CityAnalyticsSummarySections summary={summary} onOpenList={openDrilldown} />
+          <CityAnalyticsSummarySections
+            summary={summary}
+            onOpenList={openDrilldown}
+            showSubmittedBySchool={showSubmittedBySchool}
+          />
 
           {drilldown ? (
             <Card className="p-0" id="city-analytics-applications">

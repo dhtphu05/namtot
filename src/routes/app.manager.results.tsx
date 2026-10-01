@@ -5,6 +5,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip, StatCard } from "@/components/ui-kit";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { useManagerDashboardSummary, useManagerResults } from "@/features/manager/hooks/useManager";
+import { cityPilotSchoolYear } from "@/features/manager/city-analytics/constants";
 import { FinalizationDialog } from "@/features/manager/components/FinalizationDialog";
 import type {
   ApplicationArchiveFilter,
@@ -97,6 +98,7 @@ function ManagerResultsShell() {
 }
 
 function ManagerResultsContent({ role }: { role: Role }) {
+  const cityOnly = role === "city_manager" || role === "city_committee" || role === "admin";
   const searchState = Route.useSearch();
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>(searchState.filter ?? "all");
   const [search, setSearch] = useState("");
@@ -108,7 +110,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
     useState<NonNullable<ManagerResultFilters["sortBy"]>>("lastActivityAt");
   const [selected, setSelected] = useState<ManagerResultItem | null>(null);
   const canFinalize = finalizerRoles.includes(role);
-  const summaryQuery = useManagerDashboardSummary();
+  const summaryQuery = useManagerDashboardSummary(!cityOnly);
   const filters = useMemo<ManagerResultFilters>(() => {
     const next: ManagerResultFilters = {
       page,
@@ -118,11 +120,14 @@ function ManagerResultsContent({ role }: { role: Role }) {
       sortBy,
       sortOrder: sortBy === "oldest" ? "asc" : "desc",
       search: search.trim() || undefined,
+      ...(cityOnly ? { schoolYear: cityPilotSchoolYear } : {}),
     };
-    if (levels.includes(activeFilter as Level)) {
+    if (!cityOnly && levels.includes(activeFilter as Level)) {
       next.finalLevel = activeFilter as Level;
     }
-    if (activeFilter === "failed") {
+    if (cityOnly && activeFilter === "city") {
+      next.finalStatus = "passed";
+    } else if (activeFilter === "failed") {
       next.finalStatus = "failed";
     }
     if (activeFilter === "pending") {
@@ -141,7 +146,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
       next.resultView = activeFilter;
     }
     return next;
-  }, [activeFilter, archive, lifecycle, page, pageSize, search, sortBy]);
+  }, [activeFilter, archive, cityOnly, lifecycle, page, pageSize, search, sortBy]);
   const resultsQuery = useManagerResults(filters);
   const summary = summaryQuery.data;
   const breakdown = summary?.finalLevelBreakdown;
@@ -155,54 +160,104 @@ function ManagerResultsContent({ role }: { role: Role }) {
     setPage(1);
   }, [activeFilter, pageSize, search, sortBy]);
 
+  useEffect(() => {
+    if (cityOnly && ["school", "university", "central"].includes(activeFilter)) {
+      setActiveFilter("all");
+    }
+  }, [activeFilter, cityOnly]);
+
   return (
     <>
       <TopBar
-        title="Kết quả xét duyệt theo cấp"
-        subtitle="Phân loại sinh viên đạt/chưa đạt theo kết quả cuối cùng."
+        title={cityOnly ? "Kết quả xét duyệt cấp Thành phố" : "Kết quả xét duyệt theo cấp"}
+        subtitle={
+          cityOnly
+            ? `Hồ sơ cá nhân cấp Thành phố · Năm học ${cityPilotSchoolYear}`
+            : "Phân loại sinh viên đạt/chưa đạt theo kết quả cuối cùng."
+        }
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
-        <StatCard icon={<FileSearch className="h-5 w-5" />} label="Tổng hồ sơ" value={total} />
-        {levels.map((level) => (
+      {cityOnly ? (
+        <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard
-            key={level}
-            icon={<ShieldCheck className="h-5 w-5" />}
-            label={`Dat ${getLevelLabel(level)}`}
-            value={breakdown?.[level] ?? 0}
-            tint={level === "city" ? "#7C3AED" : "#16A34A"}
+            icon={<FileSearch className="h-5 w-5" />}
+            label="Hồ sơ trong mùa xét"
+            value={resultsQuery.data?.summary?.totalApplications ?? 0}
           />
-        ))}
-        <StatCard
-          icon={<XCircle className="h-5 w-5" />}
-          label="Chưa đạt"
-          value={breakdown?.notAchieved ?? 0}
-          tint="#DC2626"
-        />
-        <StatCard
-          icon={<ClipboardCheck className="h-5 w-5" />}
-          label="Chưa chốt"
-          value={breakdown?.unfinalized ?? 0}
-          tint="#F59E0B"
-        />
-      </div>
+          <StatCard
+            icon={<ShieldCheck className="h-5 w-5" />}
+            label="Đạt Thành phố"
+            value={resultsQuery.data?.summary?.passedCity ?? 0}
+            tint="#16A34A"
+          />
+          <StatCard
+            icon={<XCircle className="h-5 w-5" />}
+            label="Chưa đạt Thành phố"
+            value={resultsQuery.data?.summary?.notAchievedCity ?? 0}
+            tint="#DC2626"
+          />
+          <StatCard
+            icon={<ClipboardCheck className="h-5 w-5" />}
+            label="Chưa chốt"
+            value={resultsQuery.data?.summary?.unfinalized ?? 0}
+            tint="#F59E0B"
+          />
+        </div>
+      ) : (
+        <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
+          <StatCard icon={<FileSearch className="h-5 w-5" />} label="Tổng hồ sơ" value={total} />
+          {levels.map((level) => (
+            <StatCard
+              key={level}
+              icon={<ShieldCheck className="h-5 w-5" />}
+              label={`Dat ${getLevelLabel(level)}`}
+              value={breakdown?.[level] ?? 0}
+              tint={level === "city" ? "#7C3AED" : "#16A34A"}
+            />
+          ))}
+          <StatCard
+            icon={<XCircle className="h-5 w-5" />}
+            label="Chưa đạt"
+            value={breakdown?.notAchieved ?? 0}
+            tint="#DC2626"
+          />
+          <StatCard
+            icon={<ClipboardCheck className="h-5 w-5" />}
+            label="Chưa chốt"
+            value={breakdown?.unfinalized ?? 0}
+            tint="#F59E0B"
+          />
+        </div>
+      )}
 
       <Card className="mb-5">
         <div className="flex flex-wrap items-center gap-2">
-          {[
-            ["all", "Tất cả"],
-            ["ready", "Có thể chốt"],
-            ["downgraded", "Bị hạ cấp"],
-            ["not_eligible", "Không đạt cấp nào"],
-            ["resolution", "Cần hội ý"],
-            ["supplement", "Cần bổ sung"],
-            ["unfinished", "Chưa đủ task"],
-            ["school", "Cấp Trường"],
-            ["university", "Cấp ĐHĐN"],
-            ["city", "Cấp Thành phố"],
-            ["failed", "Chưa đạt"],
-            ["pending", "Chưa chốt"],
-          ].map(([value, label]) => (
+          {(cityOnly
+            ? [
+                ["all", "Tất cả"],
+                ["ready", "Có thể chốt"],
+                ["resolution", "Cần hội ý"],
+                ["supplement", "Cần bổ sung"],
+                ["unfinished", "Chưa đủ task"],
+                ["city", "Đạt Thành phố"],
+                ["failed", "Chưa đạt Thành phố"],
+                ["pending", "Chưa chốt"],
+              ]
+            : [
+                ["all", "Tất cả"],
+                ["ready", "Có thể chốt"],
+                ["downgraded", "Bị hạ cấp"],
+                ["not_eligible", "Không đạt cấp nào"],
+                ["resolution", "Cần hội ý"],
+                ["supplement", "Cần bổ sung"],
+                ["unfinished", "Chưa đủ task"],
+                ["school", "Cấp Trường"],
+                ["university", "Cấp ĐHĐN"],
+                ["city", "Cấp Thành phố"],
+                ["failed", "Chưa đạt"],
+                ["pending", "Chưa chốt"],
+              ]
+          ).map(([value, label]) => (
             <Button
               key={value}
               type="button"
@@ -265,19 +320,19 @@ function ManagerResultsContent({ role }: { role: Role }) {
             <option value="oldest">Cũ nhất</option>
             <option value="readiness_desc">Mức sẵn sàng cao nhất</option>
             <option value="unfinalized_first">Chưa chốt trước</option>
-            <option value="target_level_desc">Cấp đăng ký cao nhất</option>
+            {!cityOnly ? <option value="target_level_desc">Cấp đăng ký cao nhất</option> : null}
           </select>
         </div>
       </Card>
 
-      {resultsQuery.isLoading || summaryQuery.isLoading ? (
+      {resultsQuery.isLoading || (!cityOnly && summaryQuery.isLoading) ? (
         <Card>
           <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Đang tải kết quả xét duyệt...
           </div>
         </Card>
-      ) : resultsQuery.isError || summaryQuery.isError ? (
+      ) : resultsQuery.isError || (!cityOnly && summaryQuery.isError) ? (
         <Card>
           <div className="py-10 text-center">
             <div className="font-semibold text-rose-600">Không thể tải dữ liệu kết quả.</div>
@@ -286,7 +341,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
               variant="outline"
               onClick={() => {
                 void resultsQuery.refetch();
-                void summaryQuery.refetch();
+                if (!cityOnly) void summaryQuery.refetch();
               }}
             >
               Thử lại
@@ -307,6 +362,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
                 key={item.applicationId}
                 item={item}
                 canFinalize={canFinalize}
+                cityOnly={cityOnly}
                 onFinalize={setSelected}
               />
             ))}
@@ -354,6 +410,7 @@ function ManagerResultsContent({ role }: { role: Role }) {
       <FinalizationDialog
         item={selected}
         open={Boolean(selected)}
+        cityOnly={cityOnly}
         onOpenChange={(open) => {
           if (!open) setSelected(null);
         }}
@@ -365,10 +422,12 @@ function ManagerResultsContent({ role }: { role: Role }) {
 function ResultSummaryCard({
   item,
   canFinalize,
+  cityOnly,
   onFinalize,
 }: {
   item: ManagerResultItem;
   canFinalize: boolean;
+  cityOnly: boolean;
   onFinalize: (item: ManagerResultItem) => void;
 }) {
   const finalized = item.finalStatus !== "pending" && Boolean(item.finalizedAt);
@@ -389,8 +448,7 @@ function ResultSummaryCard({
             ? blockedReason
             : "Chốt kết quả hồ sơ";
   const downrankReason =
-    item.topBlockerReason ??
-    getDownrankReason(item.targetLevel, item.suggestedLevel, item.blockingReasons);
+    item.topBlockerReason ?? getDownrankReason(item.targetLevel, item.suggestedLevel);
   const acceptedCount = item.taskProgress?.accepted ?? item.reviewTaskSummary.accepted;
   const totalCount = item.taskProgress?.total ?? item.reviewTaskSummary.total;
 
@@ -401,6 +459,7 @@ function ResultSummaryCard({
           <Link
             to="/app/manager/results/$applicationId"
             params={{ applicationId: item.applicationId }}
+            search={{ focus: undefined, resolutionCaseId: undefined, filter: undefined }}
             className="line-clamp-2 text-base font-bold leading-snug text-[#0057C2] hover:underline"
           >
             {item.studentName}
@@ -425,20 +484,32 @@ function ResultSummaryCard({
             </div>
           ) : null}
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <SmallInfo label="Cấp đăng ký" value={getLevelLabel(item.targetLevel)} />
-            <SmallInfo
-              label="Đề xuất"
-              value={item.suggestedLevel ? getLevelLabel(item.suggestedLevel) : "--"}
-            />
+            {cityOnly ? (
+              <SmallInfo label="Cấp xét" value={`Thành phố · ${cityPilotSchoolYear}`} />
+            ) : (
+              <>
+                <SmallInfo label="Cấp đăng ký" value={getLevelLabel(item.targetLevel)} />
+                <SmallInfo
+                  label="Đề xuất"
+                  value={item.suggestedLevel ? getLevelLabel(item.suggestedLevel) : "--"}
+                />
+              </>
+            )}
           </div>
         </section>
 
         <section className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <FinalStatusChip status={item.finalStatus} />
-            <Chip tone={item.finalLevel ? "brand" : "muted"}>
-              Cấp đạt: {item.finalLevel ? getLevelLabel(item.finalLevel) : "--"}
-            </Chip>
+            <FinalStatusChip
+              status={item.finalStatus}
+              finalLevel={item.finalLevel}
+              cityOnly={cityOnly}
+            />
+            {!cityOnly ? (
+              <Chip tone={item.finalLevel ? "brand" : "muted"}>
+                {`Cấp đạt: ${item.finalLevel ? getLevelLabel(item.finalLevel) : "--"}`}
+              </Chip>
+            ) : null}
             <Chip tone="brand">
               {acceptedCount}/{totalCount} task đạt
             </Chip>
@@ -446,7 +517,7 @@ function ResultSummaryCard({
           <CriterionStatusStrip item={item} />
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-600">
             <span className="font-semibold text-brand-deep">Lý do: </span>
-            {downrankReason}
+            {cityOnly ? cityReason(item.finalStatus, item.finalLevel) : downrankReason}
           </div>
         </section>
 
@@ -466,6 +537,7 @@ function ResultSummaryCard({
               <Link
                 to="/app/manager/results/$applicationId"
                 params={{ applicationId: item.applicationId }}
+                search={{ focus: undefined, resolutionCaseId: undefined, filter: undefined }}
               >
                 Xem chi tiết
               </Link>
@@ -476,7 +548,7 @@ function ResultSummaryCard({
               title={finalizeTitle}
               onClick={() => onFinalize(item)}
             >
-              {getFinalizeActionLabel(item.suggestedLevel)}
+              {cityOnly ? "Chốt kết quả" : getFinalizeActionLabel(item.suggestedLevel)}
             </Button>
           </div>
           {canFinalize && !finalized && !item.canFinalize ? (
@@ -517,8 +589,46 @@ function normalizeActiveFilter(value: string): ActiveFilter | undefined {
   return allowed.includes(value as ActiveFilter) ? (value as ActiveFilter) : undefined;
 }
 
-function FinalStatusChip({ status }: { status: FinalStatus }) {
-  return <Chip tone={finalStatusTone[status]}>{getFinalStatusLabel(status)}</Chip>;
+function FinalStatusChip({
+  status,
+  finalLevel,
+  cityOnly = false,
+}: {
+  status: FinalStatus;
+  finalLevel?: Level | null;
+  cityOnly?: boolean;
+}) {
+  return (
+    <Chip tone={cityOnly ? cityResultTone(status, finalLevel) : finalStatusTone[status]}>
+      {cityOnly ? cityResultLabel(status, finalLevel) : getFinalStatusLabel(status)}
+    </Chip>
+  );
+}
+
+function cityResultTone(status: FinalStatus, finalLevel?: Level | null) {
+  if (status === "passed" && finalLevel === "city") return "success";
+  if (status === "pending") return "warning";
+  if (status === "passed" && !finalLevel) return "warning";
+  return "error";
+}
+
+function cityResultLabel(status: FinalStatus, finalLevel?: Level | null) {
+  if (status === "passed") {
+    if (finalLevel === "city") return "Đạt Thành phố";
+    return finalLevel ? "Chưa đạt Thành phố" : "Cần đối soát";
+  }
+  if (status === "partially_passed" || status === "failed") return "Chưa đạt Thành phố";
+  return "Chưa chốt";
+}
+
+function cityReason(status: FinalStatus, finalLevel?: Level | null) {
+  if (status === "passed") return "Đã chốt đạt danh hiệu cấp Thành phố.";
+  if (status === "partially_passed" || status === "failed") {
+    return finalLevel && finalLevel !== "city"
+      ? "Quyết định hiện tại không công nhận danh hiệu cấp Thành phố."
+      : "Đã chốt hồ sơ chưa đạt danh hiệu cấp Thành phố.";
+  }
+  return "Hồ sơ đang chờ Hội đồng hoàn tất quyết định cuối cùng.";
 }
 
 function CriterionStatusStrip({ item }: { item: ManagerResultItem }) {

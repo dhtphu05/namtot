@@ -43,8 +43,9 @@ import {
 } from "@/components/ui/drawer";
 import { getOfficerLockedCriterion } from "@/features/auth/role-map";
 import { useAuth } from "@/features/auth/store/auth-store";
+import { useEvidencePreviewVisibility } from "@/features/evidence/hooks/useEvidence";
+import { ApiError } from "@/lib/api/client";
 import { ReviewErrorState } from "@/features/review/components/ReviewErrorState";
-import { CityOfficerQueue } from "@/features/review/components/CityOfficerQueue";
 import { ReviewFilters } from "@/features/review/components/ReviewFilters";
 import { ReviewDecisionPanel } from "@/features/review/components/ReviewDecisionPanel";
 import { ReviewTaskTable } from "@/features/review/components/ReviewTaskTable";
@@ -186,10 +187,6 @@ function ReviewQueueRoute() {
     );
   }
 
-  if (role === "city_officer") {
-    return <CityOfficerQueue />;
-  }
-
   return <ReviewQueueContent role={role} />;
 }
 
@@ -216,8 +213,9 @@ function ReviewQueueContent({ role }: { role: Role }) {
   const queryParams = useMemo<ReviewTaskListParams>(
     () => ({
       ...filters,
+      ...(lockedOfficerCriterion ? { criterion: lockedOfficerCriterion } : {}),
     }),
-    [filters],
+    [filters, lockedOfficerCriterion],
   );
 
   const { data, error, isError, isFetching, isLoading, refetch } = useReviewTasks(queryParams);
@@ -361,12 +359,17 @@ function ReviewQueueContent({ role }: { role: Role }) {
         setClaimCandidate(null);
       },
       onError: (error) => {
-        toast.error(
-          getErrorMessage(
-            error,
-            "Task này vừa được giao cho cán bộ khác. Bạn đang ở chế độ chỉ xem.",
-          ),
-        );
+        if (error instanceof ApiError && (error.status === 409 || error.code === "CONFLICT")) {
+          toast.error("Hồ sơ này vừa được cán bộ khác nhận xử lý. Danh sách đã được cập nhật.");
+          void refetch();
+        } else {
+          toast.error(
+            getErrorMessage(
+              error,
+              "Task này vừa được giao cho cán bộ khác. Bạn đang ở chế độ chỉ xem.",
+            ),
+          );
+        }
         setClaimCandidate(null);
       },
     });
@@ -3071,7 +3074,8 @@ function EvidencePreviewPanel({
   const initialFile = files.find((file) => file.url) ?? files[0] ?? null;
   const [activeFileId, setActiveFileId] = useState(initialFile?.id ?? "");
   const activeFile = files.find((file) => file.id === activeFileId) ?? initialFile;
-  const needsSignedUrl = Boolean(activeFile?.id && !activeFile.url);
+  const { elementRef, isNearViewport } = useEvidencePreviewVisibility();
+  const needsSignedUrl = Boolean(activeFile?.id && !activeFile.url && isNearViewport);
   const {
     data: signedUrl,
     isError: isSignedUrlError,
@@ -3089,7 +3093,7 @@ function EvidencePreviewPanel({
   }
 
   return (
-    <div className="rounded-xl border border-[#E5E7EB] bg-slate-50 p-3">
+    <div ref={elementRef} className="rounded-xl border border-[#E5E7EB] bg-slate-50 p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold text-brand-deep">
@@ -3160,11 +3164,14 @@ function EvidencePreviewPanel({
               className={
                 compact ? "h-full w-full object-contain" : "max-h-[520px] w-full object-contain"
               }
+              decoding="async"
+              loading="lazy"
               src={previewUrl}
             />
           ) : isPdfMime(activeFile.mimeType, activeFile.originalName) ? (
             <iframe
               className={compact ? "h-full w-full bg-white" : "h-[520px] w-full bg-white"}
+              loading="lazy"
               src={previewUrl}
               title={activeFile.originalName}
             />

@@ -14,6 +14,7 @@ import {
 import { useMemo, useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, Card, Chip } from "@/components/ui-kit";
+import { useAuth } from "@/features/auth/store/auth-store";
 import { useCommitteeInbox } from "@/features/manager/hooks/useManager";
 import type {
   CommitteeInboxBucket,
@@ -21,6 +22,7 @@ import type {
   CommitteeInboxSummary,
 } from "@/features/manager/types";
 import { getLevelLabel } from "@/lib/levels";
+import { cityPilotSchoolYear } from "@/features/manager/city-analytics/constants";
 
 export const Route = createFileRoute("/app/committee/inbox")({
   validateSearch: (search) => ({
@@ -95,6 +97,9 @@ const bucketConfig: Array<{
 ];
 
 function CommitteeInboxRoute() {
+  const user = useAuth((state) => state.user);
+  const role = user?.role;
+  const cityOnly = role === "city_manager" || role === "city_committee" || role === "admin";
   const searchState = Route.useSearch();
   const [search, setSearch] = useState("");
   const activeBucket = searchState.bucket ?? "all";
@@ -109,22 +114,30 @@ function CommitteeInboxRoute() {
 
   const cards = useMemo(
     () =>
-      bucketConfig.map((bucket) => ({
-        ...bucket,
-        count:
-          bucket.key === "all" ? totalActionable(summary) : getBucketCount(summary, bucket.key),
-      })),
-    [summary],
+      bucketConfig
+        .filter((bucket) => !cityOnly || bucket.key !== "downgraded")
+        .map((bucket) => ({
+          ...bucket,
+          count:
+            bucket.key === "all" ? totalActionable(summary) : getBucketCount(summary, bucket.key),
+        })),
+    [cityOnly, summary],
   );
 
   return (
     <>
       <TopBar
-        title="Hàng chờ chốt kết quả"
-        subtitle="Các hồ sơ/case của Hội đồng/Cấp quản lý, sắp theo việc cần làm tiếp theo."
+        title={cityOnly ? "Điều phối xét duyệt Thành phố" : "Hàng chờ chốt kết quả"}
+        subtitle={
+          cityOnly
+            ? `Hồ sơ cá nhân cấp Thành phố · Năm học ${cityPilotSchoolYear}`
+            : "Các hồ sơ/case của Hội đồng/Cấp quản lý, sắp theo việc cần làm tiếp theo."
+        }
         action={
           <Button asChild variant="outline">
-            <Link to="/app/manager/results">Mở danh sách kết quả</Link>
+            <Link to="/app/manager/results" search={{ filter: undefined }}>
+              Mở danh sách kết quả
+            </Link>
           </Button>
         }
       />
@@ -216,7 +229,7 @@ function CommitteeInboxRoute() {
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
-            <InboxItemCard key={item.id} item={item} />
+            <InboxItemCard key={item.id} item={item} cityOnly={cityOnly} />
           ))}
         </div>
       )}
@@ -224,14 +237,14 @@ function CommitteeInboxRoute() {
   );
 }
 
-function InboxItemCard({ item }: { item: CommitteeInboxItem }) {
+function InboxItemCard({ item, cityOnly }: { item: CommitteeInboxItem; cityOnly: boolean }) {
   return (
     <Card>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Chip tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</Chip>
-            <Chip tone="brand">{bucketLabel(item.type)}</Chip>
+            <Chip tone="brand">{bucketLabel(item.type, cityOnly)}</Chip>
             {item.dueAt ? <Chip tone="error">Quá hạn {formatDate(item.dueAt)}</Chip> : null}
           </div>
           <div className="mt-3 text-base font-bold text-brand-deep">
@@ -241,12 +254,16 @@ function InboxItemCard({ item }: { item: CommitteeInboxItem }) {
             </span>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {item.className ?? "--"} · {item.faculty ?? "--"} · Đăng ký{" "}
-            {item.targetLevel ? getLevelLabel(item.targetLevel) : "--"} · Đề xuất{" "}
-            {item.suggestedLevel ? getLevelLabel(item.suggestedLevel) : "Không đạt cấp nào"}
+            {cityOnly
+              ? `Hồ sơ xét Thành phố · ${cityPilotSchoolYear}`
+              : `${item.className ?? "--"} · ${item.faculty ?? "--"} · Đăng ký ${item.targetLevel ? getLevelLabel(item.targetLevel) : "--"} · Đề xuất ${item.suggestedLevel ? getLevelLabel(item.suggestedLevel) : "Không đạt cấp nào"}`}
           </div>
-          <div className="mt-3 text-sm font-semibold text-brand-deep">{item.mainReason}</div>
-          {item.blockers.length ? (
+          <div className="mt-3 text-sm font-semibold text-brand-deep">
+            {cityOnly
+              ? "Rà soát căn cứ 5 tiêu chí và hoàn tất quyết định xét duyệt Thành phố."
+              : item.mainReason}
+          </div>
+          {!cityOnly && item.blockers.length ? (
             <div className="mt-2 flex flex-wrap gap-2">
               {item.blockers.slice(0, 3).map((blocker) => (
                 <span
@@ -271,9 +288,13 @@ function InboxItemCard({ item }: { item: CommitteeInboxItem }) {
               <Link
                 to="/app/manager/results/$applicationId"
                 params={{ applicationId: item.applicationId }}
-                search={{ focus: item.type, resolutionCaseId: item.resolutionCaseId ?? undefined }}
+                search={{
+                  focus: item.type,
+                  resolutionCaseId: item.resolutionCaseId ?? undefined,
+                  filter: undefined,
+                }}
               >
-                {nextActionLabel(item)} <ArrowRight className="h-4 w-4" />
+                {nextActionLabel(item, cityOnly)} <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           )}
@@ -281,6 +302,7 @@ function InboxItemCard({ item }: { item: CommitteeInboxItem }) {
             <Link
               to="/app/manager/results/$applicationId"
               params={{ applicationId: item.applicationId }}
+              search={{ focus: undefined, resolutionCaseId: undefined, filter: undefined }}
             >
               Xem hồ sơ
             </Link>
@@ -322,16 +344,25 @@ function totalActionable(summary: CommitteeInboxSummary | undefined) {
   );
 }
 
-function bucketLabel(type: CommitteeInboxItem["type"]) {
+function bucketLabel(type: CommitteeInboxItem["type"], cityOnly: boolean) {
+  if (cityOnly && type === "downgraded") return "Cần rà soát kết quả";
+  if (cityOnly && type === "no_eligible_level") return "Chưa đạt điều kiện Thành phố";
   return bucketConfig.find((bucket) => bucket.key === type)?.label ?? "Việc cần xử lý";
 }
 
-function nextActionLabel(item: CommitteeInboxItem) {
+function nextActionLabel(item: CommitteeInboxItem, cityOnly: boolean) {
+  if (cityOnly && item.nextAction === "review_downgrade_reason") return "Rà soát kết quả";
   if (item.nextAction === "review_downgrade_reason") return "Xem lý do hạ cấp";
-  if (item.nextAction === "finalize_failed") return "Chốt chưa đạt";
+  if (item.nextAction === "finalize_failed")
+    return cityOnly ? "Chốt chưa đạt Thành phố" : "Chốt chưa đạt";
   if (item.nextAction === "finalize_city") return "Chốt đạt cấp Thành phố";
-  if (item.nextAction === "finalize_university") return "Chốt đạt cấp ĐHĐN";
-  if (item.nextAction === "finalize_school") return "Chốt đạt cấp Trường";
+  if (item.nextAction === "finalize_university" || item.nextAction === "finalize_school") {
+    return cityOnly
+      ? "Chốt kết quả Thành phố"
+      : item.nextAction === "finalize_university"
+        ? "Chốt đạt cấp ĐHĐN"
+        : "Chốt đạt cấp Trường";
+  }
   if (item.nextAction === "wait_for_supplement") return "Theo dõi bổ sung";
   if (item.nextAction === "send_reminder") return "Mở hồ sơ quá hạn";
   if (item.nextAction === "reopen_final_result") return "Xem lại kết quả";

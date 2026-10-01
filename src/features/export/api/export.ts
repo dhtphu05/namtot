@@ -173,6 +173,19 @@ export const exportApi = {
     return response.blob();
   },
 
+  downloadReviewTasksJson: async (params?: ExportApplicationsParams): Promise<Blob> => {
+    const response = await fetchWithAuth(
+      `${BASE_URL}/api/exports/review-tasks.json${buildQueryString(params)}`,
+      "json",
+    );
+
+    if (!response.ok) {
+      throw new Error(await parseError(response));
+    }
+
+    return response.blob();
+  },
+
   downloadReviewResultsExport: async (
     format: ExportFormat,
     params?: ExportApplicationsParams,

@@ -35,10 +35,12 @@ const criterionLabel: Record<Criterion, string> = {
 };
 
 export function FinalizationDialog({
+  cityOnly = false,
   item,
   onOpenChange,
   open,
 }: {
+  cityOnly?: boolean;
   item: ManagerResultItem | null;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -74,7 +76,9 @@ export function FinalizationDialog({
   const noteRequired = !note.trim();
   const blockedReason = item.blockingReasons?.join(" ") || "Hồ sơ chưa đủ điều kiện chốt.";
   const legacyCentral = isLegacyCentral(item.targetLevel) || isLegacyCentral(item.suggestedLevel);
-  const allowedLevels = getAllowedFinalLevels(item.targetLevel);
+  const allowedLevels = cityOnly
+    ? (["city", "school"] as const)
+    : getAllowedFinalLevels(item.targetLevel);
   const overridesRecommendation =
     decision.finalStatus !== recommendedDecision.finalStatus ||
     decision.finalLevel !== recommendedDecision.finalLevel;
@@ -145,8 +149,18 @@ export function FinalizationDialog({
               {item.studentCode ?? "--"} - {item.className ?? "--"} - {item.faculty ?? "--"}
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <Info label="Cấp đăng ký" value={getLevelLabel(item.targetLevel)} />
-              <Info label="Cấp đề xuất" value={getLevelLabel(item.suggestedLevel)} />
+              <Info
+                label={cityOnly ? "Cấp xét" : "Cấp đăng ký"}
+                value={cityOnly ? "Thành phố" : getLevelLabel(item.targetLevel)}
+              />
+              <Info
+                label={cityOnly ? "Kết quả tiêu chí tham khảo" : "Cấp đề xuất"}
+                value={
+                  cityOnly
+                    ? cityResultLabel(item.suggestedLevel)
+                    : getLevelLabel(item.suggestedLevel)
+                }
+              />
               <Info label="Readiness" value={`${item.readinessScore}`} />
               <Info label="Trạng thái" value={getApplicationStatusLabel(item.applicationStatus)} />
             </div>
@@ -217,9 +231,17 @@ export function FinalizationDialog({
                   }`}
                   onClick={() => setSelectedLevel(level)}
                 >
-                  <div className="font-bold text-brand-deep">Đạt {getLevelLabel(level)}</div>
+                  <div className="font-bold text-brand-deep">
+                    {cityOnly ? cityResultLabel(level) : `Đạt ${getLevelLabel(level)}`}
+                  </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {recommended ? "Gợi ý hệ thống" : getDownrankReason(item.targetLevel, level)}
+                    {cityOnly
+                      ? recommended
+                        ? "Gợi ý theo kết quả 5 tiêu chí."
+                        : "Ghi nhận quyết định sau khi đối chiếu hồ sơ."
+                      : recommended
+                        ? "Gợi ý hệ thống"
+                        : getDownrankReason(item.targetLevel, level)}
                   </div>
                 </button>
               );
@@ -237,18 +259,28 @@ export function FinalizationDialog({
               <div className="mt-1 text-xs text-muted-foreground">
                 {recommendedDecision.finalStatus === "failed"
                   ? "Gợi ý hệ thống"
-                  : "Hội đồng xác nhận không đạt cấp nào"}
+                  : cityOnly
+                    ? "Hội đồng xác nhận hồ sơ chưa đạt tiêu chuẩn cấp Thành phố."
+                    : "Hội đồng xác nhận không đạt cấp nào"}
               </div>
             </button>
           </div>
           <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
             <div className="text-base font-semibold text-brand-deep">
-              {getFinalizeActionLabel(decision.finalLevel)}
+              {cityOnly
+                ? cityFinalizeActionLabel(decision.finalLevel)
+                : getFinalizeActionLabel(decision.finalLevel)}
             </div>
             <div className="mt-1 text-sm text-muted-foreground">
               {decision.finalLevel
-                ? getDownrankReason(item.targetLevel, decision.finalLevel)
-                : "Hội đồng xác nhận hồ sơ không đạt cấp nào."}
+                ? cityOnly
+                  ? decision.finalLevel === "city"
+                    ? "Đề xuất đạt danh hiệu cấp Thành phố."
+                    : "Quyết định này không công nhận danh hiệu Thành phố."
+                  : getDownrankReason(item.targetLevel, decision.finalLevel)
+                : cityOnly
+                  ? "Hội đồng xác nhận hồ sơ chưa đạt tiêu chuẩn cấp Thành phố."
+                  : "Hội đồng xác nhận hồ sơ không đạt cấp nào."}
             </div>
           </div>
 
@@ -292,7 +324,9 @@ export function FinalizationDialog({
             ) : (
               <CheckCircle2 className="h-4 w-4" />
             )}
-            {getFinalizeActionLabel(decision.finalLevel)}
+            {cityOnly
+              ? cityFinalizeActionLabel(decision.finalLevel)
+              : getFinalizeActionLabel(decision.finalLevel)}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -331,6 +365,16 @@ function getAllowedFinalLevels(targetLevel: ManagerResultItem["targetLevel"]) {
   );
   if (index < 0) return [];
   return ACTIVE_LEVELS_HIGH_TO_LOW.slice(index);
+}
+
+function cityResultLabel(level: ManagerResultItem["suggestedLevel"]) {
+  if (level === "city") return "Đạt Thành phố";
+  if (level) return "Chưa đạt Thành phố";
+  return "Chưa có đề xuất";
+}
+
+function cityFinalizeActionLabel(level: ManagerResultItem["suggestedLevel"]) {
+  return level === "city" ? "Chốt đạt Thành phố" : "Chốt chưa đạt Thành phố";
 }
 
 function criterionStatusLabel(status?: ReviewTaskStatus) {

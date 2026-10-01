@@ -110,9 +110,10 @@ export function useManagerWorkload() {
   });
 }
 
-export function useManagerDashboardSummary() {
+export function useManagerDashboardSummary(enabled = true) {
   return useQuery({
     queryKey: managerKeys.dashboard,
+    enabled,
     queryFn: async () => {
       const response = await managerApi.getManagerDashboardSummary();
       return response.data;

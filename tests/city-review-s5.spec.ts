@@ -84,6 +84,23 @@ test("City Officer sees pending supplement as read-only", async ({ page }) => {
   await expect(page.getByText("Chế độ chỉ xem", { exact: true })).toBeVisible();
 });
 
+test("loads signed preview URLs only for evidence near the viewport", async ({ page }) => {
+  const signedFileRequests: string[] = [];
+  const evidenceCount = 16;
+  await installS5Task(page, { evidenceCount, signedFileRequests });
+  await page.goto("/app/review/task-s5", { waitUntil: "domcontentloaded" });
+
+  await expect.poll(() => signedFileRequests.length).toBeGreaterThan(0);
+  expect(signedFileRequests.length).toBeLessThanOrEqual(4);
+
+  const lastEvidenceFileId = `file-s5-${evidenceCount - 1}`;
+  await page
+    .getByRole("tabpanel", { name: "Minh chứng" })
+    .getByTestId(`evidence-item-evidence-s5-${evidenceCount - 1}`)
+    .scrollIntoViewIfNeeded();
+  await expect.poll(() => signedFileRequests).toContain(lastEvidenceFileId);
+});
+
 async function installS5Task(
   page: Page,
   options: {
@@ -91,6 +108,8 @@ async function installS5Task(
     resolution?: boolean;
     pending?: "supplement" | "resolution";
     conflict?: boolean;
+    evidenceCount?: number;
+    signedFileRequests?: string[];
   } = {},
 ) {
   const user = {
@@ -121,6 +140,12 @@ async function installS5Task(
       await route.fulfill({ status: 204, headers: corsHeaders, body: "" });
       return;
     }
+    const signedFileMatch = url.pathname.match(/^\/api\/files\/([^/]+)\/signed-url$/);
+    if (request.method() === "GET" && signedFileMatch) {
+      options.signedFileRequests?.push(signedFileMatch[1]);
+      await json(route, { url: `https://storage.test/${signedFileMatch[1]}` });
+      return;
+    }
     if (request.method() === "POST" && url.pathname.includes("/api/review/tasks/task-s5/")) {
       options.requests?.push({ path: url.pathname, body: request.postDataJSON() });
       if (options.conflict) {
@@ -146,7 +171,7 @@ async function installS5Task(
     }
 
     if (request.method() === "GET" && url.pathname === "/api/review/tasks/task-s5") {
-      await json(route, buildTask(user, status, actionAllowed));
+      await json(route, buildTask(user, status, actionAllowed, options.evidenceCount));
       return;
     }
     if (request.method() === "GET" && url.pathname.endsWith("/precedents")) {
@@ -168,7 +193,12 @@ async function installS5Task(
   );
 }
 
-function buildTask(user: { id: string }, status: string, actionAllowed: boolean) {
+function buildTask(
+  user: { id: string },
+  status: string,
+  actionAllowed: boolean,
+  evidenceCount = 1,
+) {
   const taskStatus = status === "waiting" ? "waiting" : status;
   return {
     task: {
@@ -215,24 +245,34 @@ function buildTask(user: { id: string }, status: string, actionAllowed: boolean)
         metrics: [],
         criterionLevelAssessment: null,
       },
-      evidences: [
-        {
-          id: "evidence-s5",
-          evidenceName: "Bảng điểm năm học",
-          criterion: "academic",
-          sourceType: "manual_upload",
-          status: "under_review",
-          indexingStatus: "indexed",
-          confidence: 0.9,
-          note: null,
-          reviewerNote: null,
-          createdAt: "2026-09-01T00:00:00.000Z",
-          updatedAt: "2026-09-01T00:00:00.000Z",
-          files: [],
-          card: null,
-          event: null,
-        },
-      ],
+      evidences: Array.from({ length: evidenceCount }, (_, index) => ({
+        id: evidenceCount === 1 ? "evidence-s5" : `evidence-s5-${index}`,
+        evidenceName: "Bảng điểm năm học",
+        criterion: "academic",
+        sourceType: "manual_upload",
+        status: "under_review",
+        indexingStatus: "indexed",
+        confidence: 0.9,
+        note: null,
+        reviewerNote: null,
+        createdAt: "2026-09-01T00:00:00.000Z",
+        updatedAt: "2026-09-01T00:00:00.000Z",
+        files:
+          evidenceCount === 1
+            ? []
+            : [
+                {
+                  id: `file-s5-${index}`,
+                  originalName: `evidence-${index}.png`,
+                  mimeType: "image/png",
+                  fileSize: 1000,
+                  publicUrl: null,
+                  createdAt: "2026-09-01T00:00:00.000Z",
+                },
+              ],
+        card: null,
+        event: null,
+      })),
       metrics: [],
       checklist: [],
       decisionHistory: [],

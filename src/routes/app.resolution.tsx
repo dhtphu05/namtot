@@ -23,6 +23,7 @@ import type { Criterion, Level, Role } from "@/features/review/types";
 import { getErrorMessage } from "@/features/review/utils/errors";
 import { formatDateTime, getCriterionLabel } from "@/features/review/utils/formatters";
 import { useResolutionCases } from "@/features/resolution/hooks/useResolution";
+import { cityPilotSchoolYear } from "@/features/manager/city-analytics/constants";
 import type {
   ResolutionCaseListItem,
   ResolutionCasesParams,
@@ -91,10 +92,12 @@ function ResolutionCasesRoute() {
 
 function ResolutionCasesContent({ role }: { role: Role }) {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<ResolutionCasesParams>({
+  const cityOnly = role === "city_manager" || role === "city_committee" || role === "admin";
+  const [filters, setFilters] = useState<ResolutionCasesParams>(() => ({
     page: 1,
     limit: defaultLimit,
-  });
+    ...(cityOnly ? { level: "city" as const, schoolYear: cityPilotSchoolYear } : {}),
+  }));
 
   const { data, error, isError, isFetching, isLoading, refetch } = useResolutionCases(filters);
   const rawItems = useMemo(() => data?.items ?? [], [data?.items]);
@@ -119,11 +122,13 @@ function ResolutionCasesContent({ role }: { role: Role }) {
   return (
     <>
       <TopBar
-        title={officerView ? "Hội ý của tôi" : "Hồ sơ hội ý"}
+        title={cityOnly ? "Hồ sơ hội ý Thành phố" : officerView ? "Hội ý của tôi" : "Hồ sơ hội ý"}
         subtitle={
-          officerView
-            ? "Theo dõi case do bạn chuyển lên hoặc liên quan đến task bạn được giao."
-            : "Theo dõi các hồ sơ cần hội ý, minh chứng chưa rõ hoặc trường hợp cán bộ chuyển xử lý."
+          cityOnly
+            ? `Các hồ sơ cá nhân cấp Thành phố trong mùa xét ${cityPilotSchoolYear}.`
+            : officerView
+              ? "Theo dõi case do bạn chuyển lên hoặc liên quan đến task bạn được giao."
+              : "Theo dõi các hồ sơ cần hội ý, minh chứng chưa rõ hoặc trường hợp cán bộ chuyển xử lý."
         }
       />
 
@@ -206,31 +211,39 @@ function ResolutionCasesContent({ role }: { role: Role }) {
             ))}
           </FilterSelect>
 
-          <FilterSelect
-            disabled={isFetching}
-            label="Cấp xét"
-            value={filters.level ?? "all"}
-            onChange={(value) =>
-              setFilters((current) => ({
-                ...current,
-                page: 1,
-                level: value === "all" ? undefined : (value as Level),
-              }))
-            }
-          >
-            <option value="all">Tất cả cấp xét</option>
-            {levelOptions.map((level) => (
-              <option key={level} value={level}>
-                {getLevelFilterLabel(level)}
-              </option>
-            ))}
-          </FilterSelect>
+          {!cityOnly ? (
+            <FilterSelect
+              disabled={isFetching}
+              label="Cấp xét"
+              value={filters.level ?? "all"}
+              onChange={(value) =>
+                setFilters((current) => ({
+                  ...current,
+                  page: 1,
+                  level: value === "all" ? undefined : (value as Level),
+                }))
+              }
+            >
+              <option value="all">Tất cả cấp xét</option>
+              {levelOptions.map((level) => (
+                <option key={level} value={level}>
+                  {getLevelFilterLabel(level)}
+                </option>
+              ))}
+            </FilterSelect>
+          ) : null}
 
           <Button
             disabled={isFetching}
             type="button"
             variant="outline"
-            onClick={() => setFilters({ page: 1, limit: defaultLimit })}
+            onClick={() =>
+              setFilters({
+                page: 1,
+                limit: defaultLimit,
+                ...(cityOnly ? { level: "city", schoolYear: cityPilotSchoolYear } : {}),
+              })
+            }
           >
             <Filter className="h-4 w-4" />
             Xóa lọc
@@ -252,13 +265,13 @@ function ResolutionCasesContent({ role }: { role: Role }) {
           />
         ) : items.length ? (
           <Card className="p-0">
-            <Table>
+            <Table className="min-w-[1120px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Mã case</TableHead>
                   <TableHead>Sinh viên</TableHead>
                   <TableHead>Tiêu chí</TableHead>
-                  <TableHead>Cấp xét</TableHead>
+                  {!cityOnly ? <TableHead>Cấp xét</TableHead> : null}
                   <TableHead>Lý do hội ý</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Người chuyển</TableHead>
@@ -290,9 +303,11 @@ function ResolutionCasesContent({ role }: { role: Role }) {
                     <TableCell>
                       <CriterionBadge criterion={item.criterion} />
                     </TableCell>
-                    <TableCell>
-                      <LevelBadge level={item.targetLevel} />
-                    </TableCell>
+                    {!cityOnly ? (
+                      <TableCell>
+                        <LevelBadge level={item.targetLevel} />
+                      </TableCell>
+                    ) : null}
                     <TableCell className="max-w-[260px]">
                       <div className="line-clamp-2 text-sm text-foreground">
                         {item.reason || "Chưa có lý do hội ý"}

@@ -41,7 +41,7 @@ export const Route = createFileRoute("/app/analytics")({
   component: AnalyticsRoute,
 });
 
-const allowedRoles: Role[] = ["manager", "committee", "city_manager", "admin"];
+const allowedRoles: Role[] = ["manager", "committee", "city_manager", "city_committee", "admin"];
 const levels: Level[] = [...ACTIVE_LEVELS];
 const criteria: Criterion[] = [
   "ethics",
@@ -87,8 +87,14 @@ function AnalyticsRoute() {
     );
   }
 
-  if (role === "city_manager" || role === "admin") {
-    return <CityAnalyticsDashboard showEligibilityVerification={role === "city_manager"} />;
+  if (role === "city_manager" || role === "city_committee" || role === "admin") {
+    return (
+      <CityAnalyticsDashboard
+        showEligibilityVerification={role === "city_manager"}
+        showSeasonAdministration={role !== "city_committee"}
+        showSubmittedBySchool={role === "city_committee"}
+      />
+    );
   }
 
   return <AnalyticsContent />;

@@ -77,7 +77,6 @@ export type CityAnalyticsSummary = {
     finalized: number;
     passed: number;
     failed: number;
-    partiallyPassed: number;
     notFinalized: number;
   };
   supplement: { applications: number; tasks: number };
