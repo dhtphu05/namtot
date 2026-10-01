@@ -51,13 +51,10 @@ import {
   useCriteriaCompletion,
   useCitySubmissionEligibility,
   useStudentSubmissionDeadline,
-  useAddIntegrationPathResponse,
-  useAddPhysicalPathEvidence,
   useAddVolunteerActivity,
   useCurrentApplication,
   useDeclareAcademicGpa,
   useDeclareEthicsConductScore,
-  useDeclarePhysicalCourseResult,
   useLatestPrecheck,
   usePrecheck,
   useStartApplication,
@@ -85,6 +82,7 @@ import {
 import { OfficialEventLibraryDialog } from "@/features/event/components/OfficialEventLibraryStudent";
 import { officialEventLibraryTitleForCriterion } from "@/features/event/components/official-event-library-copy";
 import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
+import { STUDENT_ASSISTANT_UI_ENABLED } from "@/lib/student-assistant-ui";
 import { SupplementCoachWorkspace } from "@/features/student-assistant/components/SupplementCoachWorkspace";
 import {
   applyCompletionToCriteriaState,
@@ -156,12 +154,6 @@ type EvidenceDrawerContext = {
   suggestedEventId?: string;
 };
 
-type PhysicalPathKey =
-  | "healthy_student_title"
-  | "sports_activity_or_award"
-  | "sports_team_member"
-  | "regular_sports_training";
-
 type AssistantSearch = {
   source: "criterion";
   applicationId: string | undefined;
@@ -207,10 +199,7 @@ export function StudentApplicationWorkspaceV2() {
   const upsertMetric = useUpsertMetric();
   const declareEthicsConductScore = useDeclareEthicsConductScore();
   const declareAcademicGpa = useDeclareAcademicGpa();
-  const declarePhysicalCourseResult = useDeclarePhysicalCourseResult();
-  const addPhysicalPathEvidence = useAddPhysicalPathEvidence();
   const addVolunteerActivity = useAddVolunteerActivity();
-  const addIntegrationPathResponse = useAddIntegrationPathResponse();
   const deleteEvidence = useDeleteEvidence();
 
   const application = current.data?.application as ApplicationWithWorkspaceData | null | undefined;
@@ -229,8 +218,6 @@ export function StudentApplicationWorkspaceV2() {
     null,
   );
   const [eventLibraryOpen, setEventLibraryOpen] = useState(false);
-  const [eventLibraryRequirementKey, setEventLibraryRequirementKey] = useState<PhysicalPathKey>();
-  const [selectedPhysicalPathKey, setSelectedPhysicalPathKey] = useState<PhysicalPathKey>();
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceResponse | null>(null);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -335,18 +322,6 @@ export function StudentApplicationWorkspaceV2() {
     () => evidences.filter((item) => item.criterion === selectedCriterion),
     [evidences, selectedCriterion],
   );
-  const linkedPhysicalEvidenceIds = new Set(
-    (selectedCompletion?.requirementGroups ?? [])
-      .flatMap((group) => group.requirements ?? [])
-      .filter((requirement) => isPhysicalPathKey(requirement.key))
-      .flatMap((requirement) => requirement.currentResponses ?? [])
-      .filter((response) => response.status !== "superseded" && response.evidenceId)
-      .map((response) => response.evidenceId as string),
-  );
-  const unlinkedPhysicalEvidences =
-    selectedCriterion === "physical"
-      ? selectedEvidences.filter((evidence) => !linkedPhysicalEvidenceIds.has(evidence.id))
-      : [];
   const isSelectedLocked =
     isSupplementMode && supplementCriteria.size > 0 && !supplementCriteria.has(selectedCriterion);
   const canEditSelectedCriterion = canEditApplication && !isSelectedLocked;
@@ -412,12 +387,7 @@ export function StudentApplicationWorkspaceV2() {
 
   useEffect(() => {
     setOptimisticEvidences([]);
-    setSelectedPhysicalPathKey(undefined);
   }, [applicationId]);
-
-  useEffect(() => {
-    if (selectedCriterion !== "physical") setSelectedPhysicalPathKey(undefined);
-  }, [selectedCriterion]);
 
   useEffect(() => {
     if (isCriterion(routeSearch.criterion)) {
@@ -527,7 +497,7 @@ export function StudentApplicationWorkspaceV2() {
     openEvidenceDrawer(request.criterion, { suggestedEventId: request.eventId });
   }, [application, openCriterion, openEvidenceDrawer]);
 
-  const openOfficialEventLibrary = (requirementKey?: string) => {
+  const openOfficialEventLibrary = () => {
     if (!selectedSupportsOfficialEventImport) {
       toast.error("Tiêu chí này chưa hỗ trợ tìm minh chứng từ kho chính thức.");
       return;
@@ -536,7 +506,6 @@ export function StudentApplicationWorkspaceV2() {
       toast.error("Tiêu chí này đang ở chế độ chỉ xem.");
       return;
     }
-    setEventLibraryRequirementKey(isPhysicalPathKey(requirementKey) ? requirementKey : undefined);
     setEventLibraryOpen(true);
   };
 
@@ -845,15 +814,6 @@ export function StudentApplicationWorkspaceV2() {
                     declareEthicsConductScore.isPending ||
                     declareAcademicGpa.isPending
                   }
-                  savingPhysical={
-                    declarePhysicalCourseResult.isPending || addPhysicalPathEvidence.isPending
-                  }
-                  onDeclarePhysicalCourseResult={(input) =>
-                    declarePhysicalCourseResult.mutateAsync({
-                      id: application.id,
-                      ...input,
-                    })
-                  }
                   savingVolunteerActivity={addVolunteerActivity.isPending}
                   onAddVolunteerActivity={(input) =>
                     addVolunteerActivity.mutateAsync({
@@ -861,37 +821,7 @@ export function StudentApplicationWorkspaceV2() {
                       ...input,
                     })
                   }
-                  savingIntegrationPath={addIntegrationPathResponse.isPending}
-                  onAddIntegrationPath={(input) =>
-                    addIntegrationPathResponse.mutateAsync({
-                      id: application.id,
-                      ...input,
-                    })
-                  }
                   onFindOfficialEvent={openOfficialEventLibrary}
-                  selectedPhysicalPathKey={selectedPhysicalPathKey}
-                  onSelectedPhysicalPathChange={setSelectedPhysicalPathKey}
-                  existingPhysicalEvidences={unlinkedPhysicalEvidences}
-                  onAttachPhysicalEvidence={(requirementKey, evidence) => {
-                    void addPhysicalPathEvidence
-                      .mutateAsync({
-                        id: application.id,
-                        requirementKey,
-                        evidenceId: evidence.id,
-                        sourceType:
-                          evidence.sourceType === "event_import"
-                            ? "official_event"
-                            : "manual_evidence",
-                      })
-                      .then(() => toast.success("Đã gắn minh chứng vào hình thức thể lực đã chọn."))
-                      .catch((error: unknown) =>
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Không thể gắn minh chứng vào hình thức thể lực.",
-                        ),
-                      );
-                  }}
                   onRequirementAction={(requirement) =>
                     openEvidenceDrawer(selectedCriterion, {
                       requirementKey: requirement.key,
@@ -907,20 +837,7 @@ export function StudentApplicationWorkspaceV2() {
                   evidences={selectedEvidences}
                   isLoading={evidencesQuery.isLoading}
                   isError={evidencesQuery.isError}
-                  onAddEvidence={() =>
-                    openEvidenceDrawer(
-                      selectedCriterion,
-                      selectedCriterion === "physical" && selectedPhysicalPathKey
-                        ? {
-                            requirementKey: selectedPhysicalPathKey,
-                            requirementLabel: getSafeRequirementLabel({
-                              key: selectedPhysicalPathKey,
-                              title: selectedPhysicalPathKey,
-                            }),
-                          }
-                        : undefined,
-                    )
-                  }
+                  onAddEvidence={() => openEvidenceDrawer(selectedCriterion)}
                   onViewEvidence={setSelectedEvidence}
                   onDeleteEvidence={(evidence) => {
                     if (!canEditSelectedCriterion) {
@@ -953,7 +870,7 @@ export function StudentApplicationWorkspaceV2() {
                   />
                 ) : null}
 
-                {precheck ? (
+                {STUDENT_ASSISTANT_UI_ENABLED && precheck ? (
                   <StudentAssistantExplanation
                     params={{
                       contextType: "precheck",
@@ -1062,38 +979,14 @@ export function StudentApplicationWorkspaceV2() {
           hideCriterionFilters
           onOpenChange={(open) => {
             setEventLibraryOpen(open);
-            if (!open) setEventLibraryRequirementKey(undefined);
           }}
           onManualUpload={(criterion) => openEvidenceDrawer(criterion)}
           onImported={(evidence, item) => {
             if (isCriterion(item.criterion)) openCriterion(item.criterion);
             if (evidence) {
               const nextEvidence = normalizeOptimisticEvidence(evidence, application.id);
-              if (item.criterion === "physical" && eventLibraryRequirementKey) {
-                void addPhysicalPathEvidence
-                  .mutateAsync({
-                    id: application.id,
-                    requirementKey: eventLibraryRequirementKey,
-                    evidenceId: nextEvidence.id,
-                    sourceType: "official_event",
-                  })
-                  .then(() => {
-                    setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
-                    setSelectedEvidence(nextEvidence);
-                    setEventLibraryRequirementKey(undefined);
-                    toast.success("Đã gắn sự kiện chính thức vào hình thức thể lực đã chọn.");
-                  })
-                  .catch((error: unknown) =>
-                    toast.error(
-                      error instanceof Error
-                        ? error.message
-                        : "Không thể gắn sự kiện vào hình thức thể lực.",
-                    ),
-                  );
-              } else {
-                setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
-                setSelectedEvidence(nextEvidence);
-              }
+              setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
+              setSelectedEvidence(nextEvidence);
             }
             void evidencesQuery.refetch();
           }}
@@ -1118,30 +1011,6 @@ export function StudentApplicationWorkspaceV2() {
           onCreated={(created) => {
             const nextEvidence = normalizeOptimisticEvidence(created, application.id);
             setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
-            const requirementKey = evidenceDrawerContext.requirementKey ?? selectedPhysicalPathKey;
-            if (nextEvidence.criterion === "physical" && isPhysicalPathKey(requirementKey)) {
-              void addPhysicalPathEvidence
-                .mutateAsync({
-                  id: application.id,
-                  requirementKey,
-                  evidenceId: nextEvidence.id,
-                  sourceType:
-                    nextEvidence.sourceType === "event_import"
-                      ? "official_event"
-                      : "manual_evidence",
-                })
-                .then(() => {
-                  setSelectedPhysicalPathKey(requirementKey);
-                  toast.success("Đã gắn minh chứng vào hình thức thể lực đã chọn.");
-                })
-                .catch((error: unknown) =>
-                  toast.error(
-                    error instanceof Error
-                      ? `Đã tải minh chứng nhưng chưa gắn được vào hình thức thể lực: ${error.message}`
-                      : "Đã tải minh chứng nhưng chưa gắn được vào hình thức thể lực.",
-                  ),
-                );
-            }
             setEvidenceDrawerContext(null);
             openCriterion(nextEvidence.criterion);
           }}
@@ -1468,6 +1337,7 @@ function CriteriaNavigationV2({
             <CriteriaNavigationRowV2
               title={state.label}
               status={state.progressStatus}
+              statusLabel={state.displayLabel}
               active={state.key === activeCriterion}
               onClick={() => onSelect(state.key)}
               className="min-h-[56px] px-3 py-2 lg:px-4"
@@ -1537,11 +1407,13 @@ function CriterionActionRow({
         <Upload aria-hidden="true" />
         Tải minh chứng
       </ButtonV2>
-      <ButtonV2 asChild variant="tertiary">
-        <Link to="/app/assistant" search={assistantSearch}>
-          Hỏi trợ lý
-        </Link>
-      </ButtonV2>
+      {STUDENT_ASSISTANT_UI_ENABLED ? (
+        <ButtonV2 asChild variant="tertiary">
+          <Link to="/app/assistant" search={assistantSearch}>
+            Hỏi trợ lý
+          </Link>
+        </ButtonV2>
+      ) : null}
     </div>
   );
 }
@@ -1559,17 +1431,9 @@ function CriterionDataSection({
   onMetricChange,
   onSaveMetric,
   savingMetric,
-  savingPhysical,
-  onDeclarePhysicalCourseResult,
   savingVolunteerActivity,
   onAddVolunteerActivity,
-  savingIntegrationPath,
-  onAddIntegrationPath,
   onFindOfficialEvent,
-  selectedPhysicalPathKey,
-  onSelectedPhysicalPathChange,
-  existingPhysicalEvidences,
-  onAttachPhysicalEvidence,
   onRequirementAction,
 }: {
   completion?: CriterionCompletionItem;
@@ -1584,14 +1448,6 @@ function CriterionDataSection({
   onMetricChange: (value: string) => void;
   onSaveMetric: () => Promise<boolean>;
   savingMetric: boolean;
-  savingPhysical: boolean;
-  onDeclarePhysicalCourseResult: (input: {
-    resultType: "score" | "classification";
-    value?: number;
-    classification?: string;
-    schoolYear: string;
-    replaceExisting?: boolean;
-  }) => Promise<unknown>;
   savingVolunteerActivity: boolean;
   onAddVolunteerActivity: (input: {
     requirementKey: "accumulated_volunteer_days" | "activity_count";
@@ -1604,16 +1460,7 @@ function CriterionDataSection({
     declaredValue?: number;
     declaredUnit?: "day" | "session" | "event" | "donation";
   }) => Promise<unknown>;
-  savingIntegrationPath: boolean;
-  onAddIntegrationPath: (input: {
-    requirementKey: string;
-    payloadJson: Record<string, unknown>;
-  }) => Promise<unknown>;
   onFindOfficialEvent: (requirementKey?: string) => void;
-  selectedPhysicalPathKey?: PhysicalPathKey;
-  onSelectedPhysicalPathChange: (requirementKey: PhysicalPathKey | undefined) => void;
-  existingPhysicalEvidences: EvidenceResponse[];
-  onAttachPhysicalEvidence: (requirementKey: PhysicalPathKey, evidence: EvidenceResponse) => void;
   onRequirementAction: (requirement: RequirementItem) => void;
 }) {
   const groups = completion?.requirementGroups ?? [];
@@ -1671,21 +1518,7 @@ function CriterionDataSection({
       />
     );
   } else if (criterion === "physical" && completion) {
-    content = (
-      <PhysicalDataSectionV2
-        completion={completion}
-        schoolYear={schoolYear ?? ""}
-        canEdit={canEdit}
-        saving={savingPhysical}
-        selectedPathKey={selectedPhysicalPathKey}
-        onSelectedPathChange={onSelectedPhysicalPathChange}
-        existingEvidences={existingPhysicalEvidences}
-        onAttachExistingEvidence={onAttachPhysicalEvidence}
-        onDeclareCourseResult={onDeclarePhysicalCourseResult}
-        onFindOfficialEvent={onFindOfficialEvent}
-        onRequirementAction={onRequirementAction}
-      />
-    );
+    content = <PhysicalDataSectionV2 completion={completion} />;
   } else if (criterion === "volunteer" && completion) {
     content = (
       <VolunteerDataSectionV2
@@ -1698,16 +1531,7 @@ function CriterionDataSection({
       />
     );
   } else if (criterion === "integration" && completion) {
-    content = (
-      <IntegrationDataSectionV2
-        completion={completion}
-        canEdit={canEdit}
-        saving={savingIntegrationPath}
-        onAddPath={onAddIntegrationPath}
-        onFindOfficialEvent={onFindOfficialEvent}
-        onRequirementAction={onRequirementAction}
-      />
-    );
+    content = <IntegrationDataSectionV2 completion={completion} />;
   } else if (aggregationRows.length) {
     content = <ActivityLedgerV2 rows={aggregationRows} />;
   } else if (oneOfGroup) {
@@ -1736,8 +1560,7 @@ function CriterionDataSection({
   return (
     <section className="min-w-0">
       <SectionHeading
-        title="Dữ liệu điều kiện"
-        description="Mục này hiển thị đúng một dạng dữ liệu phù hợp với tiêu chí đang chọn."
+        title="Thông tin đã khai báo"
         className="mb-3"
       />
       {content}
@@ -1947,8 +1770,6 @@ function AcademicDataSectionV2({
   const [formOpen, setFormOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const gpa = findAcademicGpaRequirement(completion);
-  const noFGrade = findRequirement(completion, "no_f_grade");
-  const period = findRequirement(completion, "academic_period_valid");
   const gpaMetric = getApplicationMetric(metrics, "gpa");
   const existingGpaValue = gpaMetric?.value != null ? String(gpaMetric.value) : "";
   const existingScale =
@@ -1979,99 +1800,32 @@ function AcademicDataSectionV2({
     }
   };
 
-  const rows: DefinitionTableV2Row[] = [
-    {
-      label: "Thang điểm",
-      value: String(existingScale),
-      source: getDisplayRequirementSourceLabel(gpa, existingGpaValue),
-      status: (
-        <StatusPillV2
-          status={mapRequirementStatus(
-            gpa?.status ?? (existingGpaValue ? "declared" : "not_started"),
-          )}
-          label={getRequirementStatusLabel(
-            gpa?.status ?? (existingGpaValue ? "declared" : "not_started"),
-          )}
-        />
-      ),
-    },
-    {
-      label: "GPA/ĐTB",
-      value:
-        getRequirementDisplayValue(gpa) ??
-        (existingGpaValue ? `${existingGpaValue}/${existingScale}` : "Chưa có"),
-      source: getDisplayRequirementSourceLabel(gpa, existingGpaValue),
-      status: (
-        <StatusPillV2
-          status={mapRequirementStatus(
-            gpa?.status ?? (existingGpaValue ? "declared" : "not_started"),
-          )}
-          label={academicGpaStatusLabel(gpa)}
-        />
-      ),
-      action: canEditGpa ? (
-        <ButtonV2 type="button" variant="secondary" size="compact" onClick={openForm}>
-          {existingGpaValue ? "Chỉnh kết quả" : "Tự khai báo kết quả"}
-        </ButtonV2>
-      ) : null,
-    },
-    {
-      label: "Năm học",
-      value: schoolYear || getRequirementPayloadString(gpa, "schoolYear") || "Cần xác minh",
-      source: schoolYear ? "Hồ sơ hiện tại" : getDisplayRequirementSourceLabel(gpa),
-      status: (
-        <StatusPillV2
-          status={schoolYear ? "complete" : "waiting"}
-          label={schoolYear ? "Đã ghi nhận" : "Cần xác minh"}
-        />
-      ),
-    },
-    {
-      label: "Nguồn dữ liệu",
-      value: getDisplayRequirementSourceLabel(gpa, existingGpaValue),
-      source: "Hệ thống",
-      status: (
-        <StatusPillV2
-          status={existingGpaValue || gpa ? "waiting" : "not-started"}
-          label={existingGpaValue || gpa ? "Đã ghi nhận" : "Chưa có"}
-        />
-      ),
-    },
-    ...(noFGrade
-      ? [
-          {
-            label: "Tình trạng điểm F",
-            value: noFGradeStatusCopy(noFGrade),
-            source: getDisplayRequirementSourceLabel(noFGrade),
-            status: (
-              <StatusPillV2
-                status={mapRequirementStatus(noFGrade?.status ?? "needs_verification")}
-                label={getRequirementStatusLabel(noFGrade?.status ?? "needs_verification")}
-              />
-            ),
-          },
-        ]
-      : []),
-    ...(period
-      ? [
-          {
-            label: "Xác minh năm học",
-            value: academicPeriodLabel(period),
-            source: getDisplayRequirementSourceLabel(period),
-            status: (
-              <StatusPillV2
-                status={mapRequirementStatus(period?.status ?? "needs_verification")}
-                label={getRequirementStatusLabel(period?.status ?? "needs_verification")}
-              />
-            ),
-          },
-        ]
-      : []),
-  ];
+  const displayedGpa =
+    getRequirementDisplayValue(gpa) ??
+    (existingGpaValue ? `${existingGpaValue}/${existingScale}` : "Chưa khai báo");
 
   return (
     <div className="grid min-w-0 gap-4">
-      <DefinitionTableV2 rows={rows} />
+      <div className="flex min-w-0 flex-col gap-3 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="m-0 text-[13px] font-medium leading-5 text-[var(--student-v2-text-secondary)]">
+            Điểm trung bình tích lũy
+          </p>
+          <p className="mt-1 text-[16px] font-semibold leading-6 text-[var(--student-v2-text-primary)]">
+            {displayedGpa}
+          </p>
+          {gpa && ["declared", "needs_verification"].includes(gpa.status) ? (
+            <p className="mt-1 text-[13px] leading-[18px] text-[var(--student-v2-text-muted)]">
+              Đang chờ cán bộ xác minh
+            </p>
+          ) : null}
+        </div>
+        {canEditGpa ? (
+          <ButtonV2 type="button" variant="secondary" size="compact" onClick={openForm}>
+            {existingGpaValue ? "Chỉnh điểm" : "Khai báo điểm"}
+          </ButtonV2>
+        ) : null}
+      </div>
 
       {formOpen ? (
         <form
@@ -2095,7 +1849,7 @@ function AcademicDataSectionV2({
               </select>
             </label>
             <label className="min-w-0 text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)]">
-              GPA/ĐTB
+              Điểm trung bình tích lũy
               <input
                 value={metricValue}
                 onChange={(event) => {
@@ -2113,7 +1867,7 @@ function AcademicDataSectionV2({
             </label>
             <ButtonV2 type="submit" variant="primary" disabled={!canEditGpa || savingMetric}>
               {savingMetric ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
-              Lưu GPA
+              Lưu điểm học tập
             </ButtonV2>
             <ButtonV2
               type="button"
@@ -2158,291 +1912,22 @@ function AcademicDataSectionV2({
   );
 }
 
-function PhysicalDataSectionV2({
-  completion,
-  schoolYear,
-  canEdit,
-  saving,
-  selectedPathKey: initialSelectedPathKey,
-  onSelectedPathChange,
-  existingEvidences,
-  onAttachExistingEvidence,
-  onDeclareCourseResult,
-  onFindOfficialEvent,
-  onRequirementAction,
-}: {
-  completion: CriterionCompletionItem;
-  schoolYear: string;
-  canEdit: boolean;
-  saving: boolean;
-  selectedPathKey?: PhysicalPathKey;
-  onSelectedPathChange: (requirementKey: PhysicalPathKey | undefined) => void;
-  existingEvidences: EvidenceResponse[];
-  onAttachExistingEvidence: (requirementKey: PhysicalPathKey, evidence: EvidenceResponse) => void;
-  onDeclareCourseResult: (input: {
-    resultType: "score" | "classification";
-    value?: number;
-    classification?: string;
-    schoolYear: string;
-    replaceExisting?: boolean;
-  }) => Promise<unknown>;
-  onFindOfficialEvent: (requirementKey?: string) => void;
-  onRequirementAction: (requirement: RequirementItem) => void;
-}) {
-  const paths = getPathRequirements(completion, "physical_path");
-  const existingPath = paths.find((path) => hasRequirementResponse(path));
-  const existingPathKey = existingPath?.key;
-  const [selectedPathKey, setSelectedPathKey] = useState(
-    initialSelectedPathKey ?? existingPath?.key ?? "",
+function PhysicalDataSectionV2({ completion }: { completion: CriterionCompletionItem }) {
+  const requirements = (completion.requirementGroups ?? []).flatMap(
+    (group) => group.requirements ?? [],
   );
-  const [selectorOpen, setSelectorOpen] = useState(!existingPath);
-  const [courseFormOpen, setCourseFormOpen] = useState(false);
-  const [resultType, setResultType] = useState<"score" | "classification">("score");
-  const [courseValue, setCourseValue] = useState("");
-  const [classification, setClassification] = useState("");
-  const [replaceExisting, setReplaceExisting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const selectedPath = paths.find((path) => path.key === selectedPathKey);
-  const hasUnsavedData = courseValue.trim() || classification.trim();
-
-  useEffect(() => {
-    if (isPhysicalPathKey(existingPathKey)) {
-      setSelectedPathKey(existingPathKey);
-      onSelectedPathChange(existingPathKey);
-    }
-  }, [existingPathKey, onSelectedPathChange]);
-
-  const selectPath = (pathKey: string) => {
-    if (hasUnsavedData && !confirmUnsavedPathChange()) return;
-    setSelectedPathKey(pathKey);
-    onSelectedPathChange(isPhysicalPathKey(pathKey) ? pathKey : undefined);
-    setSelectorOpen(false);
-    setCourseFormOpen(false);
-    setCourseValue("");
-    setClassification("");
-    setReplaceExisting(false);
-    setFormError(null);
-  };
-
-  const submitCourseResult = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!selectedPath || selectedPath.key !== "physical_course_result") return;
-    const value = Number(courseValue);
-    if (resultType === "score" && (!courseValue || !Number.isFinite(value))) {
-      setFormError("Vui lòng nhập điểm Giáo dục thể chất hợp lệ.");
-      return;
-    }
-    if (resultType === "classification" && !classification.trim()) {
-      setFormError("Vui lòng nhập xếp loại Giáo dục thể chất.");
-      return;
-    }
-    try {
-      await onDeclareCourseResult({
-        resultType,
-        value: resultType === "score" ? value : undefined,
-        classification: resultType === "classification" ? classification.trim() : undefined,
-        schoolYear,
-        replaceExisting,
-      });
-      setCourseFormOpen(false);
-      setCourseValue("");
-      setClassification("");
-      setReplaceExisting(false);
-      setFormError(null);
-      toast.success("Đã lưu cách chứng minh Thể lực tốt.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể lưu kết quả thể lực.");
-    }
-  };
-
-  if (!paths.length) {
-    return (
-      <InlineStateMessage
-        tone="warning"
-        title="Chưa có cấu hình hình thức thể lực"
-        description="Tiêu chí này chưa trả về nhóm one_of từ backend. Bạn vẫn có thể tải minh chứng thủ công nếu được phép."
-      />
-    );
-  }
+  const recordedRequirements = requirements.filter(hasRequirementResponse);
 
   return (
     <div className="grid min-w-0 gap-4">
-      {selectorOpen || !selectedPath ? (
-        <PathSelectionSurfaceV2
-          title="Chọn cách chứng minh Thể lực tốt"
-          description="Chỉ cần chọn một hình thức phù hợp theo cấu hình hiện tại."
-          paths={paths}
-          selectedPathKey={selectedPathKey}
-          onSelect={selectPath}
-          readonly={!canEdit}
+      <CriterionRequirementsSummaryV2 completion={completion} />
+      {recordedRequirements.length ? (
+        <ExistingPathResponsesV2
+          title="Thông tin đã ghi nhận"
+          paths={recordedRequirements}
+          unknownLabel="Hình thức khác"
         />
-      ) : (
-        <SelectedPathSummaryV2
-          requirement={selectedPath}
-          onChangePath={() => {
-            if (hasUnsavedData && !confirmUnsavedPathChange()) return;
-            setSelectorOpen(true);
-          }}
-          canChange={canEdit}
-        />
-      )}
-
-      {selectedPath && !selectorOpen ? (
-        <section className="min-w-0 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-4">
-          <SectionHeading
-            title={getPathTitle(selectedPath)}
-            description={`Nguồn: ${getDisplayRequirementSourceLabel(selectedPath)}`}
-            action={
-              selectedPath.acceptedSources?.includes("official_event") ? (
-                <ButtonV2
-                  type="button"
-                  variant="secondary"
-                  size="compact"
-                  onClick={() => onFindOfficialEvent(selectedPath.key)}
-                  disabled={!canEdit}
-                >
-                  <Search aria-hidden="true" />
-                  Tìm dữ liệu chính thức
-                </ButtonV2>
-              ) : null
-            }
-            className="mb-4"
-          />
-
-          {selectedPath.key === "physical_course_result" ? (
-            courseFormOpen ? (
-              <form onSubmit={submitCourseResult} className="grid min-w-0 gap-3">
-                <div className="grid min-w-0 gap-3 md:grid-cols-[160px_minmax(180px,1fr)_auto] md:items-end">
-                  <label className="text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)]">
-                    Kết quả GDTC
-                    <select
-                      value={resultType}
-                      onChange={(event) =>
-                        setResultType(
-                          event.target.value === "classification" ? "classification" : "score",
-                        )
-                      }
-                      disabled={!canEdit || saving}
-                      className="mt-1 min-h-11 w-full rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--student-v2-focus-ring)]"
-                    >
-                      <option value="score">Điểm</option>
-                      <option value="classification">Xếp loại</option>
-                    </select>
-                  </label>
-                  {resultType === "score" ? (
-                    <label className="min-w-0 text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)]">
-                      Điểm / 10
-                      <input
-                        value={courseValue}
-                        onChange={(event) => {
-                          setCourseValue(event.target.value);
-                          setFormError(null);
-                        }}
-                        inputMode="decimal"
-                        placeholder="Ví dụ 8.0"
-                        aria-describedby={formError ? "physical-course-error" : undefined}
-                        disabled={!canEdit || saving}
-                        className="mt-1 min-h-11 w-full min-w-0 rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--student-v2-focus-ring)]"
-                      />
-                    </label>
-                  ) : (
-                    <label className="min-w-0 text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)]">
-                      Xếp loại
-                      <input
-                        value={classification}
-                        onChange={(event) => {
-                          setClassification(event.target.value);
-                          setFormError(null);
-                        }}
-                        placeholder="Ví dụ Đạt"
-                        aria-describedby={formError ? "physical-course-error" : undefined}
-                        disabled={!canEdit || saving}
-                        className="mt-1 min-h-11 w-full min-w-0 rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--student-v2-focus-ring)]"
-                      />
-                    </label>
-                  )}
-                  <ButtonV2 type="submit" variant="primary" disabled={!canEdit || saving}>
-                    {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
-                    Lưu kết quả
-                  </ButtonV2>
-                </div>
-                <label className="flex min-h-11 items-center gap-2 text-[14px] leading-5 text-[var(--student-v2-text-secondary)]">
-                  <input
-                    type="checkbox"
-                    checked={replaceExisting}
-                    onChange={(event) => setReplaceExisting(event.target.checked)}
-                    disabled={!canEdit || saving}
-                  />
-                  Thay thế cách chứng minh đang nộp trước đó
-                </label>
-                {formError ? (
-                  <p
-                    id="physical-course-error"
-                    className="text-[13px] leading-[18px] text-[var(--student-v2-critical-text)]"
-                  >
-                    {formError}
-                  </p>
-                ) : null}
-                <div>
-                  <ButtonV2
-                    type="button"
-                    variant="tertiary"
-                    onClick={() => {
-                      setCourseFormOpen(false);
-                      setCourseValue("");
-                      setClassification("");
-                      setFormError(null);
-                    }}
-                    disabled={saving}
-                  >
-                    Hủy thay đổi
-                  </ButtonV2>
-                </div>
-              </form>
-            ) : (
-              <ButtonV2
-                type="button"
-                variant="secondary"
-                onClick={() => setCourseFormOpen(true)}
-                disabled={!canEdit}
-              >
-                Khai báo kết quả GDTC
-              </ButtonV2>
-            )
-          ) : (
-            <PathActionAreaV2
-              requirement={selectedPath}
-              canEdit={canEdit}
-              onFindOfficialEvent={() => onFindOfficialEvent(selectedPath.key)}
-              onRequirementAction={onRequirementAction}
-            />
-          )}
-          {isPhysicalPathKey(selectedPath.key) && existingEvidences.length ? (
-            <div className="grid min-w-0 gap-2 border-t border-[var(--student-v2-border-default)] pt-3">
-              <p className="text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
-                Bạn đã tải minh chứng cho tiêu chí này? Gắn minh chứng vào hình thức đang chọn.
-              </p>
-              {existingEvidences.map((evidence) => (
-                <ButtonV2
-                  key={evidence.id}
-                  type="button"
-                  variant="tertiary"
-                  className="min-w-0 justify-start text-left"
-                  disabled={!canEdit || saving}
-                  onClick={() =>
-                    onAttachExistingEvidence(selectedPath.key as PhysicalPathKey, evidence)
-                  }
-                >
-                  <Upload aria-hidden="true" />
-                  <span className="truncate">Gắn minh chứng đã tải: {evidence.evidenceName}</span>
-                </ButtonV2>
-              ))}
-            </div>
-          ) : null}
-        </section>
       ) : null}
-
-      <ExistingPathResponsesV2 title="Hình thức đã ghi nhận" paths={paths} />
     </div>
   );
 }
@@ -2533,7 +2018,7 @@ function VolunteerDataSectionV2({
       <div className="rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-4">
         <SectionHeading
           title="Sổ hoạt động tình nguyện"
-          description="Tiến độ sử dụng tổng hợp từ backend; hệ thống không tính quy đổi ở giao diện sinh viên."
+          description="Tiến độ được tổng hợp theo các điều kiện của tiêu chí; kết quả chính thức do cán bộ xác nhận."
           action={
             <div className="flex flex-wrap gap-2">
               {supportsOfficialEventRequirement(primaryRequirement) ? (
@@ -2697,205 +2182,94 @@ function VolunteerDataSectionV2({
   );
 }
 
-function IntegrationDataSectionV2({
-  completion,
-  canEdit,
-  saving,
-  onAddPath,
-  onFindOfficialEvent,
-  onRequirementAction,
-}: {
-  completion: CriterionCompletionItem;
-  canEdit: boolean;
-  saving: boolean;
-  onAddPath: (input: {
-    requirementKey: string;
-    payloadJson: Record<string, unknown>;
-  }) => Promise<unknown>;
-  onFindOfficialEvent: () => void;
-  onRequirementAction: (requirement: RequirementItem) => void;
-}) {
-  const paths = getPathRequirements(completion, "integration_path");
-  const existingPath = paths.find((path) => hasRequirementResponse(path));
-  const [selectedPathKey, setSelectedPathKey] = useState(existingPath?.key ?? "");
-  const [selectorOpen, setSelectorOpen] = useState(!existingPath);
-  const [formOpen, setFormOpen] = useState(false);
-  const [formValues, setFormValues] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  const selectedPath = paths.find((path) => path.key === selectedPathKey);
-  const fields = selectedPath ? getFormFields(selectedPath) : [];
-  const hasUnsavedData = Object.values(formValues).some((value) => value.trim());
-
-  const selectPath = (pathKey: string) => {
-    if (hasUnsavedData && !confirmUnsavedPathChange()) return;
-    setSelectedPathKey(pathKey);
-    setSelectorOpen(false);
-    setFormOpen(false);
-    setFormValues({});
-    setFormError(null);
-  };
-
-  const submitPath = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!selectedPath) return;
-    const payloadJson = Object.fromEntries(
-      Object.entries(formValues)
-        .map(([key, value]) => [key, normalizeDynamicFieldValue(key, value)] as const)
-        .filter(([, value]) => value !== undefined && value !== ""),
-    );
-    try {
-      await onAddPath({ requirementKey: selectedPath.key, payloadJson });
-      setFormOpen(false);
-      setFormValues({});
-      setFormError(null);
-      toast.success("Đã lưu hình thức đáp ứng Hội nhập tốt.");
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Không thể lưu hình thức hội nhập.");
-      toast.error(error instanceof Error ? error.message : "Không thể lưu hình thức hội nhập.");
-    }
-  };
-
-  if (!paths.length) {
-    return (
-      <InlineStateMessage
-        tone="warning"
-        title="Chưa có cấu hình hình thức hội nhập"
-        description="Backend chưa trả về path cho tiêu chí này. Không mặc định sang ngoại ngữ nếu cấu hình không có."
-      />
-    );
-  }
+function IntegrationDataSectionV2({ completion }: { completion: CriterionCompletionItem }) {
+  const requirements = (completion.requirementGroups ?? []).flatMap(
+    (group) => group.requirements ?? [],
+  );
+  const recordedRequirements = requirements.filter(hasRequirementResponse);
 
   return (
     <div className="grid min-w-0 gap-4">
-      {selectorOpen || !selectedPath ? (
-        <PathSelectionSurfaceV2
-          title="Chọn hình thức đáp ứng Hội nhập tốt"
-          description="Các lựa chọn được lấy từ cấu hình backend; không mặc định IELTS/TOEIC hay ngoại ngữ."
-          paths={paths}
-          selectedPathKey={selectedPathKey}
-          onSelect={selectPath}
-          readonly={!canEdit}
+      <CriterionRequirementsSummaryV2 completion={completion} />
+      {recordedRequirements.length ? (
+        <ExistingPathResponsesV2
+          title="Thông tin đã ghi nhận"
+          paths={recordedRequirements}
           unknownLabel="Hình thức khác"
         />
-      ) : (
-        <SelectedPathSummaryV2
-          requirement={selectedPath}
-          onChangePath={() => {
-            if (hasUnsavedData && !confirmUnsavedPathChange()) return;
-            setSelectorOpen(true);
-          }}
-          canChange={canEdit}
-          unknownLabel="Hình thức khác"
-        />
-      )}
-
-      {selectedPath && !selectorOpen ? (
-        <section className="min-w-0 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-4">
-          <SectionHeading
-            title={getPathTitle(selectedPath, "Hình thức khác")}
-            description={`Nguồn: ${getDisplayRequirementSourceLabel(selectedPath)}`}
-            action={
-              <div className="flex flex-wrap gap-2">
-                {selectedPath.acceptedSources?.includes("official_event") ? (
-                  <ButtonV2
-                    type="button"
-                    variant="secondary"
-                    size="compact"
-                    onClick={onFindOfficialEvent}
-                    disabled={!canEdit}
-                  >
-                    <Search aria-hidden="true" />
-                    Tìm dữ liệu chính thức
-                  </ButtonV2>
-                ) : null}
-                {canEdit ? (
-                  <ButtonV2
-                    type="button"
-                    variant="secondary"
-                    size="compact"
-                    onClick={() => onRequirementAction(selectedPath)}
-                  >
-                    <Upload aria-hidden="true" />
-                    Tải minh chứng
-                  </ButtonV2>
-                ) : null}
-              </div>
-            }
-            className="mb-4"
-          />
-
-          {formOpen ? (
-            <form onSubmit={submitPath} className="grid min-w-0 gap-3">
-              {fields.length ? (
-                <div className="grid min-w-0 gap-3 md:grid-cols-2">
-                  {fields.map((field) => (
-                    <DynamicFieldInputV2
-                      key={field}
-                      field={field}
-                      value={formValues[field] ?? ""}
-                      disabled={!canEdit || saving}
-                      errorId={formError ? "integration-path-error" : undefined}
-                      onChange={(value) => {
-                        setFormValues((current) => ({ ...current, [field]: value }));
-                        setFormError(null);
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <InlineStateMessage
-                  tone="info"
-                  title="Path chưa có biểu mẫu cấu hình"
-                  description="Bạn có thể tải minh chứng cho hình thức này; key backend vẫn được giữ nguyên khi gửi."
-                />
-              )}
-              {formError ? (
-                <p
-                  id="integration-path-error"
-                  className="text-[13px] leading-[18px] text-[var(--student-v2-critical-text)]"
-                >
-                  {formError}
-                </p>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                <ButtonV2 type="submit" variant="primary" disabled={!canEdit || saving}>
-                  {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
-                  Lưu khai báo
-                </ButtonV2>
-                <ButtonV2
-                  type="button"
-                  variant="tertiary"
-                  onClick={() => {
-                    setFormOpen(false);
-                    setFormValues({});
-                    setFormError(null);
-                  }}
-                  disabled={saving}
-                >
-                  Hủy thay đổi
-                </ButtonV2>
-              </div>
-            </form>
-          ) : (
-            <ButtonV2
-              type="button"
-              variant="secondary"
-              onClick={() => setFormOpen(true)}
-              disabled={!canEdit}
-            >
-              Khai báo hình thức này
-            </ButtonV2>
-          )}
-        </section>
       ) : null}
-
-      <ExistingPathResponsesV2
-        title="Hình thức đã ghi nhận"
-        paths={paths}
-        unknownLabel="Hình thức khác"
-      />
     </div>
   );
+}
+
+function CriterionRequirementsSummaryV2({ completion }: { completion: CriterionCompletionItem }) {
+  const requirementGroups = completion.requirementGroups ?? [];
+
+  return (
+    <div className="grid min-w-0 gap-4">
+      {getStudentFacingRequirementCopy(completion.description) ? (
+        <p className="text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+          {getStudentFacingRequirementCopy(completion.description)}
+        </p>
+      ) : null}
+      {requirementGroups.length ? (
+        <section className="min-w-0 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-4">
+          <h3 className="text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)]">
+            Điều kiện của tiêu chí
+          </h3>
+          <p className="mt-1 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
+            Bạn không cần chọn hình thức. Hãy tải lên minh chứng phù hợp bên dưới; có thể thêm ghi
+            chú cho cán bộ nếu cần.
+          </p>
+          <div className="mt-3 space-y-3">
+            {requirementGroups.map((group) => (
+              <div
+                key={group.key}
+                className="min-w-0 rounded-lg border border-[var(--student-v2-border-default)] px-4 py-3"
+              >
+                <div className="text-[14px] font-semibold leading-[22px] text-[var(--student-v2-text-primary)]">
+                  {getStudentFacingRequirementCopy(group.title) ?? "Điều kiện cần đáp ứng"}
+                </div>
+                <p className="mt-0.5 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
+                  {getRequirementGroupGuidance(group)}
+                  {group.optional ? " Nhóm điều kiện này không bắt buộc." : ""}
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
+                  {(group.requirements ?? []).map((requirement) => (
+                    <li key={requirement.key}>
+                      <span className="font-medium text-[var(--student-v2-text-primary)]">
+                          {getStudentRequirementLabel(requirement)}
+                      </span>
+                      {getStudentFacingRequirementCopy(requirement.description)
+                        ? ` — ${getStudentFacingRequirementCopy(requirement.description)}`
+                        : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <InlineStateMessage
+          tone="info"
+          title="Chưa có điều kiện để hiển thị"
+          description="Bạn vẫn có thể tải lên minh chứng phù hợp ở phần bên dưới và thêm ghi chú nếu cần."
+        />
+      )}
+    </div>
+  );
+}
+
+function getRequirementGroupGuidance(group: RequirementGroup) {
+  if (group.operator === "one_of") return "Trong nhóm này, đáp ứng một trong các điều kiện sau:";
+  if (group.operator === "at_least_n" && typeof group.requiredCount === "number") {
+    return `Trong nhóm này, đáp ứng tối thiểu ${group.requiredCount} điều kiện sau:`;
+  }
+  if (group.operator === "at_least_n") {
+    return "Trong nhóm này, đáp ứng số điều kiện tối thiểu theo cấu hình:";
+  }
+  return "Trong nhóm này, đáp ứng tất cả các điều kiện sau:";
 }
 
 function AchievementDisclosureV2({
@@ -3067,7 +2441,7 @@ function PathActionAreaV2({
         </div>
       ) : (
         <div className="text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-          Hình thức này dùng minh chứng hoặc dữ liệu chính thức theo cấu hình backend.
+          Bạn có thể tải minh chứng phù hợp hoặc dùng dữ liệu đã được xác nhận.
         </div>
       )}
       <div className="flex flex-wrap gap-2">
@@ -3140,7 +2514,7 @@ function ExistingPathResponsesV2({
       ) : (
         <CompactEmptyStateV2
           title="Chưa có hình thức đã ghi nhận"
-          description="Chọn một hình thức phù hợp rồi khai báo hoặc tải minh chứng theo cấu hình hiện tại."
+          description="Bạn có thể bổ sung thông tin hoặc tải minh chứng phù hợp với điều kiện."
         />
       )}
     </section>
@@ -3471,12 +2845,12 @@ function DynamicFormDisclosure({
   return (
     <details className="rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-4 py-3">
       <summary className="flex min-h-11 cursor-pointer items-center text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]">
-        Biểu mẫu động
+                Thông tin bổ sung
       </summary>
       <div className="mt-3 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
         {hasDynamicSchema
-          ? "Tiêu chí này có cấu hình khai báo riêng. Dùng thao tác bên dưới để thêm dữ liệu theo yêu cầu."
-          : `Chưa có bảng dữ liệu riêng cho ${criterionLabels[criterion]}. Bạn có thể bổ sung minh chứng thủ công.`}
+          ? "Bạn có thể bổ sung thông tin theo yêu cầu của tiêu chí này."
+          : `Bạn vẫn có thể tải minh chứng phù hợp cho tiêu chí ${criterionLabels[criterion]}.`}
       </div>
       <ButtonV2
         type="button"
@@ -3487,7 +2861,7 @@ function DynamicFormDisclosure({
         disabled={!canEdit}
       >
         <Plus aria-hidden="true" />
-        Thêm dữ liệu
+        Thêm thông tin
       </ButtonV2>
     </details>
   );
@@ -3521,7 +2895,7 @@ function GuideSheet({
         <div className="mt-6 space-y-5">
           {completion?.description ? (
             <p className="text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-              {completion.description}
+              {getStudentFacingRequirementCopy(completion.description)}
             </p>
           ) : null}
           {requirementGroups.length ? (
@@ -3533,12 +2907,12 @@ function GuideSheet({
                 {requirementGroups.map((group) => (
                   <div key={group.key} className="py-3">
                     <div className="text-[14px] font-semibold leading-[22px] text-[var(--student-v2-text-primary)]">
-                      {group.title}
+                      {getStudentFacingRequirementCopy(group.title) ?? "Điều kiện cần đáp ứng"}
                     </div>
                     <ul className="mt-2 space-y-1 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
                       {group.requirements.map((requirement) => (
                         <li key={requirement.key}>
-                          {getRequirementPresentation(requirement).label}
+                          {getStudentRequirementLabel(requirement)}
                         </li>
                       ))}
                     </ul>
@@ -3612,6 +2986,28 @@ function buildWorkspaceCriterionState({
     getCriteriaUiState(criterion, evidences, precheck, []),
     completion,
   );
+  const freeUploadEvidenceCount = evidences.filter(
+    (evidence) => evidence.criterion === criterion,
+  ).length;
+  if (
+    completion?.status === "not_started" &&
+    freeUploadEvidenceCount > 0 &&
+    (criterion === "physical" || criterion === "integration")
+  ) {
+    const description = `Đã tải lên ${freeUploadEvidenceCount} minh chứng. Cán bộ sẽ đối chiếu theo điều kiện khi bạn nộp hồ sơ.`;
+    return {
+      ...base,
+      status: "needs_review",
+      statusLabel: "Đã có minh chứng",
+      tone: "info",
+      evidenceCount: freeUploadEvidenceCount,
+      primaryMissingReason: description,
+      completionText: description,
+      progressStatus: "waiting",
+      displayLabel: "Đã có minh chứng",
+      displayDescription: description,
+    };
+  }
   const display = getStudentCriterionDisplayState({
     application,
     completion,
@@ -3726,23 +3122,6 @@ function buildDefinitionRows({
   return rows;
 }
 
-function getPathRequirements(completion: CriterionCompletionItem, preferredGroupKey: string) {
-  const preferredGroup = findRequirementGroup(completion, preferredGroupKey);
-  const oneOfGroup = (completion.requirementGroups ?? []).find(
-    (group) => group.operator === "one_of" && group.requirements?.length,
-  );
-  return (preferredGroup ?? oneOfGroup)?.requirements ?? [];
-}
-
-function isPhysicalPathKey(value: unknown): value is PhysicalPathKey {
-  return (
-    value === "healthy_student_title" ||
-    value === "sports_activity_or_award" ||
-    value === "sports_team_member" ||
-    value === "regular_sports_training"
-  );
-}
-
 function findRequirement(completion: CriterionCompletionItem, requirementKey: string) {
   return (completion.requirementGroups ?? [])
     .flatMap((group) => group.requirements ?? [])
@@ -3793,15 +3172,31 @@ function getPathTitle(requirement: RequirementItem, unknownLabel = "Hình thức
 
 function getPathDescription(requirement: RequirementItem) {
   return (
-    requirement.description ||
+    getStudentFacingRequirementCopy(requirement.description) ||
     formatSourceList(requirement.acceptedSources) ||
-    "Khai báo hoặc bổ sung minh chứng theo cấu hình hiện tại."
+    "Bổ sung thông tin hoặc minh chứng phù hợp với điều kiện này."
   );
 }
 
-function confirmUnsavedPathChange() {
-  if (typeof window === "undefined") return true;
-  return window.confirm("Bạn có thay đổi chưa lưu. Đổi hình thức sẽ bỏ nội dung đang nhập.");
+function getStudentFacingRequirementCopy(value?: string | null) {
+  const text = value?.trim();
+  if (
+    !text ||
+    /\b(path|key|backend|frontend|api|ocr|json|formschema|schema|endpoint|payload|token|gpa|file|upload|event hub|knowledge base)\b|[A-Z]{2,}_[A-Z0-9_]+/i.test(
+      text,
+    )
+  ) {
+    return undefined;
+  }
+  return text;
+}
+
+function getStudentRequirementLabel(requirement: RequirementItem) {
+  const title = getStudentFacingRequirementCopy(requirement.title);
+  return getSafeRequirementLabel({
+    ...requirement,
+    title: title ?? "",
+  });
 }
 
 function getRequirementDisplayValue(requirement?: RequirementItem) {
@@ -3928,16 +3323,6 @@ function dynamicFieldInputType(field: string): "text" | "date" | "number" {
   return "text";
 }
 
-function normalizeDynamicFieldValue(field: string, value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  if (dynamicFieldInputType(field) === "number") {
-    const numberValue = Number(trimmed);
-    return Number.isFinite(numberValue) ? numberValue : trimmed;
-  }
-  return trimmed;
-}
-
 function buildPathItems(group: RequirementGroup): PathSelectorListV2Item[] {
   return group.requirements.map((requirement) => ({
     id: requirement.key,
@@ -4008,7 +3393,7 @@ function getEvidenceMetadata(evidence: EvidenceResponse, applicationId: string) 
     evidence.sourceType === "event_import" ? "Dữ liệu chính thức" : "Minh chứng tải lên";
   return [
     sourceLabel,
-    evidence.sourceType !== "event_import" && fileName && fileName !== "Chưa có file"
+    evidence.sourceType !== "event_import" && fileName && fileName !== "Chưa có tệp"
       ? fileName
       : null,
     applicationId
@@ -4071,10 +3456,10 @@ function getEvidenceProcessingDetail(evidence: EvidenceResponse, cityInitialSubm
     return "Hệ thống đang đọc minh chứng";
   }
   if (evidence.indexingStatus === "failed" && cityInitialSubmission) {
-    return "OCR chưa đọc được; cán bộ sẽ kiểm tra file gốc đã lưu.";
+    return "Chưa đọc được nội dung minh chứng; cán bộ sẽ kiểm tra tệp gốc đã lưu.";
   }
   if (evidence.indexingStatus === "needs_manual_review" && cityInitialSubmission) {
-    return "Cán bộ sẽ kiểm tra file gốc.";
+    return "Cán bộ sẽ kiểm tra tệp gốc.";
   }
   if (evidence.indexingStatus === "failed") return "Không đọc được minh chứng";
   return undefined;

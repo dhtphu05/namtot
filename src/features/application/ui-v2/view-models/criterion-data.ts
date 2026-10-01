@@ -31,7 +31,7 @@ export function validateConductScoreValue(rawValue: string) {
 
 export function validateAcademicGpaValue(rawValue: string, scale: 4 | 10) {
   const value = Number(rawValue);
-  if (!rawValue || !Number.isFinite(value)) return "Vui lòng nhập GPA/ĐTB hợp lệ.";
-  if (value < 0 || value > scale) return `GPA/ĐTB phải nằm trong khoảng 0-${scale}.`;
+  if (!rawValue || !Number.isFinite(value)) return "Vui lòng nhập điểm học tập hợp lệ.";
+  if (value < 0 || value > scale) return `Điểm học tập phải nằm trong khoảng 0-${scale}.`;
   return null;
 }
