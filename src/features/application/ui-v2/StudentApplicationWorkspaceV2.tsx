@@ -52,6 +52,7 @@ import {
   useCitySubmissionEligibility,
   useStudentSubmissionDeadline,
   useAddIntegrationPathResponse,
+  useAddPhysicalPathEvidence,
   useAddVolunteerActivity,
   useCurrentApplication,
   useDeclareAcademicGpa,
@@ -155,6 +156,12 @@ type EvidenceDrawerContext = {
   suggestedEventId?: string;
 };
 
+type PhysicalPathKey =
+  | "healthy_student_title"
+  | "sports_activity_or_award"
+  | "sports_team_member"
+  | "regular_sports_training";
+
 type AssistantSearch = {
   source: "criterion";
   applicationId: string | undefined;
@@ -201,6 +208,7 @@ export function StudentApplicationWorkspaceV2() {
   const declareEthicsConductScore = useDeclareEthicsConductScore();
   const declareAcademicGpa = useDeclareAcademicGpa();
   const declarePhysicalCourseResult = useDeclarePhysicalCourseResult();
+  const addPhysicalPathEvidence = useAddPhysicalPathEvidence();
   const addVolunteerActivity = useAddVolunteerActivity();
   const addIntegrationPathResponse = useAddIntegrationPathResponse();
   const deleteEvidence = useDeleteEvidence();
@@ -221,6 +229,8 @@ export function StudentApplicationWorkspaceV2() {
     null,
   );
   const [eventLibraryOpen, setEventLibraryOpen] = useState(false);
+  const [eventLibraryRequirementKey, setEventLibraryRequirementKey] = useState<PhysicalPathKey>();
+  const [selectedPhysicalPathKey, setSelectedPhysicalPathKey] = useState<PhysicalPathKey>();
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceResponse | null>(null);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -325,6 +335,18 @@ export function StudentApplicationWorkspaceV2() {
     () => evidences.filter((item) => item.criterion === selectedCriterion),
     [evidences, selectedCriterion],
   );
+  const linkedPhysicalEvidenceIds = new Set(
+    (selectedCompletion?.requirementGroups ?? [])
+      .flatMap((group) => group.requirements ?? [])
+      .filter((requirement) => isPhysicalPathKey(requirement.key))
+      .flatMap((requirement) => requirement.currentResponses ?? [])
+      .filter((response) => response.status !== "superseded" && response.evidenceId)
+      .map((response) => response.evidenceId as string),
+  );
+  const unlinkedPhysicalEvidences =
+    selectedCriterion === "physical"
+      ? selectedEvidences.filter((evidence) => !linkedPhysicalEvidenceIds.has(evidence.id))
+      : [];
   const isSelectedLocked =
     isSupplementMode && supplementCriteria.size > 0 && !supplementCriteria.has(selectedCriterion);
   const canEditSelectedCriterion = canEditApplication && !isSelectedLocked;
@@ -390,7 +412,12 @@ export function StudentApplicationWorkspaceV2() {
 
   useEffect(() => {
     setOptimisticEvidences([]);
+    setSelectedPhysicalPathKey(undefined);
   }, [applicationId]);
+
+  useEffect(() => {
+    if (selectedCriterion !== "physical") setSelectedPhysicalPathKey(undefined);
+  }, [selectedCriterion]);
 
   useEffect(() => {
     if (isCriterion(routeSearch.criterion)) {
@@ -500,7 +527,7 @@ export function StudentApplicationWorkspaceV2() {
     openEvidenceDrawer(request.criterion, { suggestedEventId: request.eventId });
   }, [application, openCriterion, openEvidenceDrawer]);
 
-  const openOfficialEventLibrary = () => {
+  const openOfficialEventLibrary = (requirementKey?: string) => {
     if (!selectedSupportsOfficialEventImport) {
       toast.error("Tiêu chí này chưa hỗ trợ tìm minh chứng từ kho chính thức.");
       return;
@@ -509,6 +536,7 @@ export function StudentApplicationWorkspaceV2() {
       toast.error("Tiêu chí này đang ở chế độ chỉ xem.");
       return;
     }
+    setEventLibraryRequirementKey(isPhysicalPathKey(requirementKey) ? requirementKey : undefined);
     setEventLibraryOpen(true);
   };
 
@@ -817,7 +845,9 @@ export function StudentApplicationWorkspaceV2() {
                     declareEthicsConductScore.isPending ||
                     declareAcademicGpa.isPending
                   }
-                  savingPhysical={declarePhysicalCourseResult.isPending}
+                  savingPhysical={
+                    declarePhysicalCourseResult.isPending || addPhysicalPathEvidence.isPending
+                  }
                   onDeclarePhysicalCourseResult={(input) =>
                     declarePhysicalCourseResult.mutateAsync({
                       id: application.id,
@@ -839,6 +869,29 @@ export function StudentApplicationWorkspaceV2() {
                     })
                   }
                   onFindOfficialEvent={openOfficialEventLibrary}
+                  selectedPhysicalPathKey={selectedPhysicalPathKey}
+                  onSelectedPhysicalPathChange={setSelectedPhysicalPathKey}
+                  existingPhysicalEvidences={unlinkedPhysicalEvidences}
+                  onAttachPhysicalEvidence={(requirementKey, evidence) => {
+                    void addPhysicalPathEvidence
+                      .mutateAsync({
+                        id: application.id,
+                        requirementKey,
+                        evidenceId: evidence.id,
+                        sourceType:
+                          evidence.sourceType === "event_import"
+                            ? "official_event"
+                            : "manual_evidence",
+                      })
+                      .then(() => toast.success("Đã gắn minh chứng vào hình thức thể lực đã chọn."))
+                      .catch((error: unknown) =>
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : "Không thể gắn minh chứng vào hình thức thể lực.",
+                        ),
+                      );
+                  }}
                   onRequirementAction={(requirement) =>
                     openEvidenceDrawer(selectedCriterion, {
                       requirementKey: requirement.key,
@@ -854,7 +907,20 @@ export function StudentApplicationWorkspaceV2() {
                   evidences={selectedEvidences}
                   isLoading={evidencesQuery.isLoading}
                   isError={evidencesQuery.isError}
-                  onAddEvidence={() => openEvidenceDrawer(selectedCriterion)}
+                  onAddEvidence={() =>
+                    openEvidenceDrawer(
+                      selectedCriterion,
+                      selectedCriterion === "physical" && selectedPhysicalPathKey
+                        ? {
+                            requirementKey: selectedPhysicalPathKey,
+                            requirementLabel: getSafeRequirementLabel({
+                              key: selectedPhysicalPathKey,
+                              title: selectedPhysicalPathKey,
+                            }),
+                          }
+                        : undefined,
+                    )
+                  }
                   onViewEvidence={setSelectedEvidence}
                   onDeleteEvidence={(evidence) => {
                     if (!canEditSelectedCriterion) {
@@ -994,14 +1060,40 @@ export function StudentApplicationWorkspaceV2() {
           title={officialEventLibraryTitleForCriterion(selectedCriterion)}
           criterion={selectedCriterion}
           hideCriterionFilters
-          onOpenChange={setEventLibraryOpen}
+          onOpenChange={(open) => {
+            setEventLibraryOpen(open);
+            if (!open) setEventLibraryRequirementKey(undefined);
+          }}
           onManualUpload={(criterion) => openEvidenceDrawer(criterion)}
           onImported={(evidence, item) => {
             if (isCriterion(item.criterion)) openCriterion(item.criterion);
             if (evidence) {
               const nextEvidence = normalizeOptimisticEvidence(evidence, application.id);
-              setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
-              setSelectedEvidence(nextEvidence);
+              if (item.criterion === "physical" && eventLibraryRequirementKey) {
+                void addPhysicalPathEvidence
+                  .mutateAsync({
+                    id: application.id,
+                    requirementKey: eventLibraryRequirementKey,
+                    evidenceId: nextEvidence.id,
+                    sourceType: "official_event",
+                  })
+                  .then(() => {
+                    setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
+                    setSelectedEvidence(nextEvidence);
+                    setEventLibraryRequirementKey(undefined);
+                    toast.success("Đã gắn sự kiện chính thức vào hình thức thể lực đã chọn.");
+                  })
+                  .catch((error: unknown) =>
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Không thể gắn sự kiện vào hình thức thể lực.",
+                    ),
+                  );
+              } else {
+                setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
+                setSelectedEvidence(nextEvidence);
+              }
             }
             void evidencesQuery.refetch();
           }}
@@ -1026,6 +1118,30 @@ export function StudentApplicationWorkspaceV2() {
           onCreated={(created) => {
             const nextEvidence = normalizeOptimisticEvidence(created, application.id);
             setOptimisticEvidences((current) => upsertEvidence(current, nextEvidence));
+            const requirementKey = evidenceDrawerContext.requirementKey ?? selectedPhysicalPathKey;
+            if (nextEvidence.criterion === "physical" && isPhysicalPathKey(requirementKey)) {
+              void addPhysicalPathEvidence
+                .mutateAsync({
+                  id: application.id,
+                  requirementKey,
+                  evidenceId: nextEvidence.id,
+                  sourceType:
+                    nextEvidence.sourceType === "event_import"
+                      ? "official_event"
+                      : "manual_evidence",
+                })
+                .then(() => {
+                  setSelectedPhysicalPathKey(requirementKey);
+                  toast.success("Đã gắn minh chứng vào hình thức thể lực đã chọn.");
+                })
+                .catch((error: unknown) =>
+                  toast.error(
+                    error instanceof Error
+                      ? `Đã tải minh chứng nhưng chưa gắn được vào hình thức thể lực: ${error.message}`
+                      : "Đã tải minh chứng nhưng chưa gắn được vào hình thức thể lực.",
+                  ),
+                );
+            }
             setEvidenceDrawerContext(null);
             openCriterion(nextEvidence.criterion);
           }}
@@ -1450,6 +1566,10 @@ function CriterionDataSection({
   savingIntegrationPath,
   onAddIntegrationPath,
   onFindOfficialEvent,
+  selectedPhysicalPathKey,
+  onSelectedPhysicalPathChange,
+  existingPhysicalEvidences,
+  onAttachPhysicalEvidence,
   onRequirementAction,
 }: {
   completion?: CriterionCompletionItem;
@@ -1489,7 +1609,11 @@ function CriterionDataSection({
     requirementKey: string;
     payloadJson: Record<string, unknown>;
   }) => Promise<unknown>;
-  onFindOfficialEvent: () => void;
+  onFindOfficialEvent: (requirementKey?: string) => void;
+  selectedPhysicalPathKey?: PhysicalPathKey;
+  onSelectedPhysicalPathChange: (requirementKey: PhysicalPathKey | undefined) => void;
+  existingPhysicalEvidences: EvidenceResponse[];
+  onAttachPhysicalEvidence: (requirementKey: PhysicalPathKey, evidence: EvidenceResponse) => void;
   onRequirementAction: (requirement: RequirementItem) => void;
 }) {
   const groups = completion?.requirementGroups ?? [];
@@ -1553,6 +1677,10 @@ function CriterionDataSection({
         schoolYear={schoolYear ?? ""}
         canEdit={canEdit}
         saving={savingPhysical}
+        selectedPathKey={selectedPhysicalPathKey}
+        onSelectedPathChange={onSelectedPhysicalPathChange}
+        existingEvidences={existingPhysicalEvidences}
+        onAttachExistingEvidence={onAttachPhysicalEvidence}
         onDeclareCourseResult={onDeclarePhysicalCourseResult}
         onFindOfficialEvent={onFindOfficialEvent}
         onRequirementAction={onRequirementAction}
@@ -2035,6 +2163,10 @@ function PhysicalDataSectionV2({
   schoolYear,
   canEdit,
   saving,
+  selectedPathKey: initialSelectedPathKey,
+  onSelectedPathChange,
+  existingEvidences,
+  onAttachExistingEvidence,
   onDeclareCourseResult,
   onFindOfficialEvent,
   onRequirementAction,
@@ -2043,6 +2175,10 @@ function PhysicalDataSectionV2({
   schoolYear: string;
   canEdit: boolean;
   saving: boolean;
+  selectedPathKey?: PhysicalPathKey;
+  onSelectedPathChange: (requirementKey: PhysicalPathKey | undefined) => void;
+  existingEvidences: EvidenceResponse[];
+  onAttachExistingEvidence: (requirementKey: PhysicalPathKey, evidence: EvidenceResponse) => void;
   onDeclareCourseResult: (input: {
     resultType: "score" | "classification";
     value?: number;
@@ -2050,12 +2186,15 @@ function PhysicalDataSectionV2({
     schoolYear: string;
     replaceExisting?: boolean;
   }) => Promise<unknown>;
-  onFindOfficialEvent: () => void;
+  onFindOfficialEvent: (requirementKey?: string) => void;
   onRequirementAction: (requirement: RequirementItem) => void;
 }) {
   const paths = getPathRequirements(completion, "physical_path");
   const existingPath = paths.find((path) => hasRequirementResponse(path));
-  const [selectedPathKey, setSelectedPathKey] = useState(existingPath?.key ?? "");
+  const existingPathKey = existingPath?.key;
+  const [selectedPathKey, setSelectedPathKey] = useState(
+    initialSelectedPathKey ?? existingPath?.key ?? "",
+  );
   const [selectorOpen, setSelectorOpen] = useState(!existingPath);
   const [courseFormOpen, setCourseFormOpen] = useState(false);
   const [resultType, setResultType] = useState<"score" | "classification">("score");
@@ -2066,9 +2205,17 @@ function PhysicalDataSectionV2({
   const selectedPath = paths.find((path) => path.key === selectedPathKey);
   const hasUnsavedData = courseValue.trim() || classification.trim();
 
+  useEffect(() => {
+    if (isPhysicalPathKey(existingPathKey)) {
+      setSelectedPathKey(existingPathKey);
+      onSelectedPathChange(existingPathKey);
+    }
+  }, [existingPathKey, onSelectedPathChange]);
+
   const selectPath = (pathKey: string) => {
     if (hasUnsavedData && !confirmUnsavedPathChange()) return;
     setSelectedPathKey(pathKey);
+    onSelectedPathChange(isPhysicalPathKey(pathKey) ? pathKey : undefined);
     setSelectorOpen(false);
     setCourseFormOpen(false);
     setCourseValue("");
@@ -2151,7 +2298,7 @@ function PhysicalDataSectionV2({
                   type="button"
                   variant="secondary"
                   size="compact"
-                  onClick={onFindOfficialEvent}
+                  onClick={() => onFindOfficialEvent(selectedPath.key)}
                   disabled={!canEdit}
                 >
                   <Search aria-hidden="true" />
@@ -2266,10 +2413,32 @@ function PhysicalDataSectionV2({
             <PathActionAreaV2
               requirement={selectedPath}
               canEdit={canEdit}
-              onFindOfficialEvent={onFindOfficialEvent}
+              onFindOfficialEvent={() => onFindOfficialEvent(selectedPath.key)}
               onRequirementAction={onRequirementAction}
             />
           )}
+          {isPhysicalPathKey(selectedPath.key) && existingEvidences.length ? (
+            <div className="grid min-w-0 gap-2 border-t border-[var(--student-v2-border-default)] pt-3">
+              <p className="text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
+                Bạn đã tải minh chứng cho tiêu chí này? Gắn minh chứng vào hình thức đang chọn.
+              </p>
+              {existingEvidences.map((evidence) => (
+                <ButtonV2
+                  key={evidence.id}
+                  type="button"
+                  variant="tertiary"
+                  className="min-w-0 justify-start text-left"
+                  disabled={!canEdit || saving}
+                  onClick={() =>
+                    onAttachExistingEvidence(selectedPath.key as PhysicalPathKey, evidence)
+                  }
+                >
+                  <Upload aria-hidden="true" />
+                  <span className="truncate">Gắn minh chứng đã tải: {evidence.evidenceName}</span>
+                </ButtonV2>
+              ))}
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -3563,6 +3732,15 @@ function getPathRequirements(completion: CriterionCompletionItem, preferredGroup
     (group) => group.operator === "one_of" && group.requirements?.length,
   );
   return (preferredGroup ?? oneOfGroup)?.requirements ?? [];
+}
+
+function isPhysicalPathKey(value: unknown): value is PhysicalPathKey {
+  return (
+    value === "healthy_student_title" ||
+    value === "sports_activity_or_award" ||
+    value === "sports_team_member" ||
+    value === "regular_sports_training"
+  );
 }
 
 function findRequirement(completion: CriterionCompletionItem, requirementKey: string) {

@@ -613,6 +613,7 @@ export function useAddPhysicalPathEvidence() {
       evidenceId,
       payloadJson,
       replaceExisting,
+      sourceType,
     }: {
       id: string;
       requirementKey:
@@ -623,13 +624,14 @@ export function useAddPhysicalPathEvidence() {
       evidenceId: string;
       payloadJson?: Record<string, unknown>;
       replaceExisting?: boolean;
+      sourceType?: "manual_evidence" | "official_event";
     }) => {
       const res = await applicationApi.addPhysicalPathEvidence(id, {
         requirementKey,
         evidenceId,
         payloadJson,
         replaceExisting,
-        sourceType: "manual_evidence",
+        sourceType: sourceType ?? "manual_evidence",
       });
       return res.data;
     },
