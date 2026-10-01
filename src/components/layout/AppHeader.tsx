@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, ChevronDown, LogOut } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,7 +18,7 @@ import { useNotifications } from "@/features/notifications/hooks/useNotification
 import { useApp } from "@/lib/store";
 import hsvvnEmblemUrl from "@/assets/hsvvn-emblem.webp";
 
-export function AppHeader() {
+export function AppHeader({ onOpenNavigation }: { onOpenNavigation?: () => void } = {}) {
   const user = useAuth((state) => state.user);
   const refreshToken = useAuth((state) => state.refreshToken);
   const clearAuth = useAuth((state) => state.clearAuth);
@@ -48,27 +48,42 @@ export function AppHeader() {
   }
 
   return (
-    <header className="z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-primary)] px-4 sm:px-6">
-      <Link
-        to="/app"
-        aria-label="Về trang chính 5TOT Đà Nẵng"
-        className="flex min-h-11 min-w-0 items-center gap-2.5 rounded-[var(--radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
-      >
-        <img
-          src={hsvvnEmblemUrl}
-          alt=""
-          aria-hidden="true"
-          className="h-8 w-8 shrink-0 object-contain"
-        />
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-bold leading-5 text-[var(--text-primary)]">
-            5TOT Đà Nẵng
+    <header className="z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--surface-primary)] px-2 sm:gap-3 sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        {onOpenNavigation ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="min-h-11 min-w-11 shrink-0 md:hidden"
+            aria-label="Mở điều hướng"
+            aria-haspopup="dialog"
+            onClick={onOpenNavigation}
+          >
+            <Menu aria-hidden="true" />
+          </Button>
+        ) : null}
+        <Link
+          to="/app"
+          aria-label="Về trang chính 5TOT Đà Nẵng"
+          className="flex min-h-11 min-w-0 items-center gap-2.5 rounded-[var(--radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
+        >
+          <img
+            src={hsvvnEmblemUrl}
+            alt=""
+            aria-hidden="true"
+            className="h-8 w-8 shrink-0 object-contain"
+          />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-bold leading-5 text-[var(--text-primary)]">
+              5TOT Đà Nẵng
+            </span>
+            <span className="hidden text-[11px] leading-4 text-[var(--text-muted)] lg:block">
+              Hội Sinh viên Việt Nam thành phố Đà Nẵng
+            </span>
           </span>
-          <span className="hidden text-[11px] leading-4 text-[var(--text-muted)] sm:block">
-            Hội Sinh viên Việt Nam
-          </span>
-        </span>
-      </Link>
+        </Link>
+      </div>
 
       <div className="flex shrink-0 items-center gap-2">
         <Button

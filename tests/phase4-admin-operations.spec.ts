@@ -7,6 +7,71 @@ const corsHeaders = {
   "access-control-allow-credentials": "true",
 };
 
+test("admin lands on the operations home and can open existing admin workflows", async ({
+  page,
+}) => {
+  await installAdminMocks(page, []);
+
+  await page.goto("/app", { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\/app\/admin$/);
+
+  const main = page.getByRole("main");
+  await expect(main.getByRole("heading", { name: "Trung tâm vận hành quản trị" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Điều hành xét duyệt" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Dữ liệu nghiệp vụ" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Quản trị nền tảng" })).toBeVisible();
+
+  const destinations = [
+    ["Theo dõi Thành phố", "/app/analytics"],
+    ["Hàng chờ review", "/app/queue"],
+    ["Phân công cán bộ", "/app/assignment"],
+    ["Hồ sơ và kết quả", "/app/manager/results"],
+    ["Resolution Hub", "/app/resolution"],
+    ["Báo cáo & export", "/app/export"],
+    ["Quyết định công nhận", "/app/award-registry"],
+    ["Sự kiện chính thức", "/app/event-registry"],
+    ["Import quyết định", "/app/decision-imports"],
+    ["Kho tiền lệ minh chứng", "/app/evidence-knowledge"],
+    ["Đơn vị / Trường", "/app/admin/workspaces"],
+    ["Người dùng", "/app/admin/users"],
+    ["Chuyên môn City Officer", "/app/admin/officers"],
+    ["Bộ tiêu chí (chỉ đọc)", "/app/settings"],
+    ["Audit log", "/app/audit"],
+  ] as const;
+
+  for (const [name, href] of destinations) {
+    const accessibleName = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    await expect(main.getByRole("link", { name: accessibleName })).toHaveAttribute("href", href);
+  }
+  await expect(main.getByText(/xác minh điều kiện/i)).toHaveCount(0);
+
+  await page.setViewportSize({ width: 768, height: 900 });
+  const hasOverflowingGroup = await main
+    .locator("section")
+    .evaluateAll((sections) =>
+      sections.some((section) => section.scrollWidth > section.clientWidth),
+    );
+  expect(hasOverflowingGroup).toBe(false);
+
+  await main.getByRole("link", { name: /Theo dõi Thành phố/ }).click();
+  await expect(page).toHaveURL(/\/app\/analytics$/);
+  await expect(page.getByRole("heading", { name: "Quản lý mùa xét Thành phố" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hồ sơ cần xác minh điều kiện" })).toHaveCount(0);
+
+  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\/app\/admin$/);
+  await expect(
+    page.getByRole("main").getByRole("heading", { name: "Trung tâm vận hành quản trị" }),
+  ).toBeVisible();
+
+  await page
+    .getByRole("main")
+    .getByRole("link", { name: /^Người dùng/ })
+    .click();
+  await expect(page).toHaveURL(/\/app\/admin\/users$/);
+  await expect(page.getByRole("heading", { name: "Quản lý người dùng" })).toBeVisible();
+});
+
 test("admin manages accounts and City Officer specializations", async ({ page }) => {
   const writes: Array<{ path: string; method: string; body: unknown }> = [];
   await installAdminMocks(page, writes);
@@ -86,18 +151,21 @@ test("admin can reset a user's password with policy and confirmation validation"
 
 test("admin password reset displays backend errors without clearing the form", async ({ page }) => {
   await installAdminMocks(page, []);
-  await page.route("http://localhost:8080/api/admin/users/*/reset-password", async (route) => {
-    await route.fulfill({
-      status: 422,
-      headers: { ...corsHeadersFor(route), "content-type": "application/json" },
-      body: JSON.stringify({
-        success: false,
-        data: null,
-        error: { message: "Không thể đặt lại mật khẩu." },
-        meta: {},
-      }),
-    });
-  });
+  await page.route(
+    /^https?:\/\/[^/]+\/api\/admin\/users\/[^/]+\/reset-password(?:\?.*)?$/,
+    async (route) => {
+      await route.fulfill({
+        status: 422,
+        headers: { ...corsHeadersFor(route), "content-type": "application/json" },
+        body: JSON.stringify({
+          success: false,
+          data: null,
+          error: { message: "Không thể đặt lại mật khẩu." },
+          meta: {},
+        }),
+      });
+    },
+  );
   await page.goto("/app/admin/users", { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Đặt lại mật khẩu Nguyễn An" }).click();
   const dialog = page.getByRole("dialog", { name: "Đặt lại mật khẩu" });
@@ -169,6 +237,8 @@ test("non-admin cannot open Admin account screens directly", async ({ page }) =>
   await page.goto("/app/analytics", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("link", { name: "Đơn vị / Trường" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Người dùng" })).toHaveCount(0);
+  await page.goto("/app/admin", { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\/login$/);
   await page.goto("/app/admin/users", { waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/login$/);
 });
@@ -359,9 +429,15 @@ async function installRoleMocks(
   role: string,
   handler?: (route: Route, path: string, method: string) => Promise<void>,
 ) {
-  await page.route("http://localhost:8080/api/**", async (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    const isApiRequest = path.includes("/api/");
+    const isApiTransport = ["fetch", "xhr"].includes(request.resourceType());
+    if (!isApiRequest || (!isApiTransport && request.method() !== "OPTIONS")) {
+      await route.continue();
+      return;
+    }
     const method = request.method();
     if (method === "OPTIONS") {
       await route.fulfill({ status: 204, headers: corsHeadersFor(route), body: "" });

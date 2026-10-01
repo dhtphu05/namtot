@@ -48,6 +48,7 @@ type NavItem = Omit<NavigationItem, "icon"> & {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
 };
 type NavGroup = { group: string; items: NavItem[] };
+type SidebarProps = { variant?: "desktop" | "mobile"; onNavigate?: () => void };
 
 const navIcons: Record<NavigationIcon, NavItem["icon"]> = {
   dashboard: LayoutDashboard,
@@ -74,56 +75,61 @@ const navIcons: Record<NavigationIcon, NavItem["icon"]> = {
   collective: UsersRound,
 };
 
-export function Sidebar() {
+export function Sidebar({ variant = "desktop", onNavigate }: SidebarProps) {
   const user = useAuth((s) => s.user);
   const storedRole = useApp((s) => s.role);
   const authenticatedRole = user ? toUiRole(user.role) : "student";
   const role = ENABLE_DEMO_ROLE_SWITCH && isUiRole(storedRole) ? storedRole : authenticatedRole;
   const groups = getNavGroups(role, user?.role);
+  const isMobile = variant === "mobile";
   const isV2Sidebar = STUDENT_APPLICATION_UI_V2;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const activeItem = findActiveItem(groups, pathname, role);
+  const desktopSidebarClass =
+    role === "student" && isV2Sidebar ? "hidden w-[296px] md:flex" : "hidden w-[240px] md:flex";
 
   return (
     <aside
-      className={`h-[100dvh] shrink-0 flex-col bg-white ${
+      className={`${isMobile ? "flex h-full w-full flex-col" : "h-[100dvh] shrink-0 flex-col"} bg-white ${
         isV2Sidebar
           ? "border-r border-[var(--student-v2-divider)]"
           : "shadow-[1px_0_0_rgba(15,23,42,0.05)] backdrop-blur"
-      } ${
-        role === "student"
-          ? isV2Sidebar
-            ? "hidden w-[296px] md:flex"
-            : "hidden w-[240px] md:flex"
-          : isV2Sidebar
-            ? "flex w-[240px]"
-            : "flex w-[240px]"
-      }`}
+      } ${!isMobile ? desktopSidebarClass : ""}`}
     >
-      <div className={isV2Sidebar ? "shrink-0 px-4 pb-3 pt-5" : "shrink-0 px-4 pb-3 pt-5"}>
+      <div className={`shrink-0 px-4 pb-3 pt-5 ${isMobile ? "pr-14" : ""}`}>
         {isV2Sidebar ? (
           <Link
             to="/app"
+            onClick={onNavigate}
             className="block rounded-[var(--student-v2-radius-section)] transition-colors duration-[120ms] hover:bg-[var(--student-v2-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)] focus-visible:ring-offset-2"
             aria-label="Về tổng quan hồ sơ Sinh viên 5 tốt"
           >
             <StudentV2Lockup
               workspaceName={user?.workspace?.name}
-              workspaceShortName={user?.workspace?.shortName}
+              workspaceShortName={
+                user?.role === "city_officer" ||
+                user?.role === "city_manager" ||
+                user?.role === "city_committee"
+                  ? null
+                  : user?.workspace?.shortName
+              }
             />
           </Link>
         ) : (
-          <Link to="/app" className="flex items-center gap-3 px-2">
+          <Link to="/app" onClick={onNavigate} className="flex min-w-0 items-center gap-3 px-2">
             <img
               src={hsvvnEmblemUrl}
               alt="Biểu trưng Hội Sinh viên Việt Nam"
               className="h-10 w-10 shrink-0 rounded-full object-contain"
             />
-            <div>
+            <div className="min-w-0">
               <div className="text-[15px] font-bold leading-tight text-[#0F172A]">
                 HỘI SINH VIÊN VIỆT NAM
               </div>
-              <div className="text-[11px] font-medium text-[#64748B]">
+              <div className="mt-0.5 text-[11px] font-semibold leading-4 text-[#64748B]">
+                Thành phố Đà Nẵng
+              </div>
+              <div className="mt-0.5 text-[11px] font-medium leading-4 text-[#64748B]">
                 Hệ thống quản lý Sinh viên 5 tốt
               </div>
             </div>
@@ -164,6 +170,7 @@ export function Sidebar() {
                     <li key={`${group.group}-${item.to}-${item.label}`}>
                       <Link
                         to={item.to}
+                        onClick={onNavigate}
                         aria-current={active ? "page" : undefined}
                         className={
                           isV2Sidebar
@@ -224,10 +231,10 @@ function StudentV2Lockup({
         aria-hidden="true"
       />
       <div className="min-w-0">
-        <h2 className="m-0 whitespace-nowrap text-[14px] font-bold uppercase leading-[18px] text-[var(--student-v2-institutional-blue)]">
+        <h2 className="m-0 min-w-0 text-[14px] font-bold uppercase leading-[18px] text-[var(--student-v2-institutional-blue)]">
           HỘI SINH VIÊN VIỆT NAM
         </h2>
-        <div className="mt-1 truncate text-[14px] font-semibold leading-5 text-[var(--student-v2-institutional-blue)]">
+        <div className="mt-1 text-[14px] font-semibold leading-5 text-[var(--student-v2-institutional-blue)] [overflow-wrap:anywhere]">
           {workspaceLabel}
         </div>
         <div className="mt-0.5 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">

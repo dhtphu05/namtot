@@ -206,7 +206,7 @@ function Signup() {
             />
             <div>
               <p className="text-sm font-semibold text-[#0057C2]">
-                Hội Sinh viên Việt Nam TP. Đà Nẵng
+                Hội Sinh viên Việt Nam thành phố Đà Nẵng
               </p>
               <h1 className="mt-1 text-2xl font-bold text-[#123B6D]">Tạo tài khoản sinh viên</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#526174]">

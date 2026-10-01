@@ -37,7 +37,7 @@ test.describe("institution registry signup contract", () => {
 
     await expect(selector).toHaveText(institutions[1].name);
     await expect(selector.locator("span").first()).toHaveCSS("white-space", "normal");
-    await expect(page.getByText("Hội Sinh viên Việt Nam TP. Đà Nẵng")).toBeVisible();
+    await expect(page.getByText("Hội Sinh viên Việt Nam thành phố Đà Nẵng")).toBeVisible();
     await expect(page.getByRole("combobox")).toHaveCount(1);
   });
 

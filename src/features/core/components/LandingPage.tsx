@@ -66,7 +66,7 @@ export function LandingPage() {
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold text-[#123B6D]">5TOT Đà Nẵng</span>
               <span className="hidden text-xs text-[#526174] sm:block">
-                Hội Sinh viên Việt Nam TP. Đà Nẵng
+                Hội Sinh viên Việt Nam thành phố Đà Nẵng
               </span>
             </span>
           </Link>
@@ -99,7 +99,7 @@ export function LandingPage() {
         <section className="grid gap-8 border-b border-[#DCE3EB] py-12 sm:py-16 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] lg:items-center lg:gap-16 lg:py-20">
           <div>
             <p className="text-sm font-semibold text-[#0057C2]">
-              Hội Sinh viên Việt Nam TP. Đà Nẵng
+              Hội Sinh viên Việt Nam thành phố Đà Nẵng
             </p>
             <h1 className="mt-3 text-4xl font-bold tracking-tight text-[#123B6D] sm:text-5xl">
               5TOT Đà Nẵng
@@ -203,7 +203,7 @@ export function LandingPage() {
 
       <footer className="border-t border-[#DCE3EB] bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-5 text-sm text-[#526174] sm:px-8">
-          <span>Hội Sinh viên Việt Nam TP. Đà Nẵng</span>
+          <span>Hội Sinh viên Việt Nam thành phố Đà Nẵng</span>
           <Link
             to="/signup"
             className="font-semibold text-[#0057C2] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0057C2]"

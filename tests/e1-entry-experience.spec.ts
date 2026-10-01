@@ -17,7 +17,7 @@ test.describe("E1 public entry", () => {
     await expect(
       page.getByText("Hệ thống quản lý và xét chọn Sinh viên 5 tốt cấp Thành phố"),
     ).toBeVisible();
-    await expect(page.getByText("Hội Sinh viên Việt Nam TP. Đà Nẵng").first()).toBeVisible();
+    await expect(page.getByText("Hội Sinh viên Việt Nam thành phố Đà Nẵng").first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Đăng nhập hệ thống" }).first()).toHaveAttribute(
       "href",
       "/login",
