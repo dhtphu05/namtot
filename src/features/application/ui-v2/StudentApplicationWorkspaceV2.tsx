@@ -71,9 +71,12 @@ import {
   formatStudentDate,
   getFileName,
   getPrimaryFile,
+  isImageFile,
+  isPdfFile,
   studentCriterionLabel,
 } from "@/features/evidence/components/student-evidence-utils";
 import {
+  useEvidencePreviewVisibility,
   useDeleteEvidence,
   useEvidences,
   useSignedFileUrl,
@@ -3248,34 +3251,40 @@ function StudentEvidenceGalleryCard({
   const primaryFile = getPrimaryFile(evidence);
   const existingPreviewUrl =
     primaryFile?.signedUrl ?? primaryFile?.url ?? primaryFile?.publicUrl ?? null;
+  const canPreviewFile = Boolean(
+    primaryFile && (isImageFile(primaryFile) || isPdfFile(primaryFile)),
+  );
+  const { elementRef, isNearViewport } = useEvidencePreviewVisibility();
   const signedUrl = useSignedFileUrl(
     primaryFile?.id,
-    Boolean(primaryFile?.id) && !existingPreviewUrl,
+    isNearViewport && canPreviewFile && Boolean(primaryFile?.id) && !existingPreviewUrl,
   );
   const previewUrl = existingPreviewUrl ?? signedUrl.data ?? undefined;
 
   return (
-    <EvidenceCardV2
-      title={evidence.evidenceName || "Minh chứng chưa đặt tên"}
-      metadata={getEvidenceMetadata(evidence, applicationId)}
-      context={studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]}
-      processingDetail={getEvidenceProcessingDetail(evidence, cityInitialSubmission)}
-      status={mapEvidenceToProgressStatus(evidence, cityInitialSubmission)}
-      preview={getEvidencePreview(evidence, previewUrl, signedUrl.isLoading)}
-      onOpen={() => onViewEvidence(evidence)}
-      actionItems={[
-        { label: "Xem minh chứng", onSelect: () => onViewEvidence(evidence) },
-        ...(canEdit
-          ? [
-              {
-                label: "Xóa minh chứng",
-                onSelect: () => onDeleteEvidence(evidence),
-                destructive: true,
-              },
-            ]
-          : []),
-      ]}
-    />
+    <div ref={elementRef}>
+      <EvidenceCardV2
+        title={evidence.evidenceName || "Minh chứng chưa đặt tên"}
+        metadata={getEvidenceMetadata(evidence, applicationId)}
+        context={studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]}
+        processingDetail={getEvidenceProcessingDetail(evidence, cityInitialSubmission)}
+        status={mapEvidenceToProgressStatus(evidence, cityInitialSubmission)}
+        preview={getEvidencePreview(evidence, previewUrl, signedUrl.isLoading)}
+        onOpen={() => onViewEvidence(evidence)}
+        actionItems={[
+          { label: "Xem minh chứng", onSelect: () => onViewEvidence(evidence) },
+          ...(canEdit
+            ? [
+                {
+                  label: "Xóa minh chứng",
+                  onSelect: () => onDeleteEvidence(evidence),
+                  destructive: true,
+                },
+              ]
+            : []),
+        ]}
+      />
+    </div>
   );
 }
 

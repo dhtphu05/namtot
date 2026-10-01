@@ -1,6 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-const apiBase = "http://localhost:8080";
+const apiPattern = /^https?:\/\/[^/]+\/api(?:\/|\?)/;
 
 test.describe("Student evidence workspace S3 + S4", () => {
   test("shows the evidence library with exactly five criteria and friendly status copy", async ({
@@ -102,6 +102,88 @@ test.describe("Student evidence workspace S3 + S4", () => {
     await expect(page.locator("body")).not.toContainText(
       /pending_indexing|ocr_processing|extracting_fields/,
     );
+  });
+
+  test("adds multiple files to one evidence and resumes failed uploads without duplicating it", async ({
+    page,
+  }) => {
+    let createCount = 0;
+    const uploads: Array<{ evidenceId: string; fileName: string }> = [];
+    await installEvidenceApi(page, {
+      failUploadOnce: "theory.jpg",
+      onCreate: () => {
+        createCount += 1;
+      },
+      onUpload: (evidenceId, fileName) => uploads.push({ evidenceId, fileName }),
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openStudentPage(page, "/app/upload");
+    await page.getByRole("button", { name: "Thêm minh chứng" }).first().click();
+
+    const dialog = page.getByRole("dialog", { name: "Thêm minh chứng" });
+    const bounds = await dialog.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+    await dialog.getByRole("button", { name: "Học tập tốt" }).click();
+    await dialog.getByLabel("Tên minh chứng").fill("Bảng điểm và chứng nhận");
+    await dialog.locator("#evidence-upload").setInputFiles([
+      {
+        name: "transcript.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.from("%PDF transcript"),
+      },
+      {
+        name: "theory.jpg",
+        mimeType: "image/jpeg",
+        buffer: Buffer.from("fixture image"),
+      },
+      {
+        name: "award.png",
+        mimeType: "image/png",
+        buffer: Buffer.from("fixture image"),
+      },
+    ]);
+    await expect(dialog.getByText("3 file đã chọn", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("transcript.pdf", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("theory.jpg", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("award.png", { exact: true })).toBeVisible();
+    const evidenceQueueFits = await dialog.evaluate((element) => {
+      const dialogBounds = element.getBoundingClientRect();
+      const rows = Array.from(element.querySelectorAll("li")).map((row) =>
+        row.getBoundingClientRect(),
+      );
+      const buttons = Array.from(element.querySelectorAll("button")).map((button) =>
+        button.getBoundingClientRect(),
+      );
+      return (
+        element.scrollWidth <= element.clientWidth &&
+        rows.every((row) => row.left >= dialogBounds.left && row.right <= dialogBounds.right) &&
+        buttons.every(
+          (button) => button.left >= dialogBounds.left && button.right <= dialogBounds.right,
+        )
+      );
+    });
+    expect(evidenceQueueFits).toBe(true);
+    await dialog.getByRole("button", { name: "Thêm 3 file vào hồ sơ" }).click();
+
+    await expect(dialog.getByRole("alert")).toContainText("1 file chưa tải được");
+    expect(createCount).toBe(1);
+    expect(uploads).toEqual([
+      { evidenceId: "ev-new-1", fileName: "transcript.pdf" },
+      { evidenceId: "ev-new-1", fileName: "theory.jpg" },
+      { evidenceId: "ev-new-1", fileName: "award.png" },
+    ]);
+    await expect(dialog.getByText("Đã tải lên", { exact: true })).toHaveCount(2);
+    await expect(dialog.getByText("Tải thất bại", { exact: true })).toHaveCount(1);
+
+    await dialog.getByRole("button", { name: "Thử lại 1 file lỗi" }).click();
+    await expect(dialog).toBeHidden();
+    expect(createCount).toBe(1);
+    expect(uploads.at(-1)).toEqual({ evidenceId: "ev-new-1", fileName: "theory.jpg" });
+    await expect(
+      page.getByRole("article").filter({ hasText: "Bảng điểm và chứng nhận" }),
+    ).toBeVisible();
   });
 
   test("rejects unsupported and oversized files before creating evidence", async ({ page }) => {
@@ -507,12 +589,15 @@ async function installEvidenceApi(
     onCorrection?: (body: Record<string, unknown>) => void;
     onConfirmCard?: (body: Record<string, unknown>) => void;
     failSignedUrl?: boolean;
+    failUploadOnce?: string;
+    onUpload?: (evidenceId: string, fileName: string) => void;
   } = {},
 ) {
   const rows = [...(options.evidences ?? [])];
   const retriedJobs = new Set<string>();
+  const failedUploads = new Set<string>();
   let nextId = 1;
-  await page.route(`${apiBase}/api/**`, async (route) => {
+  await page.route(apiPattern, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
@@ -560,12 +645,33 @@ async function installEvidenceApi(
     }
     const fileUploadMatch = path.match(/^\/api\/evidences\/([^/]+)\/files$/);
     if (fileUploadMatch && request.method() === "POST") {
+      const fileName =
+        request
+          .postDataBuffer()
+          ?.toString()
+          .match(/filename="([^"]+)"/)?.[1] ?? "file";
+      options.onUpload?.(fileUploadMatch[1], fileName);
+      if (fileName === options.failUploadOnce && !failedUploads.has(fileName)) {
+        failedUploads.add(fileName);
+        return route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: false,
+            data: null,
+            error: { code: "UNAVAILABLE", message: "Không tải được file." },
+          }),
+        });
+      }
       const row = rows.find((item) => item.id === fileUploadMatch[1]);
       if (row) {
         row.indexingStatus = "pending_indexing";
         row.jobId = "job-new-evidence";
-        row.fileName = "xac-nhan-tinh-nguyen.pdf";
-        row.files = [{ id: "file-new", fileName: row.fileName, mimeType: "application/pdf" }];
+        row.fileName = fileName;
+        row.files = [
+          ...row.files,
+          { id: `file-${row.files.length + 1}`, fileName, mimeType: "application/pdf" },
+        ];
       }
       return json(route, { evidence: row, jobId: "job-new-evidence" });
     }

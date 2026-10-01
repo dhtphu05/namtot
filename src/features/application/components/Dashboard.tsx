@@ -385,7 +385,7 @@ function OfficerDashReal() {
               Sắp xếp theo quá hạn, sắp quá hạn, tài liệu cần kiểm tra và việc mới được giao.
             </div>
           </div>
-          <Link to="/app/queue?tab=actionable">
+          <Link to="/app/queue" search={{ tab: "actionable" }}>
             <Button size="sm" variant="ghost">
               Mở danh sách →
             </Button>

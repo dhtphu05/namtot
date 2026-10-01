@@ -117,6 +117,49 @@ test.describe("student application UI V2 acceptance", () => {
     expect(dimensions.content - dimensions.viewport).toBeLessThanOrEqual(1);
   });
 
+  test("loads evidence preview URLs only for cards near the viewport", async ({ page }) => {
+    const signedFileIds: string[] = [];
+    const manyEvidences = Array.from({ length: 24 }, (_, index) =>
+      evidence(
+        `perf-evidence-${index + 1}`,
+        `Perf minh chứng ${index + 1}`,
+        "academic",
+        "image/png",
+        "under_review",
+        "indexed",
+      ),
+    );
+
+    await page.route(apiUrl("/api/applications/app-1/evidences*"), async (route) =>
+      json(route, manyEvidences),
+    );
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      const match = url.pathname.match(/^\/api\/files\/([^/]+)\/signed-url$/);
+      if (match) signedFileIds.push(match[1]);
+    });
+
+    await loginAndGoto(page, "/app/application?criterion=academic");
+    await expect(page.getByRole("heading", { name: /^Perf minh chứng / })).toHaveCount(24);
+    await page
+      .getByRole("heading", { name: "Perf minh chứng 1", exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect.poll(() => signedFileIds.length).toBeGreaterThan(0);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+
+    const firstViewportRequestCount = signedFileIds.length;
+    expect(firstViewportRequestCount).toBeLessThanOrEqual(8);
+
+    await page
+      .getByRole("heading", { name: "Perf minh chứng 24", exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect.poll(() => signedFileIds.length).toBeGreaterThan(firstViewportRequestCount);
+    expect(signedFileIds.length).toBeLessThan(24);
+  });
+
   test("application overview fits the required desktop widths and 125% equivalent viewport", async ({
     page,
   }, testInfo) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import { CalendarDays, ChevronDown, ChevronUp, FileUp, Loader2, Search, X } from "lucide-react";
@@ -26,6 +26,7 @@ import { useCheckEventParticipant } from "@/features/event/hooks/useEvents";
 import { getCriterionDisplayLabel } from "@/features/application/presentation";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Criterion, EventParticipantCheck, EvidenceResponse } from "@/lib/api/types";
+import type { EvidenceResponse as CreatedEvidenceResponse } from "@/features/evidence/api/evidence";
 import {
   useCreateEvidence,
   useStartEvidenceIndexing,
@@ -58,6 +59,12 @@ type AddEvidenceDrawerProps = {
   onCreated: (evidence: EvidenceResponse) => void;
 };
 
+type EvidenceUploadItem = {
+  id: string;
+  file: File;
+  status: "queued" | "uploading" | "uploaded" | "failed";
+};
+
 export function AddEvidenceDrawer({
   applicationId,
   open,
@@ -80,7 +87,9 @@ export function AddEvidenceDrawer({
   );
   const [note, setNote] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [uploadItems, setUploadItems] = useState<EvidenceUploadItem[]>([]);
+  const [createdEvidence, setCreatedEvidence] = useState<CreatedEvidenceResponse | null>(null);
+  const [isProcessingUploads, setIsProcessingUploads] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [selectedReferenceEvent, setSelectedReferenceEvent] = useState<NonNullable<
@@ -104,7 +113,11 @@ export function AddEvidenceDrawer({
   const startIndexing = useStartEvidenceIndexing(applicationId, { silent: true });
   const checkParticipant = useCheckEventParticipant();
   const importOfficialEvent = useImportOfficialEvent(applicationId);
-  const isSubmitting = createEvidence.isPending || uploadFile.isPending || startIndexing.isPending;
+  const isSubmitting =
+    isProcessingUploads ||
+    createEvidence.isPending ||
+    uploadFile.isPending ||
+    startIndexing.isPending;
   const hasRequirementContext = Boolean(initialRequirementKey && initialRequirementLabel);
   const hasReferenceEvent = Boolean(referenceEvent);
   const referenceEventId = referenceEvent?.eventId;
@@ -151,21 +164,18 @@ export function AddEvidenceDrawer({
     ? `${getCriterionDisplayLabel(activeCriterion)} - ${initialRequirementLabel}`
     : "";
 
-  const fileLabel = useMemo(() => {
-    if (!file) return "Chọn tài liệu PDF, JPG, PNG hoặc WEBP";
-    return `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`;
-  }, [file]);
-
+  const previewFile = uploadItems[0]?.file ?? null;
   useEffect(() => {
-    if (!file) {
+    if (!previewFile) {
       setFilePreviewUrl(null);
       return;
     }
-
-    const url = URL.createObjectURL(file);
+    const url = URL.createObjectURL(previewFile);
     setFilePreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [previewFile]);
 
   useEffect(() => {
     if (!open) return;
@@ -213,28 +223,44 @@ export function AddEvidenceDrawer({
   const resetForm = () => {
     setEvidenceName("");
     setNote("");
-    setFile(null);
+    setUploadItems([]);
+    setCreatedEvidence(null);
     setNameError("");
     setFileError("");
+    setSubmitError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleFileChange = (selectedFile?: File) => {
-    if (!selectedFile) {
-      setFile(null);
-      setFileError("");
-      return;
+  const handleFilesChange = (selectedFiles?: FileList | File[]) => {
+    if (!selectedFiles?.length) return;
+
+    const accepted: EvidenceUploadItem[] = [];
+    let validationError = "";
+    for (const selectedFile of Array.from(selectedFiles)) {
+      const error = validateEvidenceUploadFile(selectedFile);
+      if (error) {
+        validationError ||= error;
+        continue;
+      }
+      const duplicate = uploadItems.some((item) => isSameEvidenceFile(item.file, selectedFile));
+      const duplicateInSelection = accepted.some((item) =>
+        isSameEvidenceFile(item.file, selectedFile),
+      );
+      if (!duplicate && !duplicateInSelection) {
+        accepted.push({ id: createUploadItemId(), file: selectedFile, status: "queued" });
+      }
     }
 
-    const validationError = validateEvidenceUploadFile(selectedFile);
-    if (validationError) {
-      setFileError(validationError);
-      return;
-    }
-
-    setFile(selectedFile);
-    setFileError("");
+    if (accepted.length) setUploadItems((current) => [...current, ...accepted]);
+    setFileError(validationError);
     setSubmitError("");
+  };
+
+  const requestClose = () => {
+    if (isSubmitting) return;
+    if (createdEvidence) onCreated({ ...createdEvidence });
+    resetForm();
+    onOpenChange(false);
   };
 
   const handleParticipantCheck = async (suggestion: EvidenceEventSuggestion) => {
@@ -313,7 +339,8 @@ export function AddEvidenceDrawer({
       return;
     }
 
-    if (!file) {
+    const pendingItems = uploadItems.filter((item) => item.status !== "uploaded");
+    if (!uploadItems.length && !createdEvidence) {
       setFileError("File minh chứng là bắt buộc.");
       return;
     }
@@ -323,52 +350,91 @@ export function AddEvidenceDrawer({
     setFileError("");
     setSubmitError("");
 
+    setIsProcessingUploads(true);
+    let latest = createdEvidence;
     try {
-      const created = await createEvidence.mutateAsync({
-        applicationId,
-        data: {
-          evidenceName: trimmedName,
-          criterion,
-          sourceType: "manual_upload",
-          eventId: selectedReferenceEvent?.eventId,
-          note: note.trim() || undefined,
-          metadata: selectedReferenceEvent
-            ? {
-                eventId: selectedReferenceEvent.eventId,
-                referenceEventId: selectedReferenceEvent.eventId,
-                referenceEventTitle: selectedReferenceEvent.title,
-                referenceSource: "student_reference_library",
-              }
-            : undefined,
-        },
-      });
-
-      let latest = created;
-      if (file) {
-        const uploaded = await uploadFile.mutateAsync({
-          evidenceId: created.id,
+      if (!latest) {
+        latest = await createEvidence.mutateAsync({
           applicationId,
-          file,
+          data: {
+            evidenceName: trimmedName,
+            criterion,
+            sourceType: "manual_upload",
+            eventId: selectedReferenceEvent?.eventId,
+            note: note.trim() || undefined,
+            metadata: selectedReferenceEvent
+              ? {
+                  eventId: selectedReferenceEvent.eventId,
+                  referenceEventId: selectedReferenceEvent.eventId,
+                  referenceEventTitle: selectedReferenceEvent.title,
+                  referenceSource: "student_reference_library",
+                }
+              : undefined,
+          },
         });
-        latest = uploaded.res ?? latest;
+        setCreatedEvidence(latest);
       }
 
-      if (file && !latest.jobId) {
-        const indexed = await startIndexing.mutateAsync({ evidenceId: created.id });
+      const failedNames: string[] = [];
+      for (const item of pendingItems) {
+        setUploadItems((current) =>
+          current.map((currentItem) =>
+            currentItem.id === item.id ? { ...currentItem, status: "uploading" } : currentItem,
+          ),
+        );
+        try {
+          const uploaded = await uploadFile.mutateAsync({
+            evidenceId: latest.id,
+            applicationId,
+            file: item.file,
+          });
+          latest = uploaded.res ?? latest;
+          setCreatedEvidence(latest);
+          setUploadItems((current) =>
+            current.map((currentItem) =>
+              currentItem.id === item.id ? { ...currentItem, status: "uploaded" } : currentItem,
+            ),
+          );
+        } catch {
+          failedNames.push(item.file.name);
+          setUploadItems((current) =>
+            current.map((currentItem) =>
+              currentItem.id === item.id ? { ...currentItem, status: "failed" } : currentItem,
+            ),
+          );
+        }
+      }
+
+      if (failedNames.length) {
+        setSubmitError(
+          `${failedNames.length} file chưa tải được. Các file đã tải vẫn được giữ trong cùng minh chứng; bạn có thể thử lại file lỗi.`,
+        );
+        return;
+      }
+
+      if (latest && !latest.jobId && uploadItems.length > 0) {
+        const indexed = await startIndexing.mutateAsync({ evidenceId: latest.id });
         latest = indexed ?? latest;
       }
 
-      toast.success("Đã thêm minh chứng. Hệ thống đang đọc tài liệu.");
-      resetForm();
-      onOpenChange(false);
-      onCreated(latest);
+      if (latest) {
+        toast.success("Đã thêm minh chứng. Hệ thống đang đọc tài liệu.");
+        resetForm();
+        onOpenChange(false);
+        onCreated({ ...latest });
+      }
     } catch (error) {
       setSubmitError(getEvidenceSubmitError(error));
+    } finally {
+      setIsProcessingUploads(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => (nextOpen ? onOpenChange(true) : requestClose())}
+    >
       <DialogContent
         className="grid max-h-[85dvh] w-[min(760px,calc(100vw-32px))] max-w-[760px] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 [&>button:last-child]:min-h-12 [&>button:last-child]:min-w-12"
         onEscapeKeyDown={(event) => {
@@ -403,7 +469,7 @@ export function AddEvidenceDrawer({
                   variant={criterion === item.key ? "secondary" : "outline"}
                   aria-pressed={criterion === item.key}
                   className="min-h-12 justify-start gap-2"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || Boolean(createdEvidence)}
                   onClick={() => {
                     setCriterion(item.key);
                     setCriterionError("");
@@ -438,6 +504,7 @@ export function AddEvidenceDrawer({
                 placeholder="Ví dụ: Giấy chứng nhận Mùa hè xanh"
                 className="min-h-12 pl-10"
                 disabled={isSubmitting}
+                readOnly={Boolean(createdEvidence)}
                 autoComplete="off"
               />
             </div>
@@ -503,70 +570,97 @@ export function AddEvidenceDrawer({
                 onChange={(event) => setNote(event.target.value)}
                 placeholder="Không bắt buộc"
                 disabled={isSubmitting}
+                readOnly={Boolean(createdEvidence)}
                 className="min-h-24"
               />
             ) : null}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="evidence-upload">Tài liệu minh chứng</Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label htmlFor="evidence-upload">Tài liệu minh chứng</Label>
+              {uploadItems.length ? (
+                <span className="text-xs text-muted-foreground">
+                  {uploadItems.length} file đã chọn
+                </span>
+              ) : null}
+            </div>
             <input
               id="evidence-upload"
               ref={fileInputRef}
               type="file"
+              multiple
               className="hidden"
               accept={EVIDENCE_UPLOAD_ACCEPT}
               aria-describedby="evidence-upload-help evidence-file-error"
               disabled={isSubmitting}
-              onChange={(event) => handleFileChange(event.target.files?.[0])}
+              onChange={(event) => {
+                handleFilesChange(event.currentTarget.files ?? undefined);
+                event.currentTarget.value = "";
+              }}
             />
-            {file ? (
+            {uploadItems.length ? (
               <div className="overflow-hidden rounded-md border bg-white">
-                {filePreviewUrl ? (
+                {filePreviewUrl && previewFile ? (
                   <div className="border-b bg-slate-50">
-                    {isImageUpload(file) ? (
+                    {isImageUpload(previewFile) ? (
                       <img
                         src={filePreviewUrl}
-                        alt={file.name}
+                        alt={previewFile.name}
                         className="max-h-[280px] w-full object-contain"
                       />
-                    ) : isPdfUpload(file) ? (
+                    ) : isPdfUpload(previewFile) ? (
                       <iframe
-                        title={file.name}
+                        title={previewFile.name}
                         src={filePreviewUrl}
                         className="h-[280px] w-full bg-white"
                       />
                     ) : null}
                   </div>
                 ) : null}
-                <div className="flex min-w-0 items-start gap-3 p-3">
-                  <FileUp className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-foreground">
-                      {fileLabel}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="min-h-12"
-                        disabled={isSubmitting}
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        Thay file
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="min-h-12"
-                        disabled={isSubmitting}
-                        onClick={() => handleFileChange(undefined)}
-                      >
-                        <X className="h-4 w-4" />
-                        Xóa file
-                      </Button>
-                    </div>
-                  </div>
+                <ul className="divide-y">
+                  {uploadItems.map((item) => (
+                    <li key={item.id} className="flex min-w-0 items-center gap-2 p-3 sm:gap-3">
+                      <FileUp className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className="break-all text-sm font-medium text-foreground">
+                          {item.file.name}
+                        </p>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                          <span>{formatFileSize(item.file.size)}</span>
+                          <span aria-live="polite">{getUploadItemStatusLabel(item.status)}</span>
+                        </div>
+                      </div>
+                      {item.status !== "uploaded" && !isSubmitting ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-11 w-11 shrink-0"
+                          aria-label={`Xóa ${item.file.name}`}
+                          onClick={() =>
+                            setUploadItems((current) =>
+                              current.filter((currentItem) => currentItem.id !== item.id),
+                            )
+                          }
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+                <div className="border-t p-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 w-full sm:w-auto"
+                    disabled={isSubmitting || Boolean(createdEvidence)}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <FileUp className="h-4 w-4" />
+                    Thêm file
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -583,16 +677,17 @@ export function AddEvidenceDrawer({
                 onDrop={(event) => {
                   event.preventDefault();
                   setIsDraggingFile(false);
-                  handleFileChange(event.dataTransfer.files?.[0]);
+                  handleFilesChange(event.dataTransfer.files);
                 }}
               >
                 <FileUp className="h-5 w-5 text-primary" />
-                <span>Kéo thả tài liệu vào đây hoặc {fileLabel.toLocaleLowerCase("vi")}</span>
+                <span>Kéo thả một hoặc nhiều file vào đây, hoặc chọn từ thiết bị</span>
               </button>
             )}
             <p id="evidence-upload-help" className="text-xs text-muted-foreground">
-              Hỗ trợ PDF, JPG, PNG, WEBP. Tối đa {EVIDENCE_UPLOAD_LIMIT_MB} MB. Tài liệu sẽ được sử
-              dụng khi kiểm tra hồ sơ cấp Thành phố.
+              Có thể thêm nhiều file vào cùng một minh chứng. Hỗ trợ PDF, JPG, PNG, WEBP; tối đa{" "}
+              {EVIDENCE_UPLOAD_LIMIT_MB} MB cho mỗi file. Tài liệu sẽ được sử dụng khi kiểm tra hồ
+              sơ cấp Thành phố.
             </p>
             {fileError ? (
               <p id="evidence-file-error" role="alert" className="text-sm text-destructive">
@@ -611,7 +706,11 @@ export function AddEvidenceDrawer({
                   : "Chưa chọn"}
               </span>
             </p>
-            <p className="truncate">{file ? `Tài liệu: ${file.name}` : "Chưa chọn tài liệu"}</p>
+            <p className="break-words">
+              {uploadItems.length
+                ? `Tài liệu: ${uploadItems.length} file (${uploadItems.filter((item) => item.status === "uploaded").length} đã tải lên)`
+                : "Chưa chọn tài liệu"}
+            </p>
           </div>
           {isSubmitting ? (
             <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -626,22 +725,30 @@ export function AddEvidenceDrawer({
           ) : null}
         </div>
 
-        <DialogFooter className="shrink-0 border-t px-5 py-4">
+        <DialogFooter className="shrink-0 flex-col-reverse border-t px-5 py-4 sm:flex-row">
           <Button
             type="button"
-            className="min-h-12"
+            className="min-h-12 w-full sm:w-auto"
             onClick={() => void submit()}
             disabled={isSubmitting || !criterion}
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isSubmitting ? "Đang ghi nhận..." : submitLabel}
+            {isSubmitting
+              ? "Đang tải file..."
+              : createdEvidence
+                ? uploadItems.some((item) => item.status === "failed")
+                  ? `Thử lại ${uploadItems.filter((item) => item.status === "failed").length} file lỗi`
+                  : "Hoàn tất minh chứng"
+                : uploadItems.length > 1
+                  ? `Thêm ${uploadItems.length} file vào hồ sơ`
+                  : submitLabel}
           </Button>
           <Button
             type="button"
             variant="outline"
-            className="min-h-12"
+            className="min-h-12 w-full sm:w-auto"
             disabled={isSubmitting}
-            onClick={() => onOpenChange(false)}
+            onClick={requestClose}
           >
             Hủy
           </Button>
@@ -984,6 +1091,29 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 
 function isImageUpload(file: File) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(file.name);
+}
+
+function createUploadItemId() {
+  return `upload-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function isSameEvidenceFile(left: File, right: File) {
+  return (
+    left.name === right.name && left.size === right.size && left.lastModified === right.lastModified
+  );
+}
+
+function formatFileSize(bytes: number) {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function getUploadItemStatusLabel(status: EvidenceUploadItem["status"]) {
+  if (status === "uploading") return "Đang tải lên";
+  if (status === "uploaded") return "Đã tải lên";
+  if (status === "failed") return "Tải thất bại";
+  return "Chờ tải lên";
 }
 
 function isPdfUpload(file: File) {
