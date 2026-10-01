@@ -1506,11 +1506,11 @@ function AcademicRequirementPanel({
           />
           <AcademicInfoRow
             label="Năm học"
-            value={stringFromPayload(gpaPayload.schoolYear) ?? "Cần xác minh"}
+            value={stringFromPayload(gpaPayload.schoolYear) ?? "Chưa xác định"}
           />
           <AcademicInfoRow label="Nguồn dữ liệu" value={getDisplayRequirementSourceLabel(gpa)} />
           <AcademicInfoRow
-            label="Trạng thái xác minh"
+            label="Tình trạng thông tin"
             value={academicGpaStatusLabel(gpa)}
             badgeTone={mapRequirementStatus(gpa?.status ?? "not_started").tone}
           />
@@ -1886,7 +1886,7 @@ function VolunteerRequirementPanel({
     setDeclaredValue("");
     setStartDate("");
     setEndDate("");
-    toast.success("Đã thêm hoạt động tình nguyện, chờ xác minh.");
+    toast.success("Đã thêm hoạt động tình nguyện.");
   };
 
   return (
@@ -1898,7 +1898,7 @@ function VolunteerRequirementPanel({
               Sổ hoạt động tình nguyện
             </div>
             <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              Không nhập tổng ngày thủ công; từng hoạt động có nguồn và trạng thái xác minh riêng.
+              Không nhập tổng ngày thủ công; tiến độ được tổng hợp từ các hoạt động đã bổ sung.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1925,7 +1925,7 @@ function VolunteerRequirementPanel({
             tone="good"
           />
           <VolunteerTotalCard
-            label="Chờ xác minh"
+            label="Đã ghi nhận"
             value={aggregation?.pendingVerificationTotal ?? 0}
             unit={aggregation?.unit ?? "day"}
             tone="warning"
@@ -2600,8 +2600,8 @@ function getRequirementDisplayValue(requirement?: RequirementItem) {
   if (requirement?.key === "no_violation") {
     if (requirement.status === "verified") return "Không vi phạm đã được xác minh";
     if (requirement.status === "rejected") return "Có ghi nhận cần xử lý";
-    if (isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt xác minh";
-    if (requirement.status === "needs_verification") return "Đang chờ xác minh";
+    if (isReviewerOwnedRequirement(requirement)) return "Không cần bạn khai báo";
+    if (requirement.status === "needs_verification") return "Đã ghi nhận";
   }
   return undefined;
 }
@@ -2621,7 +2621,7 @@ function getDisplayRequirementSourceLabel(requirement?: RequirementItem) {
 
 function getRequirementSourceLabel(requirement?: RequirementItem) {
   const response = getLatestRequirementResponse(requirement);
-  if (!response && isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt";
+  if (!response && isReviewerOwnedRequirement(requirement)) return "Đối chiếu hồ sơ";
   if (!response) return "Chưa có";
   const payload = toRecord(response.payloadJson);
   const sourceType = typeof payload.sourceType === "string" ? payload.sourceType : undefined;
@@ -2637,20 +2637,20 @@ function getRequirementSourceLabel(requirement?: RequirementItem) {
 
 function noViolationActionLabel(requirement?: RequirementItem) {
   if (requirement?.status === "rejected") return "Bổ sung giấy xác nhận theo yêu cầu cán bộ";
-  if (requirement?.status === "verified") return "Đã được cán bộ xác minh";
+  if (requirement?.status === "verified") return "Đã ghi nhận";
   if (isReviewerOwnedRequirement(requirement)) {
-    return "Cán bộ xét duyệt sẽ xác minh sau khi nộp hồ sơ";
+    return "Không cần bạn thao tác ở mục này";
   }
-  return requirement?.nextAction?.label ?? "Chờ cán bộ xác minh tình trạng vi phạm";
+  return requirement?.nextAction?.label ?? "Thông tin đã được ghi nhận";
 }
 
 function mapNoViolationRequirementStatus(requirement?: RequirementItem): {
   label: string;
   tone: CriteriaState["tone"];
 } {
-  if (requirement?.status === "verified") return { label: "Đã xác minh", tone: "good" };
+  if (requirement?.status === "verified") return { label: "Đã ghi nhận", tone: "good" };
   if (requirement?.status === "rejected") return { label: "Cần xử lý", tone: "danger" };
-  if (isReviewerOwnedRequirement(requirement)) return { label: "Chờ cán bộ", tone: "info" };
+  if (isReviewerOwnedRequirement(requirement)) return { label: "Đã ghi nhận", tone: "info" };
   return mapRequirementStatus(requirement?.status ?? "not_started");
 }
 
@@ -2663,16 +2663,15 @@ function isReviewerOwnedRequirement(requirement?: RequirementItem) {
 
 function academicGpaStatusLabel(requirement?: RequirementItem) {
   if (requirement?.status === "verified") return "Đáp ứng ngưỡng sơ bộ";
-  if (requirement?.status === "declared" || requirement?.status === "needs_verification") {
-    return "Cần xác minh";
-  }
+  if (requirement?.status === "declared") return "Đã khai báo";
+  if (requirement?.status === "needs_verification") return "Đã ghi nhận";
   if (requirement?.status === "rejected") return "Chưa đáp ứng ngưỡng dữ liệu hiện tại";
   return "Chưa có dữ liệu";
 }
 
 function noFGradeActionLabel(requirement?: RequirementItem) {
   if (requirement?.status === "verified") return "Đã được xác nhận";
-  if (requirement?.status === "rejected") return "Có điểm F cần cán bộ xử lý";
+  if (requirement?.status === "rejected") return "Có điểm F cần được xem xét";
   return requirement?.nextAction?.label ?? "Xác nhận tình trạng điểm F";
 }
 
@@ -2688,7 +2687,7 @@ function mapRequirementStatus(status: RequirementItem["status"]): {
 } {
   if (status === "verified") return { label: "Đã xác nhận", tone: "good" };
   if (status === "declared") return { label: "Đã khai báo", tone: "warning" };
-  if (status === "needs_verification") return { label: "Cần xác minh", tone: "warning" };
+  if (status === "needs_verification") return { label: "Đã ghi nhận", tone: "info" };
   if (status === "rejected") return { label: "Không đạt", tone: "danger" };
   return { label: "Chưa có", tone: "neutral" };
 }
@@ -2832,18 +2831,14 @@ function applyCompletionToCriteriaState(
       ? `${completion.completion.satisfied}/${required} điều kiện có dữ liệu`
       : "Chưa có điều kiện bắt buộc";
   const status = mapCompletionStatus(completion.status);
-  const needsVerification = completion.completion.needsVerification;
   return {
     ...state,
     status: status.status,
     statusLabel: status.label,
     tone: status.tone,
     evidenceCount: completion.evidenceCount,
-    warningCount: needsVerification || state.warningCount,
-    description:
-      required > 0
-        ? `${completionText}${needsVerification ? ` · ${needsVerification} mục cần xác minh` : ""}.`
-        : state.description,
+    warningCount: state.warningCount,
+    description: required > 0 ? `${completionText}.` : state.description,
     primaryMissingReason: completion.nextAction?.label ?? state.primaryMissingReason,
     completionText,
     completionSource: "criteria_completion",
@@ -2860,7 +2855,7 @@ function mapCompletionStatus(status: CriterionCompletionItem["status"]): {
     return { status: "ok", label: "Đủ dữ liệu", tone: "good" };
   }
   if (status === "needs_verification") {
-    return { status: "needs_review", label: "Cần xác minh", tone: "warning" };
+    return { status: "needs_review", label: "Đã ghi nhận", tone: "info" };
   }
   if (status === "under_review") {
     return { status: "processing", label: "Đang xét", tone: "info" };

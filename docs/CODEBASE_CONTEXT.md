@@ -343,8 +343,10 @@ This section reflects the minimal criteria-completion UI integration added on 20
 - `Thành tích học thuật bổ sung` renders from backend completion groups/formSchema instead of a hardcoded criterion list and shows `Không bắt buộc ở cấp hiện tại` when optional.
 - The `physical` workspace no longer renders a default metric box. It first renders path choices from backend completion API, then renders the Physical Education result form or evidence-path actions only after the student chooses a path. The added-list shows path key/title and verification status.
 - Physical evidence paths expose backend `formSchema.fields` chips and actions for official data search or manual evidence upload; the component does not hardcode the evidence type list.
-- The `volunteer` workspace no longer renders a `Số ngày tình nguyện` metric input. It shows the activity ledger with verified total, pending total, CriteriaVersion target, per-activity status, official-event search, manual activity declaration, and evidence upload action.
-- Volunteer totals are read from backend `RequirementItem.aggregation`; the frontend does not calculate official conversion.
+- The `volunteer` workspace does not show student-entered day totals or a separate activity ledger. Students declare an activity and attach its files in the same `Thêm minh chứng` modal; activity records remain linked to evidence for staff verification. Blood donation is submitted as one declared day, while the staff decision remains authoritative.
+- The responsive `Hoạt động tình nguyện` panel keeps one visible `Thêm minh chứng` action at the top and opens the shared evidence modal with the activity fields. It renders evidence cards without a separate activity ledger or student-facing day counts; official day totals remain a staff verification outcome.
+- Student evidence already supports editing its name, replacing files, and deleting through the existing Evidence detail/API flow. No backend route, schema, migration, or adjudication behavior changed for this UI consolidation.
+- Student-facing volunteer totals are hidden to avoid ambiguity; staff verification and backend aggregation remain the source of official counted days. The frontend does not calculate official conversion.
 - The `integration` workspace no longer renders a default foreign-language metric input or IELTS/TOEIC prompt. It renders path choices from backend completion API, then renders dynamic fields from the selected path `formSchema.fields` only after selection. Existing responses show path title, source, and verification status.
 - Integration actions support official-event search and manual declaration/evidence upload; the component does not hardcode IELTS/TOEIC as the default flow.
 - `src/features/student/selectors/student-ui.ts` now lets criteria-completion and precheck structured next actions drive the bottom `Bước tiếp theo` title/action, avoiding old generic `Đạo đức tốt chưa đủ minh chứng`, `Học tập tốt chưa đủ minh chứng`, `Thể lực tốt chưa đủ minh chứng`, `Tình nguyện tốt chưa đủ minh chứng`, and `Hội nhập tốt chưa đủ minh chứng` copy.
@@ -476,7 +478,7 @@ This section reflects the minimal criteria-completion UI integration added on 20
   - `src/features/event/hooks/useApprovedEvidenceSearch.ts`
 - `npm run build` completed Vite client and SSR builds, then failed at the known Nitro/Vercel packaging step: `@vercel/nft` does not export `nodeFileTrace`.
 - Browser smoke in the in-app browser: protected routes render login shell without route-level error boundary; authenticated `/app/application` traversal was not completed because login UI did not navigate after submit even though backend login API succeeded.
-- Before the visual refactor is considered release-ready, run a clean Chrome desktop/mobile pass on authenticated `/app/application`, including path selector overflow, dynamic forms, volunteer activity scrolling, and evidence list containment.
+- Before the visual refactor is considered release-ready, run a clean Chrome desktop/mobile pass on authenticated `/app/application`, including path selector overflow, dynamic forms, volunteer evidence-modal responsiveness, and evidence list containment.
 
 ## Criteria Completion Acceptance Check On 2026-07-18
 
@@ -1122,10 +1124,10 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - `physical_course_result` keeps the existing `useDeclarePhysicalCourseResult` mutation and payload fields (`resultType`, `value`, `classification`, `schoolYear`, `replaceExisting`);
   - successful save closes/resets the form, while failed save preserves entered values.
 - Volunteer V2 behavior:
-  - uses backend aggregation as the displayed source of truth (`verifiedTotal`, `pendingVerificationTotal`, `threshold`, `unit`);
+  - keeps activity declaration and evidence upload in one modal;
+  - hides student-facing day totals and the separate activity ledger;
+  - sends blood donation as one declared day while leaving official verification to staff;
   - does not calculate official conversion in the frontend;
-  - renders an `ActivityLedger`-style table on desktop and compact activity rows on smaller screens;
-  - keeps the add-activity form closed until `Thêm hoạt động`;
   - keeps the existing `useAddVolunteerActivity` mutation and payload shape;
   - official event search/import remains available from the volunteer action area.
 - Integration V2 behavior:
@@ -1146,7 +1148,7 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - physical one-of initial copy and no default form;
   - path selection and unsaved path-change confirmation;
   - unknown integration path fallback with original key preservation;
-  - volunteer aggregation display and no frontend conversion tokens;
+  - unified volunteer evidence/activity modal, no student day-total or activity-ledger UI, and no frontend conversion tokens;
   - official event actions scoped to supported selected paths;
   - dynamic integration field rendering from schema;
   - readonly and supplement mutation locks.
@@ -1314,7 +1316,7 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
 ## Student Application UI V2 Phase 8 Production Hardening On 2026-07-19
 
 - Phase 8 added a focused Playwright acceptance specification at `tests/student-application-ui-v2-acceptance.spec.ts` and a local executable browser harness at `artifacts/phase-8/v2-acceptance.cjs`.
-- The Playwright spec covers the requested V2 route matrix in mocked mode: overview loading/draft/no-action/supplement/completed states, `/app/application` criteria deep links, upload-evidence deep link, guide/evidence preview affordances, academic success/error, ethics passive verification, physical path change confirmation, volunteer ledger, integration information/free-evidence guidance, official-library participant-not-found fallback, readonly/submitted state, supplement-limited editing, feedback empty/list, and assistant long-conversation layout.
+- The Playwright spec covers the requested V2 route matrix in mocked mode: overview loading/draft/no-action/supplement/completed states, `/app/application` criteria deep links, upload-evidence deep link, guide/evidence preview affordances, academic success/error, ethics passive verification, physical path change confirmation, volunteer evidence/activity modal without student day totals, integration information/free-evidence guidance, official-library participant-not-found fallback, readonly/submitted state, supplement-limited editing, feedback empty/list, and assistant long-conversation layout.
 - The direct harness can record viewport screenshots/DOM metrics under `artifacts/phase-8/`, but the latest attempted run failed on the auth-loading interstitial before reaching V2 UI. The stale Phase 8 PNG/JSON outputs from that invalid run were removed so they are not mistaken for acceptance evidence.
 - Hardening fix made during this phase:
   - V2 overview action links now carry the same minimum 44px touch-target sizing on the rendered anchor element, avoiding sub-target measurements in tablet/mobile acceptance checks.

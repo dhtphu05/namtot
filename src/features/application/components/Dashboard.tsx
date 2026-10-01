@@ -249,7 +249,7 @@ function StudentDash() {
             </div>
             <h2 className="text-3xl font-bold mt-4 leading-tight">Hồ sơ Sinh viên 5 tốt Cá nhân</h2>
             <p className="text-white/85 mt-2 max-w-xl text-sm leading-relaxed">
-              Cấp aim: <b>{levelLabel[profile.targetLevel] || profile.targetLevel}</b>. Trạng thái
+              Cấp xét: <b>{levelLabel[profile.targetLevel] || profile.targetLevel}</b>. Trạng thái
               hiện tại: <b>{applicationStatusLabel[profile.status] || profile.status}</b>.
             </p>
             <div className="flex flex-wrap gap-3 mt-6">
