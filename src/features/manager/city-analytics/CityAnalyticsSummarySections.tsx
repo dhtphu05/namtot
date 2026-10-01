@@ -7,6 +7,20 @@ import {
   Hourglass,
   ShieldQuestion,
 } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Card } from "@/components/ui-kit";
 import {
   Table,
@@ -40,6 +54,8 @@ export function CityAnalyticsSummarySections({
     () => new Map(summary.criteria.map((row) => [row.criterion, row])),
     [summary.criteria],
   );
+  const finalResultData = finalResultChartData(summary);
+  const submittedSchools = summary.bySchool.filter((school) => school.submitted > 0);
 
   return (
     <div className="space-y-5">
@@ -88,7 +104,7 @@ export function CityAnalyticsSummarySections({
       </section>
 
       {showSubmittedBySchool ? (
-        <Card className="p-0">
+        <Card className="min-w-0 p-0">
           <div className="border-b p-4">
             <SectionHeading
               title="Thống kê hồ sơ đã nộp theo trường"
@@ -96,12 +112,12 @@ export function CityAnalyticsSummarySections({
             />
           </div>
           <div
-            className="overflow-x-auto"
+            className="min-w-0 overflow-x-auto"
             role="region"
             aria-label="Bảng hồ sơ đã nộp theo trường"
             tabIndex={0}
           >
-            <Table>
+            <Table className="min-w-[480px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Trường</TableHead>
@@ -139,8 +155,139 @@ export function CityAnalyticsSummarySections({
         </Card>
       ) : null}
 
-      <section className="grid gap-5 xl:grid-cols-2">
-        <Card className="p-0">
+      <section
+        aria-label="Biểu đồ thống kê Thành phố"
+        className="grid min-w-0 gap-5 xl:grid-cols-2"
+      >
+        <Card className="min-w-0 xl:col-span-2">
+          <SectionHeading
+            title="Số hồ sơ nộp theo ngày"
+            description="Đếm theo ngày nộp, trong bộ lọc mùa xét và trường đang chọn."
+          />
+          {summary.dailySubmissions.length > 0 ? (
+            <div
+              role="img"
+              aria-label="Biểu đồ hồ sơ nộp theo ngày"
+              className="mt-4 h-64 min-w-0 w-full"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={summary.dailySubmissions}
+                  margin={{ top: 8, right: 16, bottom: 4, left: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(date: string) => date.slice(5)}
+                    minTickGap={24}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis allowDecimals={false} width={36} tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    labelFormatter={(date) => `Ngày ${date}`}
+                    formatter={(value) => [`${value} hồ sơ`, "Đã nộp"]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    name="Đã nộp"
+                    stroke="#0758b8"
+                    strokeWidth={3}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <ChartEmptyState>Chưa có hồ sơ được nộp trong bộ lọc này.</ChartEmptyState>
+          )}
+        </Card>
+
+        <Card className="min-w-0">
+          <SectionHeading
+            title="Cơ cấu quyết định cuối"
+            description="Chỉ phản ánh quyết định cuối đã được chốt."
+          />
+          {summary.applications.submitted > 0 ? (
+            <div className="mt-3 grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <div
+                role="img"
+                aria-label="Biểu đồ phân bố kết quả cuối"
+                className="h-52 min-w-0 w-full"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={finalResultData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="55%"
+                      outerRadius="82%"
+                      paddingAngle={2}
+                    >
+                      {finalResultData.map((item) => (
+                        <Cell key={item.name} fill={item.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`${value} hồ sơ`, "Số lượng"]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm sm:flex-col">
+                {finalResultData.map((item) => (
+                  <div key={item.name} className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                      aria-hidden="true"
+                    />
+                    <span>
+                      {item.name}: <strong>{item.value}</strong>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ChartEmptyState>Chưa có hồ sơ đã nộp để phân loại kết quả.</ChartEmptyState>
+          )}
+        </Card>
+
+        <Card className="min-w-0">
+          <SectionHeading
+            title="So sánh hồ sơ đã nộp giữa các trường"
+            description="So sánh số hồ sơ trong phạm vi trường đang hoạt động."
+          />
+          {submittedSchools.length > 0 ? (
+            <div
+              role="img"
+              aria-label="Biểu đồ hồ sơ đã nộp theo trường"
+              className="mt-4 min-w-0 w-full"
+              style={{ height: Math.min(460, Math.max(220, submittedSchools.length * 42)) }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={submittedSchools}
+                  layout="vertical"
+                  margin={{ top: 4, right: 16, bottom: 4, left: 4 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <YAxis type="category" dataKey="code" width={72} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(value) => [`${value} hồ sơ`, "Đã nộp"]} />
+                  <Bar dataKey="submitted" name="Đã nộp" fill="#0758b8" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <ChartEmptyState>Chưa có hồ sơ đã nộp theo trường.</ChartEmptyState>
+          )}
+        </Card>
+      </section>
+
+      <section className="grid min-w-0 gap-5 xl:grid-cols-2">
+        <Card className="min-w-0 p-0">
           <div className="border-b p-4">
             <SectionHeading
               title="Tiến độ theo 5 tiêu chí"
@@ -148,12 +295,12 @@ export function CityAnalyticsSummarySections({
             />
           </div>
           <div
-            className="overflow-x-auto"
+            className="min-w-0 overflow-x-auto"
             role="region"
             aria-label="Bảng trạng thái tiêu chí"
             tabIndex={0}
           >
-            <Table>
+            <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Tiêu chí</TableHead>
@@ -259,15 +406,20 @@ export function CityAnalyticsSummarySections({
         </Card>
       </section>
 
-      <Card className="p-0">
+      <Card className="min-w-0 p-0">
         <div className="border-b p-4">
           <SectionHeading
             title="Theo trường"
             description="Số hồ sơ được tính theo trường đang hoạt động."
           />
         </div>
-        <div className="overflow-x-auto" role="region" aria-label="Bảng theo trường" tabIndex={0}>
-          <Table>
+        <div
+          className="min-w-0 overflow-x-auto"
+          role="region"
+          aria-label="Bảng theo trường"
+          tabIndex={0}
+        >
+          <Table className="min-w-[820px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Trường</TableHead>
@@ -370,7 +522,7 @@ export function CityAnalyticsSummarySections({
         </div>
       </Card>
 
-      <section className="grid gap-5 xl:grid-cols-3">
+      <section className="grid min-w-0 gap-5 md:grid-cols-2 2xl:grid-cols-3">
         <Card>
           <SectionHeading title="Kết quả cuối" description="Lấy từ quyết định chốt hồ sơ." />
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -430,7 +582,7 @@ export function CityAnalyticsSummarySections({
           </div>
         </Card>
 
-        <Card className="p-0">
+        <Card className="min-w-0 p-0 md:col-span-2 2xl:col-span-1">
           <div className="border-b p-4">
             <SectionHeading
               title="Khối lượng City Officer"
@@ -443,26 +595,38 @@ export function CityAnalyticsSummarySections({
             aria-label="Bảng khối lượng City Officer"
             tabIndex={0}
           >
-            <Table>
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cán bộ</TableHead>
-                  <TableHead className="text-right">Đang xử lý</TableHead>
-                  <TableHead className="text-right">Chờ</TableHead>
-                  <TableHead className="text-right">Hoàn tất</TableHead>
-                  <TableHead className="text-right">Bổ sung</TableHead>
-                  <TableHead className="text-right">Hội đồng</TableHead>
+                  <TableHead className="whitespace-nowrap">Cán bộ</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">Đang xử lý</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">Chờ</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">Hoàn tất</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">Bổ sung</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">Hội đồng</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {summary.reviewers.map((reviewer) => (
                   <TableRow key={reviewer.officerId}>
-                    <TableCell className="font-medium">{reviewer.fullName}</TableCell>
-                    <TableCell className="text-right">{reviewer.assignedActive}</TableCell>
-                    <TableCell className="text-right">{reviewer.pending}</TableCell>
-                    <TableCell className="text-right">{reviewer.completed}</TableCell>
-                    <TableCell className="text-right">{reviewer.supplementRequired}</TableCell>
-                    <TableCell className="text-right">{reviewer.resolutionNeeded}</TableCell>
+                    <TableCell className="whitespace-nowrap font-medium">
+                      {reviewer.fullName}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      {reviewer.assignedActive}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      {reviewer.pending}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      {reviewer.completed}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      {reviewer.supplementRequired}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      {reviewer.resolutionNeeded}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {summary.reviewers.length === 0 ? (
@@ -531,6 +695,22 @@ function SectionHeading({ title, description }: { title: string; description: st
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
     </div>
   );
+}
+
+function ChartEmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-4 flex h-52 items-center justify-center rounded-md bg-muted/40 px-4 text-center text-sm text-muted-foreground">
+      {children}
+    </div>
+  );
+}
+
+function finalResultChartData(summary: CityAnalyticsSummary) {
+  return [
+    { name: "Đạt Thành phố", value: summary.finalResults.passed, color: "#138a54" },
+    { name: "Chưa đạt", value: summary.finalResults.failed, color: "#d24b4b" },
+    { name: "Chưa chốt", value: summary.finalResults.notFinalized, color: "#94a3b8" },
+  ].filter((item) => item.value > 0);
 }
 
 function MetricLink({

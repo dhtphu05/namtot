@@ -86,6 +86,34 @@ test.describe("Phase 4 Part 3A City analytics", () => {
     });
   }
 
+  test("shows real-data charts and keeps the analytics page responsive", async ({ page }) => {
+    await installMocks(page, "city_committee", []);
+    await page.goto("/app/analytics", { waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("heading", { name: "Số hồ sơ nộp theo ngày" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Cơ cấu quyết định cuối" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "So sánh hồ sơ đã nộp giữa các trường" }),
+    ).toBeVisible();
+
+    for (const viewport of [
+      { width: 360, height: 800 },
+      { width: 768, height: 1024 },
+      { width: 1440, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+        .toBeLessThanOrEqual(viewport.width);
+
+      const chart = page.getByRole("img", { name: "Biểu đồ hồ sơ nộp theo ngày" });
+      const box = await chart.boundingBox();
+      expect(box, `daily chart should be visible at ${viewport.width}px`).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
+    }
+  });
+
   test("City Committee can open submitted applications from the per-school statistics table", async ({
     page,
   }) => {
@@ -1372,6 +1400,13 @@ function citySummary(empty: boolean) {
         : { "0": 0, "1": 1, "2": 2, "3": 3, "4": 3, "5": 5 },
       unexpectedTaskCount: 0,
     },
+    dailySubmissions: empty
+      ? []
+      : [
+          { date: "2026-09-27", count: 2 },
+          { date: "2026-09-28", count: 5 },
+          { date: "2026-09-29", count: 7 },
+        ],
     criteria: [
       {
         criterion: "ethics",
