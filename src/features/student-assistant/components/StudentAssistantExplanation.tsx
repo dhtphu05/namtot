@@ -1,6 +1,17 @@
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, MessageSquareText, RefreshCw, Send, Square } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpenText,
+  Bot,
+  LoaderCircle,
+  MessageCircleQuestion,
+  MessageSquareText,
+  RefreshCw,
+  Send,
+  Square,
+  UserRound,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -123,7 +134,8 @@ export function StudentAssistantActionCard({
 
   return (
     <div className="rounded-md border bg-muted/30 px-3 py-2">
-      <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+        <ArrowRight className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
         Hành động được phép
       </div>
       <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -172,13 +184,34 @@ export function StudentAssistantMessageList({
         <div
           key={`${message.role}-${index}`}
           className={cn(
-            "rounded-md px-3 py-2 text-sm leading-6",
-            message.role === "user"
-              ? "ml-auto max-w-[86%] bg-primary text-primary-foreground"
-              : "mr-auto max-w-[92%] bg-background text-foreground",
+            "flex max-w-[92%] items-start gap-2 text-sm leading-6",
+            message.role === "user" && "ml-auto flex-row-reverse",
           )}
         >
-          {message.content || (streaming ? "Đang chuẩn bị câu trả lời..." : "")}
+          <span
+            className={cn(
+              "mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+              message.role === "user"
+                ? "bg-primary text-primary-foreground"
+                : "bg-primary/10 text-primary",
+            )}
+          >
+            {message.role === "user" ? (
+              <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <Bot className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </span>
+          <div
+            className={cn(
+              "min-w-0 rounded-md px-3 py-2",
+              message.role === "user"
+                ? "bg-primary text-primary-foreground"
+                : "bg-background text-foreground",
+            )}
+          >
+            {message.content || (streaming ? "Đang chuẩn bị câu trả lời..." : "")}
+          </div>
         </div>
       ))}
     </div>
@@ -193,8 +226,9 @@ export function StudentAssistantSourceRefs({ context }: { context: StudentAssist
       {refs.map((fact) => (
         <span
           key={fact.id}
-          className="inline-flex min-h-7 items-center rounded-full border bg-background px-2.5 text-xs text-muted-foreground"
+          className="inline-flex min-h-7 items-center gap-1.5 rounded-full border bg-background px-2.5 text-xs text-muted-foreground"
         >
+          <BookOpenText className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
           {fact.label}
         </span>
       ))}
@@ -216,9 +250,10 @@ export function StudentAssistantSuggestedQuestions({
         <button
           key={question}
           type="button"
-          className="min-h-11 rounded-full border bg-background px-3 text-left text-xs font-medium text-muted-foreground transition hover:bg-muted"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border bg-background px-3 text-left text-xs font-medium text-muted-foreground transition hover:bg-muted"
           onClick={() => onSelect(question)}
         >
+          <MessageCircleQuestion className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
           {question}
         </button>
       ))}
@@ -247,7 +282,10 @@ export function StudentAssistantComposer({
   return (
     <div className="space-y-2">
       {status === "connecting" ? (
-        <p className="text-xs text-muted-foreground">Đang chuẩn bị câu trả lời...</p>
+        <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <LoaderCircle className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden="true" />
+          Đang chuẩn bị câu trả lời...
+        </p>
       ) : null}
       <div className="flex items-end gap-2">
         <Textarea

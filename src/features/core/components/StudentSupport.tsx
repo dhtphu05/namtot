@@ -1,4 +1,5 @@
 import { useRouterState } from "@tanstack/react-router";
+import { Bot, ShieldCheck, Sparkles } from "lucide-react";
 import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
 import type {
   StudentAssistantContextParams,
@@ -24,15 +25,29 @@ export function StudentSupport() {
   return (
     <div className="mx-auto flex max-w-[960px] flex-col gap-4 py-5">
       <header>
-        <p className="text-[12px] font-semibold uppercase leading-[17px] text-[var(--student-v2-text-muted)]">
+        <p className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase leading-[17px] text-[var(--student-v2-text-muted)]">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--student-v2-surface-selected)] text-[var(--student-v2-primary-action-blue)]">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+          </span>
           Trợ lý theo ngữ cảnh
         </p>
-        <h1 className="mt-1 text-[28px] font-bold leading-9 text-[var(--student-v2-text-primary)]">
-          Hỏi trợ lý 5Tốt
-        </h1>
-        <p className="mt-1 max-w-3xl text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-          Trợ lý chỉ giải thích quy định và dữ liệu trong ngữ cảnh hồ sơ hiện tại, rồi hướng dẫn bạn
-          đến đúng công cụ. Quyết định chính thức vẫn do cán bộ hoặc Hội đồng xác nhận.
+        <div className="mt-2 flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--student-v2-primary-action-blue)] text-[var(--student-v2-text-inverse)] shadow-sm">
+            <Bot className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <h1 className="text-[28px] font-bold leading-9 text-[var(--student-v2-text-primary)]">
+            Hỏi trợ lý 5Tốt
+          </h1>
+        </div>
+        <p className="mt-3 flex max-w-3xl items-start gap-2 rounded-lg border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 py-2.5 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+          <ShieldCheck
+            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--student-v2-primary-action-blue)]"
+            aria-hidden="true"
+          />
+          <span>
+            Trợ lý chỉ giải thích quy định và dữ liệu trong ngữ cảnh hồ sơ hiện tại, rồi hướng dẫn
+            bạn đến đúng công cụ. Quyết định chính thức vẫn do cán bộ hoặc Hội đồng xác nhận.
+          </span>
         </p>
       </header>
 

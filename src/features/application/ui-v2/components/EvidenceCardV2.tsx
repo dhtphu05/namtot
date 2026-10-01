@@ -7,7 +7,7 @@ import {
   MoreHorizontal,
   TriangleAlert,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -232,6 +232,29 @@ function EvidencePreviewFrame({
   fileName?: string | null;
   officialData?: OfficialDataTileProps;
 }) {
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const renderImage = (className: string) => {
+    if (src && failedImageUrl === src) {
+      return (
+        <PreviewTile
+          icon={<TriangleAlert className="h-6 w-6" aria-hidden="true" />}
+          label="Không tải được ảnh"
+          role="status"
+        />
+      );
+    }
+
+    return (
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        className={className}
+        onError={() => setFailedImageUrl(src ?? null)}
+      />
+    );
+  };
+
   if (kind === "loading") {
     return (
       <div className="flex h-full w-full items-center justify-center text-[var(--student-v2-institutional-blue)]">
@@ -254,7 +277,7 @@ function EvidencePreviewFrame({
   }
 
   if (kind === "photo" && src) {
-    return <img src={src} alt={alt} loading="lazy" className="h-full w-full object-cover" />;
+    return renderImage("h-full w-full object-cover");
   }
 
   if (kind === "document" && src) {
@@ -269,11 +292,11 @@ function EvidencePreviewFrame({
       );
     }
 
-    return <img src={src} alt={alt} loading="lazy" className="h-full w-full object-contain p-3" />;
+    return renderImage("h-full w-full object-contain p-3");
   }
 
   if (kind === "unknown" && src && isImagePreview(mimeType, fileName)) {
-    return <img src={src} alt={alt} loading="lazy" className="h-full w-full object-contain p-3" />;
+    return renderImage("h-full w-full object-contain p-3");
   }
 
   return (
@@ -329,9 +352,12 @@ export function OfficialDataTile({
   );
 }
 
-function PreviewTile({ icon, label }: { icon: ReactNode; label: string }) {
+function PreviewTile({ icon, label, role }: { icon: ReactNode; label: string; role?: "status" }) {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-[var(--student-v2-institutional-blue)]">
+    <div
+      role={role}
+      className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-[var(--student-v2-institutional-blue)]"
+    >
       {icon}
       <span className="text-[13px] font-semibold leading-[18px]">{label}</span>
     </div>
