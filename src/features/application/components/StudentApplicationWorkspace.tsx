@@ -1507,7 +1507,7 @@ export function StudentApplicationWorkspace({
                                   ? "Bắt buộc"
                                   : item.severity === "warning"
                                     ? "Nên bổ sung"
-                                    : "Chờ cán bộ kiểm tra sau khi nộp"}
+                                    : "Đã ghi nhận, sẽ được đối chiếu khi xử lý hồ sơ"}
                               </Chip>
                             </div>
                             <div className="mt-1 text-xs text-amber-800">{criterionLabel}</div>
@@ -2592,9 +2592,9 @@ function getGuidedCriterionStatus(
     result?.status === "risky"
   ) {
     return {
-      label: "Chờ cán bộ xác nhận",
-      description: "Thông tin này sẽ được cán bộ kiểm tra sau khi bạn nộp.",
-      tone: "warning" as const,
+      label: "Đã ghi nhận",
+      description: "Thông tin đã được lưu và sẽ được đối chiếu trong quy trình xét hồ sơ.",
+      tone: "info" as const,
     };
   }
   if (
@@ -2725,13 +2725,13 @@ function getPrecheckHeadline(
 
 function getCriterionCheckSummary(evidenceCount: number, result?: PrecheckCriterionResult) {
   if (evidenceCount === 0) return "Chưa có minh chứng cho tiêu chí này";
-  if (!result) return "Đã có minh chứng, chờ kiểm tra";
+  if (!result) return "Đã có minh chứng";
   if (
     result.warnings?.length ||
     result.status === "needs_officer_confirmation" ||
     result.status === "risky"
   ) {
-    return "Chờ cán bộ kiểm tra sau khi nộp";
+    return "Đã ghi nhận thông tin";
   }
   if (result.passed || result.status === "passed" || result.status === "complete")
     return "Đủ dữ liệu cơ bản";
@@ -3035,7 +3035,7 @@ function CriterionChecklist({
         ))}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Cán bộ sẽ xác nhận minh chứng sau khi bạn nộp hồ sơ.
+        Bạn có thể tiếp tục hoàn thiện hồ sơ và xem lại minh chứng trước khi gửi.
       </p>
     </div>
   );
@@ -3044,7 +3044,7 @@ function CriterionChecklist({
 function getCriterionStatus(evidenceCount: number, result?: PrecheckCriterionResult) {
   if (!evidenceCount && !result) return { label: "Chưa có dữ liệu", tone: "muted" as const };
   if (!evidenceCount) return { label: "Cần bổ sung", tone: "warning" as const };
-  if (result?.warnings?.length) return { label: "Chờ cán bộ xác nhận", tone: "warning" as const };
+  if (result?.warnings?.length) return { label: "Đã ghi nhận", tone: "brand" as const };
   if (result?.passed || result?.status === "passed")
     return { label: "Đủ dữ liệu cơ bản", tone: "success" as const };
   return { label: "Đã có giấy xác nhận", tone: "brand" as const };

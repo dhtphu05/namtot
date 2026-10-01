@@ -156,7 +156,7 @@ export function StudentCriteriaOverview({
               ) : null}
               {completion?.completion?.needsVerification ? (
                 <span className="sr-only">
-                  {completion.completion.needsVerification} thông tin cần xác minh
+                  {completion.completion.needsVerification} thông tin đã được ghi nhận
                 </span>
               ) : null}
             </>

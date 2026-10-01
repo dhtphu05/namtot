@@ -28,7 +28,7 @@ export const indexingStatusCopy: Record<string, string> = {
   extracting_fields: "Đang tạo tóm tắt",
   checking_registry: "Đang đối chiếu kho minh chứng",
   indexed: "Đã tạo tóm tắt",
-  needs_manual_review: "Cần cán bộ kiểm tra",
+  needs_manual_review: "Đã tiếp nhận",
   failed: "Chưa đọc được nội dung tệp",
 };
 
@@ -67,8 +67,8 @@ export const warningCopy: Record<string, string> = {
   document_quality_warning:
     "Ảnh hoặc tài liệu có thể khó đọc; vui lòng kiểm tra lại thông tin nhận diện.",
   visual_fields_need_confirmation:
-    "Thông tin trong ảnh đã được nhận diện; vui lòng đối chiếu MSSV và GPA với hồ sơ.",
-  file_quality_poor: "File hiện khó đọc. Bạn nên tải bản rõ hơn trước khi xác nhận.",
+    "Thông tin trong ảnh đã được nhận diện; vui lòng đối chiếu MSSV và điểm học tập với hồ sơ.",
+  file_quality_poor: "Tệp hiện khó đọc. Bạn nên tải bản rõ hơn trước khi xác nhận.",
   low_resolution: "Ảnh hoặc tài liệu có độ phân giải thấp; một số chữ nhỏ có thể khó đọc.",
   image_low_resolution: "Ảnh hoặc tài liệu có độ phân giải thấp; một số chữ nhỏ có thể khó đọc.",
   low_image_quality: "Ảnh hoặc tài liệu có thể mờ, nghiêng hoặc mất góc; vui lòng kiểm tra lại.",
@@ -99,6 +99,15 @@ export function getEvidenceUxStatus(
   card?: EvidenceCard | null,
 ): UxStatus {
   const status = evidence.indexingStatus;
+  if (status === "needs_manual_review") {
+    return {
+      label: "Đã tiếp nhận",
+      message: "Minh chứng đã được lưu trong hồ sơ của bạn.",
+      nextAction: "Bạn chưa cần thao tác thêm với minh chứng này.",
+      severity: "info",
+      badges: ["Đã ghi nhận"],
+    };
+  }
   const backendStatus =
     card?.uxStatus ?? (evidence as EvidenceResponse & { uxStatus?: UxStatus }).uxStatus;
   if (backendStatus?.label) return backendStatus;
@@ -111,16 +120,6 @@ export function getEvidenceUxStatus(
       severity: "success",
       progressPercent: 100,
       badges: ["Đã đọc"],
-    };
-  }
-
-  if (status === "needs_manual_review") {
-    return {
-      label: "Cần cán bộ kiểm tra",
-      message: "Hệ thống đã đọc được một phần minh chứng nhưng cần cán bộ kiểm tra thêm.",
-      nextAction: "Bạn có thể tải tệp rõ hơn nếu hồ sơ vẫn còn được chỉnh sửa.",
-      severity: "warning",
-      badges: ["Cần kiểm tra"],
     };
   }
 
@@ -146,7 +145,8 @@ export function getEvidenceUxStatus(
 
   if (status === "extracting" || status === "checking_registry") {
     return {
-      label: status === "checking_registry" ? "Đang đối chiếu Event Hub" : "Đang tạo tóm tắt",
+      label:
+        status === "checking_registry" ? "Đang đối chiếu danh sách sự kiện" : "Đang tạo tóm tắt",
       message: "Hệ thống đang rút trích thông tin chính từ minh chứng.",
       nextAction: "Bạn có thể tiếp tục hoàn thiện hồ sơ trong lúc chờ.",
       severity: "info",
@@ -155,7 +155,7 @@ export function getEvidenceUxStatus(
   }
 
   return {
-    label: "File đã được nhận",
+    label: "Tệp đã được nhận",
     message: "Tệp đã được nhận. Hệ thống sẽ bắt đầu đọc nội dung trong nền.",
     nextAction: "Bạn có thể rời trang và quay lại sau.",
     severity: "neutral",
@@ -168,7 +168,7 @@ export function getConfidenceSummary(confidence?: number | null) {
   const percent = Math.round(confidence * 100);
   if (confidence >= 0.85) return { label: "Độ chắc chắn cao", percent, tone: "success" as const };
   if (confidence >= 0.6) return { label: "Cần xem lại nhẹ", percent, tone: "warning" as const };
-  return { label: "Cần cán bộ kiểm tra", percent, tone: "warning" as const };
+  return { label: "Nên xem lại thông tin", percent, tone: "warning" as const };
 }
 
 export function normalizeWarnings(value: unknown): string[] {

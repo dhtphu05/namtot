@@ -498,7 +498,7 @@ function ConfirmationWorkspace({
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
               {isConfirmed
-                ? "Cán bộ sẽ xem xét minh chứng theo quy trình hồ sơ."
+                ? "Minh chứng đã được lưu trong hồ sơ của bạn."
                 : "Thông tin nhận diện có thể chưa chính xác. Hãy đối chiếu với tài liệu trước khi xác nhận."}
             </p>
             {card?.confirmedAt ? (
@@ -1179,7 +1179,7 @@ function getMatchingStatus(card: EvidenceCard | null | undefined, sourceType: st
     return {
       label: "Có điểm chưa khớp",
       tone: "warning" as const,
-      message: "Tên hệ thống đọc được khác tên bạn đã nhập, cần cán bộ kiểm tra.",
+      message: "Tên trong tài liệu khác tên bạn đã nhập. Bạn có thể kiểm tra lại trước khi nộp.",
       eventName: card?.matchingStatus?.matchedEventName ?? card?.matchingStatus?.eventName ?? null,
     };
   }

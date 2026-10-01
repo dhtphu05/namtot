@@ -367,12 +367,15 @@ function buildAttentionItems({
   if (eligibility && eligibility.status !== "ELIGIBLE") {
     items.push({
       id: "eligibility",
-      title: "Điều kiện nộp hồ sơ",
+      title:
+        eligibility.status === "NEEDS_VERIFICATION"
+          ? "Thông tin điều kiện đang được đối chiếu"
+          : "Điều kiện nộp hồ sơ",
       description:
         eligibility.status === "NEEDS_VERIFICATION"
-          ? "Thông tin cần được cán bộ xác minh trước khi gửi hồ sơ. Bạn vẫn có thể tiếp tục hoàn thiện."
+          ? "Thông tin điều kiện đang được đối chiếu. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ."
           : "Thông tin hiện tại chưa đáp ứng điều kiện nộp lần đầu. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.",
-      tone: "warning",
+      tone: eligibility.status === "NEEDS_VERIFICATION" ? "info" : "warning",
     });
   }
 
@@ -433,9 +436,7 @@ function buildAttentionItems({
     });
   }
 
-  const failedCount = evidences.filter((item) =>
-    ["failed", "needs_manual_review"].includes(item.indexingStatus),
-  ).length;
+  const failedCount = evidences.filter((item) => item.indexingStatus === "failed").length;
   const processingCount = evidences.filter((item) =>
     ["uploaded", "pending_indexing", "ocr_processing", "extracting", "checking_registry"].includes(
       item.indexingStatus,
@@ -444,8 +445,8 @@ function buildAttentionItems({
   if (failedCount) {
     items.push({
       id: "evidence-check",
-      title: `${failedCount} tài liệu cần kiểm tra`,
-      description: "Hãy mở tiêu chí liên quan để xem lại tài liệu gốc.",
+      title: `${failedCount} tệp chưa đọc được`,
+      description: "Mở minh chứng để xem tệp nào cần tải lại bằng bản rõ hơn.",
       tone: "warning",
     });
   } else if (processingCount) {

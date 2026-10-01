@@ -59,8 +59,8 @@ const statusPresentation: Record<EvidenceLibraryStatusKey, EvidenceLibraryStatus
   },
   waiting: {
     key: "waiting",
-    label: "Chờ cán bộ kiểm tra",
-    message: "Bạn chưa cần thao tác thêm với minh chứng này.",
+    label: "Đã tiếp nhận",
+    message: "Minh chứng đã được lưu trong hồ sơ của bạn.",
     tone: "info",
   },
   error: {

@@ -348,10 +348,7 @@ function ApplicationHeroCard({
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <OverviewCount label="Chưa bắt đầu" value={summary.completionCounts.notStarted} />
             <OverviewCount label="Đang hoàn thiện" value={summary.completionCounts.inProgress} />
-            <OverviewCount
-              label="Cần xác minh"
-              value={summary.completionCounts.needsVerification}
-            />
+            <OverviewCount label="Đã ghi nhận" value={summary.completionCounts.needsVerification} />
             <OverviewCount
               label="Có yêu cầu bổ sung"
               value={summary.completionCounts.supplementRequired}

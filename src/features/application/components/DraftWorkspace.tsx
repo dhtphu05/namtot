@@ -35,7 +35,7 @@ const REC: Record<string, { label: string; tone: "success" | "warning" | "brand"
 const REQUIREMENT: Record<string, string> = {
   ethics: "Điểm rèn luyện ≥ 80, không vi phạm kỷ luật, có phiếu xác nhận của Khoa.",
   academic:
-    "GPA ≥ 3.2 (Cấp Trường) — ≥ 3.6 (Cấp Thành phố). Khuyến khích có NCKH/giải thưởng học thuật.",
+    "Điểm trung bình tích lũy từ 3,2 (cấp Trường) hoặc 3,6 (cấp Thành phố). Khuyến khích có nghiên cứu khoa học hoặc giải thưởng học thuật.",
   physical: "Đạt chuẩn rèn luyện thể lực, có giấy CN Sinh viên khoẻ hoặc thành tích thể thao.",
   volunteer:
     "≥ 3 ngày (Cấp Trường) / ≥ 5 ngày (Cấp Thành phố) tình nguyện, có giấy CN của tổ chức Đoàn–Hội.",

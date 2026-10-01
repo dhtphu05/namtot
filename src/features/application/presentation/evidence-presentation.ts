@@ -75,12 +75,16 @@ function getEvidenceStatus(
   ) {
     return { label: "Đang xử lý", tone: "info" };
   }
-  if (["needs_supplement", "needs_manual_review", "resolution_needed"].includes(raw)) {
+  if (raw === "needs_manual_review") return { label: "Đã tiếp nhận", tone: "info" };
+  if (raw === "needs_supplement") {
     return {
-      label: "Cần cán bộ kiểm tra",
+      label: "Cần bổ sung",
       tone: "warning",
-      warning: "Minh chứng cần được kiểm tra thêm.",
+      warning: "Minh chứng cần được bổ sung theo yêu cầu.",
     };
+  }
+  if (raw === "resolution_needed") {
+    return { label: "Đang được xem xét thêm", tone: "info" };
   }
   if (["rejected", "failed"].includes(raw)) {
     return {

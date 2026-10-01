@@ -161,8 +161,8 @@ test("aggregation verified/pending", () => {
       },
     ],
   });
-  assert.equal(presentation.progressLabel, "Tổng đã xác nhận 2/3 ngày");
-  assert.match(presentation.description, /chờ xác minh 1 ngày/);
+  assert.equal(presentation.progressLabel, "Đã ghi nhận 3/3 ngày");
+  assert.match(presentation.description, /Đã ghi nhận 3\/3 ngày/);
 });
 
 test("optional group", () => {
@@ -199,13 +199,13 @@ test("unknown action", () => {
 test("waiting action non-interactive", () => {
   const action = getActionPresentation({ type: "wait_for_confirmation" });
   assert.equal(action?.isInteractive, false);
-  assert.equal(action?.label, "Đang chờ cán bộ xác minh");
+  assert.equal(action?.label, "Đã ghi nhận");
 });
 
 test("reviewer verification action is passive", () => {
   const action = getActionPresentation({ type: "reviewer_verification" });
   assert.equal(action?.isInteractive, false);
-  assert.equal(action?.label, "Đang chờ cán bộ xác minh");
+  assert.equal(action?.label, "Đã ghi nhận");
 });
 
 test("legacy evidence", () => {

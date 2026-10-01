@@ -152,6 +152,7 @@ type EvidenceDrawerContext = {
   requirementKey?: string;
   requirementLabel?: string;
   suggestedEventId?: string;
+  createVolunteerActivity?: boolean;
 };
 
 type AssistantSearch = {
@@ -450,6 +451,16 @@ export function StudentApplicationWorkspaceV2() {
     [canEditApplication, isSupplementMode, supplementCriteria],
   );
 
+  const openNewVolunteerActivityEvidenceDrawer = useCallback(
+    () =>
+      openEvidenceDrawer("volunteer", {
+        requirementKey: "accumulated_volunteer_days",
+        requirementLabel: "Hoạt động tình nguyện",
+        createVolunteerActivity: true,
+      }),
+    [openEvidenceDrawer],
+  );
+
   useEffect(() => {
     if (!application || handledUploadEvidenceRequestRef.current) return;
     if (routeSearch.uploadEvidence !== "1") return;
@@ -554,6 +565,15 @@ export function StudentApplicationWorkspaceV2() {
       toast.error(error instanceof Error ? error.message : "Không thể lưu chỉ số.");
       return false;
     }
+  };
+
+  const handleDeleteEvidence = (evidence: EvidenceResponse) => {
+    if (!canEditSelectedCriterion || !application) {
+      toast.error("Tiêu chí này đang ở chế độ chỉ xem.");
+      return;
+    }
+    setOptimisticEvidences((current) => current.filter((item) => item.id !== evidence.id));
+    deleteEvidence.mutate({ id: evidence.id, applicationId: application.id });
   };
 
   const precheckNow = () => {
@@ -814,14 +834,15 @@ export function StudentApplicationWorkspaceV2() {
                     declareEthicsConductScore.isPending ||
                     declareAcademicGpa.isPending
                   }
-                  savingVolunteerActivity={addVolunteerActivity.isPending}
-                  onAddVolunteerActivity={(input) =>
-                    addVolunteerActivity.mutateAsync({
-                      id: application.id,
-                      ...input,
-                    })
-                  }
+                  applicationId={application.id}
+                  volunteerEvidences={selectedEvidences}
+                  volunteerEvidenceLoading={evidencesQuery.isLoading}
+                  volunteerEvidenceError={evidencesQuery.isError}
+                  cityInitialSubmission={showCityEligibility && application.submittedAt == null}
                   onFindOfficialEvent={openOfficialEventLibrary}
+                  onAddEvidence={openNewVolunteerActivityEvidenceDrawer}
+                  onViewEvidence={setSelectedEvidence}
+                  onDeleteEvidence={handleDeleteEvidence}
                   onRequirementAction={(requirement) =>
                     openEvidenceDrawer(selectedCriterion, {
                       requirementKey: requirement.key,
@@ -830,26 +851,19 @@ export function StudentApplicationWorkspaceV2() {
                   }
                 />
 
-                <EvidenceGallerySection
-                  applicationId={application.id}
-                  canEdit={canEditSelectedCriterion}
-                  cityInitialSubmission={showCityEligibility && application.submittedAt == null}
-                  evidences={selectedEvidences}
-                  isLoading={evidencesQuery.isLoading}
-                  isError={evidencesQuery.isError}
-                  onAddEvidence={() => openEvidenceDrawer(selectedCriterion)}
-                  onViewEvidence={setSelectedEvidence}
-                  onDeleteEvidence={(evidence) => {
-                    if (!canEditSelectedCriterion) {
-                      toast.error("Tiêu chí này đang ở chế độ chỉ xem.");
-                      return;
-                    }
-                    setOptimisticEvidences((current) =>
-                      current.filter((item) => item.id !== evidence.id),
-                    );
-                    deleteEvidence.mutate({ id: evidence.id, applicationId: application.id });
-                  }}
-                />
+                {selectedCriterion !== "volunteer" ? (
+                  <EvidenceGallerySection
+                    applicationId={application.id}
+                    canEdit={canEditSelectedCriterion}
+                    cityInitialSubmission={showCityEligibility && application.submittedAt == null}
+                    evidences={selectedEvidences}
+                    isLoading={evidencesQuery.isLoading}
+                    isError={evidencesQuery.isError}
+                    onAddEvidence={() => openEvidenceDrawer(selectedCriterion)}
+                    onViewEvidence={setSelectedEvidence}
+                    onDeleteEvidence={handleDeleteEvidence}
+                  />
+                ) : null}
 
                 {showCompletionGuidance ? (
                   <CriterionActionRow
@@ -998,10 +1012,28 @@ export function StudentApplicationWorkspaceV2() {
           applicationId={application.id}
           open={Boolean(evidenceDrawerContext)}
           initialCriterion={evidenceDrawerContext.criterion}
-          initialEvidenceName={getDefaultEvidenceName(evidenceDrawerContext.criterion)}
+          initialEvidenceName={
+            evidenceDrawerContext.createVolunteerActivity
+              ? ""
+              : getDefaultEvidenceName(evidenceDrawerContext.criterion)
+          }
           initialRequirementKey={evidenceDrawerContext.requirementKey}
           initialRequirementLabel={evidenceDrawerContext.requirementLabel}
           preselectedEventId={evidenceDrawerContext.suggestedEventId}
+          onCreateVolunteerActivity={
+            evidenceDrawerContext.createVolunteerActivity
+              ? (evidenceId, input) =>
+                  addVolunteerActivity.mutateAsync({
+                    id: application.id,
+                    requirementKey: "accumulated_volunteer_days",
+                    declaredUnit: "day",
+                    evidenceId,
+                    ...input,
+                    declaredValue:
+                      input.activityType === "blood_donation" ? 1 : input.declaredValue,
+                  })
+              : undefined
+          }
           onOpenChange={(open) => {
             if (!open) {
               setEvidenceDrawerContext(null);
@@ -1229,7 +1261,7 @@ function getOverviewEvidenceCounts({
 function getEligibilitySubmitMessage(status: "NOT_ELIGIBLE" | "NEEDS_VERIFICATION") {
   return status === "NOT_ELIGIBLE"
     ? "Hồ sơ hiện chưa đủ điều kiện nộp cấp Thành phố. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ và minh chứng."
-    : "Điều kiện nộp hồ sơ cấp Thành phố đang chờ cán bộ xác minh. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.";
+    : "Thông tin điều kiện nộp hồ sơ cấp Thành phố đang được đối chiếu. Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ.";
 }
 
 function getSubmissionDeadlineSubmitMessage(status?: string) {
@@ -1431,9 +1463,15 @@ function CriterionDataSection({
   onMetricChange,
   onSaveMetric,
   savingMetric,
-  savingVolunteerActivity,
-  onAddVolunteerActivity,
+  applicationId,
+  volunteerEvidences,
+  volunteerEvidenceLoading,
+  volunteerEvidenceError,
+  cityInitialSubmission,
   onFindOfficialEvent,
+  onAddEvidence,
+  onViewEvidence,
+  onDeleteEvidence,
   onRequirementAction,
 }: {
   completion?: CriterionCompletionItem;
@@ -1448,19 +1486,15 @@ function CriterionDataSection({
   onMetricChange: (value: string) => void;
   onSaveMetric: () => Promise<boolean>;
   savingMetric: boolean;
-  savingVolunteerActivity: boolean;
-  onAddVolunteerActivity: (input: {
-    requirementKey: "accumulated_volunteer_days" | "activity_count";
-    activityType: string;
-    activityName: string;
-    organizer?: string;
-    organizerLevel?: string;
-    startDate?: string;
-    endDate?: string;
-    declaredValue?: number;
-    declaredUnit?: "day" | "session" | "event" | "donation";
-  }) => Promise<unknown>;
+  applicationId: string;
+  volunteerEvidences: EvidenceResponse[];
+  volunteerEvidenceLoading: boolean;
+  volunteerEvidenceError: boolean;
+  cityInitialSubmission: boolean;
   onFindOfficialEvent: (requirementKey?: string) => void;
+  onAddEvidence: () => void;
+  onViewEvidence: (evidence: EvidenceResponse) => void;
+  onDeleteEvidence: (evidence: EvidenceResponse) => void;
   onRequirementAction: (requirement: RequirementItem) => void;
 }) {
   const groups = completion?.requirementGroups ?? [];
@@ -1507,7 +1541,6 @@ function CriterionDataSection({
         metrics={metrics}
         metricValue={metricValue}
         selectedMetric={selectedMetric}
-        schoolYear={schoolYear}
         gpaScale={gpaScale}
         canEdit={canEdit}
         savingMetric={savingMetric}
@@ -1519,15 +1552,22 @@ function CriterionDataSection({
     );
   } else if (criterion === "physical" && completion) {
     content = <PhysicalDataSectionV2 completion={completion} />;
-  } else if (criterion === "volunteer" && completion) {
+  } else if (criterion === "volunteer") {
     content = (
       <VolunteerDataSectionV2
-        completion={completion}
         canEdit={canEdit}
-        saving={savingVolunteerActivity}
-        onAddActivity={onAddVolunteerActivity}
+        applicationId={applicationId}
+        evidences={volunteerEvidences}
+        evidenceLoading={volunteerEvidenceLoading}
+        evidenceError={volunteerEvidenceError}
+        cityInitialSubmission={cityInitialSubmission}
+        canFindOfficialEvent={supportsOfficialEventRequirement(
+          requirements.find((requirement) => requirement.key === "accumulated_volunteer_days"),
+        )}
         onFindOfficialEvent={onFindOfficialEvent}
-        onRequirementAction={onRequirementAction}
+        onAddEvidence={onAddEvidence}
+        onViewEvidence={onViewEvidence}
+        onDeleteEvidence={onDeleteEvidence}
       />
     );
   } else if (criterion === "integration" && completion) {
@@ -1559,10 +1599,9 @@ function CriterionDataSection({
 
   return (
     <section className="min-w-0">
-      <SectionHeading
-        title="Thông tin đã khai báo"
-        className="mb-3"
-      />
+      {criterion !== "volunteer" ? (
+        <SectionHeading title="Thông tin đã khai báo" className="mb-3" />
+      ) : null}
       {content}
     </section>
   );
@@ -1645,7 +1684,7 @@ function EthicsDataSectionV2({
     },
     {
       label: "Tình trạng vi phạm",
-      value: getRequirementDisplayValue(noViolation) ?? "Cán bộ xét duyệt xác minh",
+      value: getRequirementDisplayValue(noViolation) ?? "Không cần bạn khai báo",
       source: getDisplayRequirementSourceLabel(noViolation),
       status: (
         <StatusPillV2
@@ -1724,8 +1763,8 @@ function EthicsDataSectionV2({
       {noViolation && noViolation.status !== "verified" ? (
         <InlineStateMessage
           tone="info"
-          title="Cán bộ xét duyệt sẽ xác minh tình trạng vi phạm"
-          description="Sinh viên không tự xác minh mục này. Mục này không chặn nộp hồ sơ khi các phần sinh viên phụ trách đã hoàn tất."
+          title="Thông tin đã được ghi nhận"
+          description="Mục này không yêu cầu bạn khai báo và không chặn nộp hồ sơ khi các phần còn lại đã hoàn tất."
         />
       ) : null}
 
@@ -1745,7 +1784,6 @@ function AcademicDataSectionV2({
   metrics,
   metricValue,
   selectedMetric,
-  schoolYear,
   gpaScale,
   canEdit,
   savingMetric,
@@ -1758,7 +1796,6 @@ function AcademicDataSectionV2({
   metrics: ApplicationMetric[];
   metricValue: string;
   selectedMetric?: ReturnType<typeof getPrimaryMetricInput>;
-  schoolYear?: string | null;
   gpaScale: 4 | 10;
   canEdit: boolean;
   savingMetric: boolean;
@@ -1816,7 +1853,7 @@ function AcademicDataSectionV2({
           </p>
           {gpa && ["declared", "needs_verification"].includes(gpa.status) ? (
             <p className="mt-1 text-[13px] leading-[18px] text-[var(--student-v2-text-muted)]">
-              Đang chờ cán bộ xác minh
+              Thông tin đã được ghi nhận
             </p>
           ) : null}
         </div>
@@ -1896,8 +1933,8 @@ function AcademicDataSectionV2({
       {gpa && ["declared", "needs_verification"].includes(gpa.status) ? (
         <InlineStateMessage
           tone="info"
-          title="Đang chờ xác minh kết quả học tập"
-          description="Trạng thái chờ xác minh là thụ động. Bạn có thể tiếp tục bổ sung minh chứng hoặc hoàn thiện tiêu chí khác."
+          title="Thông tin học tập đã được ghi nhận"
+          description="Bạn có thể tiếp tục bổ sung minh chứng hoặc hoàn thiện tiêu chí khác."
         />
       ) : null}
 
@@ -1920,265 +1957,95 @@ function PhysicalDataSectionV2({ completion }: { completion: CriterionCompletion
 
   return (
     <div className="grid min-w-0 gap-4">
-      <CriterionRequirementsSummaryV2 completion={completion} />
       {recordedRequirements.length ? (
         <ExistingPathResponsesV2
           title="Thông tin đã ghi nhận"
           paths={recordedRequirements}
           unknownLabel="Hình thức khác"
         />
-      ) : null}
+      ) : (
+        <p className="m-0 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+          Bạn có thể tải minh chứng phù hợp cho tiêu chí này ở bên dưới.
+        </p>
+      )}
     </div>
   );
 }
 
 function VolunteerDataSectionV2({
-  completion,
   canEdit,
-  saving,
-  onAddActivity,
+  applicationId,
+  evidences,
+  evidenceLoading,
+  evidenceError,
+  cityInitialSubmission,
+  canFindOfficialEvent,
   onFindOfficialEvent,
-  onRequirementAction,
+  onAddEvidence,
+  onViewEvidence,
+  onDeleteEvidence,
 }: {
-  completion: CriterionCompletionItem;
   canEdit: boolean;
-  saving: boolean;
-  onAddActivity: (input: {
-    requirementKey: "accumulated_volunteer_days" | "activity_count";
-    activityType: string;
-    activityName: string;
-    organizer?: string;
-    organizerLevel?: string;
-    startDate?: string;
-    endDate?: string;
-    declaredValue?: number;
-    declaredUnit?: "day" | "session" | "event" | "donation";
-  }) => Promise<unknown>;
+  applicationId: string;
+  evidences: EvidenceResponse[];
+  evidenceLoading: boolean;
+  evidenceError: boolean;
+  cityInitialSubmission: boolean;
+  canFindOfficialEvent: boolean;
   onFindOfficialEvent: () => void;
-  onRequirementAction: (requirement: RequirementItem) => void;
+  onAddEvidence: () => void;
+  onViewEvidence: (evidence: EvidenceResponse) => void;
+  onDeleteEvidence: (evidence: EvidenceResponse) => void;
 }) {
-  const days = findRequirement(completion, "accumulated_volunteer_days");
-  const count = findRequirement(completion, "activity_count");
-  const primaryRequirement = days ?? count;
-  const aggregation = primaryRequirement?.aggregation;
-  const activities = [days, count]
-    .flatMap((requirement) => requirement?.aggregation?.activities ?? [])
-    .filter((activity, index, all) => all.findIndex((item) => item.id === activity.id) === index);
-  const [formOpen, setFormOpen] = useState(false);
-  const [activityName, setActivityName] = useState("");
-  const [activityType, setActivityType] = useState("volunteer_activity");
-  const [organizer, setOrganizer] = useState("");
-  const [declaredValue, setDeclaredValue] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
-
-  const resetForm = () => {
-    setActivityName("");
-    setActivityType("volunteer_activity");
-    setOrganizer("");
-    setDeclaredValue("");
-    setStartDate("");
-    setEndDate("");
-    setFormError(null);
-  };
-
-  const submitActivity = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const value = declaredValue ? Number(declaredValue) : undefined;
-    if (!activityName.trim()) {
-      setFormError("Vui lòng nhập tên hoạt động tình nguyện.");
-      return;
-    }
-    if (declaredValue && !Number.isFinite(value)) {
-      setFormError("Giá trị hoạt động không hợp lệ.");
-      return;
-    }
-    try {
-      await onAddActivity({
-        requirementKey: "accumulated_volunteer_days",
-        activityType,
-        activityName: activityName.trim(),
-        organizer: organizer.trim() || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        declaredValue: value,
-        declaredUnit: "day",
-      });
-      setFormOpen(false);
-      resetForm();
-      toast.success("Đã thêm hoạt động tình nguyện, chờ xác minh.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể thêm hoạt động tình nguyện.");
-    }
-  };
-
   return (
-    <div className="grid min-w-0 gap-4">
-      <div className="rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-4">
-        <SectionHeading
-          title="Sổ hoạt động tình nguyện"
-          description="Tiến độ được tổng hợp theo các điều kiện của tiêu chí; kết quả chính thức do cán bộ xác nhận."
-          action={
-            <div className="flex flex-wrap gap-2">
-              {supportsOfficialEventRequirement(primaryRequirement) ? (
-                <ButtonV2
-                  type="button"
-                  variant="secondary"
-                  size="compact"
-                  onClick={onFindOfficialEvent}
-                >
-                  <Search aria-hidden="true" />
-                  Tìm hoạt động chính thức
-                </ButtonV2>
-              ) : null}
-              {canEdit ? (
-                <ButtonV2
-                  type="button"
-                  variant="secondary"
-                  size="compact"
-                  onClick={() => setFormOpen(true)}
-                >
-                  <Plus aria-hidden="true" />
-                  Thêm hoạt động
-                </ButtonV2>
-              ) : null}
-            </div>
-          }
-          className="mb-4"
-        />
-        <div className="grid gap-3 sm:grid-cols-3">
-          <VolunteerSummaryMetricV2
-            label="Đã xác minh"
-            value={aggregation?.verifiedTotal ?? 0}
-            unit={aggregation?.unit ?? "day"}
-            status="complete"
-          />
-          <VolunteerSummaryMetricV2
-            label="Chờ xác minh"
-            value={aggregation?.pendingVerificationTotal ?? 0}
-            unit={aggregation?.unit ?? "day"}
-            status="waiting"
-          />
-          <VolunteerSummaryMetricV2
-            label="Mục tiêu"
-            value={aggregation?.threshold ?? 0}
-            unit={aggregation?.unit ?? "day"}
-            status="not-started"
-          />
-        </div>
-      </div>
-
-      {formOpen ? (
-        <form
-          className="rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-4"
-          onSubmit={submitActivity}
-        >
-          <div className="grid min-w-0 gap-3 md:grid-cols-3">
-            <label className="min-w-0 text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)] md:col-span-2">
-              Tên hoạt động
-              <input
-                value={activityName}
-                onChange={(event) => {
-                  setActivityName(event.target.value);
-                  setFormError(null);
-                }}
-                aria-describedby={formError ? "volunteer-activity-error" : undefined}
-                className="mt-1 min-h-11 w-full rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--student-v2-focus-ring)]"
-                disabled={!canEdit || saving}
-              />
-            </label>
-            <label className="text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)]">
-              Loại hoạt động
-              <select
-                value={activityType}
-                onChange={(event) => setActivityType(event.target.value)}
-                className="mt-1 min-h-11 w-full rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--student-v2-focus-ring)]"
-                disabled={!canEdit || saving}
+    <section
+      data-testid="volunteer-workspace"
+      className="min-w-0 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-4 py-4 sm:px-5"
+    >
+      <SectionHeading
+        title="Hoạt động tình nguyện"
+        description="Khai báo hoạt động và tải minh chứng cùng lúc. Cán bộ sẽ xác minh thông tin và số ngày được ghi nhận."
+        action={
+          <div className="flex flex-wrap gap-2">
+            {canFindOfficialEvent ? (
+              <ButtonV2
+                type="button"
+                variant="secondary"
+                size="compact"
+                onClick={onFindOfficialEvent}
               >
-                <option value="volunteer_activity">Tình nguyện</option>
-                <option value="blood_donation">Hiến máu</option>
-                <option value="green_sunday">Chủ nhật xanh</option>
-              </select>
-            </label>
-            <label className="text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)]">
-              Đơn vị tổ chức
-              <input
-                value={organizer}
-                onChange={(event) => setOrganizer(event.target.value)}
-                className="mt-1 min-h-11 w-full rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--student-v2-focus-ring)]"
-                disabled={!canEdit || saving}
-              />
-            </label>
-            <label className="text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)]">
-              Giá trị
-              <input
-                value={declaredValue}
-                onChange={(event) => {
-                  setDeclaredValue(event.target.value);
-                  setFormError(null);
-                }}
-                inputMode="decimal"
-                placeholder={aggregation?.unit ?? "day"}
-                className="mt-1 min-h-11 w-full rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--student-v2-focus-ring)]"
-                disabled={!canEdit || saving}
-              />
-            </label>
-            <label className="text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)]">
-              Bắt đầu
-              <input
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-                type="date"
-                className="mt-1 min-h-11 w-full rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--student-v2-focus-ring)]"
-                disabled={!canEdit || saving}
-              />
-            </label>
-            <label className="text-[14px] font-medium leading-5 text-[var(--student-v2-text-primary)]">
-              Kết thúc
-              <input
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-                type="date"
-                className="mt-1 min-h-11 w-full rounded-[var(--student-v2-radius-control)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--student-v2-focus-ring)]"
-                disabled={!canEdit || saving}
-              />
-            </label>
+                <Search aria-hidden="true" />
+                Tìm hoạt động chính thức
+              </ButtonV2>
+            ) : null}
+            {canEdit ? (
+              <ButtonV2 type="button" variant="primary" size="compact" onClick={onAddEvidence}>
+                <Plus aria-hidden="true" />
+                Thêm minh chứng
+              </ButtonV2>
+            ) : null}
           </div>
-          {formError ? (
-            <p
-              id="volunteer-activity-error"
-              className="mt-2 text-[13px] leading-[18px] text-[var(--student-v2-critical-text)]"
-            >
-              {formError}
-            </p>
-          ) : null}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <ButtonV2 type="submit" variant="primary" disabled={!canEdit || saving}>
-              {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
-              Lưu hoạt động
-            </ButtonV2>
-            <ButtonV2
-              type="button"
-              variant="tertiary"
-              onClick={() => {
-                setFormOpen(false);
-                resetForm();
-              }}
-              disabled={saving}
-            >
-              Hủy thay đổi
-            </ButtonV2>
-          </div>
-        </form>
-      ) : null}
-
-      <VolunteerLedgerV2
-        activities={activities}
-        canEdit={canEdit}
-        onRequirementAction={() => primaryRequirement && onRequirementAction(primaryRequirement)}
+        }
+        className="mb-4"
       />
-    </div>
+      <p className="mb-4 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+        Mỗi minh chứng gắn với một hoạt động cụ thể. Bạn không cần tự cộng tổng số ngày; cán bộ sẽ
+        xem nội dung và xác nhận theo quy định.
+      </p>
+      <EvidenceGallerySection
+        applicationId={applicationId}
+        canEdit={canEdit}
+        cityInitialSubmission={cityInitialSubmission}
+        evidences={evidences}
+        isLoading={evidenceLoading}
+        isError={evidenceError}
+        onAddEvidence={onAddEvidence}
+        onViewEvidence={onViewEvidence}
+        onDeleteEvidence={onDeleteEvidence}
+        embedded
+        showAddAction={false}
+      />
+    </section>
   );
 }
 
@@ -2190,86 +2057,19 @@ function IntegrationDataSectionV2({ completion }: { completion: CriterionComplet
 
   return (
     <div className="grid min-w-0 gap-4">
-      <CriterionRequirementsSummaryV2 completion={completion} />
       {recordedRequirements.length ? (
         <ExistingPathResponsesV2
           title="Thông tin đã ghi nhận"
           paths={recordedRequirements}
           unknownLabel="Hình thức khác"
         />
-      ) : null}
-    </div>
-  );
-}
-
-function CriterionRequirementsSummaryV2({ completion }: { completion: CriterionCompletionItem }) {
-  const requirementGroups = completion.requirementGroups ?? [];
-
-  return (
-    <div className="grid min-w-0 gap-4">
-      {getStudentFacingRequirementCopy(completion.description) ? (
-        <p className="text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-          {getStudentFacingRequirementCopy(completion.description)}
-        </p>
-      ) : null}
-      {requirementGroups.length ? (
-        <section className="min-w-0 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-4">
-          <h3 className="text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)]">
-            Điều kiện của tiêu chí
-          </h3>
-          <p className="mt-1 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
-            Bạn không cần chọn hình thức. Hãy tải lên minh chứng phù hợp bên dưới; có thể thêm ghi
-            chú cho cán bộ nếu cần.
-          </p>
-          <div className="mt-3 space-y-3">
-            {requirementGroups.map((group) => (
-              <div
-                key={group.key}
-                className="min-w-0 rounded-lg border border-[var(--student-v2-border-default)] px-4 py-3"
-              >
-                <div className="text-[14px] font-semibold leading-[22px] text-[var(--student-v2-text-primary)]">
-                  {getStudentFacingRequirementCopy(group.title) ?? "Điều kiện cần đáp ứng"}
-                </div>
-                <p className="mt-0.5 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
-                  {getRequirementGroupGuidance(group)}
-                  {group.optional ? " Nhóm điều kiện này không bắt buộc." : ""}
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
-                  {(group.requirements ?? []).map((requirement) => (
-                    <li key={requirement.key}>
-                      <span className="font-medium text-[var(--student-v2-text-primary)]">
-                          {getStudentRequirementLabel(requirement)}
-                      </span>
-                      {getStudentFacingRequirementCopy(requirement.description)
-                        ? ` — ${getStudentFacingRequirementCopy(requirement.description)}`
-                        : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
       ) : (
-        <InlineStateMessage
-          tone="info"
-          title="Chưa có điều kiện để hiển thị"
-          description="Bạn vẫn có thể tải lên minh chứng phù hợp ở phần bên dưới và thêm ghi chú nếu cần."
-        />
+        <p className="m-0 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
+          Bạn có thể tải minh chứng phù hợp cho tiêu chí này ở bên dưới.
+        </p>
       )}
     </div>
   );
-}
-
-function getRequirementGroupGuidance(group: RequirementGroup) {
-  if (group.operator === "one_of") return "Trong nhóm này, đáp ứng một trong các điều kiện sau:";
-  if (group.operator === "at_least_n" && typeof group.requiredCount === "number") {
-    return `Trong nhóm này, đáp ứng tối thiểu ${group.requiredCount} điều kiện sau:`;
-  }
-  if (group.operator === "at_least_n") {
-    return "Trong nhóm này, đáp ứng số điều kiện tối thiểu theo cấu hình:";
-  }
-  return "Trong nhóm này, đáp ứng tất cả các điều kiện sau:";
 }
 
 function AchievementDisclosureV2({
@@ -2312,7 +2112,7 @@ function AchievementDisclosureV2({
                 }}
                 disabled={!canEdit}
               >
-                {getSafeRequirementLabel(requirement)}
+                {getStudentRequirementLabel(requirement)}
               </ButtonV2>
             );
           })}
@@ -2320,7 +2120,7 @@ function AchievementDisclosureV2({
       ) : null}
       {requirements.length ? (
         <div className="mt-3 text-[13px] leading-[18px] text-[var(--student-v2-text-muted)]">
-          {actionLabel}: chọn đúng loại thành tích để mở biểu mẫu phù hợp.
+          {actionLabel}: chọn thành tích phù hợp để bổ sung thông tin.
         </div>
       ) : null}
     </details>
@@ -2521,142 +2321,6 @@ function ExistingPathResponsesV2({
   );
 }
 
-function VolunteerSummaryMetricV2({
-  label,
-  value,
-  unit,
-  status,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  status: StudentApplicationV2ProgressStatus;
-}) {
-  return (
-    <div className="min-w-0 border-l border-[var(--student-v2-divider)] px-4 first:border-l-0 first:pl-0">
-      <div className="text-[13px] font-medium leading-[18px] text-[var(--student-v2-text-muted)]">
-        {label}
-      </div>
-      <div className="mt-1 flex min-w-0 items-baseline gap-2">
-        <span className="text-[24px] font-semibold leading-8 text-[var(--student-v2-text-primary)]">
-          {value}
-        </span>
-        <span className="text-[14px] leading-5 text-[var(--student-v2-text-secondary)]">
-          {unit}
-        </span>
-      </div>
-      <div className="mt-2">
-        <StatusPillV2 status={status} label={label} />
-      </div>
-    </div>
-  );
-}
-
-function VolunteerLedgerV2({
-  activities,
-  canEdit,
-  onRequirementAction,
-}: {
-  activities: NonNullable<RequirementItem["aggregation"]>["activities"];
-  canEdit: boolean;
-  onRequirementAction: () => void;
-}) {
-  return (
-    <section className="min-w-0 overflow-hidden rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)]">
-      <div className="grid min-h-11 grid-cols-[minmax(180px,1.2fr)_minmax(120px,0.8fr)_minmax(96px,0.55fr)_minmax(120px,0.75fr)_minmax(120px,0.7fr)_96px] items-center gap-3 bg-[var(--student-v2-surface-muted)] px-4 text-[13px] font-medium leading-[18px] text-[var(--student-v2-text-muted)] max-lg:hidden">
-        <span>Hoạt động</span>
-        <span>Thời gian</span>
-        <span>Giá trị</span>
-        <span>Nguồn</span>
-        <span>Trạng thái</span>
-        <span>Hành động</span>
-      </div>
-      <div className="divide-y divide-[var(--student-v2-divider)]">
-        {activities.length ? (
-          activities.map((activity) => (
-            <VolunteerLedgerRowV2
-              key={activity.id}
-              activity={activity}
-              canEdit={canEdit}
-              onRequirementAction={onRequirementAction}
-            />
-          ))
-        ) : (
-          <div className="px-4 py-4">
-            <CompactEmptyStateV2
-              title="Chưa có hoạt động tình nguyện"
-              description="Thêm từng hoạt động hoặc tìm trong kho dữ liệu chính thức; không nhập tổng quy đổi thủ công."
-            />
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function VolunteerLedgerRowV2({
-  activity,
-  canEdit,
-  onRequirementAction,
-}: {
-  activity: NonNullable<RequirementItem["aggregation"]>["activities"][number];
-  canEdit: boolean;
-  onRequirementAction: () => void;
-}) {
-  const status =
-    activity.status === "verified"
-      ? "complete"
-      : activity.status === "rejected"
-        ? "supplement"
-        : "waiting";
-  return (
-    <div className="grid min-w-0 gap-2 px-4 py-3 text-[15px] leading-[23px] lg:grid-cols-[minmax(180px,1.2fr)_minmax(120px,0.8fr)_minmax(96px,0.55fr)_minmax(120px,0.75fr)_minmax(120px,0.7fr)_96px] lg:items-center lg:gap-3">
-      <div className="min-w-0">
-        <div className="font-semibold text-[var(--student-v2-text-primary)]">
-          {activity.activityName ?? "Hoạt động tình nguyện"}
-        </div>
-        {activity.organizer ? (
-          <div className="mt-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">
-            {activity.organizer}
-          </div>
-        ) : null}
-      </div>
-      <div className="text-[var(--student-v2-text-secondary)]">
-        {[
-          formatOptionalStudentDate(activity.startDate),
-          formatOptionalStudentDate(activity.endDate),
-        ]
-          .filter(Boolean)
-          .join(" - ") || "Chưa có"}
-      </div>
-      <div className="font-medium text-[var(--student-v2-text-primary)]">
-        {activity.countedValue ?? activity.convertedValue ?? activity.declaredValue ?? 0}{" "}
-        {activity.convertedUnit ?? activity.declaredUnit ?? ""}
-      </div>
-      <div className="text-[var(--student-v2-text-secondary)]">
-        {formatActivitySource(activity)}
-      </div>
-      <StatusPillV2
-        status={status}
-        label={
-          activity.status === "verified"
-            ? "Hoàn thành"
-            : activity.status === "rejected"
-              ? "Cần bổ sung"
-              : "Đang chờ"
-        }
-      />
-      <div>
-        {canEdit && activity.status !== "verified" ? (
-          <ButtonV2 type="button" variant="tertiary" size="compact" onClick={onRequirementAction}>
-            Bổ sung
-          </ButtonV2>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 function DynamicFieldInputV2({
   field,
   value,
@@ -2697,6 +2361,8 @@ function EvidenceGallerySection({
   onAddEvidence,
   onViewEvidence,
   onDeleteEvidence,
+  embedded = false,
+  showAddAction = true,
 }: {
   applicationId: string;
   canEdit: boolean;
@@ -2707,25 +2373,36 @@ function EvidenceGallerySection({
   onAddEvidence: () => void;
   onViewEvidence: (evidence: EvidenceResponse) => void;
   onDeleteEvidence: (evidence: EvidenceResponse) => void;
+  embedded?: boolean;
+  showAddAction?: boolean;
 }) {
+  const Wrapper = embedded ? "div" : "section";
   return (
-    <section className="min-w-0 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-5 sm:px-6">
+    <Wrapper
+      className={
+        embedded
+          ? "mt-5 min-w-0 border-t border-[var(--student-v2-divider)] pt-5"
+          : "min-w-0 rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-5 py-5 sm:px-6"
+      }
+    >
       <SectionHeading
         title="Minh chứng"
         description={
           evidences.length ? `${evidences.length} minh chứng trong tiêu chí này` : undefined
         }
         action={
-          <ButtonV2
-            type="button"
-            variant="secondary"
-            size="compact"
-            onClick={onAddEvidence}
-            disabled={!canEdit}
-          >
-            <Plus aria-hidden="true" />
-            Thêm
-          </ButtonV2>
+          showAddAction ? (
+            <ButtonV2
+              type="button"
+              variant="secondary"
+              size="compact"
+              onClick={onAddEvidence}
+              disabled={!canEdit}
+            >
+              <Plus aria-hidden="true" />
+              Thêm
+            </ButtonV2>
+          ) : null
         }
         className="mb-4"
       />
@@ -2765,14 +2442,21 @@ function EvidenceGallerySection({
           title="Chưa có minh chứng."
           description="Thêm tài liệu hoặc chọn dữ liệu đã có."
           action={
-            <ButtonV2 type="button" variant="secondary" onClick={onAddEvidence} disabled={!canEdit}>
-              <Plus aria-hidden="true" />
-              Thêm
-            </ButtonV2>
+            showAddAction ? (
+              <ButtonV2
+                type="button"
+                variant="secondary"
+                onClick={onAddEvidence}
+                disabled={!canEdit}
+              >
+                <Plus aria-hidden="true" />
+                Thêm
+              </ButtonV2>
+            ) : null
           }
         />
       )}
-    </section>
+    </Wrapper>
   );
 }
 
@@ -2811,7 +2495,9 @@ function StudentEvidenceGalleryCard({
         title={evidence.evidenceName || "Minh chứng chưa đặt tên"}
         metadata={getEvidenceMetadata(evidence, applicationId)}
         context={studentCriterionLabel[evidence.criterion] ?? criterionLabels[evidence.criterion]}
-        processingDetail={getEvidenceProcessingDetail(evidence, cityInitialSubmission)}
+        processingDetail={
+          cityInitialSubmission ? undefined : getEvidenceProcessingDetail(evidence, false)
+        }
         status={cardStatus.status}
         statusLabel={cardStatus.label}
         preview={getEvidencePreview(evidence, previewUrl, signedUrl.isLoading)}
@@ -2847,7 +2533,7 @@ function DynamicFormDisclosure({
   return (
     <details className="rounded-[var(--student-v2-radius-section)] border border-[var(--student-v2-border-default)] bg-[var(--student-v2-surface-primary)] px-4 py-3">
       <summary className="flex min-h-11 cursor-pointer items-center text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--student-v2-focus-ring)]">
-                Thông tin bổ sung
+        Thông tin bổ sung
       </summary>
       <div className="mt-3 text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
         {hasDynamicSchema
@@ -2890,14 +2576,12 @@ function GuideSheet({
       >
         <SheetHeader>
           <SheetTitle>Điều kiện {criterionLabels[criterion]}</SheetTitle>
-          <SheetDescription>
-            Mô tả và điều kiện theo dữ liệu cấu hình của hồ sơ hiện tại.
-          </SheetDescription>
+          <SheetDescription>Các yêu cầu cần đáp ứng cho tiêu chí này.</SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-5">
-          {completion?.description ? (
+          {getStudentFacingRequirementCopy(completion?.description) ? (
             <p className="text-[14px] leading-[22px] text-[var(--student-v2-text-secondary)]">
-              {getStudentFacingRequirementCopy(completion.description)}
+              {getStudentFacingRequirementCopy(completion?.description)}
             </p>
           ) : null}
           {requirementGroups.length ? (
@@ -2913,9 +2597,7 @@ function GuideSheet({
                     </div>
                     <ul className="mt-2 space-y-1 text-[13px] leading-[20px] text-[var(--student-v2-text-secondary)]">
                       {group.requirements.map((requirement) => (
-                        <li key={requirement.key}>
-                          {getStudentRequirementLabel(requirement)}
-                        </li>
+                        <li key={requirement.key}>{getStudentRequirementLabel(requirement)}</li>
                       ))}
                     </ul>
                   </div>
@@ -2925,7 +2607,7 @@ function GuideSheet({
           ) : (
             <InlineStateMessage
               tone="info"
-              title="Chưa có mô tả điều kiện từ hệ thống"
+              title="Chưa có nội dung điều kiện"
               description="Hãy dùng thông tin hiển thị trong hồ sơ và liên hệ bộ phận hỗ trợ nếu cần làm rõ."
             />
           )}
@@ -2988,21 +2670,23 @@ function buildWorkspaceCriterionState({
     getCriteriaUiState(criterion, evidences, precheck, []),
     completion,
   );
-  const freeUploadEvidenceCount = evidences.filter(
-    (evidence) => evidence.criterion === criterion,
+  const uploadedEvidenceCount = evidences.filter(
+    (evidence) =>
+      evidence.criterion === criterion && Boolean(evidence.fileId || evidence.files?.length),
   ).length;
   if (
-    completion?.status === "not_started" &&
-    freeUploadEvidenceCount > 0 &&
-    (criterion === "physical" || criterion === "integration")
+    application &&
+    ["draft", "prechecked", "ready_to_submit"].includes(application.status) &&
+    application.submittedAt == null &&
+    uploadedEvidenceCount > 0
   ) {
-    const description = `Đã tải lên ${freeUploadEvidenceCount} minh chứng. Cán bộ sẽ đối chiếu theo điều kiện khi bạn nộp hồ sơ.`;
+    const description = "Minh chứng đã được lưu trong hồ sơ.";
     return {
       ...base,
       status: "needs_review",
       statusLabel: "Đã có minh chứng",
       tone: "info",
-      evidenceCount: freeUploadEvidenceCount,
+      evidenceCount: uploadedEvidenceCount,
       primaryMissingReason: description,
       completionText: description,
       progressStatus: "waiting",
@@ -3050,7 +2734,7 @@ function buildDefinitionRows({
   onRequirementAction: (requirement: RequirementItem) => void;
 }): DefinitionTableV2Row[] {
   const rows: DefinitionTableV2Row[] = requirements.slice(0, 8).map((requirement) => ({
-    label: getRequirementPresentation(requirement).label,
+    label: getStudentRequirementLabel(requirement),
     value: getRequirementValue(requirement),
     source: formatSourceList(requirement.acceptedSources),
     status: (
@@ -3167,9 +2851,13 @@ function hasRequirementResponse(requirement: RequirementItem) {
 }
 
 function getPathTitle(requirement: RequirementItem, unknownLabel = "Hình thức khác") {
-  const presentation = getRequirementPresentation(requirement);
+  const safeRequirement = {
+    ...requirement,
+    title: getStudentFacingRequirementCopy(requirement.title) ?? "",
+  };
+  const presentation = getRequirementPresentation(safeRequirement);
   if (presentation.isFallback) return unknownLabel;
-  return getSafeRequirementLabel(requirement);
+  return getSafeRequirementLabel(safeRequirement);
 }
 
 function getPathDescription(requirement: RequirementItem) {
@@ -3215,9 +2903,9 @@ function getRequirementDisplayValue(requirement?: RequirementItem) {
   if (requirement?.key === "no_violation") {
     if (requirement.status === "verified") return "Không vi phạm đã được xác minh";
     if (requirement.status === "rejected") return "Có ghi nhận cần xử lý";
-    if (isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt xác minh";
+    if (isReviewerOwnedRequirement(requirement)) return "Không cần bạn khai báo";
     if (requirement.status === "needs_verification" || requirement.status === "declared") {
-      return "Chờ cán bộ xác minh";
+      return "Đã ghi nhận";
     }
   }
   return undefined;
@@ -3226,7 +2914,7 @@ function getRequirementDisplayValue(requirement?: RequirementItem) {
 function getDisplayRequirementSourceLabel(requirement?: RequirementItem, fallbackValue?: string) {
   const response = getLatestRequirementResponse(requirement);
   if (response) return getResponseSourcePresentation(response);
-  if (isReviewerOwnedRequirement(requirement)) return "Cán bộ xét duyệt";
+  if (isReviewerOwnedRequirement(requirement)) return "Đối chiếu khi xử lý hồ sơ";
   if (fallbackValue) return "Sinh viên khai báo";
   if (requirement?.acceptedSources?.length) return formatSourceList(requirement.acceptedSources);
   return "Chưa có";
@@ -3257,14 +2945,14 @@ function numericPayloadValue(payloadJson: unknown, field: string) {
 }
 
 function noViolationPassiveCopy(requirement?: RequirementItem) {
-  if (requirement?.status === "verified") return "Đã được cán bộ xác minh.";
+  if (requirement?.status === "verified") return "Thông tin đã được ghi nhận.";
   if (requirement?.status === "rejected") {
     return "Có ghi nhận cần xử lý theo hướng dẫn của cán bộ. Sinh viên bổ sung minh chứng nếu được yêu cầu.";
   }
   if (isReviewerOwnedRequirement(requirement)) {
-    return "Cán bộ xét duyệt sẽ xác minh sau khi nộp hồ sơ. Sinh viên không tự xác minh mục này.";
+    return "Mục này được đối chiếu trong quá trình xử lý hồ sơ. Bạn không cần thao tác thêm.";
   }
-  return "Chờ cán bộ xác minh tình trạng vi phạm. Sinh viên không tự xác minh mục này.";
+  return "Thông tin sẽ được đối chiếu khi xử lý hồ sơ. Bạn chưa cần thao tác thêm.";
 }
 
 function mapNoViolationRequirementStatus(
@@ -3277,9 +2965,10 @@ function mapNoViolationRequirementStatus(
 }
 
 function getNoViolationStatusLabel(requirement?: RequirementItem) {
-  if (requirement?.status === "verified") return "Đã xác minh";
+  if (requirement?.status === "verified") return "Đã ghi nhận";
+  if (isReviewerOwnedRequirement(requirement)) return "Đã ghi nhận";
+  if (requirement?.status === "needs_verification") return "Đã khai báo";
   if (requirement?.status === "rejected") return "Cần xử lý";
-  if (isReviewerOwnedRequirement(requirement)) return "Chờ cán bộ";
   return getRequirementStatusLabel(requirement?.status ?? "not_started");
 }
 
@@ -3288,27 +2977,6 @@ function isReviewerOwnedRequirement(requirement?: RequirementItem) {
     requirement?.blocksSubmission === false &&
     (requirement.responsibility === "reviewer" || requirement.responsibility === "committee")
   );
-}
-
-function academicGpaStatusLabel(requirement?: RequirementItem) {
-  if (requirement?.status === "verified") return "Hoàn thành";
-  if (requirement?.status === "declared" || requirement?.status === "needs_verification") {
-    return "Cần xác minh";
-  }
-  if (requirement?.status === "rejected") return "Cần bổ sung";
-  return "Chưa có dữ liệu";
-}
-
-function noFGradeStatusCopy(requirement?: RequirementItem) {
-  if (requirement?.status === "verified") return "Không có điểm F đã được xác minh";
-  if (requirement?.status === "rejected") return "Có điểm F cần cán bộ xử lý";
-  return "Chờ cán bộ xác minh tình trạng điểm F";
-}
-
-function academicPeriodLabel(requirement?: RequirementItem) {
-  if (requirement?.status === "verified") return "Đúng năm học xét";
-  if (requirement?.status === "rejected") return "Không khớp năm học xét";
-  return "Chờ xác minh theo năm học xét";
 }
 
 function getFormFields(requirement: RequirementItem) {
@@ -3328,8 +2996,8 @@ function dynamicFieldInputType(field: string): "text" | "date" | "number" {
 function buildPathItems(group: RequirementGroup): PathSelectorListV2Item[] {
   return group.requirements.map((requirement) => ({
     id: requirement.key,
-    title: getSafeRequirementLabel(requirement),
-    description: requirement.description || formatSourceList(requirement.acceptedSources),
+    title: getStudentRequirementLabel(requirement),
+    description: getPathDescription(requirement),
     selected: ["declared", "needs_verification", "verified"].includes(requirement.status),
     disabled: requirement.status === "verified",
   }));
@@ -3340,7 +3008,7 @@ function buildAggregationRows(requirements: RequirementItem[]): ActivityLedgerV2
     .flatMap((requirement) =>
       (requirement.aggregation?.activities ?? []).map((activity) => ({
         id: activity.id,
-        title: activity.activityName || getRequirementPresentation(requirement).label,
+        title: activity.activityName || getStudentRequirementLabel(requirement),
         metadata: [
           activity.organizer,
           activity.startDate ? formatStudentDate(activity.startDate) : null,
@@ -3383,7 +3051,7 @@ function mapRequirementStatus(
 function getRequirementStatusLabel(status: RequirementItem["status"]) {
   if (status === "verified") return "Hoàn thành";
   if (status === "declared") return "Đã khai báo";
-  if (status === "needs_verification") return "Đang chờ";
+  if (status === "needs_verification") return "Đã ghi nhận";
   if (status === "rejected") return "Cần bổ sung";
   return "Chưa bắt đầu";
 }
@@ -3458,10 +3126,10 @@ function getEvidenceProcessingDetail(evidence: EvidenceResponse, cityInitialSubm
     return "Hệ thống đang đọc minh chứng";
   }
   if (evidence.indexingStatus === "failed" && cityInitialSubmission) {
-    return "Chưa đọc được nội dung minh chứng; cán bộ sẽ kiểm tra tệp gốc đã lưu.";
+    return "Minh chứng đã được lưu trong hồ sơ.";
   }
   if (evidence.indexingStatus === "needs_manual_review" && cityInitialSubmission) {
-    return "Cán bộ sẽ kiểm tra tệp gốc.";
+    return "Minh chứng đã được tiếp nhận.";
   }
   if (evidence.indexingStatus === "failed") return "Không đọc được minh chứng";
   return undefined;
@@ -3483,25 +3151,14 @@ function getEvidenceCardStatus(
   evidence: EvidenceResponse,
   cityInitialSubmission = false,
 ): { status: StudentApplicationV2ProgressStatus; label: string } {
-  if (evidence.status === "accepted") return { status: "complete", label: "Đã xác nhận" };
+  if (cityInitialSubmission) return { status: "waiting", label: "Đã tải lên" };
   if (["needs_supplement", "rejected"].includes(evidence.status)) {
     return { status: "supplement", label: "Cần bổ sung" };
   }
-  if (evidence.indexingStatus === "failed" || evidence.indexingStatus === "needs_manual_review") {
-    return {
-      status: "waiting",
-      label: cityInitialSubmission ? "Cán bộ sẽ kiểm tra" : "Cần kiểm tra lại",
-    };
+  if (evidence.status === "accepted") {
+    return { status: "complete", label: "Đã xác nhận minh chứng" };
   }
-  if (evidence.indexingStatus === "indexed") return { status: "waiting", label: "Đã đọc xong" };
   if (evidence.status === "under_review") return { status: "waiting", label: "Đang xét duyệt" };
-  if (
-    ["ocr_processing", "processing", "extracting", "checking_registry"].includes(
-      evidence.indexingStatus,
-    )
-  ) {
-    return { status: "waiting", label: "Đang xử lý" };
-  }
   return { status: "waiting", label: "Đã tải lên" };
 }
 

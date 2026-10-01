@@ -222,16 +222,20 @@ export function StatusPillV2({
   status,
   label = studentApplicationV2ProgressLabels[status],
   className,
+  wrapLabel = false,
 }: {
   status: StudentApplicationV2ProgressStatus;
   label?: string;
   className?: string;
+  wrapLabel?: boolean;
 }) {
   const Icon = statusIcon[status];
   return (
-    <span className={cn(getStatusPillV2ClassName(status), className)}>
+    <span className={cn(getStatusPillV2ClassName(status), wrapLabel && "flex-wrap", className)}>
       <Icon className={cn("h-3.5 w-3.5 shrink-0", statusIconClass[status])} aria-hidden="true" />
-      <span className="truncate">{label}</span>
+      <span className={wrapLabel ? "min-w-0 whitespace-normal break-words" : "truncate"}>
+        {label}
+      </span>
     </span>
   );
 }

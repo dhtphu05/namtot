@@ -130,9 +130,9 @@ export function selectStudentHomeAction({
       const needsVerification = eligibility.status === "NEEDS_VERIFICATION";
       return action(
         "eligibility",
-        needsVerification ? "Cần xác minh điều kiện nộp hồ sơ" : "Chưa đủ điều kiện nộp hồ sơ",
+        needsVerification ? "Điều kiện nộp hồ sơ đang được đối chiếu" : "Chưa đủ điều kiện nộp hồ sơ",
         needsVerification
-          ? "Thông tin điều kiện cần được cán bộ xác minh trước khi gửi hồ sơ."
+          ? "Bạn vẫn có thể tiếp tục hoàn thiện hồ sơ trong lúc thông tin được đối chiếu."
           : "Bạn vẫn có thể xem và tiếp tục hoàn thiện hồ sơ.",
         "Xem điều kiện nộp hồ sơ",
         "/app/ai-precheck",

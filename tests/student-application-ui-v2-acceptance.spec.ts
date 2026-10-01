@@ -922,13 +922,78 @@ test.describe("student application UI V2 acceptance", () => {
     });
   });
 
-  test("volunteer ledger uses backend aggregation values", async ({ page }) => {
+  test("volunteer student view does not expose day totals", async ({ page }) => {
     await loginAndGoto(page, "/app/application?criterion=volunteer");
-    await expect(studentContentMain(page)).toContainText(/12/);
-    await expect(studentContentMain(page)).toContainText(/3/);
-    await expect(studentContentMain(page)).toContainText(/15/);
-    await expect(studentContentMain(page)).toContainText(/Ngày hội hiến máu/);
+    const workspace = page.getByTestId("volunteer-workspace");
+    await expect(workspace).toBeVisible();
+    await expect(workspace).toContainText("Ảnh hoạt động tình nguyện");
+    await expect(workspace).not.toContainText("12");
+    await expect(workspace).not.toContainText("3");
+    await expect(workspace).not.toContainText("15");
+    await expect(workspace).not.toContainText("Đã xác minh");
+    await expect(workspace).not.toContainText("Đã ghi nhận");
     await expect(studentContentMain(page)).not.toContainText(/conversionRate|convertVolunteer/i);
+  });
+
+  test("volunteer declarations and supporting evidence are managed in one workspace", async ({
+    page,
+  }) => {
+    const writes: Array<{ method: string; path: string; body: unknown }> = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (
+        url.pathname.startsWith("/api/requirement-responses/") ||
+        url.pathname.endsWith("/volunteer/activities")
+      ) {
+        writes.push({
+          method: request.method(),
+          path: url.pathname,
+          body: request.postDataJSON(),
+        });
+      }
+    });
+
+    await page.setViewportSize({ width: 375, height: 667 });
+    await loginAndGoto(page, "/app/application?criterion=volunteer");
+    const workspace = page.getByTestId("volunteer-workspace");
+
+    await expect(
+      workspace.getByRole("heading", { name: "Khai báo hoạt động và minh chứng" }),
+    ).toHaveCount(0);
+    await expect(workspace.getByRole("heading", { name: "Minh chứng" })).toBeVisible();
+    await expect(workspace.getByText("Ảnh hoạt động tình nguyện")).toBeVisible();
+    await expect(workspace.getByTestId("volunteer-ledger")).toHaveCount(0);
+    await expect(workspace).not.toContainText("Đã xác minh");
+    await expect(workspace).not.toContainText("Đã ghi nhận");
+    await expect(workspace).not.toContainText("Mục tiêu");
+    await expect(
+      workspace.getByRole("button", { name: "Thêm minh chứng", exact: true }),
+    ).toBeVisible();
+    await workspace.getByRole("button", { name: "Thêm minh chứng", exact: true }).click();
+    const createDialog = page.getByRole("dialog", { name: "Thêm minh chứng" });
+    await expectNoLayoutViolations(page, "volunteer evidence modal on mobile");
+    await expect(createDialog.getByLabel("Tên hoạt động / minh chứng")).toBeVisible();
+    await expect(createDialog.getByLabel("Tên hoạt động / minh chứng")).toHaveValue("");
+    await expect(createDialog.getByLabel("Số ngày tham gia")).toHaveCount(0);
+    await createDialog.getByLabel("Tên hoạt động / minh chứng").fill("Ngày hội hiến máu mới");
+    await createDialog.getByLabel("Loại hoạt động").selectOption("blood_donation");
+    await createDialog.locator('input[type="file"]').setInputFiles({
+      name: "ngay-hoi.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4 test"),
+    });
+    await createDialog.getByRole("button", { name: "Thêm vào hồ sơ" }).click();
+    await expect
+      .poll(() => writes.some((write) => write.path.endsWith("/volunteer/activities")))
+      .toBeTruthy();
+    expect(writes.find((write) => write.path.endsWith("/volunteer/activities"))).toMatchObject({
+      method: "POST",
+      body: {
+        activityName: "Ngày hội hiến máu mới",
+        declaredValue: 1,
+        evidenceId: "ev-volunteer-upload",
+      },
+    });
   });
 
   test("integration path is dynamic and unknown backend keys render safely", async ({ page }) => {
@@ -1118,11 +1183,38 @@ async function installStudentApiMock(page: Page) {
     if (path.endsWith("/precheck/latest")) return json(route, latestPrecheck(state));
     if (path.endsWith("/timeline")) return json(route, timeline);
     if (path.match(/\/api\/applications\/[^/]+\/evidences$/)) {
-      if (request.method() === "POST") return json(route, evidenceCreated);
+      if (request.method() === "POST") {
+        const body = request.postDataJSON() as { criterion?: Criterion };
+        return json(
+          route,
+          body.criterion === "volunteer"
+            ? evidence(
+                "ev-volunteer-upload",
+                "Ảnh tình nguyện mới",
+                "volunteer",
+                "application/pdf",
+                "draft",
+                "pending_indexing",
+              )
+            : evidenceCreated,
+        );
+      }
       return json(route, evidencesFor(url.searchParams.get("criterion") as Criterion | null));
     }
     if (path.match(/\/api\/evidences\/[^/]+\/(files|start-indexing)$/)) {
-      return json(route, evidenceCreated);
+      return json(
+        route,
+        path.includes("ev-volunteer-upload")
+          ? evidence(
+              "ev-volunteer-upload",
+              "Ảnh tình nguyện mới",
+              "volunteer",
+              "application/pdf",
+              "draft",
+              "pending_indexing",
+            )
+          : evidenceCreated,
+      );
     }
     if (path.endsWith("/academic/gpa/declare")) {
       const body = parseJsonBody(request.postData()) as { value?: number };
@@ -1627,6 +1719,7 @@ function requirementGroups(criterion: Criterion, accepted: boolean) {
                 {
                   id: "act-1",
                   requirementKey: "accumulated_volunteer_days",
+                  activityType: "blood_donation",
                   activityName: "Ngày hội hiến máu",
                   organizer: "HSV Trường",
                   startDate: "2026-01-09",
@@ -1636,9 +1729,32 @@ function requirementGroups(criterion: Criterion, accepted: boolean) {
                   countedValue: 3,
                   status: "needs_verification",
                   sourceType: "manual_evidence",
+                  evidenceId: "ev-photo",
                 },
               ],
             },
+            currentResponses: [
+              {
+                id: "response-act-1",
+                responseKind: "activity_aggregation",
+                status: "needs_verification",
+                evidenceId: "ev-photo",
+                payloadJson: {
+                  id: "act-1",
+                  applicationId: "app-1",
+                  requirementKey: "accumulated_volunteer_days",
+                  activityType: "blood_donation",
+                  activityName: "Ngày hội hiến máu",
+                  organizer: "HSV Trường",
+                  startDate: "2026-01-09",
+                  endDate: "2026-01-09",
+                  declaredValue: 3,
+                  declaredUnit: "day",
+                  sourceType: "manual_evidence",
+                  evidenceId: "ev-photo",
+                },
+              },
+            ],
           },
         ],
       },

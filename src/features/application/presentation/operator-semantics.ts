@@ -75,11 +75,11 @@ export function getRequirementGroupPresentation(
     return {
       key: group?.key ?? "",
       label: group?.title || "Nhóm điều kiện",
-      description: `Tổng đã xác nhận ${verifiedTotal}/${threshold} ${unit}; chờ xác minh ${pendingTotal} ${unit}`,
+      description: `Đã ghi nhận ${verifiedTotal + pendingTotal}/${threshold} ${unit}`,
       progressLabel:
         verifiedTotal >= threshold
-          ? "Sẵn sàng kiểm tra"
-          : `Tổng đã xác nhận ${verifiedTotal}/${threshold} ${unit}`,
+          ? "Đã ghi nhận đủ mục tiêu"
+          : `Đã ghi nhận ${verifiedTotal + pendingTotal}/${threshold} ${unit}`,
       tone: verifiedTotal >= threshold ? "good" : pendingTotal > 0 ? "warning" : "neutral",
       selectedCount: verifiedTotal,
       requiredCount: threshold,
@@ -90,8 +90,8 @@ export function getRequirementGroupPresentation(
     if (verified.length >= requiredCount) {
       return baseGroup(
         group,
-        "Sẵn sàng kiểm tra",
-        "Đã khai báo đủ, đang chờ xác minh",
+        "Đã ghi nhận đủ",
+        "Đã khai báo đủ thông tin",
         "good",
         selected.length,
         requiredCount,
@@ -130,8 +130,8 @@ export function getRequirementGroupPresentation(
   if (verified.length >= requiredCount) {
     return baseGroup(
       group,
-      "Sẵn sàng kiểm tra",
-      "Đã khai báo đủ, đang chờ xác minh",
+      "Đã ghi nhận đủ",
+      "Đã khai báo đủ thông tin",
       "good",
       selected.length,
       requiredCount,
@@ -140,7 +140,7 @@ export function getRequirementGroupPresentation(
   if (selected.length >= requiredCount && pending.length > 0) {
     return baseGroup(
       group,
-      "Đã khai báo đủ, đang chờ xác minh",
+      "Đã khai báo đủ thông tin",
       "Cần đủ các điều kiện bắt buộc",
       "warning",
       selected.length,

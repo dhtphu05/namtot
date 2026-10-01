@@ -113,7 +113,9 @@ export function getStudentApplicationSummary(
         );
   const completedCriteriaCount = criteriaStates.filter((item) => item.status === "ok").length;
   const pendingActionCount =
-    criteriaStates.filter((item) => item.status !== "ok").length +
+    criteriaStates.filter(
+      (item) => item.status === "missing" || item.status === "empty" || item.unreadableEvidence,
+    ).length +
     feedback.filter((item) => item.isActionable).length;
   const missingCount = criteriaStates.filter(
     (item) => item.status === "missing" || item.status === "empty",
@@ -149,19 +151,12 @@ export function applyCompletionToCriteriaState(
       : "Chưa có điều kiện bắt buộc";
   return {
     ...state,
-    status: status.status,
-    statusLabel: status.label,
-    tone: status.tone,
+    status: state.unreadableEvidence ? "needs_review" : status.status,
+    statusLabel: state.unreadableEvidence ? "Tệp chưa đọc được" : status.label,
+    tone: state.unreadableEvidence ? "warning" : status.tone,
     evidenceCount: completion.evidenceCount,
-    warningCount: completion.completion.needsVerification || state.warningCount,
-    description:
-      required > 0
-        ? `${completionText}${
-            completion.completion.needsVerification
-              ? ` · ${completion.completion.needsVerification} mục cần xác minh`
-              : ""
-          }.`
-        : state.description,
+    warningCount: state.warningCount,
+    description: required > 0 ? `${completionText}.` : state.description,
     primaryMissingReason:
       completion.criterion === "physical"
         ? "Tải minh chứng phù hợp cho tiêu chí Thể lực tốt"
@@ -211,11 +206,14 @@ export function getCriteriaUiState(
     key: criteriaKey,
     label: criterionLabels[criteriaKey],
     status,
-    statusLabel: criterionStatusCopy[status],
-    tone: criterionTone[status],
+    statusLabel: failedEvidence ? "Tệp chưa đọc được" : criterionStatusCopy[status],
+    tone: failedEvidence ? "warning" : criterionTone[status],
     evidenceCount: evidences.length,
+    unreadableEvidence: Boolean(failedEvidence),
     warningCount,
-    description: getCriterionDescription(criteriaKey, status, evidences.length),
+    description: failedEvidence
+      ? "Minh chứng chưa đọc được. Bạn có thể tải lên bản rõ hơn."
+      : getCriterionDescription(criteriaKey, status, evidences.length),
     primaryMissingReason:
       feedback.find((item) => item.isActionable)?.message ??
       (precheckMissing?.message ? cleanStudentText(precheckMissing.message) : undefined) ??
@@ -285,12 +283,12 @@ export function getNextActions(
   }
 
   criteriaStates
-    .filter((item) => item.status === "needs_review")
+    .filter((item) => item.status === "needs_review" && item.unreadableEvidence)
     .forEach((item) =>
       actions.push({
-        priority: item.primaryMissingReason.toLowerCase().includes("đọc") ? 2 : 4,
-        title: `${item.label} cần kiểm tra`,
-        description: item.primaryMissingReason || "Xem lại minh chứng trước khi nộp.",
+        priority: 2,
+        title: "Tệp minh chứng chưa đọc được",
+        description: "Hãy tải lên bản rõ hơn hoặc kiểm tra lại tệp gốc.",
         actionLabel: "Xem minh chứng",
         route: "/app/application",
         criterionKey: item.key,
@@ -375,8 +373,11 @@ function mapCompletionStatus(status: CriterionCompletionItem["status"]): {
   if (status === "ready_for_precheck" || status === "accepted") {
     return { status: "ok", label: "Sẵn sàng kiểm tra", tone: "good" };
   }
-  if (status === "needs_verification" || status === "under_review") {
-    return { status: "needs_review", label: "Cần xác minh", tone: "warning" };
+  if (status === "needs_verification") {
+    return { status: "needs_review", label: "Đã ghi nhận", tone: "info" };
+  }
+  if (status === "under_review") {
+    return { status: "needs_review", label: "Đang xét", tone: "info" };
   }
   if (status === "not_started") {
     return { status: "empty", label: "Chưa bắt đầu", tone: "neutral" };
@@ -447,7 +448,7 @@ export function getEvidenceStudentStatus(evidenceInput?: unknown): {
   if (source === "indexed")
     return { label: "Đã ghi nhận", tone: "good", normalizedStatus: "recorded" };
   if (source === "needs_manual_review" || source === "resolution_needed") {
-    return { label: "Cần kiểm tra", tone: "warning", normalizedStatus: "needs_review" };
+    return { label: "Đã tiếp nhận", tone: "info", normalizedStatus: "recorded" };
   }
   if (source === "failed")
     return { label: "Không đọc được", tone: "danger", normalizedStatus: "failed" };
@@ -458,7 +459,7 @@ export function getEvidenceStudentStatus(evidenceInput?: unknown): {
     return { label: "Đã xác nhận", tone: "good", normalizedStatus: "accepted" };
   if (source === "rejected")
     return { label: "Chưa phù hợp", tone: "danger", normalizedStatus: "rejected" };
-  return { label: "Cần kiểm tra", tone: "warning", normalizedStatus: "needs_review" };
+  return { label: "Đã tiếp nhận", tone: "info", normalizedStatus: "recorded" };
 }
 
 export function getFeedbackUiItems(notificationsInput?: unknown) {
@@ -660,6 +661,7 @@ function getCriterionDescription(
   if (status === "processing") return `${evidenceCount} minh chứng đang được xử lý.`;
   if (status === "ok") return `${evidenceCount} minh chứng đã được ghi nhận.`;
   if (status === "missing") return "Cần bổ sung minh chứng hoặc thông tin theo yêu cầu.";
+  if (status === "needs_review") return `${criterionLabels[criteriaKey]} đã được ghi nhận.`;
   return `${criterionLabels[criteriaKey]} cần được kiểm tra lại trước khi nộp.`;
 }
 
@@ -694,7 +696,7 @@ function inferCriterionFromText(text: string): Criterion | undefined {
 
 function cleanStudentText(value: string) {
   if (/\b(path|key backend|backend key|formSchema|json|api|endpoint)\b/i.test(value)) {
-    return "Bạn có thể tải minh chứng phù hợp. Cán bộ sẽ đối chiếu thông tin khi xét hồ sơ.";
+    return "Bạn có thể tải minh chứng phù hợp và tiếp tục hoàn thiện các mục khác.";
   }
   return value
     .replace(/\bintegration\b/g, "Hội nhập tốt")
@@ -748,7 +750,7 @@ const applicationStatusTone: Record<ApplicationStatus | "not_started", StudentTo
 const criterionStatusCopy: Record<CriterionUiStatus, string> = {
   ok: "Tạm ổn",
   missing: "Cần bổ sung",
-  needs_review: "Cần kiểm tra",
+  needs_review: "Đã ghi nhận",
   empty: "Chưa có",
   processing: "Đang xử lý",
 };
@@ -756,7 +758,7 @@ const criterionStatusCopy: Record<CriterionUiStatus, string> = {
 const criterionTone: Record<CriterionUiStatus, StudentTone> = {
   ok: "good",
   missing: "warning",
-  needs_review: "warning",
+  needs_review: "info",
   empty: "neutral",
   processing: "info",
 };

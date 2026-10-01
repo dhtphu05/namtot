@@ -67,6 +67,10 @@ type AddEvidenceDrawerProps = {
     approvedUsageCount?: number;
   } | null;
   submitLabel?: string;
+  onCreateVolunteerActivity?: (
+    evidenceId: string,
+    input: VolunteerActivityDraft,
+  ) => Promise<unknown>;
   onCreated: (evidence: EvidenceResponse) => void;
 };
 
@@ -74,6 +78,15 @@ type EvidenceUploadItem = {
   id: string;
   file: File;
   status: "queued" | "uploading" | "uploaded" | "failed";
+};
+
+export type VolunteerActivityDraft = {
+  activityName: string;
+  activityType: string;
+  organizer?: string;
+  startDate?: string;
+  endDate?: string;
+  declaredValue?: number;
 };
 
 export function AddEvidenceDrawer({
@@ -88,6 +101,7 @@ export function AddEvidenceDrawer({
   preselectedEventId,
   referenceEvent,
   submitLabel = "Thêm vào hồ sơ",
+  onCreateVolunteerActivity,
   onCreated,
 }: AddEvidenceDrawerProps) {
   const navigate = useNavigate();
@@ -117,6 +131,11 @@ export function AddEvidenceDrawer({
     {},
   );
   const [importedEvidence, setImportedEvidence] = useState<EvidenceResponse | null>(null);
+  const [activityType, setActivityType] = useState("volunteer_activity");
+  const [activityOrganizer, setActivityOrganizer] = useState("");
+  const [activityStartDate, setActivityStartDate] = useState("");
+  const [activityEndDate, setActivityEndDate] = useState("");
+  const [activitySavedForEvidenceId, setActivitySavedForEvidenceId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -130,6 +149,8 @@ export function AddEvidenceDrawer({
     createEvidence.isPending ||
     uploadFile.isPending ||
     startIndexing.isPending;
+  const isVolunteerActivityLocked =
+    isSubmitting || Boolean(createdEvidence && activitySavedForEvidenceId === createdEvidence.id);
   const hasRequirementContext = Boolean(initialRequirementKey && initialRequirementLabel);
   const hasReferenceEvent = Boolean(referenceEvent);
   const referenceEventId = referenceEvent?.eventId;
@@ -222,6 +243,11 @@ export function AddEvidenceDrawer({
     setDismissedEventSuggestionKey("");
     setParticipantChecks({});
     setImportedEvidence(null);
+    setActivityType("volunteer_activity");
+    setActivityOrganizer("");
+    setActivityStartDate("");
+    setActivityEndDate("");
+    setActivitySavedForEvidenceId(null);
     window.requestAnimationFrame(() => {
       contentRef.current?.scrollTo({ top: 0 });
     });
@@ -246,6 +272,7 @@ export function AddEvidenceDrawer({
     setNameError("");
     setFileError("");
     setSubmitError("");
+    setActivitySavedForEvidenceId(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -436,6 +463,16 @@ export function AddEvidenceDrawer({
       }
 
       if (latest) {
+        if (onCreateVolunteerActivity && activitySavedForEvidenceId !== latest.id) {
+          await onCreateVolunteerActivity(latest.id, {
+            activityName: trimmedName,
+            activityType,
+            organizer: activityOrganizer.trim() || undefined,
+            startDate: activityStartDate || undefined,
+            endDate: activityEndDate || undefined,
+          });
+          setActivitySavedForEvidenceId(latest.id);
+        }
         toast.success("Đã thêm minh chứng. Hệ thống đang đọc tài liệu.");
         resetForm();
         onOpenChange(false);
@@ -465,7 +502,7 @@ export function AddEvidenceDrawer({
           <DialogTitle>Thêm minh chứng</DialogTitle>
           <DialogDescription>
             {hasReferenceEvent
-              ? "Tên sự kiện đã được điền sẵn. Bạn vẫn cần tải tệp minh chứng của mình để cán bộ kiểm tra."
+              ? "Tên sự kiện đã được điền sẵn. Bạn vẫn cần tải tệp minh chứng để hoàn thiện hồ sơ."
               : hasRequirementContext
                 ? requirementContextLabel
                 : "Chọn tiêu chí, thêm tài liệu và kiểm tra lại trước khi gửi. Đóng cửa sổ khi chưa gửi sẽ bỏ thông tin đang nhập."}
@@ -510,16 +547,86 @@ export function AddEvidenceDrawer({
             </p>
           ) : null}
 
-          <StepHeading number="2" title="Thêm tài liệu hoặc thông tin" />
+          <StepHeading
+            number="2"
+            title={
+              onCreateVolunteerActivity
+                ? "Thông tin hoạt động và minh chứng"
+                : "Thêm tài liệu hoặc thông tin"
+            }
+          />
+          {onCreateVolunteerActivity ? (
+            <div className="space-y-3 rounded-lg border bg-muted/20 p-3 sm:p-4">
+              <p className="text-sm text-muted-foreground">
+                Hoạt động sẽ chờ cán bộ xác minh trước khi được tính vào kết quả.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="volunteer-activity-type">Loại hoạt động</Label>
+                  <select
+                    id="volunteer-activity-type"
+                    value={activityType}
+                    onChange={(event) => setActivityType(event.target.value)}
+                    className="min-h-12 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    disabled={isVolunteerActivityLocked}
+                  >
+                    <option value="volunteer_activity">Tình nguyện</option>
+                    <option value="blood_donation">Hiến máu</option>
+                    <option value="green_sunday">Chủ nhật xanh</option>
+                  </select>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="volunteer-activity-organizer">
+                    Đơn vị tổ chức (không bắt buộc)
+                  </Label>
+                  <Input
+                    id="volunteer-activity-organizer"
+                    value={activityOrganizer}
+                    onChange={(event) => setActivityOrganizer(event.target.value)}
+                    className="min-h-12"
+                    disabled={isVolunteerActivityLocked}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="volunteer-activity-start">Ngày bắt đầu (không bắt buộc)</Label>
+                  <Input
+                    id="volunteer-activity-start"
+                    type="date"
+                    value={activityStartDate}
+                    onChange={(event) => setActivityStartDate(event.target.value)}
+                    className="min-h-12"
+                    disabled={isVolunteerActivityLocked}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="volunteer-activity-end">Ngày kết thúc (không bắt buộc)</Label>
+                  <Input
+                    id="volunteer-activity-end"
+                    type="date"
+                    value={activityEndDate}
+                    onChange={(event) => setActivityEndDate(event.target.value)}
+                    className="min-h-12"
+                    disabled={isVolunteerActivityLocked}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className="space-y-2">
-            <Label htmlFor="evidence-name">Tên minh chứng</Label>
+            <Label htmlFor="evidence-name">
+              {onCreateVolunteerActivity ? "Tên hoạt động / minh chứng" : "Tên minh chứng"}
+            </Label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="evidence-name"
                 value={evidenceName}
                 onChange={(event) => handleEvidenceNameChange(event.target.value)}
-                placeholder="Ví dụ: Giấy chứng nhận Mùa hè xanh"
+                placeholder={
+                  onCreateVolunteerActivity
+                    ? "Ví dụ: Ngày hội hiến máu, Mùa hè xanh"
+                    : "Ví dụ: Giấy chứng nhận Mùa hè xanh"
+                }
                 className="min-h-12 pl-10"
                 disabled={isSubmitting}
                 readOnly={Boolean(createdEvidence)}

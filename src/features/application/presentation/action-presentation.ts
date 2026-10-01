@@ -43,7 +43,7 @@ const copy: Record<
     interactive: true,
   },
   wait_for_confirmation: {
-    label: "Đang chờ cán bộ xác minh",
+    label: "Đã ghi nhận",
     description: "Bạn chưa cần thao tác ở bước này.",
     interactive: false,
   },

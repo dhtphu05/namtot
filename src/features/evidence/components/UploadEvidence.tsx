@@ -303,7 +303,7 @@ export function UploadEvidence() {
               <AlertTriangle className="w-3.5 h-3.5" /> Lưu ý phổ biến
             </div>
             <div className="text-xs text-amber-800">
-              Ảnh mờ, thiếu dấu xác nhận hoặc chứng chỉ hết hạn có thể cần cán bộ kiểm tra lại.
+              Ảnh mờ, thiếu dấu xác nhận hoặc chứng chỉ hết hạn có thể khiến thông tin khó đối chiếu.
             </div>
           </div>
         </Card>
