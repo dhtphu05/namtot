@@ -53,6 +53,7 @@ import {
   getStudentApplicationSummary,
 } from "@/features/student/selectors/student-ui";
 import { PRESENTATION_SEMANTICS_V2 } from "@/lib/presentation-semantics";
+import { STUDENT_ASSISTANT_UI_ENABLED } from "@/lib/student-assistant-ui";
 import { cn } from "@/lib/utils";
 import type {
   ApplicationState,
@@ -233,11 +234,13 @@ export function StudentOverview() {
           <LatestFeedbackCard feedbackItems={actionableFeedback} hasFeedbackRoute />
         </div>
 
-        <CompactHelpCard
-          applicationId={application?.id}
-          applicationStatus={application?.status}
-          nextActions={nextActions.map((action) => action.title)}
-        />
+        {STUDENT_ASSISTANT_UI_ENABLED ? (
+          <CompactHelpCard
+            applicationId={application?.id}
+            applicationStatus={application?.status}
+            nextActions={nextActions.map((action) => action.title)}
+          />
+        ) : null}
       </div>
     </>
   );
@@ -314,16 +317,18 @@ function ApplicationHeroCard({
                 {primaryActionLabel}
               </AppButton>
             )}
-            <AppButton asChild variant="secondary" className="sm:w-auto">
-              <Link
-                to="/app/assistant"
-                search={assistantSearch}
-                data-smartux-tag="student_open_chatbot"
-              >
-                <Sparkles className="h-4 w-4" />
-                Hỏi trợ lý
-              </Link>
-            </AppButton>
+            {STUDENT_ASSISTANT_UI_ENABLED ? (
+              <AppButton asChild variant="secondary" className="sm:w-auto">
+                <Link
+                  to="/app/assistant"
+                  search={assistantSearch}
+                  data-smartux-tag="student_open_chatbot"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Hỏi trợ lý
+                </Link>
+              </AppButton>
+            ) : null}
           </div>
         </div>
 
