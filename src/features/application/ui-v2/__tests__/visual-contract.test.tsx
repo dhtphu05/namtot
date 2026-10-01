@@ -354,30 +354,24 @@ describe("student application UI V2 visual contract", () => {
     assert.doesNotMatch(source, /Chưa có["'`]\s*\}\s*<\/StatusPillV2>/);
   });
 
-  it("uses volunteer backend aggregation and does not perform frontend conversion", () => {
+  it("keeps volunteer declarations with evidence and leaves day counting to staff review", () => {
     const source = readFileSync(
       "src/features/application/ui-v2/StudentApplicationWorkspaceV2.tsx",
       "utf8",
     );
-
-    assert.match(source, /aggregation\?\.verifiedTotal/);
-    assert.match(source, /aggregation\?\.pendingVerificationTotal/);
-    assert.match(source, /aggregation\?\.threshold/);
-    assert.match(source, /aggregation\?\.unit/);
-    assert.match(source, /VolunteerLedgerV2/);
-    assert.doesNotMatch(source, /conversionRate|convertVolunteer|frontend conversion/i);
-  });
-
-  it("keeps volunteer add-activity form closed by default and preserves input on failure", () => {
-    const source = readFileSync(
-      "src/features/application/ui-v2/StudentApplicationWorkspaceV2.tsx",
-      "utf8",
+    const volunteerSection = source.slice(
+      source.indexOf("function VolunteerDataSectionV2"),
+      source.indexOf("function IntegrationDataSectionV2"),
     );
 
-    assert.match(source, /const \[formOpen, setFormOpen\] = useState\(false\)/);
-    assert.match(source, /Thêm hoạt động/);
-    assert.match(source, /await onAddActivity/);
-    assert.match(source, /catch \(error\) \{\s*toast\.error/);
+    assert.match(volunteerSection, /Khai báo hoạt động và tải minh chứng cùng lúc/);
+    assert.match(volunteerSection, /cán bộ sẽ xem nội dung và xác nhận theo quy định/);
+    assert.match(volunteerSection, /Thêm minh chứng/);
+    assert.doesNotMatch(
+      volunteerSection,
+      /verifiedTotal|pendingVerificationTotal|threshold|VolunteerLedgerV2|Số ngày tham gia/,
+    );
+    assert.match(source, /input\.activityType === "blood_donation" \? 1/);
   });
 
   it("shows integration conditions without requiring a path selection", () => {
