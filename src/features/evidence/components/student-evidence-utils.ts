@@ -43,7 +43,7 @@ export const indexingStatusLabel: Record<IndexingStatus, string> = {
   extracting: "Đang kiểm tra tệp",
   checking_registry: "Đang kiểm tra tệp",
   indexed: "Đã đọc được nội dung tệp",
-  needs_manual_review: "Tệp cần kiểm tra thêm",
+  needs_manual_review: "Đã tiếp nhận",
   failed: "Không đọc rõ nội dung tệp",
 };
 

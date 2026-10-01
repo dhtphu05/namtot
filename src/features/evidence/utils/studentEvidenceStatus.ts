@@ -31,7 +31,7 @@ export const studentEvidenceStatusMap: Record<StudentEvidenceStatusKey, StudentE
   official_match_not_found: {
     key: "official_match_not_found",
     label: "Chưa tìm thấy trong danh sách chính thức",
-    message: "Bạn vẫn có thể upload minh chứng để cán bộ xác minh.",
+    message: "Bạn vẫn có thể tải minh chứng để hoàn thiện hồ sơ.",
     primaryActionLabel: "Upload minh chứng",
     tone: "warning",
   },
@@ -59,10 +59,10 @@ export const studentEvidenceStatusMap: Record<StudentEvidenceStatusKey, StudentE
   },
   needs_human_verification: {
     key: "needs_human_verification",
-    label: "Cần cán bộ xác minh",
-    message: "Minh chứng đã được ghi nhận và chờ cán bộ kiểm tra.",
-    primaryActionLabel: "Xem lịch sử",
-    tone: "warning",
+    label: "Đã tiếp nhận",
+    message: "Minh chứng đã được lưu trong hồ sơ của bạn.",
+    primaryActionLabel: "Xem minh chứng",
+    tone: "info",
   },
   unreadable_file: {
     key: "unreadable_file",

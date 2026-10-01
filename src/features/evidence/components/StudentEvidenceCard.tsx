@@ -322,10 +322,7 @@ function getEvidenceWarnings(
     warnings.push("Thông tin trong minh chứng không khớp với hồ sơ hiện tại.");
   }
   if (evidence.indexingStatus === "failed") {
-    warnings.push("File chưa đọc được. Vui lòng thay thế bằng bản rõ hơn.");
-  }
-  if (evidence.indexingStatus === "needs_manual_review") {
-    warnings.push("Minh chứng cần cán bộ kiểm tra thêm.");
+    warnings.push("Tệp chưa đọc được. Vui lòng thay thế bằng bản rõ hơn.");
   }
   const rawWarnings = findNestedValue(evidence, "warnings");
   if (Array.isArray(rawWarnings)) {
