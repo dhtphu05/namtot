@@ -9,13 +9,16 @@ import { ApplicationContextBar } from "@/features/application/ui-v2/components";
 import { useAuth } from "@/features/auth/store/auth-store";
 import { StudentPageShell } from "@/features/student/components/primitives";
 import { STUDENT_APPLICATION_UI_V2 } from "@/lib/student-application-ui-v2";
+import { STUDENT_ASSISTANT_UI_ENABLED } from "@/lib/student-assistant-ui";
 
 const mobileItems = [
   { label: "Tổng quan", to: "/app", icon: LayoutDashboard },
   { label: "Hồ sơ", to: "/app/application", icon: FileText },
   { label: "Kho minh chứng", to: "/app/event-library", icon: BookOpenCheck },
   { label: "Kết quả", to: "/app/result", icon: Trophy },
-  { label: "Trợ lý", to: "/app/assistant", icon: LifeBuoy },
+  ...(STUDENT_ASSISTANT_UI_ENABLED
+    ? [{ label: "Trợ lý", to: "/app/assistant", icon: LifeBuoy }]
+    : []),
 ];
 
 export function StudentAppShell() {
@@ -60,7 +63,10 @@ export function StudentAppShell() {
           </StudentPageShell>
         </motion.div>
         <nav className="shrink-0 border-t border-slate-200 bg-white px-2 py-2 md:hidden">
-          <ul className="grid grid-cols-5 gap-1">
+          <ul
+            className="grid gap-1"
+            style={{ gridTemplateColumns: `repeat(${mobileItems.length}, minmax(0, 1fr))` }}
+          >
             {mobileItems.map((item) => {
               const Icon = item.icon;
               const active = isActiveStudentPath(pathname, item.to);
