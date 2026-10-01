@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { STUDENT_ASSISTANT_UI_ENABLED } from "@/lib/student-assistant-ui";
 import { cn } from "@/lib/utils";
 import {
   useStudentAssistantContext,
@@ -44,10 +45,17 @@ export function StudentAssistantExplanation({
   params,
   title = "Hỏi trợ lý",
 }: Props) {
-  const contextQuery = useStudentAssistantContext(params, enabled);
+  const assistantEnabled = enabled && STUDENT_ASSISTANT_UI_ENABLED;
+  const contextQuery = useStudentAssistantContext(params, assistantEnabled);
   const context = contextQuery.data ?? null;
-  const conversation = useStudentAssistantConversation({ context, params, enabled });
+  const conversation = useStudentAssistantConversation({
+    context,
+    params,
+    enabled: assistantEnabled,
+  });
   const reducedMotion = usePrefersReducedMotion();
+
+  if (!STUDENT_ASSISTANT_UI_ENABLED) return null;
 
   return (
     <motion.section

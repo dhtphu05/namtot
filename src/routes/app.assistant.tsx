@@ -1,8 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { StudentRoleSurface } from "@/features/core/components/StudentRoleSurface";
 import { StudentSupport } from "@/features/core/components/StudentSupport";
+import { STUDENT_ASSISTANT_UI_ENABLED } from "@/lib/student-assistant-ui";
 
 export const Route = createFileRoute("/app/assistant")({
+  beforeLoad: () => {
+    if (!STUDENT_ASSISTANT_UI_ENABLED) throw redirect({ to: "/app" });
+  },
   validateSearch: (search) => ({
     source:
       search.source === "overview" || search.source === "criterion" || search.source === "feedback"

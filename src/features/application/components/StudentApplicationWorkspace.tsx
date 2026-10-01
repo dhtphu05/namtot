@@ -2438,8 +2438,8 @@ function buildGuidedChecklist({
         action: "input_info",
         criterion: criterion.key,
         criterionLabel: criterion.label,
-        reason: "Tiêu chí Học tập tốt cần GPA hoặc bảng điểm để đối chiếu.",
-        title: "Nhập GPA hoặc tải bảng điểm",
+        reason: "Tiêu chí Học tập tốt cần điểm học tập hoặc bảng điểm để đối chiếu.",
+        title: "Nhập điểm học tập hoặc tải bảng điểm",
       });
     }
 
@@ -2581,8 +2581,8 @@ function getGuidedCriterionStatus(
     result?.passed === false
   ) {
     return {
-      label: "Cần kiểm tra file",
-      description: "Hệ thống thấy tiêu chí này cần bổ sung hoặc kiểm tra lại file.",
+      label: "Cần kiểm tra minh chứng",
+      description: "Tiêu chí này cần bổ sung hoặc kiểm tra lại minh chứng.",
       tone: "warning" as const,
     };
   }
@@ -3149,9 +3149,9 @@ function formatRelativeCheckTime(value?: string | null) {
 function validateMetricValue(metricType: MetricType, value: number, scale?: number) {
   if (metricType === "gpa") {
     const gpaScale = scale ?? 4;
-    if (value < 0) return "GPA không được nhỏ hơn 0.";
-    if (gpaScale === 10 && value > 10) return "GPA không được vượt quá 10.0.";
-    if (value > 4) return "GPA không được vượt quá 4.0.";
+    if (value < 0) return "Điểm học tập không được nhỏ hơn 0.";
+    if (gpaScale === 10 && value > 10) return "Điểm học tập không được vượt quá 10.0.";
+    if (value > 4) return "Điểm học tập không được vượt quá 4.0.";
   }
 
   if (metricType === "conduct_score" && (value < 0 || value > 100)) {

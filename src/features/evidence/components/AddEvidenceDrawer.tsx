@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
-import { CalendarDays, ChevronDown, ChevronUp, FileUp, Loader2, Search, X } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  FileUp,
+  Info,
+  Loader2,
+  Search,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,6 +103,7 @@ export function AddEvidenceDrawer({
   const [isProcessingUploads, setIsProcessingUploads] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [selectedPreviewItemId, setSelectedPreviewItemId] = useState<string | null>(null);
   const [selectedReferenceEvent, setSelectedReferenceEvent] = useState<NonNullable<
     AddEvidenceDrawerProps["referenceEvent"]
   > | null>(referenceEvent ?? null);
@@ -164,7 +176,12 @@ export function AddEvidenceDrawer({
     ? `${getCriterionDisplayLabel(activeCriterion)} - ${initialRequirementLabel}`
     : "";
 
-  const previewFile = uploadItems[0]?.file ?? null;
+  const previewItem =
+    uploadItems.find((item) => item.id === selectedPreviewItemId) ?? uploadItems[0] ?? null;
+  const previewItemIndex = previewItem
+    ? uploadItems.findIndex((item) => item.id === previewItem.id)
+    : -1;
+  const previewFile = previewItem?.file ?? null;
   useEffect(() => {
     if (!previewFile) {
       setFilePreviewUrl(null);
@@ -224,6 +241,7 @@ export function AddEvidenceDrawer({
     setEvidenceName("");
     setNote("");
     setUploadItems([]);
+    setSelectedPreviewItemId(null);
     setCreatedEvidence(null);
     setNameError("");
     setFileError("");
@@ -341,7 +359,7 @@ export function AddEvidenceDrawer({
 
     const pendingItems = uploadItems.filter((item) => item.status !== "uploaded");
     if (!uploadItems.length && !createdEvidence) {
-      setFileError("File minh chứng là bắt buộc.");
+      if (!fileError) setFileError("Bạn cần chọn tệp minh chứng.");
       return;
     }
 
@@ -407,7 +425,7 @@ export function AddEvidenceDrawer({
 
       if (failedNames.length) {
         setSubmitError(
-          `${failedNames.length} file chưa tải được. Các file đã tải vẫn được giữ trong cùng minh chứng; bạn có thể thử lại file lỗi.`,
+          `${failedNames.length} tệp chưa tải được. Các tệp đã tải vẫn được giữ trong cùng minh chứng; bạn có thể thử lại tệp lỗi.`,
         );
         return;
       }
@@ -447,7 +465,7 @@ export function AddEvidenceDrawer({
           <DialogTitle>Thêm minh chứng</DialogTitle>
           <DialogDescription>
             {hasReferenceEvent
-              ? "Tên sự kiện đã được điền sẵn. Bạn vẫn cần tải file minh chứng của mình để cán bộ kiểm tra."
+              ? "Tên sự kiện đã được điền sẵn. Bạn vẫn cần tải tệp minh chứng của mình để cán bộ kiểm tra."
               : hasRequirementContext
                 ? requirementContextLabel
                 : "Chọn tiêu chí, thêm tài liệu và kiểm tra lại trước khi gửi. Đóng cửa sổ khi chưa gửi sẽ bỏ thông tin đang nhập."}
@@ -520,7 +538,10 @@ export function AddEvidenceDrawer({
                 items={suggestions}
                 isLoading={referenceSearch.isLoading || referenceSearch.isFetching}
                 isError={referenceSearch.isError}
+                isRetrying={referenceSearch.isFetching}
                 onSelect={handleSuggestionSelect}
+                onRetry={() => void referenceSearch.refetch()}
+                onChooseFile={() => fileInputRef.current?.click()}
               />
             ) : null}
             <InlineEventSuggestions
@@ -534,6 +555,7 @@ export function AddEvidenceDrawer({
               importedEvidence={importedEvidence}
               isChecking={checkParticipant.isPending}
               isError={eventSuggestionQuery.isError}
+              isRetrying={eventSuggestionQuery.isFetching}
               isImporting={importOfficialEvent.isPending}
               isLoading={eventSuggestionQuery.isLoading || eventSuggestionQuery.isFetching}
               participantChecks={participantChecks}
@@ -549,6 +571,8 @@ export function AddEvidenceDrawer({
               }}
               onToggleExpanded={() => setEventSuggestionsExpanded((current) => !current)}
               onViewEvidence={viewImportedEvidence}
+              onRetry={() => void eventSuggestionQuery.refetch()}
+              onChooseFile={() => fileInputRef.current?.click()}
             />
           </div>
 
@@ -581,7 +605,7 @@ export function AddEvidenceDrawer({
               <Label htmlFor="evidence-upload">Tài liệu minh chứng</Label>
               {uploadItems.length ? (
                 <span className="text-xs text-muted-foreground">
-                  {uploadItems.length} file đã chọn
+                  {uploadItems.length} tệp đã chọn
                 </span>
               ) : null}
             </div>
@@ -603,6 +627,58 @@ export function AddEvidenceDrawer({
               <div className="overflow-hidden rounded-md border bg-white">
                 {filePreviewUrl && previewFile ? (
                   <div className="border-b bg-slate-50">
+                    <div className="flex min-w-0 items-center justify-between gap-2 border-b bg-white px-2 py-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-foreground">
+                          Đang xem tệp {previewItemIndex + 1}/{uploadItems.length}
+                        </p>
+                        <p
+                          className="truncate text-xs text-muted-foreground"
+                          title={previewFile.name}
+                        >
+                          {previewFile.name}
+                        </p>
+                      </div>
+                      {uploadItems.length > 1 ? (
+                        <div className="flex shrink-0 gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-11 w-11"
+                            aria-label="Tệp trước"
+                            disabled={previewItemIndex <= 0}
+                            onClick={() =>
+                              setSelectedPreviewItemId(
+                                uploadItems[previewItemIndex - 1]?.id ?? null,
+                              )
+                            }
+                          >
+                            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-11 w-11"
+                            aria-label="Tệp tiếp theo"
+                            disabled={previewItemIndex >= uploadItems.length - 1}
+                            onClick={() =>
+                              setSelectedPreviewItemId(
+                                uploadItems[previewItemIndex + 1]?.id ?? null,
+                              )
+                            }
+                          >
+                            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                    {uploadItems.length > 1 ? (
+                      <p className="border-b px-3 py-2 text-xs text-muted-foreground">
+                        Chọn tệp bên dưới hoặc dùng mũi tên để xem trước.
+                      </p>
+                    ) : null}
                     {isImageUpload(previewFile) ? (
                       <img
                         src={filePreviewUrl}
@@ -620,17 +696,35 @@ export function AddEvidenceDrawer({
                 ) : null}
                 <ul className="divide-y">
                   {uploadItems.map((item) => (
-                    <li key={item.id} className="flex min-w-0 items-center gap-2 p-3 sm:gap-3">
-                      <FileUp className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                      <div className="min-w-0 flex-1">
-                        <p className="break-all text-sm font-medium text-foreground">
-                          {item.file.name}
-                        </p>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                          <span>{formatFileSize(item.file.size)}</span>
-                          <span aria-live="polite">{getUploadItemStatusLabel(item.status)}</span>
-                        </div>
-                      </div>
+                    <li key={item.id} className="flex min-w-0 items-center gap-2 p-2 sm:gap-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        aria-pressed={item.id === previewItem?.id}
+                        aria-label={`${item.id === previewItem?.id ? "Đang xem" : "Xem trước"} ${item.file.name}`}
+                        className={`h-auto min-h-12 min-w-0 flex-1 justify-start gap-2 whitespace-normal px-2 py-2 text-left sm:gap-3 ${item.id === previewItem?.id ? "bg-primary/5 ring-1 ring-inset ring-primary/30" : ""}`}
+                        onClick={() => setSelectedPreviewItemId(item.id)}
+                      >
+                        <FileUp className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block break-all text-sm font-medium text-foreground">
+                            {item.file.name}
+                          </span>
+                          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                            <span>{formatFileSize(item.file.size)}</span>
+                            <span aria-live="polite">{getUploadItemStatusLabel(item.status)}</span>
+                            <span
+                              className={
+                                item.id === previewItem?.id
+                                  ? "font-medium text-primary"
+                                  : "font-medium text-muted-foreground"
+                              }
+                            >
+                              {item.id === previewItem?.id ? "Đang xem" : "Xem trước"}
+                            </span>
+                          </span>
+                        </span>
+                      </Button>
                       {item.status !== "uploaded" && !isSubmitting ? (
                         <Button
                           type="button"
@@ -659,7 +753,7 @@ export function AddEvidenceDrawer({
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <FileUp className="h-4 w-4" />
-                    Thêm file
+                    Thêm tệp
                   </Button>
                 </div>
               </div>
@@ -681,13 +775,13 @@ export function AddEvidenceDrawer({
                 }}
               >
                 <FileUp className="h-5 w-5 text-primary" />
-                <span>Kéo thả một hoặc nhiều file vào đây, hoặc chọn từ thiết bị</span>
+                <span>Kéo thả một hoặc nhiều tệp vào đây, hoặc chọn từ thiết bị</span>
               </button>
             )}
             <p id="evidence-upload-help" className="text-xs text-muted-foreground">
-              Có thể thêm nhiều file vào cùng một minh chứng. Hỗ trợ PDF, JPG, PNG, WEBP; tối đa{" "}
-              {EVIDENCE_UPLOAD_LIMIT_MB} MB cho mỗi file. Tài liệu sẽ được sử dụng khi kiểm tra hồ
-              sơ cấp Thành phố.
+              Có thể thêm nhiều tệp vào cùng một minh chứng. Hỗ trợ PDF, JPG, PNG, WEBP; tối đa{" "}
+              {EVIDENCE_UPLOAD_LIMIT_MB} MB cho mỗi tệp. Tài liệu sẽ được sử dụng khi kiểm tra hồ sơ
+              cấp Thành phố.
             </p>
             {fileError ? (
               <p id="evidence-file-error" role="alert" className="text-sm text-destructive">
@@ -708,14 +802,14 @@ export function AddEvidenceDrawer({
             </p>
             <p className="break-words">
               {uploadItems.length
-                ? `Tài liệu: ${uploadItems.length} file (${uploadItems.filter((item) => item.status === "uploaded").length} đã tải lên)`
+                ? `Tài liệu: ${uploadItems.length} tệp (${uploadItems.filter((item) => item.status === "uploaded").length} đã tải lên)`
                 : "Chưa chọn tài liệu"}
             </p>
           </div>
           {isSubmitting ? (
             <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Đang thêm tài liệu và gửi xử lý.
+              Đang thêm tài liệu và kiểm tra nội dung.
             </p>
           ) : null}
           {submitError ? (
@@ -734,13 +828,13 @@ export function AddEvidenceDrawer({
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {isSubmitting
-              ? "Đang tải file..."
+              ? "Đang tải tệp..."
               : createdEvidence
                 ? uploadItems.some((item) => item.status === "failed")
-                  ? `Thử lại ${uploadItems.filter((item) => item.status === "failed").length} file lỗi`
+                  ? `Thử lại ${uploadItems.filter((item) => item.status === "failed").length} tệp lỗi`
                   : "Hoàn tất minh chứng"
                 : uploadItems.length > 1
-                  ? `Thêm ${uploadItems.length} file vào hồ sơ`
+                  ? `Thêm ${uploadItems.length} tệp vào hồ sơ`
                   : submitLabel}
           </Button>
           <Button
@@ -782,7 +876,10 @@ function ReferenceSuggestions({
   items,
   isLoading,
   isError,
+  isRetrying,
   onSelect,
+  onRetry,
+  onChooseFile,
 }: {
   items: Array<{
     eventId: string;
@@ -792,12 +889,15 @@ function ReferenceSuggestions({
   }>;
   isLoading: boolean;
   isError: boolean;
+  isRetrying: boolean;
   onSelect: (item: {
     eventId: string;
     title: string;
     criterion?: Criterion;
     approvedUsageCount?: number;
   }) => void;
+  onRetry: () => void;
+  onChooseFile: () => void;
 }) {
   if (isLoading) {
     return (
@@ -808,9 +908,11 @@ function ReferenceSuggestions({
   }
   if (isError) {
     return (
-      <div className="rounded-md border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-        Không tải được gợi ý hoạt động.
-      </div>
+      <SuggestionUnavailable
+        isRetrying={isRetrying}
+        onRetry={onRetry}
+        onChooseFile={onChooseFile}
+      />
     );
   }
   if (!items.length) return null;
@@ -847,6 +949,7 @@ function InlineEventSuggestions({
   importedEvidence,
   isChecking,
   isError,
+  isRetrying,
   isImporting,
   isLoading,
   participantChecks,
@@ -858,6 +961,8 @@ function InlineEventSuggestions({
   onImport,
   onToggleExpanded,
   onViewEvidence,
+  onRetry,
+  onChooseFile,
 }: {
   applicationId: string;
   criterion: Criterion;
@@ -866,6 +971,7 @@ function InlineEventSuggestions({
   importedEvidence: EvidenceResponse | null;
   isChecking: boolean;
   isError: boolean;
+  isRetrying: boolean;
   isImporting: boolean;
   isLoading: boolean;
   participantChecks: Record<string, EventParticipantCheck>;
@@ -877,6 +983,8 @@ function InlineEventSuggestions({
   onImport: (suggestion: EvidenceEventSuggestion) => void;
   onToggleExpanded: () => void;
   onViewEvidence: () => void;
+  onRetry: () => void;
+  onChooseFile: () => void;
 }) {
   if (importedEvidence) {
     return (
@@ -912,9 +1020,11 @@ function InlineEventSuggestions({
 
   if (isError) {
     return (
-      <div className="rounded-md border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-        Chưa tải được gợi ý từ sự kiện chính thức. Bạn vẫn có thể tải file thủ công.
-      </div>
+      <SuggestionUnavailable
+        isRetrying={isRetrying}
+        onRetry={onRetry}
+        onChooseFile={onChooseFile}
+      />
     );
   }
 
@@ -975,6 +1085,57 @@ function InlineEventSuggestions({
         ) : null}
       </motion.div>
     </AnimatePresence>
+  );
+}
+
+function SuggestionUnavailable({
+  isRetrying,
+  onRetry,
+  onChooseFile,
+}: {
+  isRetrying: boolean;
+  onRetry: () => void;
+  onChooseFile: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex flex-col gap-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-3 text-sm text-blue-950 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex min-w-0 items-start gap-2">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" aria-hidden="true" />
+        <div>
+          <p className="font-medium">Gợi ý đang tạm thời không khả dụng.</p>
+          <p className="mt-0.5 text-blue-800">
+            Bạn vẫn có thể tải minh chứng thủ công; sự cố này không ảnh hưởng đến việc gửi tệp.
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-h-10 bg-white"
+          onClick={onChooseFile}
+        >
+          <FileUp className="h-4 w-4" aria-hidden="true" />
+          Chọn tệp thủ công
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="min-h-10"
+          disabled={isRetrying}
+          onClick={onRetry}
+        >
+          {isRetrying ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+          {isRetrying ? "Đang thử lại" : "Thử lại gợi ý"}
+        </Button>
+      </div>
+    </div>
   );
 }
 

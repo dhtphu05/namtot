@@ -86,7 +86,7 @@ function getEvidenceStatus(
     return {
       label: "Chưa phù hợp",
       tone: "danger",
-      warning: "Vui lòng kiểm tra lại file hoặc thông tin minh chứng.",
+      warning: "Vui lòng kiểm tra lại tệp hoặc thông tin minh chứng.",
     };
   }
   if (raw === "draft") return { label: "Đã lưu", tone: "neutral" };

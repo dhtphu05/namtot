@@ -34,7 +34,7 @@ const copy: Record<
   },
   upload_evidence: {
     label: "Tải minh chứng",
-    description: "Bổ sung file minh chứng cho điều kiện này.",
+    description: "Bổ sung tệp minh chứng cho điều kiện này.",
     interactive: true,
   },
   fix_missing_field: {

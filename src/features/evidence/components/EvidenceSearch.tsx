@@ -48,7 +48,7 @@ export function EvidenceSearch() {
     }),
     [criterion, decision, q],
   );
-  const { data, isLoading, isError, error } = useKnowledgeBaseSearch(filters);
+  const { data, isLoading, isError } = useKnowledgeBaseSearch(filters);
   const items = data?.items ?? [];
   const active = items.find((item) => item.id === activeId) ?? items[0] ?? null;
 
@@ -56,11 +56,11 @@ export function EvidenceSearch() {
     <>
       <TopBar
         title="Kho tri thức minh chứng"
-        subtitle="Tra cứu case đã duyệt / từ chối từ Knowledge Base backend"
+        subtitle="Tra cứu minh chứng đã được xét duyệt hoặc từ chối."
         action={
           <Button variant="secondary" disabled>
             <BookOpenCheck className="h-4 w-4" />
-            Tạo case từ màn xét duyệt
+            Tạo mục tham khảo từ màn xét duyệt
           </Button>
         }
       />
@@ -106,10 +106,8 @@ export function EvidenceSearch() {
       <div className="grid min-w-0 gap-4 lg:grid-cols-12">
         <aside className="lg:col-span-4">
           <Card className="!p-2">
-            {isLoading && <Loading label="Đang tải Knowledge Base..." />}
-            {isError && (
-              <Error label={(error as Error)?.message || "Không thể tải Knowledge Base."} />
-            )}
+            {isLoading && <Loading label="Đang tải thông tin tham khảo..." />}
+            {isError && <Error label="Chưa tải được thông tin tham khảo. Vui lòng thử lại." />}
             {!isLoading && !isError && (
               <ul className="space-y-1">
                 {items.map((item) => (
@@ -120,12 +118,13 @@ export function EvidenceSearch() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 truncate text-[13px] font-semibold text-brand-deep">
-                          {item.evidenceName ?? item.eventName ?? "Case chưa đặt tên"}
+                          {getStudentSafeText(item.evidenceName ?? item.eventName) ??
+                            "Minh chứng tham khảo chưa đặt tên"}
                         </div>
                         <DecisionChip decision={item.decision} />
                       </div>
                       <div className="mt-0.5 text-[11px] text-muted-foreground">
-                        {CRITERION_LABEL[item.criterion] ?? item.criterion} - {item.usageCount} lần
+                        {CRITERION_LABEL[item.criterion] ?? "Tiêu chí khác"} - {item.usageCount} lần
                         dùng
                       </div>
                     </button>
@@ -133,7 +132,7 @@ export function EvidenceSearch() {
                 ))}
                 {items.length === 0 && (
                   <li className="py-10 text-center text-sm text-muted-foreground">
-                    Chưa có case phù hợp.
+                    Chưa có minh chứng tham khảo phù hợp.
                   </li>
                 )}
               </ul>
@@ -147,7 +146,7 @@ export function EvidenceSearch() {
           ) : (
             <Card>
               <div className="py-12 text-center text-sm text-muted-foreground">
-                Chọn một case để xem chi tiết.
+                Chọn một mục để xem chi tiết.
               </div>
             </Card>
           )}
@@ -160,7 +159,7 @@ export function EvidenceSearch() {
                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Trường bắt buộc
                 </div>
-                <List values={active.requiredFieldsJson} empty="Chưa khai báo trường bắt buộc." />
+                <List values={active.requiredFieldsJson} empty="Chưa có nội dung cần lưu ý." />
               </Card>
               <Card>
                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -205,34 +204,50 @@ function KnowledgeDetail({ item }: { item: KnowledgeBaseItem }) {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Case tham chiếu
+              Minh chứng tham khảo
             </div>
             <h3 className="text-[17px] font-bold text-brand-deep">
-              {item.evidenceName ?? item.eventName ?? "Case chưa đặt tên"}
+              {getStudentSafeText(item.evidenceName ?? item.eventName) ??
+                "Minh chứng tham khảo chưa đặt tên"}
             </h3>
             <div className="text-[12px] text-muted-foreground">
-              {CRITERION_LABEL[item.criterion] ?? item.criterion}
-              {item.level ? ` - ${LEVEL_LABEL[item.level] ?? item.level}` : ""}
+              {CRITERION_LABEL[item.criterion] ?? "Tiêu chí khác"}
+              {item.level ? ` - ${LEVEL_LABEL[item.level] ?? "Cấp xét khác"}` : ""}
             </div>
           </div>
           <DecisionChip decision={item.decision} />
         </div>
         <div className="rounded-xl bg-[#F6F9FC] p-5 text-sm text-muted-foreground">
-          Không hiển thị ảnh mẫu ở màn này vì Knowledge Base API không expose file preview. Dữ liệu
-          dùng để tham chiếu nằm trong lý do, field bắt buộc và lỗi thường gặp.
+          Màn hình này chưa có ảnh minh họa. Bạn có thể tham khảo lý do xét duyệt, nội dung cần có
+          và những lỗi thường gặp.
         </div>
       </Card>
       <Card>
         <h4 className="mb-2 text-[14px] font-bold text-brand-deep">Lý do quyết định</h4>
-        <p className="text-[12.5px]">{item.reason}</p>
+        <p className="text-[12.5px]">
+          {getStudentSafeText(item.reason) ?? "Chưa có nội dung giải thích."}
+        </p>
       </Card>
     </>
   );
 }
 
 function DecisionChip({ decision }: { decision: string }) {
-  const item = DECISION_LABEL[decision] ?? { label: decision, tone: "muted" as const };
+  const item = DECISION_LABEL[decision] ?? { label: "Đang cập nhật", tone: "muted" as const };
   return <Chip tone={item.tone}>{item.label}</Chip>;
+}
+
+function getStudentSafeText(value?: string | null) {
+  const text = value?.trim();
+  if (
+    !text ||
+    /\b(api|backend|frontend|json|ocr|token|endpoint|database|knowledge base|case|status)\b|[A-Z]{2,}_[A-Z0-9_]+/i.test(
+      text,
+    )
+  ) {
+    return undefined;
+  }
+  return text;
 }
 
 function List({
@@ -248,10 +263,10 @@ function List({
     return <div className="text-[12.5px] text-muted-foreground">{empty}</div>;
   return (
     <ul className={`space-y-1 text-[12.5px] ${tone === "warning" ? "text-amber-800" : ""}`}>
-      {values.map((value) => (
-        <li key={value} className="flex gap-1.5">
+      {values.map((value, index) => (
+        <li key={`${index}-${value}`} className="flex gap-1.5">
           <span className={tone === "warning" ? "" : "text-emerald-600"}>-</span>
-          {value}
+          {getStudentSafeText(value) ?? "Thông tin đang được cập nhật."}
         </li>
       ))}
     </ul>

@@ -77,6 +77,7 @@ export function EvidenceCardV2({
   context,
   processingDetail,
   status,
+  statusLabel,
   preview,
   onOpen,
   actionItems,
@@ -88,6 +89,7 @@ export function EvidenceCardV2({
   context?: string;
   processingDetail?: string;
   status: StudentApplicationV2ProgressStatus;
+  statusLabel?: string;
   preview: EvidenceCardV2Preview;
   onOpen?: () => void;
   actionItems?: EvidenceCardV2Action[];
@@ -121,7 +123,7 @@ export function EvidenceCardV2({
           <h3 className="line-clamp-2 text-[15px] font-semibold leading-[23px] text-[var(--student-v2-text-primary)]">
             {title}
           </h3>
-          <StatusPillV2 status={status} />
+          <StatusPillV2 status={status} label={statusLabel} />
         </div>
         {metadata ? (
           <p className="mt-2 line-clamp-1 text-[13px] leading-[18px] text-[var(--student-v2-text-secondary)]">

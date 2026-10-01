@@ -13,6 +13,7 @@ import { useCurrentApplication } from "@/features/application/hooks/useApplicati
 import { useAuth } from "@/features/auth/store/auth-store";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { SmartbotPanel } from "@/features/chatbot/components/SmartbotPanel";
+import { STUDENT_ASSISTANT_UI_ENABLED } from "@/lib/student-assistant-ui";
 
 export function EventLibrary() {
   const user = useAuth((s) => s.user);
@@ -144,20 +145,22 @@ export function EventLibrary() {
         subtitle="Tìm các sự kiện đã được xác nhận roster trước khi import vào hồ sơ"
       />
 
-      <div className="mb-5">
-        <SmartbotPanel
-          applicationId={applicationId}
-          contextScope="student_helpdesk"
-          pageContext={{ page: "matching_hub", criterion: "volunteer" }}
-          compact
-          initialPrompt="Mình có thể tìm minh chứng trong Matching Hub cho tiêu chí Tình nguyện tốt cấp Trường."
-          quickPrompts={[
-            "Tìm minh chứng tình nguyện",
-            "Mùa hè xanh 2025",
-            "Hiến máu nhân đạo đợt 1",
-          ]}
-        />
-      </div>
+      {STUDENT_ASSISTANT_UI_ENABLED ? (
+        <div className="mb-5">
+          <SmartbotPanel
+            applicationId={applicationId}
+            contextScope="student_helpdesk"
+            pageContext={{ page: "matching_hub", criterion: "volunteer" }}
+            compact
+            initialPrompt="Mình có thể tìm minh chứng trong Matching Hub cho tiêu chí Tình nguyện tốt cấp Trường."
+            quickPrompts={[
+              "Tìm minh chứng tình nguyện",
+              "Mùa hè xanh 2025",
+              "Hiến máu nhân đạo đợt 1",
+            ]}
+          />
+        </div>
+      ) : null}
 
       {!canImportEvent ? (
         <Card className="mb-4 bg-[#FFF7E6]">

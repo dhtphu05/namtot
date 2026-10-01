@@ -12,17 +12,17 @@ type EvidenceAuditButtonProps = {
 
 const actionLabels: Record<string, string> = {
   EVIDENCE_CREATED: "Minh chứng đã được tạo",
-  FILE_UPLOADED: "Đã tải file lên",
-  OCR_JOB_CREATED: "Bắt đầu đọc file",
-  SMARTREADER_FILE_UPLOADED: "Đã tải file lên",
-  SMARTREADER_OCR_STARTED: "Bắt đầu đọc file",
-  SMARTREADER_OCR_COMPLETED: "Đã đọc xong file",
+  FILE_UPLOADED: "Đã tải tệp lên",
+  OCR_JOB_CREATED: "Bắt đầu đọc nội dung tệp",
+  SMARTREADER_FILE_UPLOADED: "Đã tải tệp lên",
+  SMARTREADER_OCR_STARTED: "Bắt đầu đọc nội dung tệp",
+  SMARTREADER_OCR_COMPLETED: "Đã đọc xong nội dung tệp",
   SMARTREADER_EVIDENCE_READ: "Đã đọc minh chứng",
   EVIDENCE_MISSING_INFO_DETECTED: "Phát hiện thông tin cần bổ sung",
   EVIDENCE_CARD_GENERATED: "Đã tạo tóm tắt minh chứng",
   EVIDENCE_SENT_TO_HUMAN_VERIFICATION: "Chờ cán bộ xác minh",
   EVIDENCE_NEEDS_MANUAL_REVIEW: "Chờ cán bộ xác minh",
-  EVIDENCE_INDEXING_FAILED: "Chưa đọc được file",
+  EVIDENCE_INDEXING_FAILED: "Chưa đọc được nội dung tệp",
   EVENT_EVIDENCE_IMPORTED_BY_STUDENT: "Đã thêm từ danh sách chính thức",
 };
 

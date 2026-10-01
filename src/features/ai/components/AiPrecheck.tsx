@@ -18,6 +18,7 @@ import { useEvidences } from "@/features/evidence/hooks/useEvidence";
 import { useSmartUXTracking } from "@/hooks/useSmartUXTracking";
 import type { Criterion } from "@/lib/api/types";
 import { useMemo, useState } from "react";
+import { STUDENT_ASSISTANT_UI_ENABLED } from "@/lib/student-assistant-ui";
 
 const criterionMap: Record<string, Criterion> = {
   "dao-duc": "ethics",
@@ -145,8 +146,8 @@ export function AiPrecheck() {
   return (
     <>
       <TopBar
-        title="Kết quả AI tiền kiểm"
-        subtitle="AI gợi ý, cán bộ / hội đồng xác nhận quyết định cuối cùng"
+        title="Kết quả kiểm tra sơ bộ"
+        subtitle="Gợi ý chỉ mang tính tham khảo; cán bộ hoặc hội đồng xác nhận kết quả cuối cùng."
         action={
           <Button
             variant="secondary"
@@ -172,7 +173,7 @@ export function AiPrecheck() {
         <div className="grid md:grid-cols-3 gap-6 items-center relative">
           <div className="md:col-span-2">
             <Chip tone="brand">
-              <Sparkles className="w-3 h-3" /> AI gợi ý - cán bộ xác nhận
+              <Sparkles className="w-3 h-3" /> Gợi ý tham khảo - cán bộ xác nhận
             </Chip>
             <h2 className="text-3xl font-bold text-brand-deep mt-3">
               {result
@@ -272,20 +273,22 @@ export function AiPrecheck() {
         </div>
       </motion.div>
 
-      <div className="mb-6">
-        <SmartbotPanel
-          applicationId={application?.id}
-          contextScope="student_helpdesk"
-          pageContext={{ page: "precheck" }}
-          compact
-          initialPrompt="Mình có thể giải thích gap tiền kiểm cấp Trường và gợi ý bước xử lý tiếp theo."
-          quickPrompts={[
-            "Hồ sơ cấp Trường của em còn thiếu gì?",
-            "Tìm minh chứng tình nguyện",
-            "Hỏi cán bộ phụ trách",
-          ]}
-        />
-      </div>
+      {STUDENT_ASSISTANT_UI_ENABLED ? (
+        <div className="mb-6">
+          <SmartbotPanel
+            applicationId={application?.id}
+            contextScope="student_helpdesk"
+            pageContext={{ page: "precheck" }}
+            compact
+            initialPrompt="Mình có thể giải thích gap tiền kiểm cấp Trường và gợi ý bước xử lý tiếp theo."
+            quickPrompts={[
+              "Hồ sơ cấp Trường của em còn thiếu gì?",
+              "Tìm minh chứng tình nguyện",
+              "Hỏi cán bộ phụ trách",
+            ]}
+          />
+        </div>
+      ) : null}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-7">
         {CRITERIA.map((c, i) => {
@@ -331,12 +334,12 @@ export function AiPrecheck() {
       <div className="grid lg:grid-cols-2 gap-5 mb-5">
         <Card>
           <h3 className="font-bold text-brand-deep mb-3 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-500" /> Gap analysis
+            <AlertTriangle className="w-4 h-4 text-amber-500" /> Nội dung cần lưu ý
           </h3>
           <div className="space-y-3">
             {(result?.missingItems.length
               ? result.missingItems
-              : [{ message: "Chưa có kết quả backend mới nhất. Bấm Chạy tiền kiểm để cập nhật." }]
+              : [{ message: "Chưa có kết quả kiểm tra mới nhất. Chọn Kiểm tra hồ sơ để cập nhật." }]
             ).map((item, index) => (
               <div
                 key={String(item.code ?? index)}
@@ -356,7 +359,7 @@ export function AiPrecheck() {
         <Card glow>
           <h3 className="font-bold text-brand-deep mb-3">Hành động đề xuất tiếp theo</h3>
           <p className="text-[11px] text-muted-foreground mb-3">
-            AI gợi ý, cán bộ xác nhận quyết định cuối cùng.
+            Gợi ý chỉ mang tính tham khảo; cán bộ xác nhận quyết định cuối cùng.
           </p>
           <div className="space-y-2">
             {[
@@ -374,7 +377,7 @@ export function AiPrecheck() {
                 action: submitProfile,
               },
               {
-                t: "Mở chatbot",
+                t: "Hỏi trợ lý",
                 desc: "Hỏi thêm về quy trình xét",
                 tag: "student_open_chatbot",
                 action: () => {

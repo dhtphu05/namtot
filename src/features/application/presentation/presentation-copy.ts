@@ -20,7 +20,7 @@ export const requirementLabels: Record<string, string> = {
   good_person_good_deed: "Gương người tốt, việc tốt",
   recognized_courageous_action: "Hành động dũng cảm được ghi nhận",
   other_ethics_achievement: "Thành tích đạo đức khác",
-  academic_gpa: "GPA/điểm học tập",
+  academic_gpa: "Điểm trung bình tích lũy",
   no_f_grade: "Tình trạng điểm F",
   academic_period_valid: "Năm học xét",
   student_research: "Nghiên cứu khoa học",

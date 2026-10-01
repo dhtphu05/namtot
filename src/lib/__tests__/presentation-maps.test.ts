@@ -80,6 +80,15 @@ describe("role navigation", () => {
     assert.deepEqual(cityOfficerRoutes, ["/app/queue", "/app/resolution"]);
   });
 
+  it("temporarily hides the student assistant while keeping precheck available", () => {
+    const studentRoutes = getRoleNavigation("student").flatMap((group) =>
+      group.items.map((item) => item.to),
+    );
+
+    assert.ok(!studentRoutes.includes("/app/assistant"));
+    assert.ok(studentRoutes.includes("/app/ai-precheck"));
+  });
+
   it("exposes the approved operational destinations to admin once each", () => {
     const admin = getRoleNavigation("admin").flatMap((group) => group.items);
     assert.deepEqual(

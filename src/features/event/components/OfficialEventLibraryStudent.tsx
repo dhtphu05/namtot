@@ -322,7 +322,7 @@ export function ReferenceEventEmpty({
       <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">
         {hasFilter
           ? "Thử từ khóa ngắn hơn hoặc chọn tiêu chí khác."
-          : "Bạn vẫn có thể thêm minh chứng và tự tải file để cán bộ kiểm tra."}
+          : "Bạn vẫn có thể thêm minh chứng và tự tải tệp để cán bộ kiểm tra."}
       </p>
       <div className="mt-3">
         <Button

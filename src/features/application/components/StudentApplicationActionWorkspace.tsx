@@ -56,6 +56,7 @@ import { useDeleteEvidence, useEvidences } from "@/features/evidence/hooks/useEv
 import { OfficialEventLibraryDialog } from "@/features/event/components/OfficialEventLibraryStudent";
 import { officialEventLibraryTitleForCriterion } from "@/features/event/components/official-event-library-copy";
 import { StudentAssistantExplanation } from "@/features/student-assistant/components/StudentAssistantExplanation";
+import { STUDENT_ASSISTANT_UI_ENABLED } from "@/lib/student-assistant-ui";
 import { SupplementCoachWorkspace } from "@/features/student-assistant/components/SupplementCoachWorkspace";
 import {
   AppButton,
@@ -159,12 +160,12 @@ const criterionGuide: Record<
       "Xác nhận không vi phạm.",
       "Giấy khen hoặc xác nhận Đoàn - Hội.",
     ],
-    mistakes: ["Thiếu xác nhận.", "Sai năm học.", "File không thể đọc rõ."],
+    mistakes: ["Thiếu xác nhận.", "Sai năm học.", "Tệp không thể đọc rõ."],
   },
   academic: {
-    main: ["GPA hoặc điểm học tập đạt ngưỡng.", "Dữ liệu học tập đúng năm xét."],
+    main: ["Điểm học tập đạt ngưỡng.", "Dữ liệu học tập đúng năm xét."],
     valid: ["Bảng điểm.", "Giấy xác nhận học tập.", "Giải thưởng học thuật."],
-    mistakes: ["Thiếu GPA.", "File mờ.", "Không có xác nhận."],
+    mistakes: ["Thiếu điểm học tập.", "Tệp mờ.", "Không có xác nhận."],
   },
   physical: {
     main: [
@@ -1171,12 +1172,14 @@ function CriterionWorkspace({
                 Tải minh chứng từ máy
               </AppButton>
             ) : null}
-            <AppButton asChild variant="ghost" className="w-full sm:w-auto">
-              <Link to={toStudentAssistantHref(assistantHref)}>
-                <Sparkles className="h-4 w-4" />
-                Hỏi trợ lý
-              </Link>
-            </AppButton>
+            {STUDENT_ASSISTANT_UI_ENABLED ? (
+              <AppButton asChild variant="ghost" className="w-full sm:w-auto">
+                <Link to={toStudentAssistantHref(assistantHref)}>
+                  <Sparkles className="h-4 w-4" />
+                  Hỏi trợ lý
+                </Link>
+              </AppButton>
+            ) : null}
           </div>
         </div>
 
@@ -1211,7 +1214,7 @@ function CriterionWorkspace({
           </div>
         ) : null}
 
-        {precheck ? (
+        {STUDENT_ASSISTANT_UI_ENABLED && precheck ? (
           <div className="mt-4">
             <StudentAssistantExplanation
               params={{
@@ -1495,7 +1498,7 @@ function AcademicRequirementPanel({
             value={formatPayloadNumber(gpaPayload.rawScale) ?? String(gpaScale)}
           />
           <AcademicInfoRow
-            label="GPA/ĐTB"
+            label="Điểm trung bình tích lũy"
             value={
               getRequirementDisplayValue(gpa) ??
               (existingMetricValue ? `${existingMetricValue}/${gpaScale}` : "Chưa có")
@@ -1542,7 +1545,7 @@ function AcademicRequirementPanel({
             />
             <AppButton onClick={onSaveMetric} disabled={savingMetric} size="sm">
               {savingMetric ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Lưu GPA
+              Lưu điểm học tập
             </AppButton>
           </div>
         ) : null}
@@ -1802,9 +1805,7 @@ function PhysicalRequirementPanel({
                       {getDisplayRequirementLabel(path)}
                     </div>
                     <div className="text-xs text-[var(--text-secondary)]">
-                      {PRESENTATION_SEMANTICS_V2
-                        ? getDisplayRequirementSourceLabel(path)
-                        : path.key}
+                      {getDisplayRequirementSourceLabel(path)}
                     </div>
                   </div>
                   <StatusBadge
@@ -2109,7 +2110,7 @@ function IntegrationRequirementPanel({
             ))
           ) : (
             <p className="px-3 py-3 text-sm text-[var(--text-secondary)]">
-              Chưa có path Hội nhập tốt trong cấu hình hiện tại.
+              Chưa có thông tin điều kiện cho tiêu chí Hội nhập tốt.
             </p>
           )}
         </div>
@@ -2146,7 +2147,8 @@ function IntegrationRequirementPanel({
             </div>
           ) : (
             <p className="mt-3 text-sm text-[var(--text-secondary)]">
-              Path này chưa có formSchema chi tiết từ backend.
+              Tiêu chí này chưa có hướng dẫn khai báo chi tiết. Bạn vẫn có thể tải minh chứng
+              phù hợp.
             </p>
           )}
 
@@ -2325,9 +2327,7 @@ function PhysicalPathRow({
         </div>
       </div>
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {PRESENTATION_SEMANTICS_V2
-          ? getDisplayRequirementSourceLabel(requirement)
-          : requirement.key}
+        {getDisplayRequirementSourceLabel(requirement)}
       </div>
       <StatusBadge tone={status.tone} label={status.label} />
     </button>
@@ -2413,12 +2413,14 @@ function QuickGuidePanel({
           <GuideBlock title="Yêu cầu chính" items={guide.main} />
           <GuideBlock title="Minh chứng hợp lệ" items={guide.valid} />
           <GuideBlock title="Lỗi thường gặp" items={guide.mistakes} />
-          <AppButton asChild variant="secondary" size="sm" className="w-full">
-            <Link to={toStudentAssistantHref(assistantHref)}>
-              <Sparkles className="h-4 w-4" />
-              Hỏi trợ lý về tiêu chí này
-            </Link>
-          </AppButton>
+          {STUDENT_ASSISTANT_UI_ENABLED ? (
+            <AppButton asChild variant="secondary" size="sm" className="w-full">
+              <Link to={toStudentAssistantHref(assistantHref)}>
+                <Sparkles className="h-4 w-4" />
+                Hỏi trợ lý về tiêu chí này
+              </Link>
+            </AppButton>
+          ) : null}
           <details className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
             <summary className="cursor-pointer text-sm font-bold text-[var(--text-primary)]">
               Xem điều kiện chi tiết
@@ -2625,7 +2627,7 @@ function getRequirementSourceLabel(requirement?: RequirementItem) {
   const sourceType = typeof payload.sourceType === "string" ? payload.sourceType : undefined;
   if (sourceType === "system_data") return "Dữ liệu hệ thống";
   if (sourceType === "manual_metric") return "Sinh viên khai báo";
-  if (sourceType === "manual_evidence") return "File minh chứng";
+  if (sourceType === "manual_evidence") return "Tệp minh chứng";
   if (response.responseKind === "legacy_event" || response.responseKind === "official_event") {
     return "Sự kiện xác nhận";
   }
@@ -2677,7 +2679,7 @@ function noFGradeActionLabel(requirement?: RequirementItem) {
 function academicPeriodLabel(requirement?: RequirementItem) {
   if (requirement?.status === "verified") return "Đúng năm học xét";
   if (requirement?.status === "rejected") return "Không khớp năm học xét";
-  return requirement?.nextAction?.label ?? "Tải bảng điểm để xác minh GPA";
+  return requirement?.nextAction?.label ?? "Tải bảng điểm để đối chiếu điểm học tập";
 }
 
 function mapRequirementStatus(status: RequirementItem["status"]): {
@@ -3129,7 +3131,7 @@ function getMetricValue(metrics: ApplicationMetric[], metricType?: MetricType) {
 function validateMetricValue(metricType: MetricType, value: number, scale?: number) {
   if (!Number.isFinite(value)) return "Vui lòng nhập giá trị hợp lệ.";
   if (scale && (value < 0 || value > scale)) return `Giá trị phải nằm trong khoảng 0-${scale}.`;
-  if (metricType === "gpa" && value < 0) return "GPA không được nhỏ hơn 0.";
+  if (metricType === "gpa" && value < 0) return "Điểm học tập không được nhỏ hơn 0.";
   if (metricType === "conduct_score" && (value < 0 || value > 100))
     return "Điểm rèn luyện phải nằm trong khoảng 0-100.";
   if (metricType === "physical_score" && (value < 0 || value > 10))

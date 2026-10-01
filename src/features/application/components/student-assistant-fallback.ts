@@ -25,8 +25,7 @@ export function buildDashboardAssistantFallback({
     state: hasApplication ? "draft_in_progress" : "new_user",
     greeting: {
       title: `Xin chào, ${firstName}`,
-      deterministicMessage:
-        "Chưa tải được gợi ý từ hệ thống. Đây là hành động dự phòng nội bộ của giao diện.",
+      deterministicMessage: "Chưa tải được gợi ý mới. Bạn vẫn có thể tiếp tục với hồ sơ.",
     },
     application: {
       id: application?.id ?? null,
@@ -41,8 +40,7 @@ export function buildDashboardAssistantFallback({
       type: actionType,
       priority: 999,
       title: hasApplication ? "Tiếp tục hồ sơ" : "Bắt đầu hồ sơ",
-      deterministicDescription:
-        "Hành động này chỉ dùng khi API gợi ý chưa phản hồi, không thay thế thứ tự ưu tiên từ backend.",
+      deterministicDescription: "Gợi ý tạm thời trong lúc hệ thống chưa phản hồi.",
       ctaLabel: hasApplication ? "Mở hồ sơ" : "Bắt đầu",
       destination: { route: "/app/application" },
       applicationId: application?.id ?? "current",

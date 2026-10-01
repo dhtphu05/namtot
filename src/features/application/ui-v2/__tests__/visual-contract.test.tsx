@@ -334,17 +334,23 @@ describe("student application UI V2 visual contract", () => {
     );
   });
 
-  it("implements physical one_of path selection without default open forms or raw path badges", () => {
+  it("shows physical conditions without requiring a path selection", () => {
     const source = readFileSync(
       "src/features/application/ui-v2/StudentApplicationWorkspaceV2.tsx",
       "utf8",
     );
+    const physicalSection = source.slice(
+      source.indexOf("function PhysicalDataSectionV2"),
+      source.indexOf("function VolunteerDataSectionV2"),
+    );
 
     assert.match(source, /PhysicalDataSectionV2/);
-    assert.match(source, /PathSelectionSurfaceV2/);
-    assert.match(source, /Đổi hình thức/);
-    assert.match(source, /confirmUnsavedPathChange/);
-    assert.match(source, /setCourseFormOpen\(false\)/);
+    assert.match(physicalSection, /CriterionRequirementsSummaryV2/);
+    assert.match(physicalSection, /ExistingPathResponsesV2/);
+    assert.doesNotMatch(
+      physicalSection,
+      /PathSelectionSurfaceV2|selectedPath|onDeclareCourseResult/,
+    );
     assert.doesNotMatch(source, /Chưa có["'`]\s*\}\s*<\/StatusPillV2>/);
   });
 
@@ -374,35 +380,35 @@ describe("student application UI V2 visual contract", () => {
     assert.match(source, /catch \(error\) \{\s*toast\.error/);
   });
 
-  it("derives integration paths dynamically and preserves unknown backend keys", () => {
+  it("shows integration conditions without requiring a path selection", () => {
     const source = readFileSync(
       "src/features/application/ui-v2/StudentApplicationWorkspaceV2.tsx",
       "utf8",
     );
-    const hookSource = readFileSync("src/features/application/hooks/useApplication.ts", "utf8");
-    const apiSource = readFileSync("src/features/application/api/application.ts", "utf8");
+    const integrationSection = source.slice(
+      source.indexOf("function IntegrationDataSectionV2"),
+      source.indexOf("function AchievementDisclosureV2"),
+    );
 
     assert.match(source, /IntegrationDataSectionV2/);
-    assert.match(source, /getPathRequirements\(completion, "integration_path"\)/);
-    assert.match(source, /unknownLabel="Hình thức khác"/);
-    assert.match(source, /requirementKey: selectedPath\.key/);
-    assert.doesNotMatch(source, /selectedPathKey.*foreign_language/);
-    assert.match(hookSource, /requirementKey: string/);
-    assert.match(apiSource, /requirementKey: string/);
+    assert.match(integrationSection, /Không cần chọn hình thức/);
+    assert.match(integrationSection, /ExistingPathResponsesV2/);
+    assert.doesNotMatch(integrationSection, /PathSelectionSurfaceV2|selectedPath|onAddPath/);
   });
 
-  it("renders integration dynamic fields from schema and keeps official event action path-scoped", () => {
+  it("keeps integration evidence upload free of path-specific forms", () => {
     const source = readFileSync(
       "src/features/application/ui-v2/StudentApplicationWorkspaceV2.tsx",
       "utf8",
     );
+    const integrationSection = source.slice(
+      source.indexOf("function IntegrationDataSectionV2"),
+      source.indexOf("function AchievementDisclosureV2"),
+    );
 
-    assert.match(source, /getFormFields\(selectedPath\)/);
-    assert.match(source, /DynamicFieldInputV2/);
-    assert.match(source, /getRequirementFieldLabel\(field\)/);
-    assert.match(source, /selectedPath\.acceptedSources\?\.includes\("official_event"\)/);
-    assert.match(source, /selectedCriterion !== "physical"/);
-    assert.match(source, /selectedCriterion !== "integration"/);
+    assert.match(integrationSection, /tải lên minh chứng phù hợp/);
+    assert.match(integrationSection, /ghi chú nếu cần/);
+    assert.doesNotMatch(integrationSection, /PathSelectionSurfaceV2|DynamicFieldInputV2|onAddPath/);
   });
 
   it("hides mutation actions when readonly or supplement lock makes the criterion non-editable", () => {
