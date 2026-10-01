@@ -108,39 +108,49 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "5TOT Platform — Hồ sơ Sinh viên 5 tốt" },
+      { title: "5TOT - Hệ thống quản lý hồ sơ Sinh viên 5 tốt thành phố Đà Nẵng" },
       {
         name: "description",
         content:
-          "Nền tảng quản lý hồ sơ, AI tiền kiểm, xét duyệt và xuất danh sách Sinh viên 5 tốt.",
+          "Hệ thống quản lý hồ sơ và xét chọn danh hiệu Sinh viên 5 tốt cấp Thành phố Đà Nẵng.",
       },
-      { property: "og:title", content: "5TOT Platform — Hồ sơ Sinh viên 5 tốt" },
+      {
+        property: "og:title",
+        content: "5TOT - Hệ thống quản lý hồ sơ Sinh viên 5 tốt thành phố Đà Nẵng",
+      },
       {
         property: "og:description",
         content:
-          "Nền tảng quản lý hồ sơ, AI tiền kiểm, xét duyệt và xuất danh sách Sinh viên 5 tốt.",
+          "Hệ thống quản lý hồ sơ và xét chọn danh hiệu Sinh viên 5 tốt cấp Thành phố Đà Nẵng.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "5TOT Platform — Hồ sơ Sinh viên 5 tốt" },
+      { property: "og:site_name", content: "5TOT Đà Nẵng" },
+      { property: "og:locale", content: "vi_VN" },
+      { property: "og:image", content: "https://sv5tot.lcdkhoacntt-dut.page/og-image.jpg" },
+      { property: "og:image:type", content: "image/jpeg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Ảnh landing page hệ thống 5TOT Đà Nẵng" },
+      { name: "twitter:card", content: "summary_large_image" },
+      {
+        name: "twitter:title",
+        content: "5TOT - Hệ thống quản lý hồ sơ Sinh viên 5 tốt thành phố Đà Nẵng",
+      },
       {
         name: "twitter:description",
         content:
-          "Nền tảng quản lý hồ sơ, AI tiền kiểm, xét duyệt và xuất danh sách Sinh viên 5 tốt.",
-      },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ec3e2145-7696-4331-ac95-3148165a82e5/id-preview-bdf6100a--d10f1d69-070b-4a54-96d4-7668d5686d99.lovable.app-1782719439019.png",
+          "Hệ thống quản lý hồ sơ và xét chọn danh hiệu Sinh viên 5 tốt cấp Thành phố Đà Nẵng.",
       },
       {
         name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ec3e2145-7696-4331-ac95-3148165a82e5/id-preview-bdf6100a--d10f1d69-070b-4a54-96d4-7668d5686d99.lovable.app-1782719439019.png",
+        content: "https://sv5tot.lcdkhoacntt-dut.page/og-image.jpg",
       },
+      { name: "twitter:image:alt", content: "Ảnh landing page hệ thống 5TOT Đà Nẵng" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", sizes: "500x500", href: "/favicon.png" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       {
