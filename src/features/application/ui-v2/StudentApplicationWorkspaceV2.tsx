@@ -4043,7 +4043,6 @@ function getEvidencePreview(
     sourceType: evidence.sourceType,
     isOfficialData: evidence.sourceType === "event_import",
     isLoading: Boolean(previewLoading && file),
-    isFailed: evidence.indexingStatus === "failed",
     src: previewUrl,
     officialData:
       evidence.sourceType === "event_import"

@@ -904,7 +904,7 @@ This section reflects the frontend-only implementation pass on 2026-07-18. The r
   - portrait documents use `object-contain`;
   - landscape photos use bounded image preview;
   - official data uses a data tile instead of a fake image;
-  - loading and failed thumbnails have explicit accessible states.
+  - loading and failed thumbnails have explicit accessible states; OCR/indexing failure does not suppress an available image URL, and a failed-image state comes from the browser image-load error.
 - No preview route or Storybook surface was added because the repo does not currently have a safe internal preview pattern and Storybook is not installed. Do not add a public production preview route for V2 components.
 - `docs/UI_GUIDE.md` now includes a short Student Application UI V2 contract section covering identity, surfaces, status system, spacing/radius, evidence preview, and anti-AI-slop rules.
 - Focused V2 contract tests were added in `src/features/application/ui-v2/__tests__/visual-contract.test.tsx` for:
